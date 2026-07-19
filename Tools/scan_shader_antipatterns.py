@@ -104,7 +104,9 @@ def iter_shader_files(paths: Iterable[Path]) -> Iterable[Path]:
 def render_markdown(findings: list[Finding]) -> str:
     lines = ["# Shader Antipattern Scanner Candidates", "", "> この出力は候補抽出です。確定診断ではありません。", "", "| Rule ID | Severity | Confidence | File | Line | Message |", "|---|---|---|---|---:|---|"]
     for finding in findings:
-        lines.append(f"| {finding.rule_id} | {finding.severity} | {finding.confidence} | `{finding.file.replace('|', '\\|')}` | {finding.line} | {finding.message.replace('|', '\\|')} |")
+        file_name = finding.file.replace("|", "\\|")
+        message = finding.message.replace("|", "\\|")
+        lines.append(f"| {finding.rule_id} | {finding.severity} | {finding.confidence} | `{file_name}` | {finding.line} | {message} |")
     lines.extend(["", f"候補数: **{len(findings)}**", ""])
     return "\n".join(lines)
 
