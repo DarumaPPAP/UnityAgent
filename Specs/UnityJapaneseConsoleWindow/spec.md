@@ -1,15 +1,17 @@
 # UnityJapaneseConsoleWindow 要件定義・仕様書
 
 - FeatureName: `UnityJapaneseConsoleWindow`
-- DocumentVersion: `0.1.0`
+- DocumentVersion: `0.2.0`
 - Status: Draft
 - SpecPath: `Specs/UnityJapaneseConsoleWindow/spec.md`
-- TargetPhase: 要件定義・仕様策定のみ
-- LastVerified: 2026-07-22
+- TargetPhase: Phase 2 / Google Cloud Translation連携
+- LastVerified: 2026-07-23
 
 ## 1. 目的
 
-Unity Editorで発生するログ、警告、エラー、例外、C#コンパイルメッセージ、Shaderコンパイルメッセージを収集し、原文を失わずに日本語の要約を付与して閲覧できるEditor Windowを提供する。
+Unity Editorで発生するログ、警告、エラー、例外、C#コンパイルメッセージ、Shaderコンパイルメッセージを収集し、原文を失わずに日本語訳を付与して閲覧できるEditor Windowを提供する。
+
+既知のメッセージはローカル翻訳ルールで即時変換し、未登録の英語メッセージは、ユーザーが自動翻訳を有効にした場合だけGoogle Cloud Translation Basic API v2を利用して日本語へ変換する。
 
 本機能はUnity標準Consoleを置換または改変せず、標準Consoleと並行して利用する補助Consoleとする。
 
@@ -17,19 +19,30 @@ Unity Editorで発生するログ、警告、エラー、例外、C#コンパイ
 
 Unity、URP、RenderGraph、Shader/HLSL、Burst、Jobs、Package、Asset Importなどのメッセージは英語で出力されることが多く、内容の把握に時間がかかる。
 
-単純な全文翻訳では、型名、メソッド名、Shader Keyword、ファイルパス、エラーコードなどの技術識別子まで変形される危険がある。また、Unity標準Consoleの内部状態へReflectionで依存すると、Unity更新による破損リスクが高い。
+ローカル翻訳ルールだけでは、Unity本体、Package、Asset Store製品、プロジェクト固有コードが出力する未知のメッセージをすべて網羅できない。一方、ログ全体を外部サービスへ無条件に送信すると、ファイルパス、型名、メソッド名、GUID、スタックトレースなどが外部へ送信される危険がある。
 
-このため、公開APIで取得できる情報だけを使用し、識別子を保護した決定論的な翻訳と、原文・スタックトレース・発生位置の保持を両立する。
+このため、次のハイブリッド構成を採用する。
+
+1. 承認済みローカル翻訳ルール
+2. Google翻訳結果のローカルキャッシュ
+3. Google Cloud Translation Basic v2
+4. 翻訳不能時は原文表示
+
+翻訳対象はログ本文だけとし、スタックトレースと診断位置は翻訳せず原文のまま保持する。
 
 ## 3. ゴール
 
 1. Unity Editorで発生した対象ログを専用ウィンドウへ収集できる。
-2. 登録済み翻訳ルールに一致するメッセージへ日本語要約を付与できる。
-3. 原文、スタックトレース、ファイル、行、列などの診断情報を保持できる。
-4. ログ種別、カテゴリ、翻訳状態、文字列で絞り込める。
-5. 同一ログを集約し、大量ログ時もEditorの操作性を維持できる。
-6. 対象ファイルと行番号へ移動できる。
-7. Unity標準Console、標準Logger、Playerビルドへ副作用を与えない。
+2. 登録済み翻訳ルールに一致するメッセージへ日本語訳を即時付与できる。
+3. 未登録の英語メッセージをGoogle Cloud Translation Basic v2で非同期翻訳できる。
+4. 同一メッセージの翻訳結果をローカルキャッシュし、2回目以降は外部通信せず表示できる。
+5. 原文、スタックトレース、ファイル、行、列などの診断情報を保持できる。
+6. スタックトレースを翻訳・外部送信せず、Unityから受信した文字列のまま表示できる。
+7. ログ種別、カテゴリ、翻訳状態、文字列で絞り込める。
+8. 同一ログを集約し、大量ログ時もEditorの操作性を維持できる。
+9. 対象ファイルと行番号へ移動できる。
+10. Unity標準Console、標準Logger、Playerビルドへ副作用を与えない。
+11. Google API Keyをソースコード、Assets、Git管理対象へ保存しない。
 
 ## 4. 対象環境
 
@@ -41,11 +54,13 @@ Unity、URP、RenderGraph、Shader/HLSL、Burst、Jobs、Package、Asset Import�
 - RenderGraph: 直接依存しない
 - Player: 対象外
 - Namespace: `<RootNamespace>.UnityJapaneseConsoleWindow`
-- UI: UI Toolkit
+- UI: IMGUI
+- UI基準: Unity標準ConsoleWindowに近い構成・操作感
 - 表示言語: 日本語優先
-- 外観: 黒基調、白文字を基本
+- 外部翻訳: Google Cloud Translation Basic API v2
+- 通信方式: HTTPS REST / `UnityWebRequest`
 
-`Specs/ProjectProfile.md`の`RootNamespace`が未確定であるため、実装開始前に確定が必要である。
+`Specs/ProjectProfile.md`の`RootNamespace`が未確定である場合は、実装開始前に確定する。
 
 ## 5. 用語
 
@@ -53,21 +68,33 @@ Unity、URP、RenderGraph、Shader/HLSL、Burst、Jobs、Package、Asset Import�
 
 Unityまたはコンパイラから受信した未変更のメッセージ文字列。
 
-### 5.2 日本語要約
+### 5.2 ログ本文
 
-翻訳ルールにより生成される、日本語での短い意味説明。原文の代替ではなく補助情報である。
+`Application.LogCallback`の`condition`、またはCompiler Messageの本文に相当する文字列。外部翻訳の対象となり得る。
 
-### 5.3 技術識別子
+### 5.3 スタックトレース
+
+`Application.LogCallback`の`stackTrace`に相当する文字列。翻訳対象および外部送信対象外とする。
+
+### 5.4 日本語訳
+
+ローカル翻訳ルール、翻訳キャッシュ、Google Cloud Translationのいずれかから得られた日本語文字列。原文の代替ではなく補助表示である。
+
+### 5.5 技術識別子
 
 型名、メソッド名、Namespace、Shader名、Property名、Keyword、Pass名、LightMode、ファイルパス、GUID、エラーコード、数値など、翻訳によって変更してはならない文字列。
 
-### 5.4 翻訳ルール
+### 5.6 ローカル翻訳ルール
 
-メッセージの完全一致、エラーコード、正規化パターンなどを条件として、日本語要約と任意の補足を返す決定論的な規則。
+メッセージの完全一致、エラーコード、正規化パターンなどを条件として、日本語訳を返す決定論的な規則。
 
-### 5.5 集約キー
+### 5.7 翻訳キャッシュ
 
-同一ログを判定するために、正規化済みメッセージ、種別、ファイル、行、カテゴリなどから生成する値。
+Google Cloud Translationから取得した翻訳結果を、原文のHashをキーとしてLibrary配下へ保存するローカルデータ。
+
+### 5.8 集約キー
+
+同一ログを判定するために、正規化済み原文、種別、ファイル、行、カテゴリなどから生成する値。
 
 ## 6. 対象範囲
 
@@ -81,9 +108,13 @@ Unityまたはコンパイラから受信した未変更のメッセージ文字
 - C#コンパイルエラー・警告
 - Unity Shader Compilerのエラー・警告
 - 通常ログとして受信可能なURP、RenderGraph、Burst、Jobs、Package、Asset Import関連メッセージ
+- ローカル翻訳ルール
+- Google Cloud Translation Basic API v2による英語から日本語への翻訳
+- Google翻訳結果のローカルキャッシュ
+- 外部翻訳の有効・無効切替
 - 検索、フィルタ、詳細表示、コピー、ファイル移動
 - 同一ログの集約
-- 翻訳ルールの適用状況表示
+- 翻訳状態と翻訳元の表示
 
 ### 6.2 対象外
 
@@ -93,12 +124,17 @@ Unityまたはコンパイラから受信した未変更のメッセージ文字
 - Reflectionによる標準Console操作
 - Playerまたは実機からのリモートログ収集
 - Editor.log、Player.logなどの過去ログファイルのインポート
-- 外部AI、外部翻訳API、ネットワーク通信
-- 未登録メッセージの自動機械翻訳
+- Google Cloud Translation Advanced API v3
+- Google Translation LLM
+- Google Glossary
+- DeepL、Azure Translator、OpenAIなど他Provider
+- スタックトレースの翻訳
+- 原因や修正方法の自動生成
 - ソースコードの自動修正
 - 修正パッチの自動生成
-- 原因や修正方法の推測生成
 - 標準ConsoleのClear、Collapse、Error Pause状態との同期
+- API KeyのProject内永続保存
+- 翻訳結果のクラウド同期またはチーム共有
 
 ## 7. 基本方針
 
@@ -108,25 +144,68 @@ UnityJapaneseConsoleWindowは標準Consoleから独立した補助ウィンド�
 
 ### 7.2 公開API限定
 
-ログ収集と診断情報取得にはUnity 6で公開されているAPIだけを使用する。内部API、非公開型、Reflectionに依存しない。
+ログ収集、診断情報取得、外部通信にはUnity 6000.3で公開されているAPIだけを使用する。内部API、非公開型、Reflectionに依存しない。
 
 ### 7.3 原文優先
 
-翻訳結果が存在する場合も原文を必ず保持する。翻訳結果だけを表示して原文を失わせてはならない。
+日本語訳が存在する場合も原文を必ず保持する。翻訳結果だけを保持して原文を失わせてはならない。
 
-### 7.4 決定論的翻訳
+### 7.4 翻訳優先順位
 
-初版はローカルの翻訳ルールだけを使用する。同一入力と同一ルールバージョンからは同一結果を返す。
+翻訳は次の固定順序で解決する。
 
-### 7.5 識別子保護
+1. 原文完全一致ルール
+2. コンパイラエラーコードルール
+3. 正規化済みパターンルール
+4. Google翻訳キャッシュ
+5. Google Cloud Translation Basic v2
+6. 原文表示
 
-翻訳前に技術識別子を抽出・保護し、日本語要約へ復元する。保護に失敗する可能性がある場合は、無理に翻訳せず未翻訳として扱う。
+ルール登録順やUI設定によって優先順位を変更してはならない。
 
-### 7.6 所有権と寿命
+### 7.5 外部翻訳は明示的なOpt-in
 
-ログ収集状態、表示データ、フィルタ状態はUnityJapaneseConsoleWindowが所有する。ウィンドウを開いた時点で購読を開始し、閉じた時点で解除する。
+Google翻訳は初期状態で無効とする。ユーザーが明示的に有効化した場合だけ未知ログを外部送信する。
 
-ウィンドウが閉じている間のログは収集対象外とする。
+手動の「このログを翻訳」は、ユーザーの明示操作として自動翻訳OFF時でも実行できる。
+
+### 7.6 翻訳対象の分離
+
+外部翻訳対象はログ本文のみとする。
+
+以下はGoogle Cloud Translationへ送信しない。
+
+- スタックトレース
+- ファイルパス
+- 行番号・列番号
+- Assembly Path
+- Shader Platform
+- MessageDetails
+- Unityプロジェクト名
+- Project Root
+- 収集経路
+
+ログ本文内にファイルパスや技術識別子が含まれる場合は、送信前に不透明トークンへ置換する。
+
+### 7.7 識別子保護
+
+翻訳前に技術識別子を抽出・保護し、日本語訳へ復元する。必要なトークンを安全に復元できない場合は翻訳結果を採用しない。
+
+### 7.8 所有権と寿命
+
+ログ収集状態、表示データ、翻訳Queue、翻訳Cache、非秘密設定、通信中RequestはUnityJapaneseConsoleWindowが所有する。
+
+ウィンドウを開いた時点で購読を開始し、閉じた時点で解除・破棄する。ウィンドウが閉じている間のログは収集対象外とする。
+
+### 7.9 IMGUI
+
+UIはIMGUIへ一本化する。UI Toolkit、UXML、USSの二重実装を残さない。
+
+Unity標準ConsoleWindowに近い次の構成とする。
+
+1. 上部ツールバー
+2. ログ一覧
+3. 下部詳細ペイン
 
 ## 8. ログ収集仕様
 
@@ -151,7 +230,10 @@ UnityJapaneseConsoleWindowは標準Consoleから独立した補助ウィンド�
 
 - Unity Editor APIアクセス
 - UI更新
-- 翻訳処理
+- 翻訳ルール評価
+- 翻訳Cache検索
+- Google API通信
+- JSON生成
 - 正規表現処理
 - ファイルI/O
 - `Debug.Log`系の再出力
@@ -186,7 +268,7 @@ Shaderを解決できない場合は、通常ログの原文を保持して表�
 
 ### FR-005 メインスレッド取り込み
 
-待機列に追加されたログはEditorのメインスレッド側で取り込み、分類、正規化、翻訳、集約、UI更新を行うこと。
+待機列に追加されたログはEditorのメインスレッド側で取り込み、分類、正規化、ローカル翻訳、Cache検索、外部翻訳候補登録、集約、UI更新を行うこと。
 
 1フレーム内で無制限に処理せず、処理件数または処理時間に上限を持つこと。
 
@@ -194,7 +276,7 @@ Shaderを解決できない場合は、通常ログの原文を保持して表�
 
 本ツール内部の処理から`Debug.Log`、`Debug.LogWarning`、`Debug.LogError`を使用して通常運用ログを出力しないこと。
 
-内部例外を通知する必要がある場合は、再帰を発生させない経路で状態表示すること。
+Google通信エラーをUnity Consoleへ再出力してはならない。内部状態は本ウィンドウのステータス表示へ出すこと。
 
 ## 9. ログモデル仕様
 
@@ -209,9 +291,11 @@ Shaderを解決できない場合は、通常ログの原文を保持して表�
 - LogType
 - カテゴリ
 - 原文
-- 日本語要約
+- 日本語訳
 - 翻訳状態
+- 翻訳元
 - 翻訳ルールID
+- Source Message Hash
 - スタックトレース
 - ファイル
 - 行
@@ -220,18 +304,34 @@ Shaderを解決できない場合は、通常ログの原文を保持して表�
 - Shader Platform
 - MessageDetails
 - 集約キー
+- 外部翻訳失敗理由
 
 ### FR-008 翻訳状態
 
-翻訳状態は最低限以下を区別できること。
+最低限以下を区別できること。
 
-- 完全一致
-- エラーコード一致
-- パターン一致
-- 未翻訳
-- 翻訳失敗
+- `UNTRANSLATED`
+- `EXACT_MATCH`
+- `ERROR_CODE_MATCH`
+- `PATTERN_MATCH`
+- `CACHE_MATCH`
+- `GOOGLE_PENDING`
+- `GOOGLE_TRANSLATED`
+- `GOOGLE_FAILED`
+- `TRANSLATION_FAILED`
 
-### FR-009 カテゴリ
+`TRANSLATION_FAILED`はローカル翻訳または識別子保護失敗、`GOOGLE_FAILED`は通信・認証・Response検証失敗として区別する。
+
+### FR-009 翻訳元
+
+最低限以下を区別できること。
+
+- Local Rule
+- Google Cache
+- Google Cloud Translation
+- None
+
+### FR-010 カテゴリ
 
 最低限以下のカテゴリを持つこと。
 
@@ -248,18 +348,18 @@ Shaderを解決できない場合は、通常ログの原文を保持して表�
 
 分類不能なメッセージは`Unknown`とし、推測で別カテゴリへ断定しないこと。
 
-## 10. 翻訳仕様
+## 10. ローカル翻訳仕様
 
-### FR-010 翻訳パイプライン
+### FR-011 ローカル翻訳パイプライン
 
-翻訳は以下の優先順で評価すること。
+ローカル翻訳は以下の優先順で評価すること。
 
 1. 原文完全一致
 2. コンパイラエラーコード一致
 3. 正規化済みパターン一致
 4. 未翻訳
 
-### FR-011 技術識別子保護
+### FR-012 ローカル識別子保護
 
 最低限以下を保護対象とすること。
 
@@ -274,19 +374,11 @@ Shaderを解決できない場合は、通常ログの原文を保持して表�
 - GUID
 - 行番号、列番号、数値
 
-### FR-012 日本語要約の責務
+### FR-013 日本語訳の責務
 
-日本語要約は原文の意味を短く説明する。
+日本語訳は原文の意味だけを表す。
 
-日本語要約へ、原文から確定できない原因、修正方法、性能評価を混入してはならない。
-
-補足情報を表示する場合は、翻訳ルールに明示的に登録された検証済み情報だけを使用し、日本語要約と区別すること。
-
-### FR-013 未翻訳時の表示
-
-翻訳ルールに一致しない場合は、原文をそのまま表示し、翻訳状態を`未翻訳`とする。
-
-空文字、推測翻訳、機械的な単語置換だけの文章を日本語要約として表示してはならない。
+原文から確定できない原因、修正方法、性能評価、推奨コードを混入してはならない。
 
 ### FR-014 ルールの追跡可能性
 
@@ -294,11 +386,307 @@ Shaderを解決できない場合は、通常ログの原文を保持して表�
 
 翻訳ルールはVersion Controlで差分確認できる形式とし、ルール変更で既存メッセージの意味が変わる場合に追跡可能であること。
 
-翻訳ルールの具体的な保存形式は未決定事項とする。
+既存実装に合わせ、初期保存形式はC#定義とする。
 
-## 11. 集約・保持仕様
+## 11. Google Cloud Translation仕様
 
-### FR-015 同一ログ集約
+### FR-015 Google Translation Provider
+
+初期ProviderはGoogle Cloud Translation Basic API v2だけとする。
+
+HTTP Endpoint:
+
+```text
+POST https://translation.googleapis.com/language/translate/v2
+```
+
+RequestはJSON形式とし、最低限以下を指定する。
+
+```json
+{
+  "q": ["translation target"],
+  "source": "en",
+  "target": "ja",
+  "format": "text"
+}
+```
+
+API Keyは`x-goog-api-key` HTTP Headerで送信する。
+
+### FR-016 自動翻訳対象判定
+
+次をすべて満たすログだけを自動翻訳候補とする。
+
+- ローカル翻訳結果が`UNTRANSLATED`
+- 自動翻訳が有効
+- API Keyが利用可能
+- 原文が空でない
+- 原文に英字を含む
+- 原文が日本語中心ではない
+- 同じSource Message HashがCache、待機Queue、通信中Requestに存在しない
+- Sanitizerが送信可能と判定した
+
+以下は自動送信しない。
+
+- StackTraceだけの文字列
+- ファイルパスだけの文字列
+- GUIDだけの文字列
+- 数値だけの文字列
+- 空白だけの文字列
+- 既に日本語中心の文字列
+- 8KiBを超える単一ログ本文
+
+### FR-017 外部送信用Sanitize
+
+Googleへ送信する前に、最低限以下を不透明トークンへ置換する。
+
+- バッククォート内文字列
+- 引用符内識別子
+- C#エラーコード
+- 型名
+- Namespace
+- メソッド名
+- Shader名
+- Shader Property
+- Shader Keyword
+- Pass名
+- LightMode
+- Unity Asset相対パス
+- 絶対パス
+- GUID
+- URL
+- メールアドレス
+- IPアドレス
+- Instance ID
+
+トークン形式は翻訳対象言語に依存しないASCII文字列とする。
+
+例:
+
+```text
+__UJCW_TOKEN_0000__
+```
+
+### FR-018 Google Response検証
+
+Google Responseから`data.translations[]`を取得する。
+
+採用前に以下を検証する。
+
+- HTTP通信成功
+- JSON解析成功
+- Request件数とResponse件数が一致
+- `translatedText`が空でない
+- 必須トークンがすべて存在する
+- 必須トークンが重複または改変されていない
+- 未知トークンが追加されていない
+- 復元後文字列が空でない
+
+検証に失敗した場合は翻訳結果を採用せず、原文表示を継続する。
+
+### FR-019 非同期表示更新
+
+Google翻訳待機中もログを即座に一覧へ表示する。
+
+待機中:
+
+```text
+1行目: 英語原文
+2行目: StackTrace先頭行
+状態: Google翻訳待機中
+```
+
+翻訳完了後:
+
+```text
+1行目: 日本語訳
+2行目: StackTrace先頭行
+状態: Google翻訳済み
+```
+
+翻訳完了時に新しい行を追加せず、同じ表示IDを維持して更新する。
+
+### FR-020 StackTrace無加工
+
+StackTraceは次の処理対象外とする。
+
+- Google翻訳
+- Google API Request
+- Google Cache Key
+- 外部送信用Sanitize
+
+一覧と詳細では、Unityから受信したStackTraceを原文のまま表示する。
+
+### FR-021 Request重複防止
+
+同じSource Message Hashを持つログが複数回発生しても、Google API Requestは1回だけとする。
+
+Source Message Hashには最低限以下を含める。
+
+```text
+SHA-256(
+    OriginalMessage
+    + SourceLanguage
+    + TargetLanguage
+    + SanitizerVersion
+    + ProviderOptionsVersion
+)
+```
+
+発生回数は既存の`OccurrenceCount`へ集約する。
+
+### FR-022 Batch送信
+
+複数の翻訳待機メッセージを1Requestへまとめられること。
+
+初期値:
+
+- 最大16メッセージ
+- 最大32KiBのJSON Payload
+- 最大同時Request数1
+- 最大待機時間100ms
+
+Google Basic v2の`q`配列上限128件より小さい安全側の値を採用する。
+
+### FR-023 Retry
+
+以下の場合だけ再試行する。
+
+- Connection Error
+- HTTP 429
+- HTTP 500～599
+
+再試行間隔:
+
+```text
+1回目: 1秒
+2回目: 2秒
+3回目: 4秒
+```
+
+最大3回とする。
+
+以下は再試行しない。
+
+- 400: Request不正
+- 401 / 403: 認証・権限エラー
+- JSON解析失敗
+- トークン復元失敗
+
+### FR-024 通信失敗
+
+通信失敗時もログを削除しない。
+
+英語原文とStackTraceを表示し、詳細ペインへ以下を表示する。
+
+- 翻訳状態
+- HTTP Status
+- 失敗理由
+- Retry回数
+- 最終試行時刻
+
+### FR-025 手動翻訳
+
+詳細ペインまたは右クリックメニューから以下を実行できる。
+
+- このログをGoogle翻訳
+- Google翻訳を再試行
+- この翻訳Cacheを削除
+- 原文表示
+- 日本語表示
+
+自動翻訳がOFFでも、ユーザーの明示操作ならGoogle翻訳を実行できる。
+
+## 12. 翻訳Cache仕様
+
+### FR-026 Cache検索
+
+ローカル翻訳ルールへ一致しなかった場合、Google通信前にCacheを検索する。
+
+Cache Hit時は通信せず`CACHE_MATCH`として日本語訳を表示する。
+
+### FR-027 Cache保存先
+
+Cacheは次へ保存する。
+
+```text
+Library/UnityJapaneseConsoleWindow/GoogleTranslationCache.json
+```
+
+Assets、Packages、ProjectSettings、Git管理対象へ保存してはならない。
+
+### FR-028 Cache Entry
+
+最低限以下を保持する。
+
+- Source Message Hash
+- Japanese Translation
+- Source Language
+- Target Language
+- Sanitizer Version
+- Provider Options Version
+- CreatedAtUtc
+- LastUsedAtUtc
+
+原文、StackTrace、ファイルパスはCacheへ保存しない。
+
+### FR-029 Cache上限
+
+最大5,000件とする。
+
+上限超過時は`LastUsedAtUtc`が古いEntryから削除する。
+
+Cache書き込みは翻訳完了ごとに同期実行せず、Dirty状態から一定時間後にまとめて保存する。
+
+### FR-030 Cache無効化
+
+以下が変更された場合は旧Cacheを利用しない。
+
+- Source Language
+- Target Language
+- Sanitizer Version
+- Provider Options Version
+
+## 13. API Key・設定仕様
+
+### FR-031 API Key解決
+
+API Keyは次の優先順で取得する。
+
+1. Editorセッション中だけ保持する入力値
+2. OS環境変数`UJCW_GOOGLE_TRANSLATE_API_KEY`
+
+以下への保存は禁止する。
+
+- C#ソースコード
+- `Assets/`
+- ScriptableObject
+- Project内JSON
+- Git管理対象
+- 翻訳Cache
+
+API Keyをログ、例外、ステータス、Tooltipへ表示してはならない。
+
+### FR-032 非秘密設定
+
+以下はEditorPrefsへ保存可能とする。
+
+- 自動翻訳ON/OFF
+- Cache容量
+- Batch最大件数
+- ツールバー表示設定
+
+API KeyはEditorPrefsへ保存しない。
+
+### FR-033 API Key制限
+
+仕様上、Google Cloud側で対象API KeyをCloud Translation APIだけに制限する運用を推奨する。
+
+アプリケーション制限を適用できる運用環境では併用する。
+
+## 14. 集約・更新仕様
+
+### FR-034 同一ログ集約
 
 同一と判定したログは1行へ集約し、発生回数、初回発生時刻、最終発生時刻を更新すること。
 
@@ -312,147 +700,219 @@ Shaderを解決できない場合は、通常ログの原文を保持して表�
 
 C#コンパイルイベントと通常ログイベントの両方で同一メッセージを取得した場合は、重複表示を抑止し、構造化情報が多い側へ統合すること。
 
-### FR-016 Collapse切替
+### FR-035 Observation上限
+
+同一ログが大量発生しても、同一内容のObservationを発生回数分保持しない。
+
+収集経路ごとに最も情報量の多いObservationを保持し、Observation数へ明示的な上限を設ける。
+
+### FR-036 翻訳結果適用
+
+Google翻訳完了時は、同じSource Message Hashを持つCollapsed ViewとIndividual Viewの対象レコードへ結果を適用する。
+
+以下を維持する。
+
+- Display ID
+- OccurrenceCount
+- FirstOccurredAt
+- LastOccurredAt
+- Observations
+- Aggregation Key
+
+更新対象:
+
+- Japanese Translation
+- Translation State
+- Translation Source
+- Failure Reason
+- Search Document
+
+### FR-037 Collapse切替
 
 ユーザーは集約表示と個別表示を切り替えられること。
 
 個別表示でも保持上限を超えて無制限に増加させないこと。
 
-### FR-017 保持上限
+### FR-038 保持上限
 
 初期値として最大10,000件の表示レコードを保持すること。
 
 上限到達時は最も古いレコードから削除し、Editorのメモリを無制限に増加させないこと。
 
-削除件数または破棄発生をウィンドウ上で確認できること。
+## 15. UI仕様
 
-## 12. UI仕様
+### FR-039 基本レイアウト
 
-### FR-018 基本レイアウト
-
-UI Toolkitで以下の構成を持つこと。
+IMGUIで以下の構成を持つこと。
 
 1. 上部ツールバー
 2. ログ一覧
-3. 選択ログ詳細
+3. 下部詳細ペイン
 
 ログ一覧と詳細はリサイズ可能な分割表示とする。
 
-### FR-019 上部ツールバー
+### FR-040 上部ツールバー
 
-最低限以下を提供すること。
+Unity標準Consoleに近い配置とする。
+
+左側:
 
 - Clear
-- Pause
 - Collapse
+- Pause
+
+中央:
+
+- カテゴリ
+- 翻訳状態
+- Google翻訳メニュー
+
+右側:
+
+- 検索
 - Log表示切替
 - Warning表示切替
-- Error/Assert/Exception表示切替
-- カテゴリ選択
-- 翻訳状態選択
-- 検索欄
+- Error / Assert / Exception表示切替
 
-### FR-020 ログ一覧
+### FR-041 Google翻訳メニュー
 
-一覧には最低限以下を表示すること。
+最低限以下を提供する。
 
-- 種別
+- 未知ログを自動Google翻訳
+- API Keyセッション入力
+- API Key取得元表示
+- Google接続テスト
+- Cache件数
+- Cacheをクリア
+
+API Key入力はPassword Fieldを使用し、現在値を再表示しない。
+
+### FR-042 ログ一覧
+
+翻訳済みログ:
+
+```text
+1行目: 日本語訳
+2行目: StackTrace先頭行
+```
+
+未翻訳・待機中・失敗ログ:
+
+```text
+1行目: 英語原文
+2行目: StackTrace先頭行
+```
+
+StackTraceが存在しない場合は、2行目へファイル位置、発生時刻、収集経路の順で利用可能な情報を表示する。
+
+一覧には最低限以下を表示する。
+
+- 種別アイコン
 - 発生回数
-- 日本語要約または未翻訳原文
-- カテゴリ
-- 発生元
-- 最終発生時刻
+- 主表示
+- 副表示
+- 翻訳待機・失敗状態
 
-大量ログを前提として、全件分のVisualElementを常時生成しない仮想化リストを使用すること。
+全件を描画せず、スクロール位置から可視行だけを描画すること。
 
-### FR-021 詳細表示
+### FR-043 詳細表示
 
-選択ログについて最低限以下を表示すること。
+選択ログについて最低限以下を表示する。
 
-- 日本語要約
-- 翻訳状態
-- 翻訳ルールID
-- 原文
-- スタックトレース
-- ファイル
-- 行
-- 列
-- Assembly
-- Shader Platform
-- MessageDetails
-- 初回発生時刻
-- 最終発生時刻
-- 発生回数
+1. 日本語訳
+2. 原文
+3. スタックトレース
+4. ファイル・行・列
+5. Assembly
+6. Shader Platform
+7. MessageDetails
+8. 初回発生時刻
+9. 最終発生時刻
+10. 発生回数
+11. 翻訳状態
+12. 翻訳元
+13. 翻訳ルールID
+14. Google通信失敗理由
 
 取得できない項目は非表示または`取得不可`とし、推測値を表示しないこと。
 
-### FR-022 検索
+### FR-044 検索
 
-検索は最低限以下を対象とすること。
+検索は最低限以下を対象とする。
 
 - 原文
-- 日本語要約
+- 日本語訳
 - ファイル
 - カテゴリ
 - エラーコード
 - スタックトレース
 
-検索文字列は大文字・小文字を区別しないこと。
+### FR-045 コピー
 
-### FR-023 コピー
+以下を提供する。
 
-以下を個別にコピーできること。
+- 表示内容をコピー: 日本語訳または原文 + StackTrace
+- 原文をコピー: 原文 + StackTrace
+- 日本語訳をコピー
+- StackTraceをコピー
+- 詳細全体をコピー
 
-- 日本語要約
-- 原文
-- スタックトレース
-- 詳細全体
-
-### FR-024 ファイル移動
+### FR-046 ファイル移動
 
 ファイルと行番号を解決できるログは、一覧のダブルクリックまたは詳細ボタンから外部コードエディタの対象行へ移動できること。
 
-ファイルが存在しない場合、例外を発生させず移動不能であることを表示すること。
-
-### FR-025 Pause
+### FR-047 Pause
 
 Pause中は受信ログを失わず待機列または保留領域へ保持し、一覧の反映だけを停止すること。
 
-保持上限を超える場合は古いログを破棄し、破棄件数を表示すること。
+Pause中は新しいGoogle翻訳Requestを開始しない。既に通信中のRequestは完了可能とするが、表示適用はResume後に行う。
 
-### FR-026 Clear
+### FR-048 Clear
 
-Clearは本ウィンドウが保持するログだけを消去すること。
+Clearは本ウィンドウが保持するログと待機中翻訳Queueを消去すること。
 
-Unity標準Consoleの内容を消去してはならない。
+通信中RequestはAbort・Disposeする。
 
-### FR-027 外観
+Google翻訳CacheはClearでは削除しない。
 
-ラベル、Tooltip、空状態、エラー表示は日本語を優先する。
+### FR-049 外観
 
-黒基調、白文字を基本とし、Error、Warning、Logは文字だけに依存せずアイコンまたは形状でも区別できること。
+Unity標準Consoleに近いEditorStyles、アイコン、選択色、行高を使用する。
 
-## 13. Editorライフサイクル仕様
+過剰なカードUI、角丸、影、独自アクセントカラーを使用しない。
 
-### FR-028 購読管理
+Dark ThemeとLight Themeの両方で判読可能であること。
+
+## 16. Editorライフサイクル仕様
+
+### FR-050 購読管理
 
 ウィンドウ有効化時に必要なイベントを1回だけ購読し、無効化または破棄時に必ず解除すること。
 
 Domain Reload、Assembly Reload、ウィンドウ再生成後に重複購読を発生させないこと。
 
-### FR-029 Hot Reload
+### FR-051 通信破棄
 
-UI ToolkitのVisual Tree再生成後も、保持中のログモデルと表示状態が破損しないこと。
+Window CloseまたはAssembly Reload前に以下を行う。
 
-Domain Reloadを跨いだログ履歴保持は初版の必須要件としない。
+- 新規Google翻訳受付停止
+- 通信中UnityWebRequestをAbort
+- UnityWebRequestをDispose
+- Dirty Cacheを保存
+- セッションAPI Keyを破棄
+- update購読解除
 
-### FR-030 Editor専用分離
+### FR-052 Hot Reload
+
+Domain Reloadを跨いだログ履歴と通信Requestの保持は必須要件としない。
+
+Reload後に通信を自動再開しない。
+
+### FR-053 Editor専用分離
 
 本機能のコードとアセットはEditor専用Assemblyへ分離され、Playerビルドへ含まれないこと。
 
-Runtime Assemblyから本機能を参照させないこと。
-
-## 14. 非機能要件
+## 17. 非機能要件
 
 ### NFR-001 スレッド安全性
 
@@ -468,37 +928,49 @@ Unity 6000.3で公開されているAPIだけを使用すること。内部API�
 
 ### NFR-004 Editor応答性
 
-1,000件のログを短時間に投入する検証で、ログ受信コールバック内にUI更新、翻訳、正規表現、ファイルI/Oが存在しないことをProfilerとコード監査で確認する。
+Google通信完了を同期的に待機してEditorをブロックしない。
 
-メインスレッド側は1フレームの処理時間上限を持ち、ログ取り込みだけで長時間Editorを占有しないこと。
+ログ受信コールバック内にUI更新、翻訳、正規表現、JSON生成、ファイルI/O、Google通信が存在しないことをコード監査で確認する。
 
-具体的な処理時間上限値は実装計画で計測環境とともに確定する。
+メインスレッド側は1フレームの処理時間上限を持つこと。
 
 ### NFR-005 メモリ上限
 
-保持件数上限を超えてログモデルが無制限に増加しないこと。
-
-UI要素数は表示件数ではなく可視領域に依存すること。
+保持件数上限を超えてログモデル、Observation、翻訳Queue、翻訳Cacheが無制限に増加しないこと。
 
 ### NFR-006 データ完全性
 
-日本語要約生成の成否にかかわらず、受信した原文と取得済み診断位置を変更しないこと。
+日本語訳生成の成否にかかわらず、受信した原文、StackTrace、診断位置を変更しないこと。
 
-### NFR-007 オフライン動作
+### NFR-007 オフライン継続
 
-ネットワーク接続、API Key、外部サービス、外部プロセスを必要としないこと。
+ネットワーク接続、API Key、Google Cloud障害の有無にかかわらず、ローカル翻訳、原文表示、検索、Collapse、ファイルジャンプを継続できること。
 
-### NFR-008 セキュリティ・機密性
+### NFR-008 セキュリティ
 
-ログ内容、ファイルパス、スタックトレースを外部へ送信しないこと。
+API Keyをコード、Projectファイル、Git、ログへ含めない。
 
-### NFR-009 保守性
+StackTraceと診断位置をGoogleへ送信しない。
 
-ログ収集、分類、正規化、翻訳ルール評価、集約、UI表示を責務単位で分離すること。
+API KeyはURL Query Parameterではなく`x-goog-api-key` Headerで送信する。
+
+### NFR-009 Fail Closed
+
+識別子復元、Response件数、JSON解析、通信結果の検証に失敗した場合、Google翻訳結果を採用しない。
+
+### NFR-010 通信量
+
+同じSource Message Hashを同一セッションで複数回送信しない。
+
+Cache Hit時はGoogle通信を行わない。
+
+### NFR-011 保守性
+
+ログ収集、分類、正規化、ローカル翻訳、外部送信用Sanitize、Google Provider、翻訳Queue、Cache、翻訳結果適用、UI表示を責務単位で分離すること。
 
 `Manager`、`Controller`、`Util`、`Common`、`Helper`という曖昧な型を導入しないこと。
 
-### NFR-010 命名・構成
+### NFR-012 命名・構成
 
 - Namespace: `<RootNamespace>.UnityJapaneseConsoleWindow`
 - private field: `_camelCase`
@@ -508,21 +980,153 @@ UI要素数は表示件数ではなく可視領域に依存すること。
 - const: `SCREAMING_SNAKE_CASE`
 - コメント: 日本語で理由、制約、意図を記述
 
-### NFR-011 テスト可能性
+### NFR-013 テスト可能性
 
-分類、正規化、識別子保護、翻訳ルール評価、集約キー生成はUnity Editor UIから分離し、入力と出力を固定したEditMode Testが可能であること。
+Google APIへ実接続しないFake Providerを使用し、外部送信用Sanitize、Queue、Retry、Cache、結果適用をEditMode Testできること。
 
-### NFR-012 正確な表示
+### NFR-014 正確な表示
 
 翻訳できない内容を翻訳済みとして扱わないこと。原因不明の内容を断定しないこと。取得できないPlatform、Assembly、行番号などを推測しないこと。
 
-## 15. 受け入れ条件
+## 18. 基本設計
+
+### 18.1 TranslationResolutionPipeline
+
+責務:
+
+- ローカル翻訳評価
+- Cache検索
+- Google翻訳対象判定
+- Google翻訳Queue登録
+- 初期翻訳状態返却
+
+通信処理とUI描画は持たない。
+
+### 18.2 ExternalTranslationSanitizer
+
+責務:
+
+- 機密文字列・技術識別子抽出
+- 不透明トークン置換
+- 復元Map生成
+- Responseトークン検証
+- 日本語結果復元
+
+### 18.3 GoogleTranslationProvider
+
+責務:
+
+- Google Basic v2 Request DTO生成
+- `UnityWebRequest`生成
+- `x-goog-api-key` Header設定
+- Response DTO解析
+- HTTP・JSONエラー分類
+
+ログモデルとUIへ直接依存しない。
+
+### 18.4 GoogleTranslationQueue
+
+責務:
+
+- Source Message Hashによる重複排除
+- Batch形成
+- 同時Request数制御
+- Retry待機
+- Request開始・完了監視
+- 完了結果Queue出力
+
+### 18.5 TranslationCacheStore
+
+責務:
+
+- Cache読込
+- Cache検索
+- Cache追加
+- LRU削除
+- Dirty管理
+- 遅延保存
+- Version不一致Cache無効化
+
+### 18.6 TranslationSettingsStore
+
+責務:
+
+- 非秘密設定のEditorPrefs読込・保存
+- 初期値管理
+
+API Keyを扱わない。
+
+### 18.7 TranslationSecretResolver
+
+責務:
+
+- セッションAPI Key保持
+- 環境変数API Key取得
+- API Key利用可否判定
+
+### 18.8 TranslationResultApplier
+
+責務:
+
+- Google翻訳完了結果をLogAggregationStoreへ適用
+- Collapsed / Individual View更新
+- Display ID維持
+- Search Document再構築
+- Store Mutation発行
+
+### 18.9 既存クラス変更
+
+#### EditorLogPump
+
+`TranslationRuleEvaluator`単独ではなく`TranslationResolutionPipeline`を利用する。
+
+#### LogRecord
+
+以下を追加する。
+
+- Translation Source
+- Source Message Hash
+- Translation Failure Reason
+
+#### LogAggregationStore
+
+以下を追加する。
+
+- `ApplyTranslationResult`
+- Observation重複抑止
+- Observation上限
+
+#### UnityJapaneseConsoleWindow
+
+以下を生成・所有・破棄する。
+
+- TranslationResolutionPipeline
+- ExternalTranslationSanitizer
+- GoogleTranslationProvider
+- GoogleTranslationQueue
+- TranslationCacheStore
+- TranslationSettingsStore
+- TranslationSecretResolver
+- TranslationResultApplier
+
+#### ConsoleWindowGui
+
+以下を追加する。
+
+- Google翻訳メニュー
+- API Keyセッション入力
+- 接続テスト
+- 翻訳待機・失敗状態
+- 手動翻訳
+- Cache操作
+
+## 19. 受け入れ条件
 
 ### AC-001 ウィンドウ表示
 
 **検証:** メニューからウィンドウを開く。
 
-**合格:** 黒基調の一覧・詳細・ツールバーが表示され、Consoleエラーを発生させない。
+**合格:** Unity標準Consoleに近いIMGUIの一覧・詳細・ツールバーが表示され、Consoleエラーを発生させない。
 
 ### AC-002 通常ログ受信
 
@@ -536,176 +1140,228 @@ UI要素数は表示件数ではなく可視領域に依存すること。
 
 **合格:** 競合例外、Unity APIスレッド例外、欠損によるウィンドウ停止が発生しない。
 
-### AC-004 C#コンパイル情報
+### AC-004 ローカル翻訳優先
 
-**検証:** テスト用のC#コンパイルエラーを発生させる。
+**検証:** 登録済みルールに一致するログを、自動Google翻訳ONで発生させる。
 
-**合格:** 原文、メッセージ種別、ファイル、行、列、Assembly情報が取得できる範囲で表示される。
+**合格:** Google通信0回でローカル翻訳が表示される。
 
-### AC-005 Shaderコンパイル情報
+### AC-005 Cache優先
 
-**検証:** テスト用Shaderコンパイルエラーを発生させる。
+**検証:** 一度Google翻訳した未知ログを再度発生させる。
 
-**合格:** 原文が表示され、Shaderを解決できる場合はファイル、行、Severity、Platform、MessageDetailsが補完される。
+**合格:** 2回目はGoogle通信0回でCache結果が即時表示される。
 
-### AC-006 既知ルール翻訳
+### AC-006 Google翻訳
 
-**検証:** 登録済みC#エラーコードおよび登録済みUnityエラーパターンを発生させる。
+**検証:** API Key設定済み、自動翻訳ONで未知の英語ログを発生させる。
 
-**合格:** 日本語要約、翻訳状態、ルールIDが表示される。
+**合格:** 英語原文が先に表示され、通信完了後に同じ表示IDの日本語表示へ更新される。
 
-### AC-007 識別子保持
+### AC-007 StackTrace非送信
 
-**検証:** 型名、メソッド名、ファイルパス、Shader Keyword、数値を含む既知メッセージを翻訳する。
+**検証:** 次のAudioSource警告を発生させる。
 
-**合格:** 技術識別子が原文と同一文字列で日本語要約内に保持される。
+```text
+Attempting to set `time` on an audio source that has a resource assigned that is not a clip is ignored!
+UnityEngine.AudioSource:set_time (single)
+```
 
-### AC-008 未翻訳表示
+**合格:** Google Request PayloadへStackTraceが含まれず、画面上ではStackTraceが原文のまま表示される。
 
-**検証:** 未登録メッセージを発生させる。
+### AC-008 期待表示
 
-**合格:** 翻訳状態が`未翻訳`となり、原文が欠損せず表示される。
+**合格例:**
 
-### AC-009 集約
+```text
+クリップ以外のリソースが割り当てられているAudioSourceに `time` を設定しようとすると、この操作は無視されます。
+UnityEngine.AudioSource:set_time (single)
+```
 
-**検証:** 同一ログを100回発生させる。
+Googleの実際の翻訳文が上記と完全一致することは必須としない。技術識別子とStackTraceが保持され、日本語として意味が成立することを合格条件とする。
 
-**合格:** Collapse有効時に1行へ集約され、発生回数が100になる。
+### AC-009 技術識別子保持
 
-### AC-010 重複統合
+**検証:** `time`、型名、メソッド名、Shader Keyword、ファイルパスを含むメッセージを翻訳する。
+
+**合格:** Requestでは保護され、表示時に原文と同一文字列へ復元される。
+
+### AC-010 トークン改変拒否
+
+**検証:** Fake Providerがトークンを削除または改変したResponseを返す。
+
+**合格:** 翻訳結果を破棄し、原文表示を維持し、`GOOGLE_FAILED`となる。
+
+### AC-011 同一ログ重複防止
+
+**検証:** 同じ未知ログを100回発生させる。
+
+**合格:** Google Requestは1件、OccurrenceCountは100、翻訳完了後も1行表示となる。
+
+### AC-012 自動翻訳OFF
+
+**検証:** 自動翻訳OFFで未知ログを発生させる。
+
+**合格:** Google通信0回で原文表示となる。
+
+### AC-013 API Key未設定
+
+**検証:** 自動翻訳ON、API Keyなしで未知ログを発生させる。
+
+**合格:** Google通信0回で原文表示となり、API Key未設定状態が表示される。
+
+### AC-014 通信失敗
+
+**検証:** Connection ErrorまたはFake Providerで500を返す。
+
+**合格:** 最大3回Retry後、原文を保持し、Editor操作を継続できる。
+
+### AC-015 認証失敗
+
+**検証:** Fake Providerで401または403を返す。
+
+**合格:** Retryせず、原文を保持し、認証エラーを表示する。
+
+### AC-016 C#重複統合
 
 **検証:** 同一C#コンパイルメッセージを通常ログ経路とCompilationPipeline経路で受信する。
 
 **合格:** 二重表示されず、ファイル・行・列を持つ構造化レコードへ統合される。
 
-### AC-011 フィルタと検索
+### AC-017 Observation上限
 
-**検証:** 複数種別・複数カテゴリ・翻訳済み・未翻訳ログを用意する。
+**検証:** 同一ログを10,000回投入する。
 
-**合格:** 種別、カテゴリ、翻訳状態、検索文字列の組み合わせで対象だけを表示できる。
+**合格:** OccurrenceCountは10,000となり、Observation数は設定上限以内で、過去全Observationを毎回複製しない。
 
-### AC-012 ファイル移動
+### AC-018 PauseとClear
 
-**検証:** ファイルと行番号を持つC#またはShaderエラーをダブルクリックする。
+**検証:** Pause中にログを発生させ、Resume後に反映する。通信中にClearする。
 
-**合格:** 外部コードエディタで対象ファイルの対象行が開く。
+**合格:** Pause中の一覧更新が止まり、Resume後に反映される。Clear時に通信が安全にAbortされる。
 
-### AC-013 PauseとClear
+### AC-019 Domain Reload
 
-**検証:** Pause中にログを発生させ、Resume後に反映する。次にClearする。
+**検証:** Google通信中にAssembly Reloadを発生させる。
 
-**合格:** Pause中の表示更新が止まり、Resume後に保持ログが反映される。Clear後は本ウィンドウだけが空になる。
+**合格:** RequestをAbort・Disposeし、重複購読、例外、API Key漏洩が発生しない。
 
-### AC-014 標準Console非侵襲
-
-**検証:** 本ウィンドウ起動前後で同じログを発生させる。
-
-**合格:** Unity標準Consoleの原文、件数、Logger挙動が本ツールにより変更されない。
-
-### AC-015 購読重複防止
-
-**検証:** Domain Reload、ウィンドウClose/Openを複数回実行後にログを1件発生させる。
-
-**合格:** 本ウィンドウへ1件だけ追加される。
-
-### AC-016 Player分離
+### AC-020 Player分離
 
 **検証:** Player向けAssembly定義とビルド対象を確認する。
 
-**合格:** 本機能のEditorコードがPlayerコンパイル対象へ含まれない。
+**合格:** 本機能とGoogle通信コードがPlayerコンパイル対象へ含まれない。
 
-### AC-017 大量ログ
-
-**検証:** 1,000件のログを短時間に投入し、ProfilerとUI操作を確認する。
-
-**合格:** コールバック内で禁止処理が実行されず、Editorが長時間操作不能にならず、保持上限と破棄件数表示が機能する。
-
-### AC-018 内部API不使用
+### AC-021 内部API不使用
 
 **検証:** コード検索と参照Assembly監査を行う。
 
 **合格:** `UnityEditorInternal.LogEntries`、標準Console内部型、Reflectionによる非公開メンバーアクセスが0件である。
 
-## 16. 初期翻訳対象
+## 20. テスト方針
 
-初版の翻訳辞書は最低限以下を対象候補とする。
+### 20.1 EditMode Test
 
-1. C# Compiler
-   - CS0103
-   - CS0117
-   - CS0120
-   - CS0246
-   - CS1061
-   - CS1501
-   - CS1503
-2. Unity Runtime
-   - `NullReferenceException`
-   - `MissingReferenceException`
-   - `InvalidOperationException`
-3. Shader/HLSL
-   - `undeclared identifier`
-   - `syntax error`
-   - `redefinition`
-   - `cannot convert`
-   - `Shader variant not found`
-4. RenderGraph
-   - 未初期化Attachment
-   - RenderPass外操作
-   - Global State変更禁止
-5. Burst/Jobs
-   - Managed object使用
-   - NativeContainer安全性
-   - Job dependency未完了
+- ローカルRuleがCacheより優先される
+- CacheがGoogle通信より優先される
+- 自動翻訳OFFではRequestを作らない
+- API KeyなしではRequestを作らない
+- 同一Source Message Hashを重複登録しない
+- Batch最大件数
+- Batch最大Byte数
+- トークン抽出
+- トークン復元
+- トークン不足
+- トークン重複
+- StackTraceがPayloadへ含まれない
+- ファイルパスがPayloadへ含まれない
+- Cache Version不一致
+- Cache LRU削除
+- Retry対象判定
+- 429 / 500指数バックオフ
+- 401 / 403非Retry
+- Response件数不一致
+- Store更新後もDisplay ID維持
+- Search Document更新
+- Domain Reload前Dispose
+- 同一ログ10,000件のObservation上限
 
-個別メッセージの正式な翻訳文とパターンは実装計画前に別途ルールカタログとして確定する。
+自動テストでは実際のGoogle APIへ接続しない。Fake Providerを使用する。
 
-## 17. 未決定事項
+### 20.2 Unity Editor手動テスト
+
+- 有効なGoogle Cloud Translation API Key
+- 無効なAPI Key
+- ネットワーク切断
+- AudioSource警告
+- C#コンパイルエラー
+- Shaderコンパイルエラー
+- 同一ログ大量発生
+- Pause中の翻訳
+- Clear中の通信完了
+- Window Close中の通信
+- Dark Theme
+- Light Theme
+
+## 21. 実装順序
+
+1. Observation重複保持・C#重複統合修正
+2. IMGUI一本化とUnity標準Consoleデザイン調整
+3. 翻訳状態・翻訳元・Source Message Hash拡張
+4. ExternalTranslationSanitizer
+5. TranslationCacheStore
+6. TranslationSettingsStore / TranslationSecretResolver
+7. GoogleTranslationProviderとFake Provider
+8. GoogleTranslationQueue / Batch / Retry
+9. TranslationResultApplier / Store更新
+10. IMGUI Google翻訳設定・手動翻訳
+11. EditMode Test
+12. Unity Editor手動受け入れテスト
+
+## 22. 未決定事項
 
 ### UD-001 RootNamespace
 
-`Specs/ProjectProfile.md`が`CHANGE_ME`のため、実装前にRootNamespaceを確定する必要がある。
+`Specs/ProjectProfile.md`が未確定の場合は、実装前にRootNamespaceを確定する。
 
-### UD-002 翻訳ルール保存形式
+### UD-002 1フレーム処理上限
 
-候補はJSON、YAML、ScriptableObject、C#定義である。Version Control差分、Editor読み込み負荷、型安全性を比較して実装計画で決定する。
+ログ処理と翻訳結果適用の最大件数または最大処理時間を、基準PCと計測方法を定義して確定する。
 
-### UD-003 処理時間上限
+### UD-003 Cache保存頻度
 
-メインスレッドの1フレーム処理時間または最大処理件数は、基準PCと計測方法を定義して実装計画で決定する。
+Dirty Cacheの保存待機時間は初期案2秒とし、Editor I/O計測後に確定する。
 
-### UD-004 初期翻訳辞書の範囲
+### UD-004 Google API利用上限
 
-初版で登録する具体的なエラー数、カテゴリごとの優先順位を決定する必要がある。
+Google Cloud側のQuota、Budget Alert、API Key制限は運用設定であり、本ツール内では設定しない。導入手順書で定義する。
 
-### UD-005 将来の外部翻訳
-
-未知ログへの外部AIまたは翻訳API対応は初版対象外とする。将来追加する場合は、明示的な有効化、機密情報マスキング、通信先、API Key管理、キャッシュ、費用上限を別Specで定義する。
-
-## 18. 実装前ゲート
-
-実装へ進む前に以下を完了すること。
+## 23. 実装前ゲート
 
 1. `UD-001` RootNamespace確定
-2. 翻訳ルール保存形式確定
-3. 初期翻訳ルールカタログ作成
+2. Observation増殖問題修正方針確定
+3. C#コンパイル重複統合方針確定
 4. `plan.md`作成
 5. `tasks.md`作成
-6. EditMode Test方針確定
-7. 大量ログ計測条件確定
+6. Fake Providerテスト方針確定
+7. Google Cloud Project・API Key準備手順作成
+8. 大量ログ計測条件確定
 
-## 19. 参考資料
+## 24. 参考資料
 
 - Unity 6 `Application.logMessageReceivedThreaded`
   - https://docs.unity3d.com/6000.0/Documentation/ScriptReference/Application-logMessageReceivedThreaded.html
 - Unity 6 `CompilationPipeline.assemblyCompilationFinished`
   - https://docs.unity3d.com/6000.0/Documentation/ScriptReference/Compilation.CompilationPipeline-assemblyCompilationFinished.html
-- Unity 6 `CompilerMessage`
-  - https://docs.unity3d.com/6000.0/Documentation/ScriptReference/Compilation.CompilerMessage.html
 - Unity 6 `ShaderUtil.GetShaderMessages`
   - https://docs.unity3d.com/6000.0/Documentation/ScriptReference/ShaderUtil.GetShaderMessages.html
-- Unity 6 `ShaderMessage`
-  - https://docs.unity3d.com/6000.0/Documentation/ScriptReference/ShaderMessage.html
-- Unity 6 UI Toolkit Editor Window
-  - https://docs.unity3d.com/6000.0/Documentation/Manual/UIE-HowTo-CreateEditorWindow.html
-- Unity 6 UI Toolkit ListView
-  - https://docs.unity3d.com/6000.0/Documentation/Manual/UIE-uxml-element-ListView.html
+- Unity 6 `UnityWebRequest.Post`
+  - https://docs.unity3d.com/6000.0/Documentation/ScriptReference/Networking.UnityWebRequest.Post.html
+- Unity 6 `UnityWebRequest.Result`
+  - https://docs.unity3d.com/6000.0/Documentation/ScriptReference/Networking.UnityWebRequest.Result.html
+- Google Cloud Translation Basic v2 `translate`
+  - https://docs.cloud.google.com/translate/docs/reference/rest/v2/translate
+- Google Cloud Translation Authentication
+  - https://docs.cloud.google.com/translate/docs/authentication
+- Google Cloud API Key Best Practices
+  - https://docs.cloud.google.com/docs/authentication/api-keys-best-practices
