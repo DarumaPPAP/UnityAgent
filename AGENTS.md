@@ -63,7 +63,11 @@
 
 ## Non-negotiable coding constraints
 
-- Namespaceは`<RootNamespace>.<FeatureName>`の2階層。
+- Namespaceは対象プロジェクトの既存コード、asmdefの`rootNamespace`、または`Specs/ProjectProfile.md`から確定する。
+- Root Namespaceが設定済みなら`<RootNamespace>.<FeatureName>`、Root Namespaceなしなら`<FeatureName>`を使用する。
+- 既存コードを変更する場合は既存namespaceを保持する。
+- `Namespace`、`RootNamespace`、`<RootNamespace>`、`CHANGE_ME`を実際のnamespace、asmdef名、Assembly参照へ出力しない。
+- 先頭または末尾が`.`のnamespaceを生成しない。
 - privateフィールドは`_camelCase`。
 - enum型名は`E_UPPER_SNAKE_CASE`。
 - struct型名は`S_UPPER_SNAKE_CASE`。原則`readonly struct`。
