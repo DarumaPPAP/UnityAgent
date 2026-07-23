@@ -5,9 +5,18 @@
 ## Identity
 
 - ProjectName: CHANGE_ME
-- RootNamespace: CHANGE_ME
+- RootNamespace: NONE
 
-Namespaceは常に`<RootNamespace>.<FeatureName>`。`.Runtime`、`.Editor`、`.Rendering`などの追加階層は禁止する。
+`RootNamespace`には、実際に使用するRoot Namespaceか`NONE`を設定する。
+
+Namespace規則:
+
+- `RootNamespace`が実名の場合: `<RootNamespace>.<FeatureName>`
+- `RootNamespace: NONE`の場合: `<FeatureName>`
+- 既存コードを変更する場合: 既存namespaceを保持する
+- `.Runtime`、`.Editor`、`.Rendering`などの追加階層は禁止する
+
+`Namespace`、`RootNamespace`、`<RootNamespace>`、`CHANGE_ME`を実際のnamespaceやasmdef名として出力してはならない。先頭または末尾が`.`のnamespaceも禁止する。
 
 ## Unity environment
 
