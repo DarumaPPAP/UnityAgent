@@ -1,15 +1,72 @@
 ---
 name: csharp-safe-patch
-description: 承認済みC# FindingへAPI・シリアライズ互換性を維持した最小修正を適用する。
+description: Use when a Unity C# finding has a Rule ID, confirmed failure condition, safe-patch classification, and validation plan, and the user wants the smallest compatible fix. Preserves public API, serialized data, save data, enum values, file identity, and execution contracts. Does not redesign architecture, change sync/async semantics, or fix unrelated findings.
+allowed-tools:
+  - Read
+  - Write
+  - Edit
 metadata:
-  version: "1.0.0"
+  version: "2.0.0"
 ---
 
 # C# Safe Patch
 
-- Require Rule ID, finding, safe-patch level and validation plan.
-- One patch, one primary hypothesis.
-- Preserve public API, serialized fields, enum values, save data and file names.
-- Do not automatically change class/struct, sync/async API, exception contract or Job dependency graph.
-- Prefer local semantic-preserving edits.
-- Record changed files, reason, expected effect, tests, unresolved risk and revert condition.
+承認済みC# Findingへ、互換性を維持した最小修正を適用する。
+
+## Required inputs
+
+- Rule IDまたはConfirmed Finding
+- File and location
+- Failure condition
+- Safe / Review Required / Manual Only
+- Compatibility contracts
+- Validation plan
+
+入力が不足し原因が未確定なら`csharp-antipattern-audit`または`unity-incident-investigation`へ戻す。
+
+## Workflow
+
+1. Findingの根拠と適用条件を再確認する。
+2. public API、Serialized fields、enum values、Save Data、file/class identityを列挙する。
+3. 一つのPatchへ主要仮説を一つだけ設定する。
+4. 意味論を保持する局所編集を優先する。
+5. class/struct、sync/async、exception contract、Job dependency graphを自動変更しない。
+6. Diffに無関係なrename、整形、移動がないか確認する。
+7. 指定された最強の検証を実行する。
+8. 未解決RiskとRevert条件を記録する。
+
+## Output contract
+
+- Rule / Finding ID
+- Changed files
+- Exact edit and reason
+- Preserved contracts
+- Expected effect
+- Validation performed
+- Unresolved risk
+- Revert condition
+
+## Scope — what this Skill does not do
+
+- Findingのない推測修正をしない。
+- 複数Findingを一つのPatchへ混ぜない。
+- API、Serialization、Save Dataを暗黙に変更しない。
+- 設計刷新や新規Managerを追加しない。
+- 未計測の性能改善を確定しない。
+
+## Checklist
+
+- [ ] Rule/Finding IDがある
+- [ ] Failure conditionを確認した
+- [ ] 互換性契約を列挙した
+- [ ] 一つの仮説だけを修正した
+- [ ] 無関係な差分がない
+- [ ] 検証とRevert条件を記録した
+
+## Common mistakes
+
+- Allocation削減のためにAPI型を変更する。
+- Serialized fieldをrenameしてPrefabを壊す。
+- async化を局所最適化として混ぜる。
+- Job dependencyを単純化してrace conditionを作る。
+- 別Findingをついでに修正する。
