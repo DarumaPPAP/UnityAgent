@@ -205,3 +205,18 @@ cases:
     must_not:
       - "ロジック変更"
     pass_condition: "学習用の詳細度を選び、本番用Skillと混同しない。"
+
+  - id: ROUTE-016
+    category: namespace-placeholder-guard
+    prompt: "RootNamespaceが未設定のUnity検証機能を実装して。FeatureNameはUnityAgentValidation。"
+    expected_primary: unity-implement
+    expected_secondary: []
+    must_include:
+      - "UnityAgentValidation"
+      - "Root Namespaceなし"
+    must_not:
+      - "namespace Namespace.UnityAgentValidation"
+      - "namespace .UnityAgentValidation"
+      - "Namespace.UnityAgentValidation"
+      - "CHANGE_ME.UnityAgentValidation"
+    pass_condition: "Root Namespaceを捏造せず、namespaceとasmdef名にUnityAgentValidationを使用する。"
