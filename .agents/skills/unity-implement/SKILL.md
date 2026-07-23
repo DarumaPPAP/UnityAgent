@@ -7,7 +7,7 @@ allowed-tools:
   - Edit
   - Bash
 metadata:
-  version: "2.0.0"
+  version: "2.0.1"
 ---
 
 # Unity Implement
@@ -70,8 +70,13 @@ Read-only監査には対応Audit Skillを使う。
 - public API
 - SerializeField、Prefab、Scene、Save Data
 - Assembly Definition、Editor/Runtime境界
+- 既存コードのnamespace
+- asmdefの`name`、`rootNamespace`、Assembly参照
+- `Specs/ProjectProfile.md`の`RootNamespace`
 - Shader Property、Keyword、Pass、LightMode、RenderState
 - Platform / IL2CPP / Burst / Jobs条件
+
+Namespaceは既存コード、asmdef、Project Profileから確定する。Root Namespaceが未設定または不明な場合、`Namespace`、`RootNamespace`、`CHANGE_ME`などを実名として補完しない。
 
 既存コードの意図を確認せず置換しない。
 
@@ -92,6 +97,10 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - Runtime codeへEditor APIを混ぜない。
 - RenderGraphとCompatibility APIを混在させない。
 - Resourceの生成、所有、破棄を対にする。
+- Root Namespaceが設定済みなら`<RootNamespace>.<FeatureName>`、Root Namespaceなしなら`<FeatureName>`を使用する。
+- 既存コードを変更する場合は既存namespaceを保持する。
+- `Namespace`、`RootNamespace`、`<RootNamespace>`、`CHANGE_ME`をC# namespace、asmdef名、`rootNamespace`、Assembly参照へ出力しない。
+- 先頭または末尾が`.`のnamespaceを生成しない。
 - コメントは必要な理由、制約、意図だけを日本語で書く。
 
 ### Step 5 — Self-review the diff
@@ -100,6 +109,8 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 
 - Task外のファイルを変更していない
 - 不要な名前変更、移動、整形差分がない
+- namespaceとasmdef名が実際のプロジェクト規約に一致する
+- namespace、`rootNamespace`、Assembly参照にプレースホルダーが残っていない
 - null、例外、破棄、イベント解除
 - Allocation、boxing、コピー、毎フレーム探索
 - Serialization、AOT、stripping
@@ -128,6 +139,7 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - Task / Incident / Rule ID
 - Changed files
 - 変更内容と理由
+- 使用したnamespaceとAssembly名
 - 保持または変更した互換性契約
 - Spec / Planとの差異
 - 実施した検証と結果
@@ -141,6 +153,7 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - 原因未確定の修正を行わない。
 - 依頼範囲外のアーキテクチャ刷新を行わない。
 - 勝手に追加システムやDebug UIを作らない。
+- 未確定のRoot Namespaceをプレースホルダーで埋めない。
 - Unityコンパイル、Player、実機、性能を未実施のまま成功扱いしない。
 
 ## Checklist
@@ -148,6 +161,8 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - [ ] Task / Incident / Rule IDを固定した
 - [ ] Changed filesとNon-goalsを確認した
 - [ ] 必要な規約だけを読んだ
+- [ ] Namespaceとasmdef名を既存コードまたはProject Profileから確定した
+- [ ] Namespace placeholderが残っていない
 - [ ] 最小の因果変更に限定した
 - [ ] public/serialized/Shader契約を確認した
 - [ ] Diffを自己レビューした
@@ -156,6 +171,9 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 
 ## Common mistakes
 
+- `RootNamespace: CHANGE_ME`を見て`Namespace`や`CHANGE_ME`を実名として出力する。
+- Root Namespaceなしのプロジェクトへ`.FeatureName`のような無効namespaceを生成する。
+- asmdefの`name`だけ直し、`rootNamespace`やAssembly参照を更新しない。
 - 指定Taskを終えた勢いで後続Taskも実装する。
 - 小さな修正のために新しいControllerやManagerを作る。
 - 既存Serialized fieldを改名し、Prefab/Scene互換性を壊す。
