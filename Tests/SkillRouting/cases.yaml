@@ -1,0 +1,207 @@
+version: 1
+cases:
+  - id: ROUTE-001
+    category: positive-direct
+    prompt: "Unity 6 URPで新しいTAA補助RendererFeatureを作りたい。まず仕様を固めて。"
+    expected_primary: unity-specify
+    expected_secondary:
+      - unity-rendering
+    must_include:
+      - "受け入れ条件"
+      - "対象外"
+    must_not:
+      - "実装コードの生成"
+    pass_condition: "Spec作成を開始し、RendererFeature実装へ進まない。"
+
+  - id: ROUTE-002
+    category: positive-task
+    prompt: "UJCW-030-001だけ実装して。030-002以降には進まないで。"
+    expected_primary: unity-implement
+    expected_secondary: []
+    must_include:
+      - "UJCW-030-001"
+      - "変更範囲"
+    must_not:
+      - "UJCW-030-002の実装"
+      - "追加機能"
+    pass_condition: "指定Taskだけを変更対象にする。"
+
+  - id: ROUTE-003
+    category: incident-csharp
+    prompt: "UnityでInvalidOperationExceptionが出る。原因を調べて最小修正して。"
+    expected_primary: unity-incident-investigation
+    expected_secondary:
+      - csharp-antipattern-audit
+    must_include:
+      - "Expected"
+      - "Actual"
+      - "仮説"
+    must_not:
+      - "原因未確定の全面リファクタリング"
+    pass_condition: "観測と仮説を整理してから一つの原因に対する修正へ進む。"
+
+  - id: ROUTE-004
+    category: incident-rendering
+    prompt: "EditorではTransparentなのにSwitch実機ではOpaque扱いになる。原因を追って。"
+    expected_primary: unity-incident-investigation
+    expected_secondary:
+      - unity-rendering
+    must_include:
+      - "Editor / Player条件差"
+      - "Material"
+      - "renderQueue"
+    must_not:
+      - "Shaderの全面書き換え"
+    pass_condition: "実値と状態遷移を観測し、描画固有の仮説を切り分ける。"
+
+  - id: ROUTE-005
+    category: read-only
+    prompt: "このRendererFeatureが何をしているのか説明して。変更はしないで。"
+    expected_primary: unity-production-workflow
+    expected_lane: explanation
+    expected_secondary:
+      - unity-rendering
+    must_include:
+      - "変更しない"
+      - "処理順"
+    must_not:
+      - "ファイル更新"
+    pass_condition: "Read-onlyの説明として処理し、実装を開始しない。"
+
+  - id: ROUTE-006
+    category: csharp-audit
+    prompt: "このUnity C#コードに危険な設計やAllocationがないか監査して。修正は不要。"
+    expected_primary: csharp-antipattern-audit
+    expected_secondary: []
+    must_include:
+      - "根拠"
+      - "確度"
+    must_not:
+      - "コード変更"
+    pass_condition: "Read-only Findingを返す。"
+
+  - id: ROUTE-007
+    category: shader-audit
+    prompt: "このHLSLのifとdiscardを全部消して高速化して。"
+    expected_primary: shader-performance-auditor
+    expected_secondary: []
+    must_include:
+      - "一律禁止しない"
+      - "実測"
+    must_not:
+      - "無条件のif削除"
+      - "無条件のdiscard削除"
+    pass_condition: "修正を先行せず、条件とGPU実行特性を監査する。"
+
+  - id: ROUTE-008
+    category: performance
+    prompt: "TransparentのOverdrawを減らしてSwitchを軽くしたい。"
+    expected_primary: unity-production-workflow
+    expected_lane: performance
+    expected_secondary:
+      - unity-rendering
+      - shader-performance-auditor
+      - shader-runtime-evidence
+    must_include:
+      - "Before/After"
+      - "計測条件"
+      - "Revert"
+    must_not:
+      - "未計測の性能改善断定"
+    pass_condition: "Audit、単一仮説、最小変更、実測の順に進む。"
+
+  - id: ROUTE-009
+    category: variant
+    prompt: "Strict Variantを有効にした実機だけShader variant not foundになる。"
+    expected_primary: unity-incident-investigation
+    expected_secondary:
+      - unity-shader-variant-governor
+    must_include:
+      - "Keyword"
+      - "Strip"
+      - "実機"
+    must_not:
+      - "無関係なShader表現変更"
+    pass_condition: "Incidentとして証拠を固定し、Variant経路へ委譲する。"
+
+  - id: ROUTE-010
+    category: review
+    prompt: "このPRをUnity 6、IL2CPP、Serialization、URPの観点でレビューして。"
+    expected_primary: unity-review
+    expected_secondary:
+      - csharp-antipattern-audit
+      - unity-rendering
+    must_include:
+      - "Correctness"
+      - "Compatibility"
+      - "Evidence Required"
+    must_not:
+      - "依頼されていない新機能追加"
+    pass_condition: "Findingを分類し、証拠不足を承認扱いしない。"
+
+  - id: ROUTE-011
+    category: evidence
+    prompt: "この最適化で本当にSwitch実機が速くなったか判定して。"
+    expected_primary: unity-runtime-evidence
+    expected_secondary: []
+    must_include:
+      - "同条件"
+      - "sample"
+      - "Adopt"
+      - "Inconclusive"
+    must_not:
+      - "Editor数値だけの実機判定"
+    pass_condition: "実機Before/AfterがなければEvidence RequiredまたはInconclusiveにする。"
+
+  - id: ROUTE-012
+    category: negative-simple
+    prompt: "material.shader = Shader.Find(material.shader.name); は何をしているの？"
+    expected_primary: none-or-explanation
+    expected_secondary: []
+    must_include:
+      - "Shader参照の再代入"
+    must_not:
+      - "Spec作成"
+      - "Plan作成"
+      - "ファイル変更"
+    pass_condition: "単純なコード説明に過剰なWorkflowを適用しない。"
+
+  - id: ROUTE-013
+    category: scope-guard
+    prompt: "この3クラスを修正して。Controllerや追加Profileは作らないで。"
+    expected_primary: unity-implement
+    expected_secondary: []
+    must_include:
+      - "指定3クラス"
+    must_not:
+      - "Controller追加"
+      - "Profile追加"
+      - "Manager追加"
+    pass_condition: "明示された禁止事項を設計判断より優先する。"
+
+  - id: ROUTE-014
+    category: comment-production
+    prompt: "この完成コードに本番用の日本語コメントだけ追加して。"
+    expected_primary: production-code-comments
+    expected_secondary:
+      - comment-quality-reviewer
+    must_include:
+      - "理由"
+      - "制約"
+    must_not:
+      - "チュートリアル級の逐行説明"
+      - "ロジック変更"
+    pass_condition: "本番コメントの密度で、コード動作を変更しない。"
+
+  - id: ROUTE-015
+    category: comment-learning
+    prompt: "このコードを新人向け教材にしたいので詳しい日本語コメントを付けて。"
+    expected_primary: learning-code-comments
+    expected_secondary:
+      - comment-quality-reviewer
+    must_include:
+      - "処理の流れ"
+      - "Unityライフサイクル"
+    must_not:
+      - "ロジック変更"
+    pass_condition: "学習用の詳細度を選び、本番用Skillと混同しない。"
