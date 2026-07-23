@@ -6,7 +6,26 @@ Before review or implementation, resolve Unity version, render pipeline, target 
 
 ## Naming
 
-- Namespace: `<RootNamespace>.<FeatureName>`
+### Namespace resolution
+
+Namespaceは実装前に、対象プロジェクトの既存コード、asmdefの`rootNamespace`、または`Specs/ProjectProfile.md`から確定する。
+
+- `RootNamespace`が設定済みの場合: `<RootNamespace>.<FeatureName>`
+- プロジェクトがRoot Namespaceを使用しない場合: `<FeatureName>`
+- 既存機能を変更する場合: 既存namespaceを保持する
+
+次を実際のC# namespace、asmdef名、`rootNamespace`、Assembly参照へ出力してはならない。
+
+- `Namespace`
+- `RootNamespace`
+- `<RootNamespace>`
+- `CHANGE_ME`
+- 先頭または末尾が`.`のnamespace
+
+Root Namespaceが未設定または不明な場合、プレースホルダーを実名として補完しない。既存プロジェクト規約を確認するか、Root Namespaceなしの運用が明示されている場合はFeature名だけを使用する。
+
+### Other names
+
 - private field: `_camelCase`
 - public API/type/member: `PascalCase`
 - enum type: `E_UPPER_SNAKE_CASE`
