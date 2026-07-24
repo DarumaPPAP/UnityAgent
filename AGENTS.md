@@ -13,30 +13,56 @@
 
 1. `Specs/ProjectProfile.md`
 2. `Specs/ProjectConstitution.md`
-3. 入口が不明な複合依頼では`SkillReferences/UNITY_SKILL_ROUTING.md`
-4. 対象機能の仕様がある場合は`DarumaPPAP/UnityAIGC-Archive`内の該当`Specs/<FeatureName>/spec.md`
-5. Primaryとして選択した`.agents/skills/<skill-name>/SKILL.md`
-6. C#作業では`SkillReferences/CODING_STANDARDS.md`
-7. 設計変更では`SkillReferences/ARCHITECTURE_STANDARDS.md`
-8. C#品質監査では`SkillReferences/CSHARP_ANTIPATTERN_RULES.md`と`CSHARP_ANTIPATTERN_POLICY.md`
-9. Rendering作業では`SkillReferences/RENDERING_STANDARDS.md`
+3. 複合依頼、自走依頼、実装と検証が混在する依頼では`SkillReferences/UNITY_AGENT_SUPERVISOR_MODEL.md`
+4. 入口が不明な依頼では`SkillReferences/UNITY_SKILL_ROUTING.md`
+5. 対象機能の仕様がある場合は`DarumaPPAP/UnityAIGC-Archive`内の該当`Specs/<FeatureName>/spec.md`
+6. Primaryとして選択した`.agents/skills/<skill-name>/SKILL.md`
+7. C#作業では`SkillReferences/CODING_STANDARDS.md`
+8. 設計変更では`SkillReferences/ARCHITECTURE_STANDARDS.md`
+9. C#品質監査では`SkillReferences/CSHARP_ANTIPATTERN_RULES.md`と`CSHARP_ANTIPATTERN_POLICY.md`
+10. Rendering作業では`SkillReferences/RENDERING_STANDARDS.md`
 
-全Skillと全Referenceを一括で読み込まない。Primary Skillを一つ選び、そのSkillが条件付きで委譲する資料だけを読む。
+全Skillと全Referenceを一括で読み込まない。現在StateとPrimary Skillを一つ選び、そのSkillが条件付きで委譲する資料だけを読む。
+
+## Supervisor contract
+
+複合依頼では、作業開始前に次を確定する。
+
+1. **Goal** — コード生成ではなく成立させる最終状態
+2. **Constraints** — 環境、互換性、変更範囲、禁止事項
+3. **Observability** — Static、Unity、Domain、Runtimeの成功判定
+4. **Recovery** — 失敗分類ごとの戻り先、停止条件、Revert条件
+
+- コード生成、ファイル更新、Unityコンパイル成功のいずれも単独では完了にしない。
+- Compile、Runtime、Visual、Performance、Scope、Contract conflictを同じ修正ループへ混ぜない。
+- 指定Taskが完了しても、次Taskは新しい依頼として扱う。
+- Toolが存在しない検証を実行済みと推測しない。
+- 公開契約変更、品質トレードオフ、ファイル削除、PR Mergeは人間判断へ分離する。
 
 ## Skill routing
 
-- 複数工程が混在する依頼は`unity-production-workflow`を入口にする。
-- 原因不明のエラー、回帰、Editor/Player差、描画破綻は`unity-incident-investigation`をPrimaryにする。
+- 複数工程が混在する依頼は`unity-production-workflow`をSupervisorとして入口にする。
+- 原因不明のエラー、回帰、Editor / Player差、描画破綻は`unity-incident-investigation`をPrimaryにする。
 - Read-only監査と修正を分離する。
 - 原因未確定のIncidentで複数箇所を同時変更しない。
 - 性能作業は`Audit -> Single Hypothesis -> Minimal Patch -> Runtime Evidence`の順にする。
-- Primary Skillは一つにする。Secondary Skillは不足する専門領域だけを補う。
+- 各StateでPrimary Skillは一つにする。Secondary Skillは不足する専門領域だけを補う。
+- 失敗時は失敗分類に対応するStateへ戻し、無条件に実装Agentへ戻さない。
+
+## Tool exposure
+
+- 巨大な万能MCPまたは全Tool一括公開を前提にしない。
+- Planningでは設計に必要なRead / Writeだけを使う。
+- Incident調査では先に観測Toolを使い、Write / Editを先行しない。
+- Unity検証ではCompile、Console、Test、Playを必要な範囲だけ使う。
+- Rendering / Shader / VariantのToolは対象Domainでのみ使う。
+- 実機Toolがない場合はEvidence Requiredまたは未検証とする。
 
 ## Ceremony budget
 
 - 新機能または複数Subsystemへ跨る仕様変更は`unity-specify -> unity-plan -> unity-tasks -> unity-implement -> unity-review`を使う。
-- 単一ファイルの局所修正で、要件、変更範囲、受け入れ条件が明確な場合は、形式的なSpec/Plan/Tasksを増やさない。
-- 性能変更は規模に関係なくBefore/After条件とRevert条件を先に持つ。
+- 単一ファイルの局所修正で、要件、変更範囲、受け入れ条件が明確な場合は、形式的なSpec / Plan / Tasksを増やさない。
+- 性能変更は規模に関係なくBefore / After条件とRevert条件を先に持つ。
 - 長期保存が必要なIncidentだけを生成物側の`Specs/<FeatureName>/incidents/`へ記録する。
 
 ## Spec-driven workflow
@@ -51,7 +77,7 @@
 
 ## C# quality gate
 
-対象Unity、Render Pipeline、Platform、Editor/Player、Mono/IL2CPP、Development/Release、Burst/Jobs/Entities、呼び出し頻度、APIとシリアライズ互換性を先に確定する。
+対象Unity、Render Pipeline、Platform、Editor / Player、Mono / IL2CPP、Development / Release、Burst / Jobs / Entities、呼び出し頻度、APIとシリアライズ互換性を先に確定する。
 
 判断順序:
 
@@ -77,8 +103,8 @@
 - mutable static状態、static event、Singleton、Service Locatorを追加しない。
 - `Manager`、`Controller`、`Util`、`Common`、`Helper`を責務説明なしで作らない。
 - 公開`async void`、`Task.Result`、`.Wait()`、`throw ex;`、空catch、`BinaryFormatter`を新規導入しない。
-- Burst/Jobsへmanaged object、managed array、暗黙boxing、所有権不明なNativeContainerを持ち込まない。
-- Reflection、dynamic、実行時ジェネリック生成はIL2CPP/AOT/stripping条件を確認する。
+- Burst / Jobsへmanaged object、managed array、暗黙boxing、所有権不明なNativeContainerを持ち込まない。
+- Reflection、dynamic、実行時ジェネリック生成はIL2CPP / AOT / stripping条件を確認する。
 - コメントは日本語で理由・制約・意図を書く。
 
 ## Shader / HLSL quality gate
@@ -104,7 +130,7 @@ ShaderLab、HLSL、Compute Shader、Shader Graph Custom Function、RendererFeatu
 - 新Pass追加よりRendererFeature filtering、RenderQueue、Layer、ShaderTag、RendererList、既存Pass再利用を先に検討する。
 - Motion Vector、Depth、History UV、Reprojection、Disocclusion、Reactive Maskを安易に低精度化しない。
 - Variant削減前にRuntime Keyword、Addressables、AssetBundle、Resources、Strict Variantを確認する。
-- 1 Patchにつき主要仮説は1つ。Before/AfterとRevert条件を記録する。
+- 1 Patchにつき主要仮説は1つ。Before / AfterとRevert条件を記録する。
 - Editor結果だけでTarget Player、Console、Switch実機を保証しない。
 
 ## Skill authoring
@@ -114,12 +140,14 @@ Skillを追加または大幅更新する場合は`SkillReferences/UNITY_SKILL_A
 - `description`は`Use when ...`で開始し、発火条件、成果物、非対象を記載する。
 - Flow、Audit、Modifier、Evidenceの責務を分離する。
 - 長い共通規約をSkillへコピーせず、Referenceへ委譲する。
-- `Tests/SkillRouting/cases.yaml`へPositive、Negative、Conflict、Scope、Evidenceケースを追加する。
+- `Tests/SkillRouting/cases.yaml`または対応する追加ケースへPositive、Negative、Conflict、Scope、Evidenceケースを追加する。
 - `python Tools/SkillValidator/validate_skills.py`で構造を確認する。
 - 既存Skillを段階移行する間はadvisory modeを使い、新規Skillは`--strict`で確認する。
 
 ## Completion report
 
+- Goalと達成状態
+- 最終State
 - Primary lane / Primary Skill
 - 生成物または変更物の保存先リポジトリ
 - 変更ファイル
@@ -128,8 +156,11 @@ Skillを追加または大幅更新する場合は`SkillReferences/UNITY_SKILL_A
 - 重大なFindingと対応
 - 保持または変更した互換性契約
 - 実施した検証階層
+- 観測結果と証拠
+- 実行したRecovery
 - Unity側の確認事項
 - 未検証事項
 - Revert条件
+- 人間判断が必要な項目
 
 Unityでコンパイルしていない場合は動作確認済みと表現しない。実機未計測なら性能改善を確定表現しない。

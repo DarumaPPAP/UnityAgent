@@ -6,41 +6,111 @@ Unity向けAI Agent、Skill、コーディング規約、レンダリング規�
 
 - GitHub / UnityAgent: Agent、Skill、Standards、Rules、Templates、Tools、Tests、ワークスペース統治用Spec
 - GitHub / UnityAIGC-Archive: UnityAgentを参照して生成した製品コード、製品仕様、導入資料
-- Google Drive: PDF、PowerPoint、画像、動画、GPU Capture、Profiler Capture、外部調査資料、大容量バイナリ
+- Google Drive: PDF、PowerPoint、画像、動画、GPU Capture、Profiler Capture、外部調査資料、大容量バイナリ、閲覧用ビジュアル
 
 Google Drive上のコード・規約文書は閲覧用または移行履歴であり、今後の編集正本はGitHubです。
 
 UnityAgentを参照して生成する製品Featureは`DarumaPPAP/UnityAIGC-Archive`へ保存し、UnityAgent内の`Implementation/`や製品Feature用`Specs/`へ新規追加しません。
 
+## Core operating model
+
+複合依頼は、固定された`仕様 -> 実装 -> 検証 -> PR`の一本道ではなく、Supervisorが状態遷移として管理します。
+
+```text
+Goal / Constraints / Observability / Recovery
+                    ↓
+            Supervisor State
+                    ↓
+       必要な専門Skillだけを選択
+                    ↓
+      実装・観測・証拠評価・回復
+                    ↓
+          Human Decision / Approval
+```
+
+重要な変更点:
+
+- コード生成やファイル更新を完了扱いしない
+- Compile、Runtime、Visual、Performance、Scopeの失敗を分離する
+- 失敗分類に応じて別のStateと専門Skillへ戻す
+- 現在Stateに必要なToolだけを使用する
+- 指定Task完了後に次Taskへ自動で進まない
+- 破壊的契約変更、品質判断、ファイル削除、PR Mergeは人間判断へ分離する
+
+正本:
+
+- `SkillReferences/UNITY_AGENT_SUPERVISOR_MODEL.md`
+- `.agents/skills/unity-production-workflow/SKILL.md`
+- `SkillReferences/UNITY_SKILL_ROUTING.md`
+
 ## Main workflow
 
 1. `AGENTS.md`を読む。
 2. `Specs/ProjectProfile.md`と`Specs/ProjectConstitution.md`を読む。
-3. 複合依頼または入口不明の依頼は`unity-production-workflow`でPrimary laneを選ぶ。
-4. 原因不明の不具合は`unity-incident-investigation`で観測と仮説を固定する。
-5. 対応する`.agents/skills/<skill>/SKILL.md`だけを読む。
-6. 新機能は必要な規模に応じて`Specify -> Plan -> Tasks -> Implement -> Review`を使う。
-7. 生成した製品コードと製品Specは`UnityAIGC-Archive`へ保存する。
+3. 複合依頼、自走依頼、実装と検証が混在する依頼は`unity-production-workflow`をSupervisorにする。
+4. `Goal / Constraints / Observability / Recovery`をExecution Contractとして確定する。
+5. 現在Stateを一つ選び、必要なPrimary Skillだけを読む。
+6. 原因不明の不具合は`unity-incident-investigation`で観測と仮説を固定する。
+7. 新機能は必要な規模に応じて`Specify -> Plan -> Tasks -> Implement -> Review`を使用する。
 8. 監査と修正を分離する。
 9. 性能変更は`Audit -> Single Hypothesis -> Minimal Patch -> Runtime Evidence`で進める。
-10. Before / After、未検証事項、Revert条件を記録する。
+10. 失敗時はCompile / Runtime / Visual / Performance / Scope / Contractへ分類して遷移する。
+11. Before / After、未検証事項、Recovery、Revert条件を記録する。
+12. 生成した製品コードと製品Specは`UnityAIGC-Archive`へ保存する。
 
 小さな局所修正へ形式的なSpec一式を強制しません。一方、複数Subsystem、互換性変更、Migration、Rendering Pipeline変更はSpec駆動で扱います。
+
+## Supervisor states
+
+```text
+INTAKE
+  ├─ CONTEXT_REQUIRED
+  ├─ READY
+  │    ├─ PLANNING
+  │    ├─ INVESTIGATING
+  │    └─ IMPLEMENTING
+  └─ BLOCKED
+
+IMPLEMENTING
+  → STATIC_VALIDATION
+  → UNITY_VALIDATION
+  → DOMAIN_VALIDATION
+  → VISUAL_OR_RUNTIME_VALIDATION
+  → EVIDENCE_REVIEW
+  → AWAITING_HUMAN_APPROVAL
+  → ACCEPTED
+```
+
+失敗時は原因に応じて`IMPLEMENTING`、`INVESTIGATING`、`CONTEXT_REQUIRED`、`AWAITING_HUMAN_DECISION`、`REVERT_REQUIRED`へ戻します。
 
 ## Production entry skills
 
 | Skill | Responsibility |
 |---|---|
-| `unity-production-workflow` | 複合依頼の分類、Primary Skill選択、Gate、委譲、最終報告 |
-| `unity-incident-investigation` | コンパイルエラー、例外、回帰、描画破綻、Editor/Player差の原因調査 |
-| `unity-specify` | 検証可能な要件と受け入れ条件 |
+| `unity-production-workflow` | Supervisor状態遷移、Execution Contract、Primary Skill選択、Recovery、Evidence review、人間への引き渡し |
+| `unity-incident-investigation` | コンパイルエラー、例外、回帰、描画破綻、Editor / Player差の原因調査 |
+| `unity-specify` | 検証可能な要件、Goal、非目標、受け入れ条件 |
 | `unity-plan` | 責務、依存、所有権、互換性、Migration、Rollback |
 | `unity-tasks` | 安定Task ID、変更境界、依存、Done条件 |
 | `unity-implement` | 選択TaskまたはConfirmed Fixの最小差分実装 |
-| `unity-review` | Correctness、Compatibility、Performance Evidence、受入判定 |
+| `unity-review` | Correctness、Compatibility、Scope、Performance Evidence、受入判定 |
 | `unity-rendering` | Unity 6 URP、RenderGraph、RendererFeature、Shader固有Gate |
 
 詳細なルーティングは`SkillReferences/UNITY_SKILL_ROUTING.md`を参照してください。
+
+## Tool policy
+
+万能MCPへ全操作を集約するのではなく、現在Stateと専門領域ごとにToolを絞ります。
+
+- Context Tools — Search、Read、Metadata
+- Compile Tools — Unity compile、Console
+- Scene Tools — Play、Hierarchy、Screenshot
+- Test Tools — Validator、EditMode、PlayMode
+- Shader Tools — Shader compile、Keyword、Variant
+- Evidence Tools — Profiler、GPU Capture、Target-device結果
+- Git Tools — Diff、Review、Commit、PR
+
+使用できないToolの結果を推測で補いません。
 
 ## Skill authoring
 
@@ -49,11 +119,11 @@ UnityAgentを参照して生成する製品Featureは`DarumaPPAP/UnityAIGC-Archi
 主要原則:
 
 - `description`は`Use when ...`から開始し、発火条件と非対象を明示する。
-- Flow ownerは順序とGateを所有し、専門Skillの手順をコピーしない。
+- Flow ownerは順序、State、Gateを所有し、専門Skillの手順をコピーしない。
 - Audit、Modifier、Evidenceを分離する。
 - 長い共通知識は`SkillReferences/`へ置く。
 - `Output contract`、`Checklist`、`Common mistakes`を持つ。
-- `Tests/SkillRouting/cases.yaml`で発火、誤発火、Scope、Evidenceを回帰確認する。
+- `Tests/SkillRouting/`で発火、誤発火、Scope、Evidence、Recoveryを回帰確認する。
 
 Template: `Templates/Skills/SKILL_TEMPLATE.md`
 
@@ -76,6 +146,7 @@ python Tools/SkillValidator/validate_skills.py --json
 
 ## Current systems
 
+- Supervisor State Machine / Execution Contract / Failure Routing
 - C# Anti-pattern Audit / Safe Patch / Runtime Evidence
 - Shader Performance Audit / Refactor / Variant Governance / Runtime Evidence
 - Unity 6 / URP / RenderGraph / STP / TAA向け規約
