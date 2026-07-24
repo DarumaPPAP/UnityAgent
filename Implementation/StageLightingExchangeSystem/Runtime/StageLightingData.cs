@@ -254,7 +254,7 @@ namespace StageLighting
 
         [Header("Reflection")]
         [SerializeField] private DefaultReflectionMode _defaultReflectionMode = DefaultReflectionMode.Skybox;
-        [SerializeField] private Texture _customReflection;
+        [SerializeField] private Texture _customReflectionTexture;
         [SerializeField, Min(16)] private int _defaultReflectionResolution = 128;
         [SerializeField, Min(0.0f)] private float _reflectionIntensity = 1.0f;
         [SerializeField, Min(1)] private int _reflectionBounces = 1;
@@ -285,7 +285,7 @@ namespace StageLighting
             RenderSettings.ambientIntensity = _ambientIntensity;
 
             RenderSettings.defaultReflectionMode = _defaultReflectionMode;
-            RenderSettings.customReflection = _customReflection;
+            RenderSettings.customReflectionTexture = _customReflectionTexture;
             RenderSettings.defaultReflectionResolution = _defaultReflectionResolution;
             RenderSettings.reflectionIntensity = _reflectionIntensity;
             RenderSettings.reflectionBounces = _reflectionBounces;
@@ -318,7 +318,7 @@ namespace StageLighting
             changed |= AssignIfChanged(ref _ambientIntensity, RenderSettings.ambientIntensity);
 
             changed |= AssignIfChanged(ref _defaultReflectionMode, RenderSettings.defaultReflectionMode);
-            changed |= AssignIfChanged(ref _customReflection, RenderSettings.customReflection);
+            changed |= AssignIfChanged(ref _customReflectionTexture, RenderSettings.customReflectionTexture);
             changed |= AssignIfChanged(ref _defaultReflectionResolution, RenderSettings.defaultReflectionResolution);
             changed |= AssignIfChanged(ref _reflectionIntensity, RenderSettings.reflectionIntensity);
             changed |= AssignIfChanged(ref _reflectionBounces, RenderSettings.reflectionBounces);
