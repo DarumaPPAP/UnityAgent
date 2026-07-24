@@ -27,9 +27,16 @@ namespace StageLighting
                 return false;
             }
 
+            bool changed = data.RefreshSceneIdentities();
+
             if (!data.TryGetEntryByScenePath(scene.path, out StageLightingEntry entry))
             {
-                return false;
+                if (changed)
+                {
+                    EditorUtility.SetDirty(data);
+                }
+
+                return changed;
             }
 
             Scene previousActiveScene = SceneManager.GetActiveScene();
@@ -37,12 +44,17 @@ namespace StageLighting
 
             if (activeSceneChanged && !SceneManager.SetActiveScene(scene))
             {
-                return false;
+                if (changed)
+                {
+                    EditorUtility.SetDirty(data);
+                }
+
+                return changed;
             }
 
             try
             {
-                bool changed = entry.CaptureEditorState(scene);
+                changed |= entry.CaptureEditorState(scene);
                 if (changed)
                 {
                     EditorUtility.SetDirty(data);
