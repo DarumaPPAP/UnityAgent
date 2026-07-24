@@ -2,9 +2,10 @@
 
 ## Workspace
 
-- このリポジトリはUnityプロジェクト本体ではなく、AI実装・設計・監査用ワークスペースである。
+- このリポジトリはUnityプロジェクト本体ではなく、AI実装・設計・監査用の規約と知識の正本である。
 - `Assets/`、`Packages/`、`ProjectSettings/`を推測で作成しない。
-- 製品コードは`Implementation/`内だけに作成・変更する。
+- UnityAgentを参照して生成する製品コード、製品仕様、導入資料は`DarumaPPAP/UnityAIGC-Archive`へ保存する。
+- UnityAgent内の`Implementation/`と製品Feature用`Specs/`へ新しい生成物を追加しない。既存物は移行対象として扱う。
 - `Reference/`は読み取り専用とする。
 - Unityプロジェクトへのコピーや配置はユーザーが行う。
 
@@ -13,7 +14,7 @@
 1. `Specs/ProjectProfile.md`
 2. `Specs/ProjectConstitution.md`
 3. 入口が不明な複合依頼では`SkillReferences/UNITY_SKILL_ROUTING.md`
-4. 対象機能の`Specs/<FeatureName>/spec.md`
+4. 対象機能の仕様がある場合は`DarumaPPAP/UnityAIGC-Archive`内の該当`Specs/<FeatureName>/spec.md`
 5. Primaryとして選択した`.agents/skills/<skill-name>/SKILL.md`
 6. C#作業では`SkillReferences/CODING_STANDARDS.md`
 7. 設計変更では`SkillReferences/ARCHITECTURE_STANDARDS.md`
@@ -36,14 +37,15 @@
 - 新機能または複数Subsystemへ跨る仕様変更は`unity-specify -> unity-plan -> unity-tasks -> unity-implement -> unity-review`を使う。
 - 単一ファイルの局所修正で、要件、変更範囲、受け入れ条件が明確な場合は、形式的なSpec/Plan/Tasksを増やさない。
 - 性能変更は規模に関係なくBefore/After条件とRevert条件を先に持つ。
-- 長期保存が必要なIncidentだけを`Specs/<FeatureName>/incidents/`へ記録する。
+- 長期保存が必要なIncidentだけを生成物側の`Specs/<FeatureName>/incidents/`へ記録する。
 
 ## Spec-driven workflow
 
 - 仕様がない新機能は最初に`unity-specify` SkillでSpecを作る。
 - 複数責務または複数ファイルへ跨る実装前に`spec.md`、`plan.md`、`tasks.md`を揃える。
+- 製品FeatureのSpec、Plan、Tasks、Implementationは`DarumaPPAP/UnityAIGC-Archive`へ保存する。
 - 仕様にない設定、Controller、Manager、Debug機能を追加しない。
-- 仮定は`decisions.md`へ記録する。
+- 仮定は生成物側の`decisions.md`へ記録する。
 - 変更は対象Taskに必要な最小範囲へ限定する。
 - 選択Taskが完了しても、次Taskへ自動的に進まない。
 
@@ -99,7 +101,7 @@ ShaderLab、HLSL、Compute Shader、Shader Graph Custom Function、RendererFeatu
 - `if`、`loop`、`half`、`discard`を一律禁止しない。
 - Scanner結果を確定診断にしない。
 - Shader名、Property、Keyword、Pass、LightMode、RenderState、CBUFFERを無断変更しない。
-- 新Pass追加よりRendererFeature、RenderQueue、Layer、ShaderTag、RendererList、既存Pass再利用を先に検討する。
+- 新Pass追加よりRendererFeature filtering、RenderQueue、Layer、ShaderTag、RendererList、既存Pass再利用を先に検討する。
 - Motion Vector、Depth、History UV、Reprojection、Disocclusion、Reactive Maskを安易に低精度化しない。
 - Variant削減前にRuntime Keyword、Addressables、AssetBundle、Resources、Strict Variantを確認する。
 - 1 Patchにつき主要仮説は1つ。Before/AfterとRevert条件を記録する。
@@ -119,6 +121,7 @@ Skillを追加または大幅更新する場合は`SkillReferences/UNITY_SKILL_A
 ## Completion report
 
 - Primary lane / Primary Skill
+- 生成物または変更物の保存先リポジトリ
 - 変更ファイル
 - Task IDまたはIncident ID
 - 仕様との差異
