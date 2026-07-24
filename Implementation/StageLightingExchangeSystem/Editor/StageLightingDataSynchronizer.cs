@@ -90,6 +90,12 @@ namespace StageLighting
                 return;
             }
 
+            if (Lightmapping.isRunning)
+            {
+                QueueLoadedSceneSynchronization();
+                return;
+            }
+
             if (SynchronizeSceneAgainstAllData(scene))
             {
                 AssetDatabase.SaveAssets();
@@ -114,6 +120,12 @@ namespace StageLighting
 
             if (EditorApplication.isPlayingOrWillChangePlaymode)
             {
+                return;
+            }
+
+            if (Lightmapping.isRunning)
+            {
+                QueueLoadedSceneSynchronization();
                 return;
             }
 
