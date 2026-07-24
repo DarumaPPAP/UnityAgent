@@ -30,12 +30,17 @@ Namespace規則:
 
 ## Workspace policy
 
-- ImplementationRoot: `Implementation/`
+- KnowledgeRepository: `DarumaPPAP/UnityAgent`
+- GeneratedProductRepository: `DarumaPPAP/UnityAIGC-Archive`
+- ImplementationRoot: `DarumaPPAP/UnityAIGC-Archive/Implementation/`
+- GeneratedSpecRoot: `DarumaPPAP/UnityAIGC-Archive/Specs/`
 - ReferenceRoot: `Reference/`
-- SpecRoot: `Specs/`
+- GovernanceSpecRoot: `Specs/`
 - UnityProjectPath: user-managed
 - AutomaticFileSync: Disabled
 - AutomaticCodeScan: Disabled
+
+UnityAgentを参照して生成する製品コード、製品仕様、導入資料は`GeneratedProductRepository`へ保存する。UnityAgent内の`Implementation/`または製品Feature用`Specs/`へ新規生成物を追加しない。
 
 ## Project-specific preferences
 
