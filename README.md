@@ -4,10 +4,13 @@ Unity向けAI Agent、Skill、コーディング規約、レンダリング規�
 
 ## Source of truth
 
-- GitHub: Agent、Skill、Standards、Specs、Prompt、Rules、Templates、Tools、Tests
+- GitHub / UnityAgent: Agent、Skill、Standards、Rules、Templates、Tools、Tests、ワークスペース統治用Spec
+- GitHub / UnityAIGC-Archive: UnityAgentを参照して生成した製品コード、製品仕様、導入資料
 - Google Drive: PDF、PowerPoint、画像、動画、GPU Capture、Profiler Capture、外部調査資料、大容量バイナリ
 
-Google Drive上のコード・規約文書は閲覧用または移行履歴であり、今後の編集正本はこのリポジトリです。
+Google Drive上のコード・規約文書は閲覧用または移行履歴であり、今後の編集正本はGitHubです。
+
+UnityAgentを参照して生成する製品Featureは`DarumaPPAP/UnityAIGC-Archive`へ保存し、UnityAgent内の`Implementation/`や製品Feature用`Specs/`へ新規追加しません。
 
 ## Main workflow
 
@@ -17,9 +20,10 @@ Google Drive上のコード・規約文書は閲覧用または移行履歴で�
 4. 原因不明の不具合は`unity-incident-investigation`で観測と仮説を固定する。
 5. 対応する`.agents/skills/<skill>/SKILL.md`だけを読む。
 6. 新機能は必要な規模に応じて`Specify -> Plan -> Tasks -> Implement -> Review`を使う。
-7. 監査と修正を分離する。
-8. 性能変更は`Audit -> Single Hypothesis -> Minimal Patch -> Runtime Evidence`で進める。
-9. Before / After、未検証事項、Revert条件を記録する。
+7. 生成した製品コードと製品Specは`UnityAIGC-Archive`へ保存する。
+8. 監査と修正を分離する。
+9. 性能変更は`Audit -> Single Hypothesis -> Minimal Patch -> Runtime Evidence`で進める。
+10. Before / After、未検証事項、Revert条件を記録する。
 
 小さな局所修正へ形式的なSpec一式を強制しません。一方、複数Subsystem、互換性変更、Migration、Rendering Pipeline変更はSpec駆動で扱います。
 
