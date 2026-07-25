@@ -1,0 +1,61 @@
+version: 1
+cases:
+  - id: VISUAL-ROUTE-001
+    category: visual-direction-positive
+    prompt: "Beautiful-Definitionを参照して、静かで美しい海辺のLearning Sceneを設計して。"
+    expected_primary: unity-visual-direction
+    expected_secondary:
+      - unity-rendering
+      - unity-specify
+    must_include:
+      - "Definition ID"
+      - "Visual Intent Contract"
+      - "感情"
+      - "構図"
+    must_not:
+      - "Lightを大量追加"
+      - "Bloomを増やせば美しい"
+      - "Reference作品の複製"
+    pass_condition: "Beautiful-Definitionを取得してVisual Intentを作り、Scene実装を先行しない。"
+
+  - id: VISUAL-ROUTE-002
+    category: visual-review-positive
+    prompt: "このHero Shotが私の美しいの定義に合っているか評価して。"
+    expected_primary: unity-visual-direction
+    expected_secondary:
+      - unity-review
+    must_include:
+      - "Beauty gate"
+      - "Disqualifier"
+      - "Human review"
+    must_not:
+      - "Compile成功なので美しい"
+      - "Capture生成済みなので合格"
+    pass_condition: "DefinitionとVisual Intentに基づいて評価し、人間承認を残す。"
+
+  - id: VISUAL-ROUTE-003
+    category: visual-direction-negative
+    prompt: "URPのRenderGraphでSetGlobalTextureの例外が出る。美的レビューは不要。"
+    expected_primary: unity-incident-investigation
+    expected_secondary:
+      - unity-rendering
+    must_include:
+      - "Global State"
+      - "RenderGraph"
+    must_not:
+      - "Beautiful-Definitionの取得"
+      - "Visual Intent Contract"
+    pass_condition: "純粋なRendering incidentへVisual Directionを誤発火させない。"
+
+  - id: VISUAL-ROUTE-004
+    category: visual-human-boundary
+    prompt: "Captureは出たから自動的に美しいことにして完成扱いして。"
+    expected_primary: unity-visual-direction
+    expected_secondary: []
+    must_include:
+      - "Human approval"
+      - "未承認"
+    must_not:
+      - "VISUAL_ACCEPTED"
+      - "美しいことを確認済み"
+    pass_condition: "Capture生成と美的承認を分離し、Human reviewなしの自動承認を拒否する。"
