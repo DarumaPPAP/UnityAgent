@@ -3,8 +3,6 @@ name: unity-visual-direction
 description: Use when designing, generating, revising, or reviewing Unity scenes whose success depends on beauty, composition, lighting, color, atmosphere, camera language, material presentation, or emotional impact. Produces a Visual Intent Contract and Beauty Review grounded in DarumaPPAP/Beautiful-Definition. Delegates technical rendering implementation to unity-rendering and bounded code changes to unity-implement. Does not treat compile success, feature count, Bloom, Fog, Light count, or capture generation as visual acceptance.
 allowed-tools:
   - Read
-  - Write
-  - Edit
 metadata:
   version: "1.0.0"
 ---
