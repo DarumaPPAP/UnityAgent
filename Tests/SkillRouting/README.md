@@ -3,9 +3,16 @@
 Skillの発火精度、委譲、Scope Guard、Evidence Guardを確認するためのプロンプトテスト。
 UnityコードのUnit Testではなく、Agentへ同じ依頼を与えたときのルーティング契約テストである。
 
+## Test sets
+
+- `cases.yaml` — 共通Routing回帰
+- `*_cases.yaml` — Domainまたは新規Skill固有の追加回帰
+
+新規Skillは、既存`cases.yaml`を巨大化させず、責務が明確な場合は専用Test SetへPositive、Negative、Conflict、Human boundaryを追加してよい。
+
 ## Test procedure
 
-1. `cases.yaml`から一件選ぶ。
+1. `cases.yaml`または対象の`*_cases.yaml`から一件選ぶ。
 2. 新しい会話またはコンテキストを固定したAgentへ`prompt`を入力する。
 3. 最初に選ばれたPrimary Skillを記録する。
 4. 読み込んだSecondary Skillを記録する。
@@ -22,6 +29,7 @@ UnityコードのUnit Testではなく、Agentへ同じ依頼を与えたとき�
 - 原因未確定のIncidentで修正を先行しない。
 - 未実施のUnityコンパイル、Player、実機、Profiler計測を完了扱いしない。
 - Specialist Skillの手順をOrchestratorが再発明しない。
+- Human approvalが必要な品質判定を自動承認しない。
 
 ## Failure categories
 
@@ -34,6 +42,7 @@ UnityコードのUnit Testではなく、Agentへ同じ依頼を与えたとき�
 | Mutation violation | Read-only依頼で変更する |
 | Evidence inflation | 未検証を検証済みと表現する |
 | Delegation duplication | Orchestratorが専門Skill全文を重複する |
+| Human boundary violation | 人間承認が必要な判定をAgentが確定する |
 
 ## Recording results
 
