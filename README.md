@@ -6,11 +6,14 @@ Unity向けAI Agent、Skill、コーディング規約、レンダリング規�
 
 - GitHub / UnityAgent: Agent、Skill、Standards、Rules、Templates、Tools、Tests、ワークスペース統治用Spec
 - GitHub / UnityAIGC-Archive: UnityAgentを参照して生成した製品コード、製品仕様、導入資料
+- GitHub / Beautiful-Definition: ユーザーが考える美しさ、Reference、Visual Intent、Beauty Review、Human feedbackの正本
 - Google Drive: PDF、PowerPoint、画像、動画、GPU Capture、Profiler Capture、外部調査資料、大容量バイナリ、閲覧用ビジュアル
 
 Google Drive上のコード・規約文書は閲覧用または移行履歴であり、今後の編集正本はGitHubです。
 
 UnityAgentを参照して生成する製品Featureは`DarumaPPAP/UnityAIGC-Archive`へ保存し、UnityAgent内の`Implementation/`や製品Feature用`Specs/`へ新規追加しません。
+
+美しいScene、Lighting、Look Development、Composition、Camera、Color、Atmosphereを扱う場合は、`DarumaPPAP/Beautiful-Definition`を取得してVisual Intent Contractを作成します。UnityAgent内へ美的Definition本文を複製しません。
 
 ## Core operating model
 
@@ -36,12 +39,14 @@ Goal / Constraints / Observability / Recovery
 - 現在Stateに必要なToolだけを使用する
 - 指定Task完了後に次Taskへ自動で進まない
 - 破壊的契約変更、品質判断、ファイル削除、PR Mergeは人間判断へ分離する
+- 技術検証と美的受入を分離し、Human reviewなしに`VISUAL_ACCEPTED`としない
 
 正本:
 
 - `SkillReferences/UNITY_AGENT_SUPERVISOR_MODEL.md`
 - `.agents/skills/unity-production-workflow/SKILL.md`
 - `SkillReferences/UNITY_SKILL_ROUTING.md`
+- `SkillReferences/BEAUTIFUL_DEFINITION_INTEGRATION.md`
 
 ## Main workflow
 
@@ -50,13 +55,14 @@ Goal / Constraints / Observability / Recovery
 3. 複合依頼、自走依頼、実装と検証が混在する依頼は`unity-production-workflow`をSupervisorにする。
 4. `Goal / Constraints / Observability / Recovery`をExecution Contractとして確定する。
 5. 現在Stateを一つ選び、必要なPrimary Skillだけを読む。
-6. 原因不明の不具合は`unity-incident-investigation`で観測と仮説を固定する。
-7. 新機能は必要な規模に応じて`Specify -> Plan -> Tasks -> Implement -> Review`を使用する。
-8. 監査と修正を分離する。
-9. 性能変更は`Audit -> Single Hypothesis -> Minimal Patch -> Runtime Evidence`で進める。
-10. 失敗時はCompile / Runtime / Visual / Performance / Scope / Contractへ分類して遷移する。
-11. Before / After、未検証事項、Recovery、Revert条件を記録する。
-12. 生成した製品コードと製品Specは`UnityAIGC-Archive`へ保存する。
+6. 美的成果を含む場合は`unity-visual-direction`でBeautiful-Definitionを取得し、Visual Intent Contractを先に作る。
+7. 原因不明の不具合は`unity-incident-investigation`で観測と仮説を固定する。
+8. 新機能は必要な規模に応じて`Specify -> Plan -> Tasks -> Implement -> Review`を使用する。
+9. 監査と修正を分離する。
+10. 性能変更は`Audit -> Single Hypothesis -> Minimal Patch -> Runtime Evidence`で進める。
+11. 失敗時はCompile / Runtime / Visual / Performance / Scope / Contractへ分類して遷移する。
+12. Before / After、未検証事項、Recovery、Revert条件を記録する。
+13. 生成した製品コードと製品Specは`UnityAIGC-Archive`へ保存する。
 
 小さな局所修正へ形式的なSpec一式を強制しません。一方、複数Subsystem、互換性変更、Migration、Rendering Pipeline変更はSpec駆動で扱います。
 
@@ -95,6 +101,7 @@ IMPLEMENTING
 | `unity-implement` | 選択TaskまたはConfirmed Fixの最小差分実装 |
 | `unity-review` | Correctness、Compatibility、Scope、Performance Evidence、受入判定 |
 | `unity-rendering` | Unity 6 URP、RenderGraph、RendererFeature、Shader固有Gate |
+| `unity-visual-direction` | Beautiful-Definition取得、Visual Intent、構図・Lighting・Color・Atmosphereの美的契約、Beauty Review |
 
 詳細なルーティングは`SkillReferences/UNITY_SKILL_ROUTING.md`を参照してください。
 
@@ -150,4 +157,5 @@ python Tools/SkillValidator/validate_skills.py --json
 - C# Anti-pattern Audit / Safe Patch / Runtime Evidence
 - Shader Performance Audit / Refactor / Variant Governance / Runtime Evidence
 - Unity 6 / URP / RenderGraph / STP / TAA向け規約
+- Beautiful-Definition連携 / Visual Intent Contract / Beauty Review / Human feedback loop
 - Production Workflow / Incident Investigation / Skill Routing Tests
