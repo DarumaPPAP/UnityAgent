@@ -1,18 +1,18 @@
 ---
 name: unity-rendering
-description: Use when designing, implementing, investigating, or reviewing Unity 6 URP rendering work involving RenderGraph, ScriptableRendererFeature, RendererList, ShaderLab, HLSL, Compute Shader, cameras, depth, motion vectors, transparency, or render ordering. Applies rendering-specific contracts and delegates shader audit, variant governance, and GPU evidence. Does not invent extra passes, cameras, controllers, or debug systems outside the requested scope.
+description: Use when designing, implementing, investigating, or reviewing Unity 6 URP rendering work involving RenderGraph, ScriptableRendererFeature, RendererList, ShaderLab, HLSL, Compute Shader, cameras, depth, motion vectors, transparency, or render ordering. Applies rendering-specific contracts, preserves an approved Visual Intent when present, and delegates aesthetic direction to unity-visual-direction. Delegates shader audit, variant governance, and GPU evidence. Does not invent extra passes, cameras, controllers, debug systems, or beauty criteria outside the requested scope.
 allowed-tools:
   - Read
   - Write
   - Edit
 metadata:
-  version: "2.0.0"
+  version: "2.1.0"
 ---
 
 # Unity Rendering
 
 Unity 6 URP、RenderGraph、RendererFeature、Shader/HLSLの作業へ、描画順、Resource、Shader契約、実機差を含む固有Gateを適用する。
-このSkillはRendering境界を所有し、C#一般監査やGPU計測手順は専門Skillへ委譲する。
+このSkillはRendering境界を所有し、C#一般監査、GPU計測、美的方向性は専門Skillへ委譲する。
 
 ## When to use
 
@@ -25,21 +25,25 @@ Unity 6 URP、RenderGraph、RendererFeature、Shader/HLSLの作業へ、描画�
 - Camera Stack、Base / Overlay、Output Texture
 - RenderingのEditor / Player / Platform差
 
+美しいScene、Composition、Lighting mood、Color script、Look Development、Hero Shotの定義自体は`unity-visual-direction`をPrimaryにする。
+
 ## Required references
 
 対象に応じて必要なものだけを読む。
 
 1. Feature Spec / Plan / Task
 2. `Specs/ProjectProfile.md`
-3. `SkillReferences/RENDERING_STANDARDS.md`
-4. `SkillReferences/SHADER_PERFORMANCE_STANDARDS.md`
-5. Shader変更時は`SkillReferences/ShaderPerformance/UNITY_URP_POLICY.md`
-6. 監査時は`SHADER_REVIEW_GATE.md`と`RULE_CATALOG.md`
-7. 修正時は`REFACTOR_POLICY.md`
-8. Variant変更時は`VARIANT_POLICY.md`
+3. 美的成果を含む場合は承認済みVisual Intent Contractと`SkillReferences/BEAUTIFUL_DEFINITION_INTEGRATION.md`
+4. `SkillReferences/RENDERING_STANDARDS.md`
+5. `SkillReferences/SHADER_PERFORMANCE_STANDARDS.md`
+6. Shader変更時は`SkillReferences/ShaderPerformance/UNITY_URP_POLICY.md`
+7. 監査時は`SHADER_REVIEW_GATE.md`と`RULE_CATALOG.md`
+8. 修正時は`REFACTOR_POLICY.md`
+9. Variant変更時は`VARIANT_POLICY.md`
 
 ## Delegates to
 
+- Visual direction、Beauty definition、Visual Intent、Beauty Review: `unity-visual-direction`
 - Shader/HLSL Read-only監査: `shader-performance-auditor`
 - Confirmed Shader Finding修正: `shader-performance-refactor`
 - Keyword / Variant / Strip: `unity-shader-variant-governor`
@@ -59,8 +63,10 @@ Unity 6 URP、RenderGraph、RendererFeature、Shader/HLSLの作業へ、描画�
 - Target Platform and graphics API
 - Editor / Player / Development / Release
 - Existing RenderFeature order
+- 美的成果を含む場合はSelected Definition IDとVisual Intent Contract
 
 APIとpackage versionを確認せず、別Versionの実装を移植しない。
+Visual Intentが必要なのに未定義の場合、Rendering側で勝手に「美しい」を補完せず`unity-visual-direction`へ戻す。
 
 ## Step 2 — Declare the pass contract
 
@@ -124,6 +130,7 @@ RenderGraphとCompatibility APIを同じ実装経路へ混在させない。
 - Precision-sensitive values
 
 Shader名、Property、Keyword、Pass、LightMode、RenderStateを依頼なしで変更しない。
+Visual Intentを実現するためでも、互換性契約を無断変更しない。必要なTrade-offは人間判断へ渡す。
 
 ## Step 6 — Handle transparency and ordering explicitly
 
@@ -166,10 +173,12 @@ Depth、Motion Vector、History UV、Reprojection、Disocclusionを安易に低�
 
 一つのPatchにつき主要仮説は一つにする。
 性能変更はBefore/AfterとRevert条件を持つ。
+美的評価は`unity-visual-direction`のBeauty gateへ委譲し、CompileやGPU evidenceと混ぜない。
 
 ## Output contract
 
 - Rendering context
+- Visual taskではSelected Definition IDと保持したVisual Intent
 - Pass contract
 - Draw selection conditions
 - Resource ownership and lifetime
@@ -178,6 +187,7 @@ Depth、Motion Vector、History UV、Reprojection、Disocclusionを安易に低�
 - Static findings and confidence
 - Validation performed
 - Player / target-device evidence status
+- Visual acceptance statusはHuman review未実施なら未承認
 - Revert condition
 
 ## Scope — what this Skill does not do
@@ -187,17 +197,22 @@ Depth、Motion Vector、History UV、Reprojection、Disocclusionを安易に低�
 - Shaderの`if`、`loop`、`half`、`discard`を一律禁止しない。
 - Scanner結果だけでGPU問題を確定しない。
 - Editor結果だけでSwitchやConsole実機を保証しない。
+- 美的Definitionを作成または変更しない。
+- Feature数、Light数、Bloom、Fog、Emissionを美しさとして採点しない。
+- Human reviewなしに`VISUAL_ACCEPTED`としない。
 
 ## Checklist
 
 - [ ] Unity / URP / Platform条件を確認した
+- [ ] Visual taskではDefinition IDとVisual Intentを確認した
 - [ ] Passの入出力とInjection pointを定義した
 - [ ] Queue / Layer / ShaderTag / Sortingを確認した
 - [ ] AttachmentとResource lifetimeを確認した
 - [ ] Shader / Keyword / Pass / RenderState契約を確認した
 - [ ] TransparentまたはTemporal固有条件を確認した
 - [ ] Audit、Patch、Evidenceを分離した
-- [ ] 未実施の実機確認を明記した
+- [ ] Beauty gateとTechnical gateを混同していない
+- [ ] 未実施の実機確認とHuman reviewを明記した
 
 ## Common mistakes
 
@@ -208,3 +223,5 @@ Depth、Motion Vector、History UV、Reprojection、Disocclusionを安易に低�
 - Pass内Global State設定を許可せず`SetGlobalTexture`する。
 - Motion VectorをForwardLitだけへ追加し、Outlineや追加描画を履歴から漏らす。
 - EditorのFrame Debuggerだけで実機VariantやGPU時間を保証する。
+- Visual IntentなしにLight、Bloom、Fog、Reflectionを追加して美しさを作ろうとする。
+- Compile成功やCapture生成を美的完成と誤認する。
