@@ -8,6 +8,8 @@
 - UnityAgent内の`Implementation/`と製品Feature用`Specs/`へ新しい生成物を追加しない。既存物は移行対象として扱う。
 - `Reference/`は読み取り専用とする。
 - Unityプロジェクトへのコピーや配置はユーザーが行う。
+- 美しいScene、Lighting、Look Development、Composition、Camera、Color、Atmosphereの美的正本は`DarumaPPAP/Beautiful-Definition`とする。
+- Beautiful-Definitionの本文をUnityAgentへ複製せず、Visual taskごとに必要なDefinitionだけを取得する。
 
 ## Required reading
 
@@ -21,6 +23,7 @@
 8. 設計変更では`SkillReferences/ARCHITECTURE_STANDARDS.md`
 9. C#品質監査では`SkillReferences/CSHARP_ANTIPATTERN_RULES.md`と`CSHARP_ANTIPATTERN_POLICY.md`
 10. Rendering作業では`SkillReferences/RENDERING_STANDARDS.md`
+11. 美的成果を含む作業では`SkillReferences/BEAUTIFUL_DEFINITION_INTEGRATION.md`と`DarumaPPAP/Beautiful-Definition`内の選択Definition
 
 全Skillと全Referenceを一括で読み込まない。現在StateとPrimary Skillを一つ選び、そのSkillが条件付きで委譲する資料だけを読む。
 
@@ -38,11 +41,13 @@
 - 指定Taskが完了しても、次Taskは新しい依頼として扱う。
 - Toolが存在しない検証を実行済みと推測しない。
 - 公開契約変更、品質トレードオフ、ファイル削除、PR Mergeは人間判断へ分離する。
+- 美的成果を含むGoalでは、Visual Intent ContractとHuman beauty reviewをObservabilityへ含める。
 
 ## Skill routing
 
 - 複数工程が混在する依頼は`unity-production-workflow`をSupervisorとして入口にする。
 - 原因不明のエラー、回帰、Editor / Player差、描画破綻は`unity-incident-investigation`をPrimaryにする。
+- 美しいScene、画作り、Lighting、LookDev、Composition、Hero Shot、Visual quality reviewは`unity-visual-direction`をPrimaryまたはSecondaryにする。
 - Read-only監査と修正を分離する。
 - 原因未確定のIncidentで複数箇所を同時変更しない。
 - 性能作業は`Audit -> Single Hypothesis -> Minimal Patch -> Runtime Evidence`の順にする。
@@ -56,6 +61,7 @@
 - Incident調査では先に観測Toolを使い、Write / Editを先行しない。
 - Unity検証ではCompile、Console、Test、Playを必要な範囲だけ使う。
 - Rendering / Shader / VariantのToolは対象Domainでのみ使う。
+- Visual directionではDefinition retrieval、Reference metadata、Screenshot、Captureを必要な範囲だけ使う。
 - 実機Toolがない場合はEvidence Requiredまたは未検証とする。
 
 ## Ceremony budget
@@ -64,6 +70,7 @@
 - 単一ファイルの局所修正で、要件、変更範囲、受け入れ条件が明確な場合は、形式的なSpec / Plan / Tasksを増やさない。
 - 性能変更は規模に関係なくBefore / After条件とRevert条件を先に持つ。
 - 長期保存が必要なIncidentだけを生成物側の`Specs/<FeatureName>/incidents/`へ記録する。
+- 美的Scene生成では、過剰なSpec一式より先にVisual Intent Contractを作成する。
 
 ## Spec-driven workflow
 
@@ -74,6 +81,21 @@
 - 仮定は生成物側の`decisions.md`へ記録する。
 - 変更は対象Taskに必要な最小範囲へ限定する。
 - 選択Taskが完了しても、次Taskへ自動的に進まない。
+
+## Visual quality gate
+
+美しいScene、Lighting、Look Development、Composition、Color、Atmosphere、Camera presentationを成果条件に含む場合は、次を適用する。
+
+1. `DarumaPPAP/Beautiful-Definition`からTaskに一致するDefinition IDを選ぶ。
+2. 実装前にVisual Intent Contractを作る。
+3. Emotional intent、Experiential subject、Composition、Camera、Lighting、Color、Depth、Material、Post limitを確定する。
+4. Beauty gateとTechnical gateを分離する。
+5. Compile成功、PlayMode成功、Capture生成、機能数、Light数を美しさの証拠にしない。
+6. Reference作品の固有Character、Logo、Architecture、配置を直接複製しない。
+7. Human reviewなしに`VISUAL_ACCEPTED`としない。
+8. Human feedbackはBeautiful-DefinitionのObservation候補として分類する。
+
+Beautiful-Definitionへアクセスできず、現在の依頼にも十分なReferenceがない場合は、美的正本を推測せず`CONTEXT_REQUIRED`とする。
 
 ## C# quality gate
 
@@ -139,7 +161,7 @@ Skillを追加または大幅更新する場合は`SkillReferences/UNITY_SKILL_A
 
 - `description`は`Use when ...`で開始し、発火条件、成果物、非対象を記載する。
 - Flow、Audit、Modifier、Evidenceの責務を分離する。
-- 長い共通規約をSkillへコピーせず、Referenceへ委譲する。
+- 長い共通知識をSkillへコピーせず、Referenceへ委譲する。
 - `Tests/SkillRouting/cases.yaml`または対応する追加ケースへPositive、Negative、Conflict、Scope、Evidenceケースを追加する。
 - `python Tools/SkillValidator/validate_skills.py`で構造を確認する。
 - 既存Skillを段階移行する間はadvisory modeを使い、新規Skillは`--strict`で確認する。
@@ -162,5 +184,6 @@ Skillを追加または大幅更新する場合は`SkillReferences/UNITY_SKILL_A
 - 未検証事項
 - Revert条件
 - 人間判断が必要な項目
+- Visual taskでは参照Definition ID、Beauty gate、Human approval status
 
-Unityでコンパイルしていない場合は動作確認済みと表現しない。実機未計測なら性能改善を確定表現しない。
+Unityでコンパイルしていない場合は動作確認済みと表現しない。実機未計測なら性能改善を確定表現しない。Human reviewを実施していない場合は美しいことを確認済みと表現しない。
