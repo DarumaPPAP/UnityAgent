@@ -1,0 +1,51 @@
+id: portable-feature
+default_execution_profile: generic_planning
+risk_level: R2
+
+required_inputs:
+  - unity_version
+  - render_pipeline
+  - target_platforms
+  - feature_goal
+  - constraints
+
+allowed_mutations:
+  - portable_package_source
+  - setup_wizard
+  - isolated_tests
+  - documentation
+
+prohibited_mutations:
+  - hardcoded_project_paths
+  - hardcoded_scene_names
+  - hardcoded_layer_numbers
+  - assumed_renderer_data_name
+  - automatic_project_settings_change
+  - automatic_scene_or_prefab_mutation
+
+required_knowledge:
+  - select_primary_knowledge_from_index
+required_quality_gates:
+  - static_review
+  - package_structure_validation
+conditional_quality_gates:
+  - compile
+  - editmode
+  - playmode
+
+completion:
+  - portable_source_is_project_agnostic
+  - setup_entry_point_is_provided
+  - unresolved_project_bindings_are_explicit
+  - integration_and_validation_instructions_are_provided
+  - unavailable_unity_gates_are_listed_for_import_time
+
+stop_conditions:
+  - requirement_depends_on_undisclosed_project_behavior
+  - portable_boundary_cannot_be_defined
+
+result_format:
+  summary: portable_feature_and_supported_environment
+  changed_artifacts: package_paths
+  validation: static_and_available_gate_statuses
+  unresolved: project_bindings_and_import_time_checks
