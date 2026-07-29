@@ -31,6 +31,23 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install YAML parser
+        run: python -m pip install --disable-pip-version-check pyyaml
+
+      - name: Validate YAML syntax
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          paths = sorted((Path('.ai')).rglob('*.yaml'))
+          paths += sorted((Path('Tests/ContractValidator')).rglob('*.yaml'))
+          for path in paths:
+              with path.open(encoding='utf-8') as stream:
+                  yaml.safe_load(stream)
+              print(f'validated: {path}')
+          PY
+
       - name: Validate Skills
         run: python Tools/SkillValidator/validate_skills.py
 
