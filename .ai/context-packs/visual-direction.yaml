@@ -1,0 +1,51 @@
+schema_version: "1.0"
+id: visual-direction
+primary_skill: .agents/skills/unity-visual-direction/SKILL.md
+
+use_when:
+  - scene visual quality
+  - lighting and look development
+  - composition camera color atmosphere
+  - human visual review
+
+required:
+  - user_visual_goal_or_reference
+  - SkillReferences/BEAUTIFUL_DEFINITION_INTEGRATION.md
+  - DarumaPPAP/Beautiful-Definition/AGENTS.md
+  - DarumaPPAP/Beautiful-Definition/Catalog/definitions.yaml
+  - selected_definition
+  - matching_core_principles
+
+conditional:
+  technical_rendering_work:
+    - .agents/skills/unity-rendering/SKILL.md
+    - SkillReferences/RENDERING_STANDARDS.md
+  shader_or_material_work:
+    - .ai/context-packs/shader-change.yaml
+  performance_constraint:
+    - .ai/context-packs/performance.yaml
+
+excluded_by_default:
+  - SkillReferences/UNITY_AGENT_SUPERVISOR_MODEL.md
+  - unselected_visual_definitions
+  - unrelated_shader_rule_catalogs
+
+rules:
+  visual_intent_before_mutation: true
+  beauty_gate_separate_from_technical_gate: true
+  compile_is_not_beauty_evidence: true
+  capture_generation_is_not_acceptance: true
+  human_review_required_for_visual_acceptance: true
+  preserve_originality_and_reference_boundaries: true
+
+limits:
+  initial_file_reads: 6
+  context_expansion_hops: 1
+
+output:
+  - selected_definition_id
+  - visual_intent_contract
+  - technical_translation_constraints
+  - required_captures
+  - beauty_review_questions
+  - human_review_status
