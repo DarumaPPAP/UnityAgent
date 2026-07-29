@@ -1,0 +1,71 @@
+schema_version: "1.0"
+repository_role: unity_domain_knowledge
+execution_owner: DarumaPPAP/Unity-Graph-Engineering
+
+routing_rules:
+  select_exactly_one_primary_route: true
+  load_all_skills: false
+  load_all_references: false
+  direct_source_read_required_before_mutation: true
+  knowledge_graph_is_navigation_only: true
+
+routes:
+  csharp_local_fix:
+    triggers:
+      - bounded C# change
+      - known compile error
+      - single behavior correction
+    primary_skill: csharp-safe-patch
+    context_pack: .ai/context-packs/csharp-local-fix.yaml
+
+  rendering_incident:
+    triggers:
+      - unknown rendering failure
+      - Editor Player difference
+      - RenderGraph validation error
+      - rendering regression
+    primary_skill: unity-incident-investigation
+    context_pack: .ai/context-packs/rendering-incident.yaml
+
+  shader_change:
+    triggers:
+      - ShaderLab
+      - HLSL
+      - Compute Shader
+      - RendererFeature shader integration
+      - motion vector or temporal shader work
+    primary_skill: unity-rendering
+    context_pack: .ai/context-packs/shader-change.yaml
+
+  performance:
+    triggers:
+      - CPU optimization
+      - GPU optimization
+      - memory optimization
+      - shader performance
+      - build size
+    primary_skill: unity-runtime-evidence
+    context_pack: .ai/context-packs/performance.yaml
+
+  visual_direction:
+    triggers:
+      - scene beauty
+      - lighting look development
+      - composition
+      - color atmosphere
+      - visual quality review
+    primary_skill: unity-visual-direction
+    context_pack: .ai/context-packs/visual-direction.yaml
+
+conflicts:
+  rendering_incident_and_shader_change:
+    primary: rendering_incident
+    secondary_after_evidence: shader_change
+
+  visual_direction_and_rendering:
+    primary_when_goal_is_beauty: visual_direction
+    primary_when_goal_is_technical_fix: rendering_incident
+
+fallback:
+  action: use SkillReferences/UNITY_SKILL_ROUTING.md
+  do_not_load_every_route: true

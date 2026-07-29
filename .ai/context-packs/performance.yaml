@@ -1,0 +1,55 @@
+schema_version: "1.0"
+id: performance
+primary_skill: .agents/skills/unity-runtime-evidence/SKILL.md
+
+use_when:
+  - CPU GPU or memory optimization
+  - render performance change
+  - shader performance change
+  - build size or load performance
+
+required:
+  - measurable_metric
+  - reproduction_scene_or_workload
+  - target_platform
+  - quality_settings
+  - baseline_capture_or_explicit_missing_baseline
+  - Specs/ProjectProfile.md
+
+conditional:
+  csharp_cpu_or_gc:
+    - matching CSharp audit Skill
+    - SkillReferences/CODING_STANDARDS.md
+  shader_gpu:
+    - SkillReferences/SHADER_PERFORMANCE_STANDARDS.md
+    - matching shader audit and runtime evidence Skill
+  rendering_pipeline:
+    - SkillReferences/RENDERING_STANDARDS.md
+    - .agents/skills/unity-rendering/SKILL.md
+  variant_or_build_size:
+    - .agents/skills/unity-shader-variant-governor/SKILL.md
+    - matching Variant Policy
+
+excluded_by_default:
+  - SkillReferences/UNITY_AGENT_SUPERVISOR_MODEL.md
+  - SkillReferences/BEAUTIFUL_DEFINITION_INTEGRATION.md
+  - unrelated domain catalogs
+
+rules:
+  audit_before_mutation: true
+  one_primary_hypothesis_per_patch: true
+  before_after_same_conditions: true
+  quality_regression_check_required: true
+  unmeasured_improvement_cannot_be_claimed: true
+
+limits:
+  initial_file_reads: 6
+  context_expansion_hops: 1
+
+output:
+  - baseline_status
+  - metric_and_capture_contract
+  - primary_hypothesis
+  - minimal_mutation_scope
+  - before_after_requirements
+  - adopt_rework_revert_conditions

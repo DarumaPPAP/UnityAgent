@@ -1,0 +1,58 @@
+schema_version: "1.0"
+id: shader-change
+primary_skill: .agents/skills/unity-rendering/SKILL.md
+
+use_when:
+  - ShaderLab HLSL or Compute Shader change
+  - RendererFeature and shader integration
+  - motion vector temporal or depth shader work
+  - shader performance correction
+
+required:
+  - target_shader
+  - direct_includes
+  - material_or_pass_contract
+  - Specs/ProjectProfile.md
+  - SkillReferences/RENDERING_STANDARDS.md
+  - SkillReferences/SHADER_PERFORMANCE_STANDARDS.md
+  - SkillReferences/ShaderPerformance/UNITY_URP_POLICY.md
+
+conditional:
+  read_only_audit:
+    - .agents/skills/shader-performance-auditor/SKILL.md
+    - SkillReferences/ShaderPerformance/SHADER_REVIEW_GATE.md
+    - SkillReferences/ShaderPerformance/RULE_CATALOG.md
+  confirmed_refactor:
+    - .agents/skills/shader-performance-refactor/SKILL.md
+    - SkillReferences/ShaderPerformance/REFACTOR_POLICY.md
+  variant_change:
+    - .agents/skills/unity-shader-variant-governor/SKILL.md
+    - SkillReferences/ShaderPerformance/VARIANT_POLICY.md
+  runtime_measurement:
+    - matching shader runtime evidence Skill
+
+excluded_by_default:
+  - SkillReferences/UNITY_AGENT_SUPERVISOR_MODEL.md
+  - SkillReferences/BEAUTIFUL_DEFINITION_INTEGRATION.md
+  - unrelated CSharp architecture references
+
+rules:
+  preserve_shader_name: true
+  preserve_properties: true
+  preserve_keywords: true
+  preserve_pass_lightmode_renderstate: true
+  direct_source_read_required: true
+  pattern_does_not_prove_gpu_cost: true
+  editor_does_not_prove_target_platform: true
+
+limits:
+  initial_file_reads: 6
+  context_expansion_hops: 1
+
+output:
+  - shader_contract
+  - pass_and_resource_contract
+  - compatibility_constraints
+  - variant_impact
+  - required_compile_and_runtime_evidence
+  - revert_condition

@@ -1,0 +1,40 @@
+schema_version: "1.0"
+id: csharp-local-fix
+primary_skill: .agents/skills/csharp-safe-patch/SKILL.md
+
+use_when:
+  - bounded C# correction
+  - known compile failure
+  - one behavior change with deterministic validation
+
+required:
+  - target_source
+  - direct_callers_or_interfaces
+  - Specs/ProjectProfile.md
+  - SkillReferences/CODING_STANDARDS.md
+
+conditional:
+  architecture_change:
+    - SkillReferences/ARCHITECTURE_STANDARDS.md
+  antipattern_finding:
+    - SkillReferences/CSHARP_ANTIPATTERN_RULES.md
+    - SkillReferences/CSHARP_ANTIPATTERN_POLICY.md
+  burst_jobs_entities:
+    - matching Burst Jobs Entities reference
+
+excluded_by_default:
+  - SkillReferences/UNITY_AGENT_SUPERVISOR_MODEL.md
+  - SkillReferences/RENDERING_STANDARDS.md
+  - SkillReferences/SHADER_PERFORMANCE_STANDARDS.md
+  - SkillReferences/BEAUTIFUL_DEFINITION_INTEGRATION.md
+
+limits:
+  initial_file_reads: 5
+  context_expansion_hops: 1
+
+output:
+  - confirmed_namespace
+  - compatibility_constraints
+  - bounded_patch_requirements
+  - deterministic_validation
+  - unverified_conditions

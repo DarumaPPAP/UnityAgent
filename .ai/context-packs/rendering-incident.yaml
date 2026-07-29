@@ -1,0 +1,51 @@
+schema_version: "1.0"
+id: rendering-incident
+primary_skill: .agents/skills/unity-incident-investigation/SKILL.md
+
+use_when:
+  - rendering root cause is unknown
+  - Editor Player or platform difference
+  - RenderGraph validation error
+  - visual regression caused by rendering behavior
+
+required:
+  - symptom_and_exact_error
+  - reproduction_conditions
+  - affected_rendering_sources
+  - renderer_feature_order
+  - Specs/ProjectProfile.md
+  - SkillReferences/RENDERING_STANDARDS.md
+
+conditional:
+  render_graph:
+    - .agents/skills/unity-rendering/SKILL.md
+  shader_compile_or_variant:
+    - SkillReferences/SHADER_PERFORMANCE_STANDARDS.md
+    - SkillReferences/ShaderPerformance/UNITY_URP_POLICY.md
+  strict_variant:
+    - matching Variant Policy and governor Skill
+  player_only:
+    - build and platform evidence
+
+excluded_by_default:
+  - SkillReferences/UNITY_AGENT_SUPERVISOR_MODEL.md
+  - SkillReferences/BEAUTIFUL_DEFINITION_INTEGRATION.md
+  - unrelated CSharp antipattern catalog
+
+rules:
+  mutation_before_confirmed_cause: false
+  one_primary_hypothesis_per_patch: true
+  editor_result_does_not_prove_player: true
+  direct_source_read_required: true
+
+limits:
+  initial_file_reads: 7
+  context_expansion_hops: 1
+
+output:
+  - confirmed_facts
+  - hypotheses
+  - rejected_hypotheses
+  - smallest_observation_needed
+  - domain_evidence_required
+  - mutation_gate

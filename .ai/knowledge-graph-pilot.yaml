@@ -1,0 +1,64 @@
+schema_version: "1.0"
+status: pilot
+purpose: Narrow candidate artifacts before direct source inspection.
+
+allowed_roots:
+  - Assets/Settings/RendererFeature/
+  - Assets/Rendering/
+  - Assets/Shaders/
+  - Packages/manifest.json
+  - ProjectSettings/GraphicsSettings.asset
+  - ProjectSettings/QualitySettings.asset
+
+excluded_roots:
+  - Library/
+  - Temp/
+  - Logs/
+  - UserSettings/
+  - PackageCache/
+
+limits:
+  max_indexed_files: 200
+  max_query_results: 5
+  max_expansion_hops: 1
+
+unity_relations:
+  csharp:
+    - type_inheritance
+    - interface_implementation
+    - method_call
+    - serialized_field
+    - asmdef_dependency
+  assets:
+    - guid_reference
+    - scene_prefab_reference
+    - scriptable_object_reference
+    - renderer_data_reference
+  shader:
+    - shader_name
+    - property
+    - pass
+    - light_mode
+    - render_state
+    - include
+    - function_call
+    - keyword
+    - cbuffer
+  urp:
+    - renderer_feature
+    - render_pass
+    - render_pass_event
+    - record_render_graph
+    - resource_read_write
+
+rules:
+  navigation_only: true
+  direct_source_read_before_mutation: true
+  inferred_edge_is_not_confirmed_fact: true
+  do_not_send_full_graph_report_to_prompt: true
+  record_query_and_selected_artifacts: true
+
+adoption_metrics:
+  accepted_task_token_reduction_percent: 30
+  context_file_read_reduction_percent: 30
+  missed_dependency_regression_percent: 0
