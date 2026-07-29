@@ -1,189 +1,142 @@
-# Unity AI Workspace Instructions
+# UnityAgent Domain Bootstrap
 
-## Workspace
+UnityAgentはUnity / C# / URP / RenderGraph / Shader / Performance / Visual DirectionのDomain Knowledge正本です。汎用の実行モード、Task Graph、Retry、Token Budget、Checkpointは`DarumaPPAP/Unity-Graph-Engineering`が所有します。
 
-- このリポジトリはUnityプロジェクト本体ではなく、AI実装・設計・監査用の規約と知識の正本である。
+## 1. Workspace
+
+- このRepositoryはUnityプロジェクト本体ではない。
 - `Assets/`、`Packages/`、`ProjectSettings/`を推測で作成しない。
-- UnityAgentを参照して生成する製品コード、製品仕様、導入資料は`DarumaPPAP/UnityAIGC-Archive`へ保存する。
-- UnityAgent内の`Implementation/`と製品Feature用`Specs/`へ新しい生成物を追加しない。既存物は移行対象として扱う。
-- `Reference/`は読み取り専用とする。
-- Unityプロジェクトへのコピーや配置はユーザーが行う。
-- 美しいScene、Lighting、Look Development、Composition、Camera、Color、Atmosphereの美的正本は`DarumaPPAP/Beautiful-Definition`とする。
-- Beautiful-Definitionの本文をUnityAgentへ複製せず、Visual taskごとに必要なDefinitionだけを取得する。
+- 製品コード、製品仕様、導入資料は`DarumaPPAP/UnityAIGC-Archive`へ保存する。
+- `Reference/`はRead-only。
+- 美的正本は`DarumaPPAP/Beautiful-Definition`。
+- Google Driveは大容量資料と閲覧用Reference。編集正本はGitHub。
 
-## Required reading
+## 2. Execution ownership
 
-1. `Specs/ProjectProfile.md`
-2. `Specs/ProjectConstitution.md`
-3. 複合依頼、自走依頼、実装と検証が混在する依頼では`SkillReferences/UNITY_AGENT_SUPERVISOR_MODEL.md`
-4. 入口が不明な依頼では`SkillReferences/UNITY_SKILL_ROUTING.md`
-5. 対象機能の仕様がある場合は`DarumaPPAP/UnityAIGC-Archive`内の該当`Specs/<FeatureName>/spec.md`
-6. Primaryとして選択した`.agents/skills/<skill-name>/SKILL.md`
-7. C#作業では`SkillReferences/CODING_STANDARDS.md`
-8. 設計変更では`SkillReferences/ARCHITECTURE_STANDARDS.md`
-9. C#品質監査では`SkillReferences/CSHARP_ANTIPATTERN_RULES.md`と`CSHARP_ANTIPATTERN_POLICY.md`
-10. Rendering作業では`SkillReferences/RENDERING_STANDARDS.md`
-11. 美的成果を含む作業では`SkillReferences/BEAUTIFUL_DEFINITION_INTEGRATION.md`と`DarumaPPAP/Beautiful-Definition`内の選択Definition
+Execution Modeが未指定の場合はUnity-Graph-EngineeringのPolicyによりPrompt Engineeringを使用する。Graph / Loopへの無断変更は禁止する。
 
-全Skillと全Referenceを一括で読み込まない。現在StateとPrimary Skillを一つ選び、そのSkillが条件付きで委譲する資料だけを読む。
+UnityAgentは次だけを担当する。
 
-## Supervisor contract
+- Domain route
+- Context Pack
+- Unity固有の実装・監査手順
+- Unity固有ValidatorとEvidence要求
 
-複合依頼では、作業開始前に次を確定する。
+次は担当しない。
 
-1. **Goal** — コード生成ではなく成立させる最終状態
-2. **Constraints** — 環境、互換性、変更範囲、禁止事項
-3. **Observability** — Static、Unity、Domain、Runtimeの成功判定
-4. **Recovery** — 失敗分類ごとの戻り先、停止条件、Revert条件
+- 汎用Supervisor State Machine
+- 汎用Task Graph
+- Retry Scheduler
+- Token Accounting
+- Human Gate orchestration
 
-- コード生成、ファイル更新、Unityコンパイル成功のいずれも単独では完了にしない。
-- Compile、Runtime、Visual、Performance、Scope、Contract conflictを同じ修正ループへ混ぜない。
-- 指定Taskが完了しても、次Taskは新しい依頼として扱う。
-- Toolが存在しない検証を実行済みと推測しない。
-- 公開契約変更、品質トレードオフ、ファイル削除、PR Mergeは人間判断へ分離する。
-- 美的成果を含むGoalでは、Visual Intent ContractとHuman beauty reviewをObservabilityへ含める。
+Compatibility adapter:
 
-## Skill routing
+- `.agents/skills/unity-production-workflow/SKILL.md`
+- `SkillReferences/UNITY_AGENT_SUPERVISOR_MODEL.md`
 
-- 複数工程が混在する依頼は`unity-production-workflow`をSupervisorとして入口にする。
-- 原因不明のエラー、回帰、Editor / Player差、描画破綻は`unity-incident-investigation`をPrimaryにする。
-- 美しいScene、画作り、Lighting、LookDev、Composition、Hero Shot、Visual quality reviewは`unity-visual-direction`をPrimaryまたはSecondaryにする。
-- Read-only監査と修正を分離する。
-- 原因未確定のIncidentで複数箇所を同時変更しない。
-- 性能作業は`Audit -> Single Hypothesis -> Minimal Patch -> Runtime Evidence`の順にする。
-- 各StateでPrimary Skillは一つにする。Secondary Skillは不足する専門領域だけを補う。
-- 失敗時は失敗分類に対応するStateへ戻し、無条件に実装Agentへ戻さない。
+## 3. Context routing
 
-## Tool exposure
+最初に`.ai/context-index.yaml`を読み、依頼に一致するContext Packを一つ選ぶ。
 
-- 巨大な万能MCPまたは全Tool一括公開を前提にしない。
-- Planningでは設計に必要なRead / Writeだけを使う。
-- Incident調査では先に観測Toolを使い、Write / Editを先行しない。
-- Unity検証ではCompile、Console、Test、Playを必要な範囲だけ使う。
-- Rendering / Shader / VariantのToolは対象Domainでのみ使う。
-- Visual directionではDefinition retrieval、Reference metadata、Screenshot、Captureを必要な範囲だけ使う。
-- 実機Toolがない場合はEvidence Requiredまたは未検証とする。
+- 全Skillを一括で読まない。
+- 全Referenceを一括で読まない。
+- Primary Domain Skillは一つ。
+- Conditional Referenceは条件成立時だけ読む。
+- 対象Sourceと直接依存を優先する。
+- Knowledge Graphは候補Artifactの絞り込みにだけ使い、変更前にSourceを直接読む。
 
-## Ceremony budget
+Context Pack:
 
-- 新機能または複数Subsystemへ跨る仕様変更は`unity-specify -> unity-plan -> unity-tasks -> unity-implement -> unity-review`を使う。
-- 単一ファイルの局所修正で、要件、変更範囲、受け入れ条件が明確な場合は、形式的なSpec / Plan / Tasksを増やさない。
-- 性能変更は規模に関係なくBefore / After条件とRevert条件を先に持つ。
-- 長期保存が必要なIncidentだけを生成物側の`Specs/<FeatureName>/incidents/`へ記録する。
-- 美的Scene生成では、過剰なSpec一式より先にVisual Intent Contractを作成する。
+- `.ai/context-packs/csharp-local-fix.yaml`
+- `.ai/context-packs/rendering-incident.yaml`
+- `.ai/context-packs/shader-change.yaml`
+- `.ai/context-packs/performance.yaml`
+- `.ai/context-packs/visual-direction.yaml`
 
-## Spec-driven workflow
+## 4. Project facts
 
-- 仕様がない新機能は最初に`unity-specify` SkillでSpecを作る。
-- 複数責務または複数ファイルへ跨る実装前に`spec.md`、`plan.md`、`tasks.md`を揃える。
-- 製品FeatureのSpec、Plan、Tasks、Implementationは`DarumaPPAP/UnityAIGC-Archive`へ保存する。
-- 仕様にない設定、Controller、Manager、Debug機能を追加しない。
-- 仮定は生成物側の`decisions.md`へ記録する。
-- 変更は対象Taskに必要な最小範囲へ限定する。
-- 選択Taskが完了しても、次Taskへ自動的に進まない。
+対象Repositoryの既存コード、asmdef、Project Context、Feature Specから次を確定する。
 
-## Visual quality gate
+- Unity Version
+- Render Pipeline / Version
+- RenderGraph
+- Platform / Graphics API
+- Editor / Player
+- Mono / IL2CPP
+- Burst / Jobs / Entities
+- Root Namespace
+- Build / Test方法
+- 実機Evidenceの有無
 
-美しいScene、Lighting、Look Development、Composition、Color、Atmosphere、Camera presentationを成果条件に含む場合は、次を適用する。
+Repositoryから確定できる情報を質問し直さない。確認できない条件は推測せず未検証とする。
 
-1. `DarumaPPAP/Beautiful-Definition`からTaskに一致するDefinition IDを選ぶ。
-2. 実装前にVisual Intent Contractを作る。
-3. Emotional intent、Experiential subject、Composition、Camera、Lighting、Color、Depth、Material、Post limitを確定する。
-4. Beauty gateとTechnical gateを分離する。
-5. Compile成功、PlayMode成功、Capture生成、機能数、Light数を美しさの証拠にしない。
-6. Reference作品の固有Character、Logo、Architecture、配置を直接複製しない。
-7. Human reviewなしに`VISUAL_ACCEPTED`としない。
-8. Human feedbackはBeautiful-DefinitionのObservation候補として分類する。
+## 5. Non-negotiable C# constraints
 
-Beautiful-Definitionへアクセスできず、現在の依頼にも十分なReferenceがない場合は、美的正本を推測せず`CONTEXT_REQUIRED`とする。
-
-## C# quality gate
-
-対象Unity、Render Pipeline、Platform、Editor / Player、Mono / IL2CPP、Development / Release、Burst / Jobs / Entities、呼び出し頻度、APIとシリアライズ互換性を先に確定する。
-
-判断順序:
-
-1. 仕様・意味論・所有権・寿命
-2. バグ・AOT・スレッド・セキュリティ
-3. Allocation・コピー・boxing・同期・描画頻度
-4. 計測証拠
-5. 自動修正の互換性
-
-静的に確定できる問題と実行時計測が必要な問題を分離する。
-
-## Non-negotiable coding constraints
-
-- Namespaceは対象プロジェクトの既存コード、asmdefの`rootNamespace`、または`Specs/ProjectProfile.md`から確定する。
-- Root Namespaceが設定済みなら`<RootNamespace>.<FeatureName>`、Root Namespaceなしなら`<FeatureName>`を使用する。
-- 既存コードを変更する場合は既存namespaceを保持する。
-- `Namespace`、`RootNamespace`、`<RootNamespace>`、`CHANGE_ME`を実際のnamespace、asmdef名、Assembly参照へ出力しない。
-- 先頭または末尾が`.`のnamespaceを生成しない。
-- privateフィールドは`_camelCase`。
-- enum型名は`E_UPPER_SNAKE_CASE`。
-- struct型名は`S_UPPER_SNAKE_CASE`。原則`readonly struct`。
+- 既存コード変更では既存namespaceを保持する。
+- Root Namespaceありは`<RootNamespace>.<FeatureName>`、なしは`<FeatureName>`。
+- `Namespace`、`RootNamespace`、`CHANGE_ME`、先頭・末尾`.`を実出力しない。
+- private fieldは`_camelCase`。
+- enumは`E_UPPER_SNAKE_CASE`。
+- structは必要時のみ`S_UPPER_SNAKE_CASE`、原則`readonly struct`。
 - constは`SCREAMING_SNAKE_CASE`。
-- mutable static状態、static event、Singleton、Service Locatorを追加しない。
-- `Manager`、`Controller`、`Util`、`Common`、`Helper`を責務説明なしで作らない。
-- 公開`async void`、`Task.Result`、`.Wait()`、`throw ex;`、空catch、`BinaryFormatter`を新規導入しない。
-- Burst / Jobsへmanaged object、managed array、暗黙boxing、所有権不明なNativeContainerを持ち込まない。
-- Reflection、dynamic、実行時ジェネリック生成はIL2CPP / AOT / stripping条件を確認する。
-- コメントは日本語で理由・制約・意図を書く。
+- Runtimeから`UnityEditor` APIを参照しない。
+- Editor機能はEditor FolderまたはEditor-only Assemblyへ隔離する。
+- MonoBehaviourは1 File 1 Type。
+- asmdefは境界が必要な場合だけ追加する。
+- mutable static状態、static event、Singleton、Service Locatorを安易に追加しない。
+- 不要なController、Manager、Setup、自動探索、Fallback、Cache、Debug UIを追加しない。
+- public API、SerializeField、Prefab、Scene、Save Data互換性を無断変更しない。
+- コメントは日本語で意図、制約、危険箇所を書く。
 
-## Shader / HLSL quality gate
+詳細は選択Context Packから対応Referenceを読む。
 
-ShaderLab、HLSL、Compute Shader、Shader Graph Custom Function、RendererFeature、RenderGraph、Shader Variantを扱う場合は次を読む。
+## 6. Rendering / Shader constraints
 
-1. `SkillReferences/SHADER_PERFORMANCE_STANDARDS.md`
-2. `SkillReferences/ShaderPerformance/UNITY_URP_POLICY.md`
-3. `SkillReferences/ShaderPerformance/SHADER_REVIEW_GATE.md`
-4. 対応Skill
-5. 監査時は`RULE_CATALOG.md`
-6. 修正時は`REFACTOR_POLICY.md`
-7. Variant変更時は`VARIANT_POLICY.md`
-
-作業順序:
-
-`Context Resolution -> Read-only Audit -> Variant Audit -> Runtime Evidence Plan -> Safe Refactor -> Review Gate`
-
-- ソースパターンだけでGPU時間を断定しない。
-- `if`、`loop`、`half`、`discard`を一律禁止しない。
-- Scanner結果を確定診断にしない。
+- Unity / URP Versionを確認せず別VersionのAPIを移植しない。
+- RendererFeatureではInjection Point、Queue、Layer、ShaderTag、Sorting、Resource read/writeを確認する。
+- RenderGraphとCompatibility APIを無計画に混在させない。
 - Shader名、Property、Keyword、Pass、LightMode、RenderState、CBUFFERを無断変更しない。
-- 新Pass追加よりRendererFeature filtering、RenderQueue、Layer、ShaderTag、RendererList、既存Pass再利用を先に検討する。
-- Motion Vector、Depth、History UV、Reprojection、Disocclusion、Reactive Maskを安易に低精度化しない。
+- 新Pass追加より既存Pass、RendererList filtering、RenderQueue、Layer、ShaderTagを先に検討する。
+- Motion Vector、Depth、History UV、Reprojection、Disocclusionを安易に低精度化しない。
+- `if`、`loop`、`half`、`discard`を一律禁止しない。
+- Shader PatternだけでGPU時間を断定しない。
 - Variant削減前にRuntime Keyword、Addressables、AssetBundle、Resources、Strict Variantを確認する。
-- 1 Patchにつき主要仮説は1つ。Before / AfterとRevert条件を記録する。
-- Editor結果だけでTarget Player、Console、Switch実機を保証しない。
+- Editor結果だけでPlayer、Switch、Console実機を保証しない。
 
-## Skill authoring
+## 7. Audit, mutation, evidence
 
-Skillを追加または大幅更新する場合は`SkillReferences/UNITY_SKILL_AUTHORING_STANDARD.md`を読む。
+- Read-only AuditとMutationを分離する。
+- 原因未確定のIncidentで複数箇所を同時変更しない。
+- 一つのPatchにつきTask、Confirmed Finding、主要仮説のいずれか一つを扱う。
+- 性能変更はBefore / After、品質条件、Revert条件を持つ。
+- Compile成功だけでRuntime、Visual、Performance、実機を承認しない。
+- AIの自己申告だけをEvidenceにしない。
 
-- `description`は`Use when ...`で開始し、発火条件、成果物、非対象を記載する。
-- Flow、Audit、Modifier、Evidenceの責務を分離する。
-- 長い共通知識をSkillへコピーせず、Referenceへ委譲する。
-- `Tests/SkillRouting/cases.yaml`または対応する追加ケースへPositive、Negative、Conflict、Scope、Evidenceケースを追加する。
-- `python Tools/SkillValidator/validate_skills.py`で構造を確認する。
-- 既存Skillを段階移行する間はadvisory modeを使い、新規Skillは`--strict`で確認する。
+## 8. Visual boundary
 
-## Completion report
+美しいScene、Lighting、Composition、Color、Atmosphere、Camera presentationでは`unity-visual-direction`を使用し、必要なBeautiful-Definitionだけを取得する。
 
-- Goalと達成状態
-- 最終State
-- Primary lane / Primary Skill
-- 生成物または変更物の保存先リポジトリ
-- 変更ファイル
-- Task IDまたはIncident ID
-- 仕様との差異
-- 重大なFindingと対応
-- 保持または変更した互換性契約
-- 実施した検証階層
-- 観測結果と証拠
-- 実行したRecovery
-- Unity側の確認事項
+- Visual Intentなしに美しさを推測しない。
+- Compile、Capture生成、Light数、Bloom、FogをBeauty Evidenceにしない。
+- Human reviewなしに`VISUAL_ACCEPTED`としない。
+- 固有Character、Logo、Architecture、配置を直接複製しない。
+
+## 9. Generated artifacts
+
+UnityAgentを参照して生成した製品FeatureはUnityAIGC-Archiveへ保存する。UnityAgent内の製品Feature用`Implementation/`または`Specs/`へ新規生成しない。
+
+## 10. Completion contribution
+
+Domain SkillはExecution Ownerへ次を返す。
+
+- Confirmed context
+- 適用したContext Pack
+- Domain findings
+- Mutation constraints
+- Required validation
+- Evidence status
 - 未検証事項
-- Revert条件
-- 人間判断が必要な項目
-- Visual taskでは参照Definition ID、Beauty gate、Human approval status
+- Compatibility / Revert条件
 
-Unityでコンパイルしていない場合は動作確認済みと表現しない。実機未計測なら性能改善を確定表現しない。Human reviewを実施していない場合は美しいことを確認済みと表現しない。
+実行モード、Graph State、Budget、Human Gateの最終管理はUnity-Graph-Engineeringへ委譲する。
