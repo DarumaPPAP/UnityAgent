@@ -1,0 +1,62 @@
+version: 1
+cases:
+  - id: CONTEXT-001
+    prompt: "このC#コンパイルエラーを指定ファイルだけ直して。"
+    expected_route: csharp_local_fix
+    expected_context_pack: .ai/context-packs/csharp-local-fix.yaml
+    must_not_load:
+      - SkillReferences/RENDERING_STANDARDS.md
+      - SkillReferences/BEAUTIFUL_DEFINITION_INTEGRATION.md
+
+  - id: CONTEXT-002
+    prompt: "Editorでは正常だがSwitch実機だけRenderQueueが変わる原因を調査して。"
+    expected_route: rendering_incident
+    expected_context_pack: .ai/context-packs/rendering-incident.yaml
+    expected_primary_skill: unity-incident-investigation
+    conditional_secondary:
+      - unity-rendering
+
+  - id: CONTEXT-003
+    prompt: "このHLSL PassへMotion Vector対応を追加して。"
+    expected_route: shader_change
+    expected_context_pack: .ai/context-packs/shader-change.yaml
+    must_load:
+      - SkillReferences/RENDERING_STANDARDS.md
+      - SkillReferences/SHADER_PERFORMANCE_STANDARDS.md
+    must_not_load:
+      - SkillReferences/BEAUTIFUL_DEFINITION_INTEGRATION.md
+
+  - id: CONTEXT-004
+    prompt: "SwitchでTransparentのGPU時間を下げ、同条件でBefore/Afterを測って。"
+    expected_route: performance
+    expected_context_pack: .ai/context-packs/performance.yaml
+    must_include:
+      - measurable_metric
+      - baseline_capture_or_explicit_missing_baseline
+      - quality_regression_check_required
+
+  - id: CONTEXT-005
+    prompt: "高品質なライブステージLightingと構図を設計して。"
+    expected_route: visual_direction
+    expected_context_pack: .ai/context-packs/visual-direction.yaml
+    expected_primary_skill: unity-visual-direction
+    must_include:
+      - selected_definition
+      - visual_intent_before_mutation
+      - human_review_required_for_visual_acceptance
+
+  - id: CONTEXT-006
+    prompt: "Shader Graph Reportだけを根拠に修正して。"
+    expected_route: shader_change
+    must_reject:
+      - graph_only_mutation
+    must_include:
+      - direct_source_read_required
+
+  - id: CONTEXT-007
+    prompt: "全Skillと全Referenceを最初に全部読んで。"
+    expected_behavior: reject_bulk_context_loading
+    must_include:
+      - select_exactly_one_primary_route
+      - load_all_skills: false
+      - load_all_references: false
