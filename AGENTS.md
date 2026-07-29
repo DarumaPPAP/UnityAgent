@@ -9,7 +9,8 @@ UnityAgentはUnity / C# / URP / RenderGraph / Shader / Performance / Visual Dire
 - 製品コード、製品仕様、導入資料は`DarumaPPAP/UnityAIGC-Archive`へ保存する。
 - `Reference/`はRead-only。
 - 美的正本は`DarumaPPAP/Beautiful-Definition`。
-- Google Driveは大容量資料と閲覧用Reference。編集正本はGitHub。
+- Google Driveは原資料と大容量Evidence。編集正本はGitHub。
+- 人間向けの詳細Knowledge Productは`DarumaPPAP/Unity-Knowledge-Products`を予定し、UnityAgentへ長文を複製しない。
 
 ## 2. Execution ownership
 
@@ -19,6 +20,8 @@ UnityAgentは次だけを担当する。
 
 - Domain route
 - Context Pack
+- Knowledge Contract
+- Task Contract
 - Unity固有の実装・監査手順
 - Unity固有ValidatorとEvidence要求
 
@@ -35,16 +38,49 @@ Compatibility adapter:
 - `.agents/skills/unity-production-workflow/SKILL.md`
 - `SkillReferences/UNITY_AGENT_SUPERVISOR_MODEL.md`
 
-## 3. Context routing
+## 3. Execution profiles
 
-最初に`.ai/context-index.yaml`を読み、依頼に一致するContext Packを一つ選ぶ。
+最初に`.ai/execution-profiles.yaml`を読み、次のProfileを選ぶ。
+
+### Generic Planning
+
+Projectへアクセスしない標準Profile。Unity Version、Render Pipeline、Platform、Goal、Constraints、禁止事項、期待結果の最小手動入力だけで計画とPortable成果物を作る。
+
+- Project Contextは必須ではない。
+- Capability Manifestは必須ではない。
+- 未解決のPath、Scene、Renderer Data、Layer、ShaderTagを推測しない。
+- 未解決Bindingを記録し、残りの設計と実装を継続する。
+
+### Personal Full-Control
+
+個人Projectで明示的に許可された場合だけ、Source、Unity Tool、Screenshot、Profiler、Gitを利用する。
+
+- Project Context GeneratorはOptionalな加速装置。
+- Generatorが失敗しても最小手動入力とSource探索から継続する。
+- Credential、Private Key、Password、Environment Variable値、証明書、Keystore Secretは収集しない。
+
+### Team Safe Import
+
+会社Project向け。一方向のPortable Package Importだけを行う。
+
+- Project Context Generatorを使用しない。
+- Personal Packageへ依存しない。
+- Project Scanner、Source Export、Screenshot、Hierarchy Export、Unity Project ID、Git、Issue、Cloud、Environment Variable、組織情報、顧客情報へのアクセス機能を持たない。
+- これらの情報は`redacted`としてもSchemaへ追加しない。
+
+## 4. Context routing
+
+最初に`.ai/context-index.yaml`を読み、依頼に一致するContext PackとTask Contractを一つずつ選ぶ。
 
 - 全Skillを一括で読まない。
 - 全Referenceを一括で読まない。
 - Primary Domain Skillは一つ。
-- Conditional Referenceは条件成立時だけ読む。
+- Primary Task Contractは一つ。
+- Primary Knowledgeは一つ。
+- Conditional ReferenceとRelated Knowledgeは条件成立時だけ読む。
 - 対象Sourceと直接依存を優先する。
 - Knowledge Graphは候補Artifactの絞り込みにだけ使い、変更前にSourceを直接読む。
+- 人間向けHTMLは設計理由、比較、実験、Visual Reference、Decision履歴が必要な場合だけ読む。
 
 Context Pack:
 
@@ -54,14 +90,34 @@ Context Pack:
 - `.ai/context-packs/performance.yaml`
 - `.ai/context-packs/visual-direction.yaml`
 
-## 4. Project facts
+Task Contract:
 
-対象Repositoryの既存コード、asmdef、Project Context、Feature Specから次を確定する。
+- `.ai/task-contracts/csharp-local-fix.yaml`
+- `.ai/task-contracts/rendering-incident.yaml`
+- `.ai/task-contracts/shader-change.yaml`
+- `.ai/task-contracts/renderer-feature-change.yaml`
+- `.ai/task-contracts/performance-experiment.yaml`
+- `.ai/task-contracts/asset-data-change.yaml`
+- `.ai/task-contracts/portable-feature.yaml`
+- `.ai/task-contracts/safe-import-integration.yaml`
+
+## 5. Minimum project facts
+
+Project ContextやUnity Toolがなくても計画を止めない。最低限、依頼または手動定義から次を得る。
 
 - Unity Version
-- Render Pipeline / Version
-- RenderGraph
-- Platform / Graphics API
+- Render Pipeline
+- RenderGraph使用有無
+- Target Platform
+- Goal
+- Constraints
+- Prohibited Changes
+- Expected Result
+
+対象Repositoryへアクセスできる場合は、既存コード、asmdef、Feature Spec、Project Contextから追加事実を確定する。
+
+- Render Pipeline Version
+- Graphics API
 - Editor / Player
 - Mono / IL2CPP
 - Burst / Jobs / Entities
@@ -69,9 +125,34 @@ Context Pack:
 - Build / Test方法
 - 実機Evidenceの有無
 
-Repositoryから確定できる情報を質問し直さない。確認できない条件は推測せず未検証とする。
+Repositoryから確定できる情報を質問し直さない。確認できない条件は推測せず、未解決Bindingまたは未検証Gateとして記録する。
 
-## 5. Non-negotiable C# constraints
+## 6. Knowledge boundary
+
+UnityAgentの`.ai/knowledge/`にはAI実装用の圧縮契約だけを置く。
+
+- 使用条件
+- 必須入力
+- 実装契約
+- 禁止事項
+- 関連Knowledge
+- 必須Evidence
+- Stop条件
+- Human Reference ID
+
+長い解説、画像、資料全文、Source要約のDump、実験画像は置かない。詳細Knowledgeの正本はUnity-Knowledge-Products、原資料の正本はGoogle Driveとする。
+
+## 7. Capability-independent validation
+
+Quality Gateの結果は`passed`、`failed`、`unavailable`のいずれか。
+
+- `unavailable`はTask失敗ではない。
+- `unavailable`を成功として報告しない。
+- 実行できないGateは理由と残作業へ移す。
+- Compile成功だけでRuntime、Visual、Performance、実機を承認しない。
+- AIの自己申告だけをEvidenceにしない。
+
+## 8. Non-negotiable C# constraints
 
 - 既存コード変更では既存namespaceを保持する。
 - Root Namespaceありは`<RootNamespace>.<FeatureName>`、なしは`<FeatureName>`。
@@ -91,7 +172,7 @@ Repositoryから確定できる情報を質問し直さない。確認できな�
 
 詳細は選択Context Packから対応Referenceを読む。
 
-## 6. Rendering / Shader constraints
+## 9. Rendering / Shader constraints
 
 - Unity / URP Versionを確認せず別VersionのAPIを移植しない。
 - RendererFeatureではInjection Point、Queue、Layer、ShaderTag、Sorting、Resource read/writeを確認する。
@@ -104,16 +185,17 @@ Repositoryから確定できる情報を質問し直さない。確認できな�
 - Variant削減前にRuntime Keyword、Addressables、AssetBundle、Resources、Strict Variantを確認する。
 - Editor結果だけでPlayer、Switch、Console実機を保証しない。
 
-## 7. Audit, mutation, evidence
+## 10. Audit, mutation, evidence
 
 - Read-only AuditとMutationを分離する。
 - 原因未確定のIncidentで複数箇所を同時変更しない。
 - 一つのPatchにつきTask、Confirmed Finding、主要仮説のいずれか一つを扱う。
 - 性能変更はBefore / After、品質条件、Revert条件を持つ。
-- Compile成功だけでRuntime、Visual、Performance、実機を承認しない。
-- AIの自己申告だけをEvidenceにしない。
+- Scene、Prefab、MaterialはRaw YAMLで直接変更しない。
+- PackageはPackageManager ClientまたはPortable UPM Packageを使用する。
+- Project Settings、Renderer Data、Render Pipeline Assetの変更には明示承認を要求する。
 
-## 8. Visual boundary
+## 11. Visual boundary
 
 美しいScene、Lighting、Composition、Color、Atmosphere、Camera presentationでは`unity-visual-direction`を使用し、必要なBeautiful-Definitionだけを取得する。
 
@@ -122,21 +204,26 @@ Repositoryから確定できる情報を質問し直さない。確認できな�
 - Human reviewなしに`VISUAL_ACCEPTED`としない。
 - 固有Character、Logo、Architecture、配置を直接複製しない。
 
-## 9. Generated artifacts
+## 12. Generated artifacts
 
 UnityAgentを参照して生成した製品FeatureはUnityAIGC-Archiveへ保存する。UnityAgent内の製品Feature用`Implementation/`または`Specs/`へ新規生成しない。
 
-## 10. Completion contribution
+Generic PlanningのPortable成果物はProject固有Pathや名前を持たず、Setup Wizard、Integration Contract、未解決Binding、Validation手順を含める。
+
+## 13. Completion contribution
 
 Domain SkillはExecution Ownerへ次を返す。
 
+- Execution Profile
+- Task Contract
 - Confirmed context
 - 適用したContext Pack
+- Primary Knowledgeと追加Related Knowledge
 - Domain findings
 - Mutation constraints
 - Required validation
 - Evidence status
-- 未検証事項
+- Unavailable Gateと残作業
 - Compatibility / Revert条件
 
 実行モード、Graph State、Budget、Human Gateの最終管理はUnity-Graph-Engineeringへ委譲する。
