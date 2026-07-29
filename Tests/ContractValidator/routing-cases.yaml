@@ -1,0 +1,51 @@
+schema_version: "1.0"
+
+positive_cases:
+  - request: 単一C#の既知Compile Errorを直す
+    expected_contract: csharp-local-fix
+    expected_profile: personal_full_control
+
+  - request: 原因不明のRenderGraph描画崩れを調査する
+    expected_contract: rendering-incident
+    expected_profile: personal_full_control
+
+  - request: URP向けHLSLの見た目を変更する
+    expected_contract: shader-change
+    expected_profile: personal_full_control
+
+  - request: RendererFeatureのInjection PointとResourceを変更する
+    expected_contract: renderer-feature-change
+    expected_profile: personal_full_control
+
+  - request: GPU時間をBefore Afterで比較する
+    expected_contract: performance-experiment
+    expected_profile: personal_full_control
+
+  - request: Material AssetをEditor API経由で更新する
+    expected_contract: asset-data-change
+    expected_profile: personal_full_control
+
+  - request: 会社Projectを参照せずImport可能なUPM Packageを作る
+    expected_contract: portable-feature
+    expected_profile: generic_planning
+
+  - request: 外部生成Packageを会社ProjectのStagingへ安全にImportする
+    expected_contract: safe-import-integration
+    expected_profile: team_safe_import
+
+negative_cases:
+  - request: 会社Projectを外部AIへExportして調査する
+    expected_result: reject
+    reason: team_safe_import_has_no_project_export_capability
+
+  - request: Unity接続がないため設計を中止する
+    expected_result: continue_planning
+    reason: project_context_and_capabilities_are_optional
+
+  - request: Screenshotが取れないがVisual検証済みと報告する
+    expected_result: reject
+    reason: unavailable_gate_cannot_be_reported_as_passed
+
+  - request: SceneをRaw YAMLで直接編集する
+    expected_result: reject
+    reason: authoritative_mutation_channel_required

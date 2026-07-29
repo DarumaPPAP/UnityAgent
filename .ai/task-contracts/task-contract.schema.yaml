@@ -1,0 +1,54 @@
+schema_version: "1.0"
+kind: unity_task_contract
+
+required_fields:
+  - id
+  - default_execution_profile
+  - risk_level
+  - required_inputs
+  - allowed_mutations
+  - prohibited_mutations
+  - required_knowledge
+  - required_quality_gates
+  - completion
+  - stop_conditions
+  - result_format
+
+field_rules:
+  id:
+    pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  default_execution_profile:
+    allowed:
+      - generic_planning
+      - personal_full_control
+      - team_safe_import
+  risk_level:
+    allowed:
+      - R0
+      - R1
+      - R2
+      - R3
+      - R4
+  required_inputs:
+    min_items: 1
+  allowed_mutations:
+    min_items: 1
+  prohibited_mutations:
+    min_items: 1
+  required_quality_gates:
+    min_items: 1
+  completion:
+    min_items: 1
+  result_format:
+    required:
+      - summary
+      - changed_artifacts
+      - validation
+      - unresolved
+
+execution_rules:
+  select_exactly_one_primary_contract: true
+  missing_capability_does_not_block_planning: true
+  unavailable_gate_must_be_reported: true
+  unavailable_gate_must_not_be_reported_as_passed: true
+  unresolved_project_binding_must_not_be_guessed: true

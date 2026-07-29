@@ -1,0 +1,93 @@
+schema_version: "1.0"
+
+result_statuses:
+  - passed
+  - failed
+  - unavailable
+
+rules:
+  unavailable_is_not_failure: true
+  unavailable_is_not_success: true
+  unavailable_requires_reason: true
+  unavailable_requires_remaining_validation: true
+  evidence_scope_must_not_be_overclaimed: true
+
+gates:
+  static_review:
+    proves:
+      - source_structure
+      - declared_contract_consistency
+      - prohibited_api_usage
+    does_not_prove:
+      - unity_compile
+      - runtime_behavior
+      - visual_quality
+
+  compile:
+    proves:
+      - csharp_or_shader_syntax_for_executed_scope
+      - assembly_reference_resolution_for_executed_scope
+    does_not_prove:
+      - runtime_behavior
+      - visual_quality
+      - platform_compatibility
+
+  shader_compile:
+    proves:
+      - shader_compilation_for_executed_variants_and_backend
+    does_not_prove:
+      - all_player_variants
+      - runtime_keyword_coverage
+      - visual_correctness
+
+  render_graph_validation:
+    proves:
+      - declared_pass_and_resource_validity_for_executed_path
+    does_not_prove:
+      - visual_correctness
+      - target_device_support
+
+  editmode:
+    proves:
+      - tested_editor_logic
+      - tested_asset_or_serialization_contract
+
+  playmode:
+    proves:
+      - tested_runtime_behavior_in_editor_or_test_player_scope
+
+  player:
+    proves:
+      - tested_player_code_path
+    does_not_prove:
+      - all_target_devices
+
+  graphics_compare:
+    proves:
+      - visual_difference_under_fixed_capture_conditions
+    does_not_prove:
+      - artistic_acceptance
+
+  performance_capture:
+    proves:
+      - measured_performance_under_recorded_conditions
+    does_not_prove:
+      - other_platforms_or_scenes
+
+  target_device:
+    proves:
+      - tested_behavior_on_the_named_device_and_build
+
+  package_security_scan:
+    proves:
+      - configured_rules_found_no_blocking_pattern
+    does_not_prove:
+      - complete_security_of_all_dependencies
+
+  package_structure_validation:
+    proves:
+      - portable_layout_and_declared_boundaries
+
+  serialization_validation:
+    proves:
+      - tested_serialization_contract_and_reference_integrity

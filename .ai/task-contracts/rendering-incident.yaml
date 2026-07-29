@@ -1,0 +1,45 @@
+id: rendering-incident
+default_execution_profile: personal_full_control
+risk_level: R2
+
+required_inputs:
+  - expected_behavior
+  - actual_behavior
+  - reproduction_conditions
+  - editor_player_or_target_scope
+
+allowed_mutations:
+  - one_confirmed_finding
+  - one_primary_hypothesis_patch
+
+prohibited_mutations:
+  - multi_hypothesis_patch
+  - symptom_hiding_fallback
+  - unrelated_render_pipeline_change
+  - completion_claim_without_runtime_or_visual_evidence
+
+required_knowledge: []
+required_quality_gates:
+  - static_review
+  - compile
+  - runtime_reproduction
+conditional_quality_gates:
+  - graphics_compare
+  - player
+  - target_device
+
+completion:
+  - root_cause_or_bounded_primary_hypothesis_is_recorded
+  - patch_scope_matches_the_finding
+  - reproduction_is_resolved_or_remaining_evidence_is_listed
+
+stop_conditions:
+  - second_primary_hypothesis_is_required
+  - target_specific_claim_requires_unavailable_target_evidence
+  - requested_change_conflicts_with_rendering_contract
+
+result_format:
+  summary: symptom_cause_patch
+  changed_artifacts: paths_and_hypothesis
+  validation: reproduction_and_gate_statuses
+  unresolved: alternative_hypotheses_and_missing_evidence

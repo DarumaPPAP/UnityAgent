@@ -1,0 +1,46 @@
+id: rendering.outline_rendering
+version: "0.1.0"
+status: draft
+
+use_when:
+  - outline_rendering
+  - inverted_hull
+  - outline_temporal_artifact
+  - outline_pass_integration
+
+required_inputs:
+  - outline_method
+  - render_queue_range
+  - layer_filter
+  - shader_tag
+  - render_pass_event
+
+implementation_contract:
+  - outline_geometry_and_culling_are_explicit
+  - depth_test_and_write_are_explicit
+  - transparent_objects_policy_is_explicit
+  - motion_vector_policy_is_explicit
+
+prohibited:
+  - draw_outline_for_transparent_objects_by_default
+  - assume_outline_disable_removes_all_outline_geometry_passes
+  - change_existing_shader_pass_contract_without_variant_review
+
+required_evidence:
+  - static_contract_review
+  - unity_compile
+  - opaque_outline_case
+  - transparent_exclusion_case
+
+related:
+  required: []
+  conditional:
+    - rendering.temporal_anti_aliasing
+    - rendering.motion_vectors
+    - rendering.transparent_rendering
+    - rendering.shader_variants
+
+human_reference:
+  repository: DarumaPPAP/Unity-Knowledge-Products
+  knowledge_id: rendering.outline_rendering
+  entry: Rendering/OutlineRendering/index.html

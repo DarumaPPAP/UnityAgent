@@ -1,0 +1,95 @@
+schema_version: "1.0"
+
+planning_baseline:
+  project_context_required: false
+  capability_manifest_required: false
+  minimum_manual_inputs:
+    - unity_version
+    - render_pipeline
+    - target_platforms
+    - goal
+    - constraints
+    - prohibited_changes
+    - expected_result
+  unresolved_project_bindings:
+    policy: record_and_continue
+    never_guess:
+      - asset_path
+      - scene_name
+      - renderer_data_name
+      - layer
+      - shader_tag
+      - package_version
+
+profiles:
+  generic_planning:
+    purpose: Projectへアクセスせず設計、Portable実装、導入契約を生成する
+    project_access: none
+    project_context: optional
+    allowed_outputs:
+      - architecture
+      - implementation_plan
+      - portable_source
+      - setup_wizard
+      - integration_contract
+      - validation_instructions
+      - unresolved_project_bindings
+    prohibited:
+      - claim_project_validation
+      - assume_project_paths
+      - assume_project_asset_names
+      - mutate_project_settings
+
+  personal_full_control:
+    purpose: 個人Projectで直接実装、Unity検証、Git操作を行う
+    project_access: full_when_authorized
+    project_context: optional_accelerator
+    optional_tools:
+      - project_context_generator
+      - unity_command_surface
+      - screenshot
+      - profiler
+      - git_integration
+    fallback_when_tools_unavailable: continue_from_manual_inputs_and_source
+    secrets_never_collect:
+      - credentials
+      - private_keys
+      - passwords
+      - environment_variable_values
+      - certificate_contents
+      - keystore_secrets
+
+  team_safe_import:
+    purpose: Project外で生成したPortable成果物を一方向にImportする
+    project_access: no_external_export
+    project_context: prohibited
+    package_dependency_on_personal_tools: prohibited
+    allowed_local_operations:
+      - package_security_scan
+      - dependency_validation
+      - staging_import
+      - package_compile
+      - package_tests
+      - rollback
+    absent_capabilities:
+      - project_scanner
+      - source_export
+      - screenshot_capture
+      - hierarchy_export
+      - unity_project_id_access
+      - git_access
+      - issue_access
+      - cloud_settings_access
+      - environment_variable_access
+      - organization_metadata_access
+      - customer_metadata_access
+
+quality_gate_result:
+  allowed_statuses:
+    - passed
+    - failed
+    - unavailable
+  unavailable_policy:
+    continue_planning: true
+    claim_success: false
+    append_to_remaining_validation: true

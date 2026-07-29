@@ -1,0 +1,50 @@
+id: renderer-feature-change
+default_execution_profile: personal_full_control
+risk_level: R3
+
+required_inputs:
+  - unity_and_urp_version
+  - render_graph_or_compatibility_mode
+  - injection_point
+  - target_cameras
+  - expected_rendering_result
+
+allowed_mutations:
+  - renderer_feature_source
+  - owned_render_pass_source
+  - directly_owned_shader_resources
+
+prohibited_mutations:
+  - hidden_project_settings_change
+  - unrelated_renderer_data_mutation
+  - mixed_render_graph_and_compatibility_path_without_contract
+  - global_state_mutation_without_explicit_pass_permission
+
+required_knowledge:
+  - select_primary_rendering_knowledge_from_index
+required_quality_gates:
+  - static_review
+  - compile
+  - render_graph_validation
+conditional_quality_gates:
+  - runtime_reproduction
+  - graphics_compare
+  - player
+  - target_device
+
+completion:
+  - injection_point_and_camera_filter_are_explicit
+  - read_write_resources_and_lifetimes_are_explicit
+  - renderer_selection_and_fallback_policy_are_explicit
+  - compile_and_render_graph_statuses_are_reported
+
+stop_conditions:
+  - target_renderer_data_is_unresolved_for_direct_mutation
+  - urp_internal_patch_is_required_without_explicit_approval
+  - resource_ownership_cannot_be_proven
+
+result_format:
+  summary: pass_placement_resources_and_result
+  changed_artifacts: feature_pass_shader_paths
+  validation: compile_render_graph_runtime_statuses
+  unresolved: project_bindings_platforms_and_remaining_gates

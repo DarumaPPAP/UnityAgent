@@ -1,0 +1,44 @@
+id: rendering.ui_composition
+version: "0.1.0"
+status: draft
+
+use_when:
+  - ui_composite
+  - full_resolution_ui
+  - post_process_exclusion
+  - temporal_ui_blur
+
+required_inputs:
+  - canvas_render_modes
+  - composition_stage
+  - target_resolution
+  - post_process_boundary
+  - alpha_contract
+
+implementation_contract:
+  - ui_resolution_ownership_is_explicit
+  - alpha_and_color_space_contracts_are_explicit
+  - post_process_and_temporal_boundaries_are_explicit
+  - camera_and_culling_ownership_are_explicit
+
+prohibited:
+  - assume_screen_space_overlay_matches_custom_composite
+  - introduce_additional_camera_without_cost_and_dependency_review
+  - claim_flicker_free_edges_without_runtime_capture
+
+required_evidence:
+  - static_contract_review
+  - unity_compile
+  - alpha_edge_case
+  - motion_case
+
+related:
+  required: []
+  conditional:
+    - rendering.temporal_anti_aliasing
+    - rendering.transparent_rendering
+
+human_reference:
+  repository: DarumaPPAP/Unity-Knowledge-Products
+  knowledge_id: rendering.ui_composition
+  entry: Rendering/UIComposition/index.html
