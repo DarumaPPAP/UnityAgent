@@ -1,0 +1,70 @@
+schema_version: "1.0"
+
+channels:
+  csharp:
+    preferred:
+      - source_patch
+
+  shader:
+    preferred:
+      - source_patch
+
+  scene:
+    preferred:
+      - connected_editor_command
+      - editor_script
+    raw_yaml_edit: prohibited
+
+  prefab:
+    preferred:
+      - connected_editor_command
+      - editor_script
+    raw_yaml_edit: prohibited
+
+  material:
+    preferred:
+      - serialized_object
+      - connected_editor_command
+    raw_yaml_edit: prohibited
+
+  package:
+    preferred:
+      - package_manager_client
+      - portable_upm_package
+    manifest_direct_edit: prohibited
+
+  project_settings:
+    preferred:
+      - editor_api
+      - serialized_object_when_supported
+    explicit_approval_required: true
+
+  render_pipeline_asset:
+    preferred:
+      - editor_api
+      - serialized_object
+    explicit_approval_required: true
+
+  generated_context:
+    preferred:
+      - personal_project_context_generator
+    required_for_planning: false
+    team_safe_import: prohibited
+
+profiles:
+  generic_planning:
+    direct_project_mutation: prohibited
+    output:
+      - portable_source
+      - setup_wizard
+      - manual_bindings
+
+  personal_full_control:
+    direct_project_mutation: authorized_only
+    project_context_generator: optional
+
+  team_safe_import:
+    allowed_direction: package_to_project_only
+    project_to_external_export: prohibited
+    staging_required: true
+    automatic_project_settings_change: prohibited
