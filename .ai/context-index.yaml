@@ -1,13 +1,32 @@
-schema_version: "1.0"
+schema_version: "2.0"
 repository_role: unity_domain_knowledge
 execution_owner: DarumaPPAP/Unity-Graph-Engineering
+execution_profiles: .ai/execution-profiles.yaml
+task_contract_schema: .ai/task-contracts/task-contract.schema.yaml
+knowledge_index: .ai/knowledge/index.yaml
+quality_gates: .ai/quality-gates.yaml
+mutation_channels: .ai/mutation-channels.yaml
+risk_levels: .ai/risk-levels.yaml
 
 routing_rules:
   select_exactly_one_primary_route: true
+  select_exactly_one_primary_task_contract: true
+  select_at_most_one_primary_knowledge: true
   load_all_skills: false
   load_all_references: false
+  project_context_required_for_planning: false
+  capability_manifest_required_for_planning: false
   direct_source_read_required_before_mutation: true
   knowledge_graph_is_navigation_only: true
+  human_html_is_conditional_reference: true
+
+profile_selection:
+  project_not_accessible:
+    profile: generic_planning
+  personal_project_full_access_authorized:
+    profile: personal_full_control
+  company_project_external_authoring_or_import:
+    profile: team_safe_import
 
 routes:
   csharp_local_fix:
@@ -17,6 +36,7 @@ routes:
       - single behavior correction
     primary_skill: csharp-safe-patch
     context_pack: .ai/context-packs/csharp-local-fix.yaml
+    task_contract: .ai/task-contracts/csharp-local-fix.yaml
 
   rendering_incident:
     triggers:
@@ -26,26 +46,73 @@ routes:
       - rendering regression
     primary_skill: unity-incident-investigation
     context_pack: .ai/context-packs/rendering-incident.yaml
+    task_contract: .ai/task-contracts/rendering-incident.yaml
 
   shader_change:
     triggers:
       - ShaderLab
       - HLSL
       - Compute Shader
-      - RendererFeature shader integration
       - motion vector or temporal shader work
     primary_skill: unity-rendering
     context_pack: .ai/context-packs/shader-change.yaml
+    task_contract: .ai/task-contracts/shader-change.yaml
+    knowledge_selection: required_when_domain_matches
 
-  performance:
+  renderer_feature_change:
+    triggers:
+      - RendererFeature
+      - ScriptableRenderPass
+      - RenderGraph pass
+      - injection point change
+      - renderer resource integration
+    primary_skill: unity-rendering
+    context_pack: .ai/context-packs/shader-change.yaml
+    task_contract: .ai/task-contracts/renderer-feature-change.yaml
+    knowledge_selection: required_when_domain_matches
+
+  performance_experiment:
     triggers:
       - CPU optimization
       - GPU optimization
       - memory optimization
       - shader performance
       - build size
+      - Before After measurement
     primary_skill: unity-runtime-evidence
     context_pack: .ai/context-packs/performance.yaml
+    task_contract: .ai/task-contracts/performance-experiment.yaml
+
+  asset_data_change:
+    triggers:
+      - Scene asset change
+      - Prefab change
+      - Material change
+      - serialized asset change
+    primary_skill: csharp-safe-patch
+    context_pack: .ai/context-packs/csharp-local-fix.yaml
+    task_contract: .ai/task-contracts/asset-data-change.yaml
+
+  portable_feature:
+    triggers:
+      - project independent package
+      - external authoring
+      - portable UPM package
+      - company project without source access
+    primary_skill: unity-rendering
+    context_pack: .ai/context-packs/shader-change.yaml
+    task_contract: .ai/task-contracts/portable-feature.yaml
+    forced_profile: generic_planning
+
+  safe_import_integration:
+    triggers:
+      - team safe import
+      - staging package import
+      - local package security validation
+    primary_skill: csharp-safe-patch
+    context_pack: .ai/context-packs/csharp-local-fix.yaml
+    task_contract: .ai/task-contracts/safe-import-integration.yaml
+    forced_profile: team_safe_import
 
   visual_direction:
     triggers:
@@ -56,16 +123,27 @@ routes:
       - visual quality review
     primary_skill: unity-visual-direction
     context_pack: .ai/context-packs/visual-direction.yaml
+    task_contract: .ai/task-contracts/portable-feature.yaml
+    knowledge_selection: optional
 
 conflicts:
   rendering_incident_and_shader_change:
     primary: rendering_incident
     secondary_after_evidence: shader_change
 
+  rendering_incident_and_renderer_feature_change:
+    primary: rendering_incident
+    secondary_after_evidence: renderer_feature_change
+
   visual_direction_and_rendering:
     primary_when_goal_is_beauty: visual_direction
     primary_when_goal_is_technical_fix: rendering_incident
 
+  portable_feature_and_direct_project_change:
+    primary_when_project_is_not_accessible: portable_feature
+    primary_when_personal_access_is_authorized: renderer_feature_change
+
 fallback:
   action: use SkillReferences/UNITY_SKILL_ROUTING.md
   do_not_load_every_route: true
+  continue_with_generic_planning_when_project_context_is_missing: true
