@@ -1,0 +1,38 @@
+name: Validate UnityAgent Contracts
+
+on:
+  pull_request:
+    paths:
+      - ".agents/skills/**"
+      - ".ai/**"
+      - "Tools/SkillValidator/**"
+      - "Tools/ContractValidator/**"
+      - "Tests/ContractValidator/**"
+      - ".github/workflows/validate-agent-contracts.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - ".agents/skills/**"
+      - ".ai/**"
+      - "Tools/SkillValidator/**"
+      - "Tools/ContractValidator/**"
+      - "Tests/ContractValidator/**"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate Skills
+        run: python Tools/SkillValidator/validate_skills.py
+
+      - name: Validate Knowledge and Task Contracts
+        run: python Tools/ContractValidator/validate_contracts.py
