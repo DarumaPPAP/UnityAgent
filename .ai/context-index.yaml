@@ -46,6 +46,20 @@ routes:
     task_contract: .ai/task-contracts/architecture-design.yaml
     knowledge_selection: optional
 
+  graphics_mcp:
+    triggers:
+      - UnityGraphicsMCP
+      - Unity graphics MCP
+      - Unity Visual Director MCP
+      - reference image to Unity graphics direction
+      - Timeline Cinemachine Volume lighting GI reflection VFX tool integration
+      - Built-in URP HDRP graphics capability routing
+      - graphics inspect plan apply bake capture refine workflow
+    primary_skill: unity-architecture-design
+    context_pack: .ai/context-packs/graphics-mcp.yaml
+    task_contract: .ai/task-contracts/graphics-mcp.yaml
+    knowledge_selection: required_when_domain_matches
+
   csharp_local_fix:
     triggers:
       - bounded C# change
@@ -155,6 +169,18 @@ conflicts:
   architecture_design_and_renderer_feature_change:
     primary_when_pass_structure_is_undecided: architecture_design
     primary_when_rendering_contract_is_confirmed: renderer_feature_change
+
+  graphics_mcp_and_architecture_design:
+    primary_when_goal_is_UnityGraphicsMCP_contract_or_product_architecture: graphics_mcp
+    primary_when_goal_is_unrelated_Unity_architecture: architecture_design
+
+  graphics_mcp_and_visual_direction:
+    primary_when_goal_is_tool_contract_capability_or_mutation_workflow: graphics_mcp
+    primary_when_goal_is_scene_beauty_or_human_visual_review: visual_direction
+
+  graphics_mcp_and_renderer_feature_change:
+    primary_when_goal_is_MCP_orchestrated_graphics_system: graphics_mcp
+    primary_when_goal_is_bounded_RendererFeature_implementation: renderer_feature_change
 
   rendering_incident_and_architecture_design:
     primary: rendering_incident
