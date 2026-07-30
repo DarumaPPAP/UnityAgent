@@ -1,0 +1,81 @@
+schema_version: "1.0"
+id: architecture-design
+primary_skill: .agents/skills/unity-architecture-design/SKILL.md
+
+use_when:
+  - new Unity feature or system architecture
+  - class and C# file responsibility design
+  - MonoBehaviour Plain C# ScriptableObject separation
+  - MVP MVVM MVC selection
+  - Controller Manager Service Interface necessity review
+  - ECS Jobs Burst or hybrid adoption decision
+  - excessive file split or architecture refactoring review
+
+required:
+  - goal
+  - system_scope
+  - current_or_expected_scale
+  - ownership_and_lifetime
+  - target_platform
+  - performance_constraints
+  - prohibited_changes
+  - SkillReferences/ARCHITECTURE_DECISION_POLICY.md
+  - SkillReferences/ARCHITECTURE_STANDARDS.md
+  - SkillReferences/CODING_STANDARDS.md
+
+conditional:
+  existing_project:
+    - target source and direct dependencies
+    - asmdef and rootNamespace
+    - public and serialized contracts
+  ecs_jobs_burst:
+    - Entities package version
+    - Burst and Jobs availability
+    - managed reference boundary
+    - GameObject bridge requirements
+    - measurable workload
+  ui_presentation:
+    - UI framework
+    - binding complexity
+    - presentation testability
+  rendering:
+    - SkillReferences/RENDERING_STANDARDS.md
+    - .agents/skills/unity-rendering/SKILL.md
+
+excluded_by_default:
+  - unrelated domain catalogs
+  - all architecture patterns
+  - all project source files
+  - long human Knowledge Products without a comparison need
+
+rules:
+  single_cohesive_script_first: true
+  architecture_is_local_to_problem: true
+  every_new_file_requires_split_reason: true
+  hypothetical_reuse_is_not_split_reason: true
+  pattern_name_is_not_design_evidence: true
+  simple_solution_must_be_considered_first: true
+  ecs_opportunity_check_required_for_data_parallel_work: true
+  production_performance_claim_requires_evidence: true
+  public_and_serialized_contracts_are_preserved: true
+
+limits:
+  initial_file_reads: 8
+  context_expansion_hops: 1
+  architecture_candidates: 4
+
+output:
+  - scope_classification
+  - confirmed_context
+  - ownership_and_lifetime
+  - change_axes
+  - architecture_candidates
+  - selected_architecture
+  - rejected_alternatives
+  - file_plan
+  - types_kept_in_same_file
+  - intentionally_not_created_types
+  - dependency_direction
+  - serialization_contracts
+  - validation_plan
+  - reevaluation_conditions

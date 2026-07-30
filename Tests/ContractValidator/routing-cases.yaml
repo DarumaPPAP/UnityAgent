@@ -1,6 +1,10 @@
 schema_version: "1.0"
 
 positive_cases:
+  - request: 新規Unity FeatureのArchitectureとC#ファイル構成を設計する
+    expected_contract: architecture-design
+    expected_profile: generic_planning
+
   - request: 単一C#の既知Compile Errorを直す
     expected_contract: csharp-local-fix
     expected_profile: personal_full_control
@@ -34,6 +38,10 @@ positive_cases:
     expected_profile: team_safe_import
 
 negative_cases:
+  - request: 小規模機能へ理由なくController Service Interface Profileを一式作る
+    expected_result: reject
+    reason: architecture_pattern_and_hypothetical_reuse_are_not_split_reasons
+
   - request: 会社Projectを外部AIへExportして調査する
     expected_result: reject
     reason: team_safe_import_has_no_project_export_capability

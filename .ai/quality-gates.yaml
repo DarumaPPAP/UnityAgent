@@ -13,6 +13,44 @@ rules:
   evidence_scope_must_not_be_overclaimed: true
 
 gates:
+  architecture_fit:
+    proves:
+      - selected_architecture_matches_confirmed_problem_and_constraints
+      - simpler_candidates_were_considered
+      - rejected_alternatives_have_reasons
+      - reevaluation_conditions_are_declared
+    does_not_prove:
+      - unity_compile
+      - runtime_behavior
+      - performance_improvement
+
+  file_granularity:
+    proves:
+      - every_new_file_has_a_split_reason
+      - feature_local_types_were_considered_for_co_location
+      - speculative_abstractions_are_not_required_by_the_plan
+    does_not_prove:
+      - long_term_maintainability
+      - runtime_correctness
+
+  ownership_and_lifetime:
+    proves:
+      - creator_owner_readers_writers_and_release_responsibility_are_declared
+      - scene_domain_reload_and_native_resource_lifetimes_are_considered
+    does_not_prove:
+      - runtime_cleanup_on_all_paths
+      - absence_of_resource_leaks
+
+  ecs_data_layout:
+    proves:
+      - component_and_query_boundaries_are_declared
+      - managed_references_structural_changes_and_sync_points_are_reviewed
+      - gameobject_bridge_and_baking_boundaries_are_declared
+    does_not_prove:
+      - chunk_utilization_at_runtime
+      - performance_improvement
+      - target_device_support
+
   static_review:
     proves:
       - source_structure

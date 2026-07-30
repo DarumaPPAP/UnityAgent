@@ -36,10 +36,28 @@ Root Namespaceが未設定または不明な場合、プレースホルダーを
 ## Design
 
 - Prefer explicit ownership and lifetime.
+- Use Single Cohesive Script First for local behavior and small features.
+- Architecture Patternは問題適合性が確認された場合だけ使用する。
+- Unity上で独立してアタッチ、生成、参照されるMonoBehaviour、ScriptableObject、EditorWindow等は原則1 File 1 Primary Unity Typeとする。
+- private補助型、Feature専用Enum、Result、Comparer、Job、ECS Component、Tag、Aspect、System専用型を無条件に別ファイルへ分離しない。
+- 新規C#ファイルにはowner、lifetime、execution boundary、confirmed reuseまたはindependent contractのSplit Reasonを要求する。
+- hypothetical reuse、Pattern適合、Mock可能性、行数だけを分離理由にしない。
 - Do not add mutable static state, static events, Singleton or Service Locator.
 - Do not create `Manager`, `Controller`, `Util`, `Common`, `Helper` without a precise responsibility.
+- Controller、Manager、Serviceは状態、順序、Lifetime、Resource、複数参加要素の調停を所有しない場合は作成しない。
 - Do not add Profile/Controller/Platform abstraction unless the specification requires it.
+- 1実装しかないInterfaceは、外部境界または実在するVariation Axisがなければ作成しない。
+- ScriptableObjectは独立したAsset Identity、共有、差し替え、Authoring要件がある場合だけ作成する。
 - Do not change public API, serialized names/types, enum values, save formats or file names without compatibility analysis.
+- 詳細なArchitecture判断では`ARCHITECTURE_DECISION_POLICY.md`を使用する。
+
+## ECS, Jobs and Burst
+
+- データ並列処理ではECS、Jobs、Burst案を評価対象から除外しない。
+- ECS Component、Tag、Aspect、Jobを1型1ファイルへ機械的に分割しない。
+- Feature、Query、System Group、Package依存、Public Contractを分離単位にする。
+- ECS採用前にmanaged reference、structural change、sync point、Archetype、Chunk、Baking、GameObject Bridgeを確認する。
+- Production性能採用にはBaseline、Before/After、品質条件、Revert条件を要求する。
 
 ## Runtime safety
 

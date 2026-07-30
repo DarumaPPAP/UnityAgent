@@ -60,3 +60,28 @@ cases:
       - select_exactly_one_primary_route
       - load_all_skills: false
       - load_all_references: false
+
+  - id: CONTEXT-008
+    prompt: "新しいGameplay FeatureのArchitectureとC#ファイル構成を設計して。"
+    expected_route: architecture_design
+    expected_context_pack: .ai/context-packs/architecture-design.yaml
+    expected_primary_skill: unity-architecture-design
+    must_load:
+      - SkillReferences/ARCHITECTURE_DECISION_POLICY.md
+      - SkillReferences/ARCHITECTURE_STANDARDS.md
+      - SkillReferences/CODING_STANDARDS.md
+    must_include:
+      - single_cohesive_script_first
+      - every_new_file_requires_split_reason
+      - rejected_alternatives
+      - reevaluation_conditions
+
+  - id: CONTEXT-009
+    prompt: "大量Projectile処理をGameObject、Jobs、ECSのどれで設計するべきか比較して。"
+    expected_route: architecture_design
+    expected_context_pack: .ai/context-packs/architecture-design.yaml
+    must_include:
+      - ecs_opportunity_check_required_for_data_parallel_work
+      - ownership_and_lifetime
+      - file_plan
+      - performance_capture
