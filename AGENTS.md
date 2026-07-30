@@ -84,6 +84,7 @@ Projectへアクセスしない標準Profile。Unity Version、Render Pipeline�
 
 Context Pack:
 
+- `.ai/context-packs/architecture-design.yaml`
 - `.ai/context-packs/csharp-local-fix.yaml`
 - `.ai/context-packs/rendering-incident.yaml`
 - `.ai/context-packs/shader-change.yaml`
@@ -92,6 +93,7 @@ Context Pack:
 
 Task Contract:
 
+- `.ai/task-contracts/architecture-design.yaml`
 - `.ai/task-contracts/csharp-local-fix.yaml`
 - `.ai/task-contracts/rendering-incident.yaml`
 - `.ai/task-contracts/shader-change.yaml`
@@ -163,16 +165,32 @@ Quality Gateの結果は`passed`、`failed`、`unavailable`のいずれか。
 - constは`SCREAMING_SNAKE_CASE`。
 - Runtimeから`UnityEditor` APIを参照しない。
 - Editor機能はEditor FolderまたはEditor-only Assemblyへ隔離する。
-- MonoBehaviourは1 File 1 Type。
+- Unity上で独立してアタッチ、生成、参照されるMonoBehaviour、ScriptableObject、EditorWindow等は原則1 File 1 Primary Unity Type。
+- private補助型、Feature専用Enum、Result、Comparer、Job、ECS Component、Tag、Aspect、System専用型を無条件に別ファイルへ分離しない。
+- 新規C#ファイルごとにSplit Reasonを持つ。hypothetical reuseは分離理由にしない。
+- 小規模機能へMVP、Controller、Service、Profileを機械的に適用しない。
+- 1実装しかないInterfaceは、外部境界または実在するVariation Axisがなければ作らない。
+- ScriptableObjectは独立したAsset Identity、共有、差し替え、Authoring要件がある場合だけ作る。
 - asmdefは境界が必要な場合だけ追加する。
 - mutable static状態、static event、Singleton、Service Locatorを安易に追加しない。
 - 不要なController、Manager、Setup、自動探索、Fallback、Cache、Debug UIを追加しない。
 - public API、SerializeField、Prefab、Scene、Save Data互換性を無断変更しない。
 - コメントは日本語で意図、制約、危険箇所を書く。
 
-詳細は選択Context Packから対応Referenceを読む。
+詳細は選択Context Packから対応Referenceを読む。新規Architectureまたはファイル構成判断では`SkillReferences/ARCHITECTURE_DECISION_POLICY.md`を必ず読む。
 
-## 9. Rendering / Shader constraints
+## 9. Architecture and ECS constraints
+
+- Architecture PatternはProject全体ではなく問題領域ごとに選ぶ。
+- Single Cohesive Script Firstを既定とし、最小構成で成立するかを先に評価する。
+- Controller、Manager、Coordinator、Serviceは状態、順序、Lifetime、Resource、複数参加要素の調停を実際に所有する場合だけ作る。
+- 行数だけでC#ファイルを分割しない。
+- データ並列処理ではECS、Jobs、Burst案を評価対象から除外しない。
+- ECS Component、Tag、Aspect、Jobを1型1ファイルへ機械的に分割しない。
+- Productionで性能Architectureを採用する場合はBaseline、Before / After、品質条件、Revert条件を持つ。
+- Architecture Decisionには採用案、不採用案、File Plan、Split Reason、再評価条件を含める。
+
+## 10. Rendering / Shader constraints
 
 - Unity / URP Versionを確認せず別VersionのAPIを移植しない。
 - RendererFeatureではInjection Point、Queue、Layer、ShaderTag、Sorting、Resource read/writeを確認する。
@@ -185,7 +203,7 @@ Quality Gateの結果は`passed`、`failed`、`unavailable`のいずれか。
 - Variant削減前にRuntime Keyword、Addressables、AssetBundle、Resources、Strict Variantを確認する。
 - Editor結果だけでPlayer、Switch、Console実機を保証しない。
 
-## 10. Audit, mutation, evidence
+## 11. Audit, mutation, evidence
 
 - Read-only AuditとMutationを分離する。
 - 原因未確定のIncidentで複数箇所を同時変更しない。
@@ -195,7 +213,7 @@ Quality Gateの結果は`passed`、`failed`、`unavailable`のいずれか。
 - PackageはPackageManager ClientまたはPortable UPM Packageを使用する。
 - Project Settings、Renderer Data、Render Pipeline Assetの変更には明示承認を要求する。
 
-## 11. Visual boundary
+## 12. Visual boundary
 
 美しいScene、Lighting、Composition、Color、Atmosphere、Camera presentationでは`unity-visual-direction`を使用し、必要なBeautiful-Definitionだけを取得する。
 
@@ -204,13 +222,13 @@ Quality Gateの結果は`passed`、`failed`、`unavailable`のいずれか。
 - Human reviewなしに`VISUAL_ACCEPTED`としない。
 - 固有Character、Logo、Architecture、配置を直接複製しない。
 
-## 12. Generated artifacts
+## 13. Generated artifacts
 
 UnityAgentを参照して生成した製品FeatureはUnityAIGC-Archiveへ保存する。UnityAgent内の製品Feature用`Implementation/`または`Specs/`へ新規生成しない。
 
 Generic PlanningのPortable成果物はProject固有Pathや名前を持たず、Setup Wizard、Integration Contract、未解決Binding、Validation手順を含める。
 
-## 13. Completion contribution
+## 14. Completion contribution
 
 Domain SkillはExecution Ownerへ次を返す。
 
