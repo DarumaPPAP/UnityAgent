@@ -11,6 +11,16 @@ selection:
     - decision_history_required
 
 knowledge:
+  graphics.unity_graphics_mcp:
+    path: .ai/knowledge/graphics/unity-graphics-mcp.yaml
+    status: draft
+    related:
+      conditional:
+        - rendering.temporal_anti_aliasing
+        - rendering.motion_vectors
+        - rendering.transparent_rendering
+        - rendering.shader_variants
+
   rendering.temporal_anti_aliasing:
     path: .ai/knowledge/rendering/temporal-anti-aliasing.yaml
     status: reviewed
