@@ -1,0 +1,110 @@
+id: graphics.unity_graphics_mcp
+version: "1.0.0"
+status: draft
+
+use_when:
+  - UnityGraphicsMCP
+  - visual director tooling
+  - graphics scene inspection and controlled mutation
+  - reference driven lighting camera and look development
+  - Built-in URP HDRP capability resolution
+
+required_inputs:
+  - unity_version
+  - active_render_pipeline
+  - render_pipeline_version
+  - target_platforms
+  - requested_operation_scope
+  - visual_goal_or_reference_when_applicable
+  - existing_scene_and_asset_ownership_when_accessible
+  - prohibited_changes
+
+implementation_contract:
+  - UnityAgent stores compressed domain contracts while product specifications and implementation live in UnityAIGC-Archive
+  - visual intent is pipeline independent and pipeline native settings are backend specific
+  - pipeline and platform are separate resolution axes
+  - project capabilities are inspected before selecting Lightmap LightProbe APV Reflection Decal Volume or custom rendering backends
+  - inspect plan dry_run apply bake capture refine are separate operations
+  - read only inspection does not dirty scenes assets materials timelines or profiles
+  - project settings renderer data render pipeline assets and bake operations require explicit approval
+  - proposed numeric settings include range reason dependencies confidence and platform impact
+  - unsupported requirements return explicit fallback visual difference and validation status
+  - URP 17 Forward RenderGraph is the first implementation milestone
+  - Built-in and HDRP remain specification backends until their package boundaries and native operations are implemented
+  - visual acceptance requires reference grounded capture review and human approval
+
+naming_contract:
+  - resolve namespace from existing code asmdef rootNamespace or Specs/ProjectProfile.md
+  - when RootNamespace is NONE use UnityGraphicsMcp
+  - never emit Namespace RootNamespace CHANGE_ME or leading_or_trailing_dot namespaces
+  - enum types use E_UPPER_SNAKE_CASE
+  - struct types use S_UPPER_SNAKE_CASE only when a struct is justified
+  - private fields use _camelCase
+  - constants use SCREAMING_SNAKE_CASE
+
+architecture_contract:
+  - start with the smallest cohesive URP editor implementation that satisfies the approved milestone
+  - do not create Controller Manager Service Profile Adapter Interface or asmdef only to complete a pattern
+  - an interface is allowed only when multiple real pipeline implementations coexist or an external package boundary requires it
+  - new files require owner lifetime consumers responsibility and split reason
+  - Runtime and Editor are separated only when runtime data or markers are actually required
+  - URP HDRP package dependencies must not leak into a pipeline independent core assembly
+
+visual_scope:
+  - composition and set dressing
+  - material and shader presentation
+  - direct lights and shadows
+  - lightmap and LightingDataAsset state
+  - LightProbe and LightProbeProxyVolume
+  - Adaptive Probe Volumes when supported
+  - environment and reflection probes
+  - decals particles and VFX backends
+  - Timeline Cinemachine and camera language
+  - Volume post process and custom rendering stages
+  - capture evaluation and platform budget
+
+prohibited:
+  - write product source or long product specification into UnityAgent
+  - use namespace Namespace.UnityGraphicsMcp
+  - use enum names such as E_RenderPipelineKind
+  - create shared nullable settings containing every Built-in URP and HDRP option
+  - treat Bloom Fog Light count feature count compile success or capture generation as beauty evidence
+  - mutate Scene Prefab Material VolumeProfile Timeline RendererData or PipelineAsset without approved scope
+  - trigger full lighting bake because one dependency might be stale
+  - silently substitute APV Planar Reflection Decal or post process backends
+  - claim Player Switch or target device correctness from Editor inspection
+
+required_evidence:
+  - specification_traceability
+  - architecture_policy_review
+  - naming_review
+  - static_contract_review
+
+conditional_evidence:
+  implementation_present:
+    - package_structure_validation
+    - unity_compile
+    - editmode
+  render_graph_or_renderer_feature_present:
+    - render_graph_validation
+  visual_output_claim:
+    - editor_capture
+    - human_beauty_review
+  player_claim:
+    - player_capture
+  target_platform_claim:
+    - target_device_capture
+  performance_claim:
+    - before_after_gpu_measurement
+
+stop_conditions:
+  - namespace_is_unresolved_for_code_generation
+  - active_pipeline_or_version_is_unknown_and_native_api_choice_depends_on_it
+  - mutation_requires_project_settings_or_asset_approval_that_has_not_been_given
+  - requested_visual_acceptance_has_no_reference_or_human_review_path
+
+human_reference:
+  repository: DarumaPPAP/UnityAIGC-Archive
+  feature: UnityGraphicsMCP
+  specification: Specs/UnityGraphicsMCP/spec.md
+  plan: Specs/UnityGraphicsMCP/plan.md
