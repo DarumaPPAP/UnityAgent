@@ -1,0 +1,78 @@
+id: graphics-mcp
+default_execution_profile: generic_planning
+risk_level: R3
+
+required_inputs:
+  - unity_version
+  - active_render_pipeline
+  - render_pipeline_version
+  - target_platforms
+  - graphics_mcp_goal
+  - requested_operation_scope
+  - visual_goal_or_reference_when_applicable
+  - constraints
+  - prohibited_changes
+
+allowed_mutations:
+  - unity_agent_route_and_domain_contracts
+  - UnityAIGC-Archive product specification
+  - portable_package_source_after_implementation_approval
+  - isolated editor tests
+  - documentation
+
+prohibited_mutations:
+  - product_implementation_inside_UnityAgent
+  - product_specification_inside_UnityAgent
+  - placeholder_namespace_output
+  - unapproved_project_settings_change
+  - unapproved_render_pipeline_asset_change
+  - unapproved_renderer_data_change
+  - automatic_scene_prefab_or_material_mutation
+  - automatic_lighting_bake
+  - automatic_save
+  - silent_pipeline_fallback
+  - visual_acceptance_without_human_review
+
+required_knowledge:
+  - graphics.unity_graphics_mcp
+
+required_quality_gates:
+  - static_review
+  - specification_traceability
+  - architecture_policy_review
+  - namespace_and_type_naming_review
+
+conditional_quality_gates:
+  - package_structure_validation
+  - unity_compile
+  - editmode
+  - playmode
+  - render_graph_validation
+  - editor_capture
+  - player_capture
+  - target_device_capture
+  - before_after_gpu_measurement
+
+completion:
+  - UnityAgent_contains_only_route_context_task_and_knowledge_contracts
+  - product_specification_is_stored_in_UnityAIGC_Archive
+  - root_namespace_resolution_is_explicit
+  - enum_and_struct_naming_follow_UnityAgent_rules
+  - ownership_lifetime_change_axes_and_split_reasons_are_recorded
+  - Built_in_URP_HDRP_are_capability_backends_not_shared_nullable_settings
+  - URP_first_milestone_and_deferred_backends_are_explicit
+  - inspect_plan_apply_bake_capture_are_separate
+  - mutation_approval_and_undo_requirements_are_explicit
+  - unavailable_Unity_gates_are_reported_not_claimed_as_passed
+
+stop_conditions:
+  - active_pipeline_is_unknown_and_api_choice_depends_on_it
+  - requested_mutation_requires_unapproved_project_settings_or_asset_changes
+  - root_namespace_cannot_be_resolved_for_product_code_generation
+  - visual_acceptance_is_requested_without_reference_or_human_review_path
+
+result_format:
+  summary: graphics_mcp_contract_and_product_specification
+  changed_artifacts: UnityAgent_contract_paths_and_UnityAIGC_Archive_spec_paths
+  validation: static_contract_and_available_Unity_gate_statuses
+  unresolved: project_bindings_pipeline_capabilities_and_import_time_checks
