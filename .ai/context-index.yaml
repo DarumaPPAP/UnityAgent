@@ -29,6 +29,23 @@ profile_selection:
     profile: team_safe_import
 
 routes:
+  architecture_design:
+    triggers:
+      - new Unity feature architecture
+      - new gameplay system design
+      - class or file responsibility design
+      - MonoBehaviour and plain C# separation
+      - ScriptableObject adoption decision
+      - MVP MVVM MVC selection
+      - ECS Jobs Burst adoption decision
+      - Controller Manager Service necessity
+      - architecture refactoring
+      - excessive C# file split review
+    primary_skill: unity-architecture-design
+    context_pack: .ai/context-packs/architecture-design.yaml
+    task_contract: .ai/task-contracts/architecture-design.yaml
+    knowledge_selection: optional
+
   csharp_local_fix:
     triggers:
       - bounded C# change
@@ -127,6 +144,22 @@ routes:
     knowledge_selection: optional
 
 conflicts:
+  architecture_design_and_csharp_local_fix:
+    primary_when_structure_is_undecided: architecture_design
+    primary_when_change_is_bounded: csharp_local_fix
+
+  architecture_design_and_performance_experiment:
+    primary_when_runtime_baseline_is_goal: performance_experiment
+    primary_when_execution_model_is_undecided: architecture_design
+
+  architecture_design_and_renderer_feature_change:
+    primary_when_pass_structure_is_undecided: architecture_design
+    primary_when_rendering_contract_is_confirmed: renderer_feature_change
+
+  rendering_incident_and_architecture_design:
+    primary: rendering_incident
+    secondary_after_evidence: architecture_design
+
   rendering_incident_and_shader_change:
     primary: rendering_incident
     secondary_after_evidence: shader_change
