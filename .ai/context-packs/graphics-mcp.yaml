@@ -1,0 +1,71 @@
+schema_version: "1.0"
+id: graphics-mcp
+primary_skill: .agents/skills/unity-architecture-design/SKILL.md
+
+use_when:
+  - UnityGraphicsMCP architecture or requirements
+  - reference image or natural language to Unity graphics direction
+  - Timeline Cinemachine Volume lighting GI reflection VFX integration
+  - graphics inspection planning mutation bake capture evaluation workflow
+  - Built-in URP HDRP capability routing
+
+required:
+  - AGENTS.md
+  - Specs/ProjectProfile.md
+  - SkillReferences/CODING_STANDARDS.md
+  - SkillReferences/ARCHITECTURE_DECISION_POLICY.md
+  - .ai/knowledge/graphics/unity-graphics-mcp.yaml
+  - DarumaPPAP/UnityAIGC-Archive/Specs/UnityGraphicsMCP/spec.md
+  - DarumaPPAP/UnityAIGC-Archive/Specs/UnityGraphicsMCP/plan.md
+
+conditional:
+  visual_goal_or_reference:
+    - .ai/context-packs/visual-direction.yaml
+  renderer_shader_or_render_graph_change:
+    - .ai/context-packs/shader-change.yaml
+  performance_claim_or_platform_budget:
+    - .ai/context-packs/performance.yaml
+  direct_scene_prefab_material_mutation:
+    - .ai/task-contracts/asset-data-change.yaml
+  portable_package_implementation:
+    - .ai/task-contracts/portable-feature.yaml
+
+excluded_by_default:
+  - all Beautiful-Definition profiles
+  - unrelated rendering knowledge
+  - implementation files before architecture and task scope are approved
+  - Built-in and HDRP implementation details during the URP-first milestone
+
+rules:
+  unity_agent_owns_domain_contracts_not_product_specification: true
+  product_specification_repository: DarumaPPAP/UnityAIGC-Archive
+  root_namespace_must_be_resolved_before_code_generation: true
+  placeholder_namespace_is_prohibited: true
+  enum_type_uses_e_upper_snake_case: true
+  struct_type_uses_s_upper_snake_case: true
+  single_cohesive_script_first: true
+  pipeline_specific_assemblies_require_confirmed_package_boundary: true
+  backend_interface_requires_multiple_real_implementations_or_external_boundary: true
+  inspect_plan_apply_bake_capture_are_separate_operations: true
+  read_only_operations_must_not_dirty_assets_or_scenes: true
+  project_settings_renderer_data_and_pipeline_asset_mutation_require_explicit_approval: true
+  visual_acceptance_requires_human_review: true
+
+limits:
+  initial_file_reads: 8
+  context_expansion_hops: 2
+
+output:
+  - selected_execution_profile
+  - confirmed_project_context
+  - ownership_and_lifetime
+  - change_axes
+  - selected_architecture
+  - rejected_alternatives
+  - file_plan_with_split_reason
+  - dependency_direction
+  - pipeline_capability_contract
+  - safety_and_mutation_contract
+  - validation_and_evidence_plan
+  - unresolved_bindings
+  - generated_product_paths
