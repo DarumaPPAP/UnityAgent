@@ -66,12 +66,14 @@ Target Source or Portable Output
 ├─ context-index.yaml
 ├─ execution-profiles.yaml
 ├─ context-packs/
+│  └─ architecture-design.yaml
 ├─ knowledge/
 │  ├─ knowledge.schema.yaml
 │  ├─ index.yaml
 │  └─ rendering/
 ├─ task-contracts/
 │  ├─ task-contract.schema.yaml
+│  ├─ architecture-design.yaml
 │  ├─ csharp-local-fix.yaml
 │  ├─ rendering-incident.yaml
 │  ├─ shader-change.yaml
@@ -87,6 +89,20 @@ Target Source or Portable Output
 ```
 
 全Skill、全Reference、全Knowledgeを一括で読みません。Primary Domain Skill、Task Contract、Primary Knowledgeをそれぞれ一つに限定し、Related Knowledgeは条件成立時だけ追加します。
+
+## Architecture intelligence
+
+新規Feature、System、C#ファイル構成、MonoBehaviour / Plain C# / ScriptableObject / ECSの境界判断には`architecture_design` Routeを使用します。
+
+- 小規模機能はSingle Cohesive Script First
+- 新規ファイルごとにSplit Reasonを要求
+- Pattern名、hypothetical reuse、Mock可能性、行数だけでは分割しない
+- Controller、Manager、Service、Interface、ScriptableObjectの必要性を明示的に審査
+- データ並列処理ではECS、Jobs、Burst案を積極評価
+- ECS Component、Tag、Aspect、Jobを1型1ファイルへ機械的に分割しない
+- Architecture Decisionへ採用案、不採用案、File Plan、再評価条件を残す
+
+判断Policyの正本は`SkillReferences/ARCHITECTURE_DECISION_POLICY.md`です。
 
 ## Knowledge boundary
 
@@ -115,6 +131,7 @@ PDF、PowerPoint、画像、動画、Profiler／GPU Captureなどの原資料を
 
 | Contract | 主用途 |
 |---|---|
+| `architecture-design` | 新規Feature/System、ファイル粒度、MVP/MVVM/SO/ECS選定 |
 | `csharp-local-fix` | 確定済みの局所C#修正 |
 | `rendering-incident` | 原因不明の描画、RenderGraph、Editor / Player差 |
 | `shader-change` | ShaderLab、HLSL、Compute |
@@ -132,6 +149,7 @@ Quality Gateの結果は`passed`、`failed`、`unavailable`です。
 - `unavailable`を成功と報告しません。
 - 実行できないGateは理由と残作業へ移します。
 - Compile成功だけでRuntime、Visual、Performance、実機を保証しません。
+- Architecture用Gateとして`architecture_fit`、`file_granularity`、`ownership_and_lifetime`、`ecs_data_layout`を使用します。
 
 ## Mutation channels
 
@@ -163,6 +181,7 @@ Routing Case:
 
 ```text
 Tests/ContractValidator/routing-cases.yaml
+Tests/ContextRouting/cases.yaml
 ```
 
 ## TAA Knowledge Pilot
