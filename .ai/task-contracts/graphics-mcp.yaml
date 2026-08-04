@@ -3,12 +3,11 @@ default_execution_profile: generic_planning
 risk_level: R3
 
 required_inputs:
-  - unity_version
-  - active_render_pipeline
-  - render_pipeline_version
-  - target_platforms
   - graphics_mcp_goal
   - requested_operation_scope
+  - detected_project_context_when_accessible
+  - explicit_requested_targets_when_applicable
+  - project_profile_fallback_when_project_is_unavailable
   - visual_goal_or_reference_when_applicable
   - constraints
   - prohibited_changes
@@ -19,6 +18,7 @@ allowed_mutations:
   - MyUnityMCP catalogs manifests workflows and tool schemas
   - MyUnityMCP package source after implementation approval
   - isolated editor tests
+  - compatibility_verification_matrix
   - documentation
 
 prohibited_mutations:
@@ -28,6 +28,9 @@ prohibited_mutations:
   - generated_project_specific_scene_prefab_material_or_timeline_inside_MyUnityMCP
   - loading_unselected_mcp_manifests
   - loading_mcp_package_source_during_normal_tool_use
+  - fixed_unity_version_pipeline_rendering_path_or_platform_as_global_mcp_contract
+  - treating_project_profile_as_detected_project_fact
+  - treating_unverified_as_unsupported
   - placeholder_namespace_output
   - unapproved_project_settings_change
   - unapproved_render_pipeline_asset_change
@@ -47,6 +50,7 @@ required_quality_gates:
   - architecture_policy_review
   - namespace_and_type_naming_review
   - mcp_catalog_and_manifest_consistency
+  - environment_resolution_contract_review
 
 conditional_quality_gates:
   - package_structure_validation
@@ -67,23 +71,28 @@ completion:
   - conditional_domain_mcp_count_does_not_exceed_two
   - unselected_manifests_and_package_sources_are_not_loaded
   - tool_groups_are_released_in_inspect_plan_mutate_bake_capture_order
+  - target_project_is_inspected_before_backend_selection_when_accessible
+  - detected_project_facts_requested_targets_profiles_and_preferences_are_separated
+  - no_fixed_Unity_version_pipeline_rendering_path_or_platform_is_used_as_global_MCP_default
+  - unverified_and_unsupported_are_distinct
+  - backend_not_implemented_and_project_configuration_required_are_explicit
+  - compatibility_matrix_records_evidence_not_global_support
   - root_namespace_resolution_is_explicit
   - enum_and_struct_naming_follow_UnityAgent_rules
   - ownership_lifetime_change_axes_and_split_reasons_are_recorded
-  - Built_in_URP_HDRP_are_capability_backends_not_shared_nullable_settings
-  - URP_first_milestone_and_deferred_backends_are_explicit
   - mutation_approval_and_undo_requirements_are_explicit
   - unavailable_Unity_gates_are_reported_not_claimed_as_passed
 
 stop_conditions:
-  - active_pipeline_is_unknown_and_api_choice_depends_on_it
+  - active_pipeline_is_unknown_and_native_api_choice_depends_on_it
   - requested_mutation_requires_unapproved_project_settings_or_asset_changes
   - root_namespace_cannot_be_resolved_for_product_code_generation
   - selected_creator_or_domain_mcp_manifest_cannot_be_resolved
+  - selected_backend_is_not_implemented_for_required_operation
   - visual_acceptance_is_requested_without_reference_or_human_review_path
 
 result_format:
   summary: graphics_mcp_contract_and_MyUnityMCP_changes
   changed_artifacts: UnityAgent_contract_paths_and_MyUnityMCP_paths
-  validation: static_contract_catalog_manifest_and_available_Unity_gate_statuses
-  unresolved: project_bindings_pipeline_capabilities_import_time_checks_and_unimplemented_tool_groups
+  validation: static_contract_catalog_manifest_environment_resolution_and_available_Unity_gate_statuses
+  unresolved: project_bindings_pipeline_capabilities_requested_target_mismatches_import_time_checks_and_unimplemented_tool_groups
