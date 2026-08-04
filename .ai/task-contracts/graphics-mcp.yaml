@@ -14,15 +14,20 @@ required_inputs:
   - prohibited_changes
 
 allowed_mutations:
-  - unity_agent_route_and_domain_contracts
-  - UnityAIGC-Archive product specification
-  - portable_package_source_after_implementation_approval
+  - unity_agent_route_context_task_and_knowledge_contracts
+  - MyUnityMCP specifications
+  - MyUnityMCP catalogs manifests workflows and tool schemas
+  - MyUnityMCP package source after implementation approval
   - isolated editor tests
   - documentation
 
 prohibited_mutations:
-  - product_implementation_inside_UnityAgent
-  - product_specification_inside_UnityAgent
+  - mcp_package_implementation_inside_UnityAgent
+  - mcp_specification_inside_UnityAgent
+  - mcp_implementation_or_specification_inside_UnityAIGC_Archive
+  - generated_project_specific_scene_prefab_material_or_timeline_inside_MyUnityMCP
+  - loading_unselected_mcp_manifests
+  - loading_mcp_package_source_during_normal_tool_use
   - placeholder_namespace_output
   - unapproved_project_settings_change
   - unapproved_render_pipeline_asset_change
@@ -41,6 +46,7 @@ required_quality_gates:
   - specification_traceability
   - architecture_policy_review
   - namespace_and_type_naming_review
+  - mcp_catalog_and_manifest_consistency
 
 conditional_quality_gates:
   - package_structure_validation
@@ -54,14 +60,18 @@ conditional_quality_gates:
   - before_after_gpu_measurement
 
 completion:
-  - UnityAgent_contains_only_route_context_task_and_knowledge_contracts
-  - product_specification_is_stored_in_UnityAIGC_Archive
+  - UnityAgent_contains_only_preferences_routes_context_task_knowledge_and_activation_contracts
+  - MCP_specification_and_implementation_are_stored_in_MyUnityMCP
+  - generated_Unity_assets_are_owned_by_the_target_Unity_project
+  - exactly_one_primary_creator_or_domain_mcp_is_selected
+  - conditional_domain_mcp_count_does_not_exceed_two
+  - unselected_manifests_and_package_sources_are_not_loaded
+  - tool_groups_are_released_in_inspect_plan_mutate_bake_capture_order
   - root_namespace_resolution_is_explicit
   - enum_and_struct_naming_follow_UnityAgent_rules
   - ownership_lifetime_change_axes_and_split_reasons_are_recorded
   - Built_in_URP_HDRP_are_capability_backends_not_shared_nullable_settings
   - URP_first_milestone_and_deferred_backends_are_explicit
-  - inspect_plan_apply_bake_capture_are_separate
   - mutation_approval_and_undo_requirements_are_explicit
   - unavailable_Unity_gates_are_reported_not_claimed_as_passed
 
@@ -69,10 +79,11 @@ stop_conditions:
   - active_pipeline_is_unknown_and_api_choice_depends_on_it
   - requested_mutation_requires_unapproved_project_settings_or_asset_changes
   - root_namespace_cannot_be_resolved_for_product_code_generation
+  - selected_creator_or_domain_mcp_manifest_cannot_be_resolved
   - visual_acceptance_is_requested_without_reference_or_human_review_path
 
 result_format:
-  summary: graphics_mcp_contract_and_product_specification
-  changed_artifacts: UnityAgent_contract_paths_and_UnityAIGC_Archive_spec_paths
-  validation: static_contract_and_available_Unity_gate_statuses
-  unresolved: project_bindings_pipeline_capabilities_and_import_time_checks
+  summary: graphics_mcp_contract_and_MyUnityMCP_changes
+  changed_artifacts: UnityAgent_contract_paths_and_MyUnityMCP_paths
+  validation: static_contract_catalog_manifest_and_available_Unity_gate_statuses
+  unresolved: project_bindings_pipeline_capabilities_import_time_checks_and_unimplemented_tool_groups
