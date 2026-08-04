@@ -1,6 +1,8 @@
 # Project Profile
 
-プロジェクトごとに最初に編集してください。AIはこの内容を環境の正として扱います。
+プロジェクトごとに最初に編集してください。AIはこの内容をProject固有の補助情報として扱います。
+
+対象Unity Projectへ接続できる場合、Unity Version、Pipeline、Rendering Path、Build Target等の検出済み事実をこのProfileより優先します。このProfileの値はMyUnityMCP全体の固定対応条件ではありません。
 
 ## Identity
 
@@ -20,6 +22,8 @@ Namespace規則:
 
 ## Unity environment
 
+以下はこのProfileを使用するProjectの設定値です。MyUnityMCPのGlobal DefaultまたはSupport Contractとして使用しません。
+
 - UnityVersion: 6000.3
 - RenderPipeline: URP 17+
 - RenderGraph: Enabled
@@ -27,6 +31,13 @@ Namespace規則:
 - PrimaryPlatform: Nintendo Switch
 - OtherPlatforms: Nintendo Switch 2 / PlayStation 4 / PlayStation 5 / PC
 - XR: Not targeted
+
+Environment情報の優先順位:
+
+1. 対象Unity Projectから検出した事実
+2. 今回の依頼で明示されたTargetと制約
+3. このProject Profile
+4. UnityAgentの既定Preference
 
 ## Workspace policy
 

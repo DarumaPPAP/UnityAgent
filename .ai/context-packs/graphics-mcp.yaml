@@ -1,4 +1,4 @@
-schema_version: "1.1"
+schema_version: "1.2"
 id: graphics-mcp
 primary_skill: .agents/skills/unity-architecture-design/SKILL.md
 
@@ -8,7 +8,7 @@ use_when:
   - reference image or natural language to Unity graphics direction
   - Timeline Cinemachine Volume lighting GI reflection VFX integration
   - graphics inspection planning mutation bake capture evaluation workflow
-  - Built-in URP HDRP capability routing
+  - Built-in URP HDRP Custom SRP capability routing
 
 required:
   - AGENTS.md
@@ -21,6 +21,7 @@ required:
   - DarumaPPAP/MyUnityMCP/Specs/UnityAgentMCP/spec.md
   - DarumaPPAP/MyUnityMCP/Specs/UnityGraphicsMCP/spec.md
   - DarumaPPAP/MyUnityMCP/Specs/UnityGraphicsMCP/plan.md
+  - DarumaPPAP/MyUnityMCP/Specs/UnityGraphicsMCP/editor-tool-design.md
 
 conditional:
   visual_goal_or_reference:
@@ -38,7 +39,7 @@ excluded_by_default:
   - every MCP manifest except the selected primary MCP
   - every MCP package source file during normal tool use
   - mutation bake and capture tool groups before their gates are satisfied
-  - Built-in and HDRP implementation details during the URP-first milestone
+  - unselected pipeline backend implementation details
 
 rules:
   unity_agent_owns_preferences_routes_and_domain_contracts: true
@@ -51,6 +52,13 @@ rules:
   package_source_not_loaded_during_normal_tool_use: true
   select_exactly_one_primary_creator_or_domain_mcp: true
   conditional_domain_mcp_limit: 2
+  inspect_target_project_before_backend_selection: true
+  fixed_unity_version_pipeline_path_or_platform_defaults_are_prohibited_in_mcp_contract: true
+  detected_project_facts_override_profiles_and_preferences: true
+  explicit_requested_target_is_separate_from_detected_project_facts: true
+  unverified_is_not_unsupported: true
+  backend_not_implemented_must_be_reported_explicitly: true
+  silent_pipeline_fallback_is_prohibited: true
   root_namespace_must_be_resolved_before_code_generation: true
   placeholder_namespace_is_prohibited: true
   enum_type_uses_e_upper_snake_case: true
@@ -73,6 +81,11 @@ output:
   - selected_execution_profile
   - selected_creator_or_primary_domain_mcp
   - selected_tool_groups
+  - detected_project_facts
+  - explicit_requested_target
+  - project_profile_fallbacks_used
+  - selected_backend_and_capabilities
+  - compatibility_verification_state
   - confirmed_project_context
   - ownership_and_lifetime
   - change_axes
