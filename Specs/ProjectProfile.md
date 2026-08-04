@@ -31,6 +31,10 @@ Namespace規則:
 ## Workspace policy
 
 - KnowledgeRepository: `DarumaPPAP/UnityAgent`
+- McpRepository: `DarumaPPAP/MyUnityMCP`
+- McpSpecificationRoot: `DarumaPPAP/MyUnityMCP/Specs/`
+- McpPackageRoot: `DarumaPPAP/MyUnityMCP/Packages/`
+- McpCatalogRoot: `DarumaPPAP/MyUnityMCP/Catalog/`
 - GeneratedProductRepository: `DarumaPPAP/UnityAIGC-Archive`
 - ImplementationRoot: `DarumaPPAP/UnityAIGC-Archive/Implementation/`
 - GeneratedSpecRoot: `DarumaPPAP/UnityAIGC-Archive/Specs/`
@@ -40,7 +44,13 @@ Namespace規則:
 - AutomaticFileSync: Disabled
 - AutomaticCodeScan: Disabled
 
-UnityAgentを参照して生成する製品コード、製品仕様、導入資料は`GeneratedProductRepository`へ保存する。UnityAgent内の`Implementation/`または製品Feature用`Specs/`へ新規生成物を追加しない。
+通常の製品コード、製品仕様、導入資料は`GeneratedProductRepository`へ保存する。
+
+UnityAgentが利用するMCP本体、Creator Workflow、Domain MCP、Capability Module、Manifest、Tool Schema、MCP固有仕様は`McpRepository`へ保存する。MCP関連の正本を`UnityAIGC-Archive`へ保存しない。
+
+MCPが生成または変更したScene、Prefab、Material、Timeline、Volume Profile等は対象Unity Projectが所有する。
+
+UnityAgentにはRoute、Context Pack、Task Contract、Knowledge Contract、MCP Activation Policyだけを保存する。UnityAgent内へMCP PackageやMCP製品仕様を追加しない。
 
 ## Project-specific preferences
 
