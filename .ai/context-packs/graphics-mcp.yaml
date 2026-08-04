@@ -1,8 +1,9 @@
-schema_version: "1.0"
+schema_version: "1.1"
 id: graphics-mcp
 primary_skill: .agents/skills/unity-architecture-design/SKILL.md
 
 use_when:
+  - UnityAgentMCP architecture or requirements
   - UnityGraphicsMCP architecture or requirements
   - reference image or natural language to Unity graphics direction
   - Timeline Cinemachine Volume lighting GI reflection VFX integration
@@ -14,9 +15,12 @@ required:
   - Specs/ProjectProfile.md
   - SkillReferences/CODING_STANDARDS.md
   - SkillReferences/ARCHITECTURE_DECISION_POLICY.md
+  - .ai/mcp-routing.yaml
   - .ai/knowledge/graphics/unity-graphics-mcp.yaml
-  - DarumaPPAP/UnityAIGC-Archive/Specs/UnityGraphicsMCP/spec.md
-  - DarumaPPAP/UnityAIGC-Archive/Specs/UnityGraphicsMCP/plan.md
+  - DarumaPPAP/MyUnityMCP/AGENTS.md
+  - DarumaPPAP/MyUnityMCP/Specs/UnityAgentMCP/spec.md
+  - DarumaPPAP/MyUnityMCP/Specs/UnityGraphicsMCP/spec.md
+  - DarumaPPAP/MyUnityMCP/Specs/UnityGraphicsMCP/plan.md
 
 conditional:
   visual_goal_or_reference:
@@ -27,18 +31,26 @@ conditional:
     - .ai/context-packs/performance.yaml
   direct_scene_prefab_material_mutation:
     - .ai/task-contracts/asset-data-change.yaml
-  portable_package_implementation:
-    - .ai/task-contracts/portable-feature.yaml
 
 excluded_by_default:
   - all Beautiful-Definition profiles
   - unrelated rendering knowledge
-  - implementation files before architecture and task scope are approved
+  - every MCP manifest except the selected primary MCP
+  - every MCP package source file during normal tool use
+  - mutation bake and capture tool groups before their gates are satisfied
   - Built-in and HDRP implementation details during the URP-first milestone
 
 rules:
-  unity_agent_owns_domain_contracts_not_product_specification: true
-  product_specification_repository: DarumaPPAP/UnityAIGC-Archive
+  unity_agent_owns_preferences_routes_and_domain_contracts: true
+  mcp_repository: DarumaPPAP/MyUnityMCP
+  mcp_specification_root: Specs
+  mcp_package_root: Packages
+  mcp_catalog_root: Catalog
+  mcp_generated_assets_are_owned_by_target_unity_project: true
+  load_only_selected_creator_or_domain_manifest: true
+  package_source_not_loaded_during_normal_tool_use: true
+  select_exactly_one_primary_creator_or_domain_mcp: true
+  conditional_domain_mcp_limit: 2
   root_namespace_must_be_resolved_before_code_generation: true
   placeholder_namespace_is_prohibited: true
   enum_type_uses_e_upper_snake_case: true
@@ -48,6 +60,8 @@ rules:
   backend_interface_requires_multiple_real_implementations_or_external_boundary: true
   inspect_plan_apply_bake_capture_are_separate_operations: true
   read_only_operations_must_not_dirty_assets_or_scenes: true
+  mutation_tool_group_requires_approved_plan_and_explicit_permission: true
+  bake_tool_group_requires_separate_explicit_permission: true
   project_settings_renderer_data_and_pipeline_asset_mutation_require_explicit_approval: true
   visual_acceptance_requires_human_review: true
 
@@ -57,6 +71,8 @@ limits:
 
 output:
   - selected_execution_profile
+  - selected_creator_or_primary_domain_mcp
+  - selected_tool_groups
   - confirmed_project_context
   - ownership_and_lifetime
   - change_axes
@@ -68,4 +84,5 @@ output:
   - safety_and_mutation_contract
   - validation_and_evidence_plan
   - unresolved_bindings
-  - generated_product_paths
+  - MyUnityMCP_changed_paths
+  - target_Unity_Project_generated_paths
