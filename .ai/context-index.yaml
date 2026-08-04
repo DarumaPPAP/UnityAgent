@@ -1,4 +1,4 @@
-schema_version: "2.0"
+schema_version: "2.1"
 repository_role: unity_domain_knowledge
 execution_owner: DarumaPPAP/Unity-Graph-Engineering
 execution_profiles: .ai/execution-profiles.yaml
@@ -7,13 +7,20 @@ knowledge_index: .ai/knowledge/index.yaml
 quality_gates: .ai/quality-gates.yaml
 mutation_channels: .ai/mutation-channels.yaml
 risk_levels: .ai/risk-levels.yaml
+mcp_activation_policy: .ai/mcp-routing.yaml
+mcp_repository: DarumaPPAP/MyUnityMCP
 
 routing_rules:
   select_exactly_one_primary_route: true
   select_exactly_one_primary_task_contract: true
   select_at_most_one_primary_knowledge: true
+  select_exactly_one_primary_creator_or_domain_mcp_when_mcp_is_required: true
+  conditional_domain_mcp_limit: 2
   load_all_skills: false
   load_all_references: false
+  load_all_mcp_manifests: false
+  load_all_mcp_tool_schemas: false
+  load_mcp_package_source_by_default: false
   project_context_required_for_planning: false
   capability_manifest_required_for_planning: false
   direct_source_read_required_before_mutation: true
@@ -48,9 +55,14 @@ routes:
 
   graphics_mcp:
     triggers:
+      - UnityAgentMCP
+      - MyUnityMCP
       - UnityGraphicsMCP
       - Unity graphics MCP
       - Unity Visual Director MCP
+      - Creator Workflow
+      - LiveCreator
+      - MovieCreator
       - reference image to Unity graphics direction
       - Timeline Cinemachine Volume lighting GI reflection VFX tool integration
       - Built-in URP HDRP graphics capability routing
@@ -59,6 +71,7 @@ routes:
     context_pack: .ai/context-packs/graphics-mcp.yaml
     task_contract: .ai/task-contracts/graphics-mcp.yaml
     knowledge_selection: required_when_domain_matches
+    mcp_selection: required
 
   csharp_local_fix:
     triggers:
@@ -171,11 +184,11 @@ conflicts:
     primary_when_rendering_contract_is_confirmed: renderer_feature_change
 
   graphics_mcp_and_architecture_design:
-    primary_when_goal_is_UnityGraphicsMCP_contract_or_product_architecture: graphics_mcp
+    primary_when_goal_is_UnityAgentMCP_MyUnityMCP_GraphicsMCP_Creator_or_Module_architecture: graphics_mcp
     primary_when_goal_is_unrelated_Unity_architecture: architecture_design
 
   graphics_mcp_and_visual_direction:
-    primary_when_goal_is_tool_contract_capability_or_mutation_workflow: graphics_mcp
+    primary_when_goal_is_tool_contract_capability_mutation_or_creator_workflow: graphics_mcp
     primary_when_goal_is_scene_beauty_or_human_visual_review: visual_direction
 
   graphics_mcp_and_renderer_feature_change:
@@ -205,4 +218,5 @@ conflicts:
 fallback:
   action: use SkillReferences/UNITY_SKILL_ROUTING.md
   do_not_load_every_route: true
+  do_not_load_every_mcp_manifest: true
   continue_with_generic_planning_when_project_context_is_missing: true

@@ -1,12 +1,15 @@
 # UnityAgent Domain Bootstrap
 
-UnityAgentはUnity / C# / URP / RenderGraph / Shader / Performance / Visual DirectionのDomain Knowledge正本です。汎用の実行モード、Task Graph、Retry、Token Budget、Checkpointは`DarumaPPAP/Unity-Graph-Engineering`が所有します。
+UnityAgentはUnity / C# / URP / RenderGraph / Shader / Performance / Visual DirectionのDomain Knowledgeと、ユーザー固有の設計思想・運用規則の正本です。UnityAgentMCP、Creator Workflow、Domain MCP、Capability Moduleの仕様と実装は`DarumaPPAP/MyUnityMCP`が所有します。汎用の実行モード、Task Graph、Retry、Token Budget、Checkpointは`DarumaPPAP/Unity-Graph-Engineering`が所有します。
 
 ## 1. Workspace
 
 - このRepositoryはUnityプロジェクト本体ではない。
 - `Assets/`、`Packages/`、`ProjectSettings/`を推測で作成しない。
-- 製品コード、製品仕様、導入資料は`DarumaPPAP/UnityAIGC-Archive`へ保存する。
+- 通常の製品コード、製品仕様、導入資料は`DarumaPPAP/UnityAIGC-Archive`へ保存する。
+- UnityAgentMCP、Creator Workflow、Domain MCP、Capability Module、MCP Manifest、Tool Schema、MCP固有仕様、MCP Package、MCP Testは`DarumaPPAP/MyUnityMCP`へ保存する。
+- MCP関連の正本をUnityAgentまたはUnityAIGC-Archiveへ複製しない。
+- MCPが生成または変更したScene、Prefab、Material、Timeline、Volume Profile等は対象Unity Projectが所有する。
 - `Reference/`はRead-only。
 - 美的正本は`DarumaPPAP/Beautiful-Definition`。
 - Google Driveは原資料と大容量Evidence。編集正本はGitHub。
@@ -16,17 +19,30 @@ UnityAgentはUnity / C# / URP / RenderGraph / Shader / Performance / Visual Dire
 
 Execution Modeが未指定の場合はUnity-Graph-EngineeringのPolicyによりPrompt Engineeringを使用する。Graph / Loopへの無断変更は禁止する。
 
-UnityAgentは次だけを担当する。
+UnityAgentは次を担当する。
 
 - Domain route
 - Context Pack
 - Knowledge Contract
 - Task Contract
+- ユーザー固有のコーディング・設計・Visual Direction規則
+- MyUnityMCPの選択・Activation Policy
 - Unity固有の実装・監査手順
 - Unity固有ValidatorとEvidence要求
 
-次は担当しない。
+MyUnityMCPは次を担当する。
 
+- UnityAgentMCP Control Plane
+- Creator Workflow
+- Domain MCP
+- Capability Module
+- MCP Catalog / Manifest / Tool Schema
+- Unity Editorへ接続するPackage実装
+- MCP固有Test
+
+UnityAgentは次を担当しない。
+
+- MCP ServerまたはMCP Tool Providerの製品実装
 - 汎用Supervisor State Machine
 - 汎用Task Graph
 - Retry Scheduler
@@ -68,15 +84,24 @@ Projectへアクセスしない標準Profile。Unity Version、Render Pipeline�
 - Project Scanner、Source Export、Screenshot、Hierarchy Export、Unity Project ID、Git、Issue、Cloud、Environment Variable、組織情報、顧客情報へのアクセス機能を持たない。
 - これらの情報は`redacted`としてもSchemaへ追加しない。
 
-## 4. Context routing
+## 4. Context and MCP routing
 
-最初に`.ai/context-index.yaml`を読み、依頼に一致するContext PackとTask Contractを一つずつ選ぶ。
+最初に`.ai/context-index.yaml`を読み、依頼に一致するContext PackとTask Contractを一つずつ選ぶ。MCP能力が必要な場合だけ`.ai/mcp-routing.yaml`を読み、MyUnityMCPのCatalogからCreatorまたはPrimary Domain MCPを一つ選ぶ。
 
 - 全Skillを一括で読まない。
 - 全Referenceを一括で読まない。
 - Primary Domain Skillは一つ。
 - Primary Task Contractは一つ。
 - Primary Knowledgeは一つ。
+- Primary CreatorまたはPrimary Domain MCPは一つ。
+- Conditional Domain MCPは条件成立時だけ追加し、原則2つまでとする。
+- 全MCP Manifestを一括で読まない。
+- 全Tool Schemaを一括で読まない。
+- 通常のMCP利用ではPackage C# Sourceを読まない。
+- 選択されたManifestと、現在必要なTool Groupだけを読み込む。
+- Tool Groupは`inspect`、`plan`、`mutate`、`bake`、`capture`の順で段階的に公開する。
+- `mutate`は承認済みPlan、Revision、Diff、Undo、明示許可を要求する。
+- `bake`は別の明示許可とDirty Dependencyを要求する。
 - Conditional ReferenceとRelated Knowledgeは条件成立時だけ読む。
 - 対象Sourceと直接依存を優先する。
 - Knowledge Graphは候補Artifactの絞り込みにだけ使い、変更前にSourceを直接読む。
@@ -85,6 +110,7 @@ Projectへアクセスしない標準Profile。Unity Version、Render Pipeline�
 Context Pack:
 
 - `.ai/context-packs/architecture-design.yaml`
+- `.ai/context-packs/graphics-mcp.yaml`
 - `.ai/context-packs/csharp-local-fix.yaml`
 - `.ai/context-packs/rendering-incident.yaml`
 - `.ai/context-packs/shader-change.yaml`
@@ -94,6 +120,7 @@ Context Pack:
 Task Contract:
 
 - `.ai/task-contracts/architecture-design.yaml`
+- `.ai/task-contracts/graphics-mcp.yaml`
 - `.ai/task-contracts/csharp-local-fix.yaml`
 - `.ai/task-contracts/rendering-incident.yaml`
 - `.ai/task-contracts/shader-change.yaml`
@@ -142,7 +169,7 @@ UnityAgentの`.ai/knowledge/`にはAI実装用の圧縮契約だけを置く。
 - Stop条件
 - Human Reference ID
 
-長い解説、画像、資料全文、Source要約のDump、実験画像は置かない。詳細Knowledgeの正本はUnity-Knowledge-Products、原資料の正本はGoogle Driveとする。
+長い解説、画像、資料全文、Source要約のDump、実験画像は置かない。詳細Knowledgeの正本はUnity-Knowledge-Products、原資料の正本はGoogle Driveとする。MCPの長い仕様、Manifest、Tool Schema、Package SourceはMyUnityMCPを正本とする。
 
 ## 7. Capability-independent validation
 
@@ -212,6 +239,8 @@ Quality Gateの結果は`passed`、`failed`、`unavailable`のいずれか。
 - Scene、Prefab、MaterialはRaw YAMLで直接変更しない。
 - PackageはPackageManager ClientまたはPortable UPM Packageを使用する。
 - Project Settings、Renderer Data、Render Pipeline Assetの変更には明示承認を要求する。
+- MCPのRead-only ToolがScene、Asset、Timeline、ProfileをDirtyにしてはならない。
+- MCPのMutationはTransaction単位とし、Automatic Saveを禁止する。
 
 ## 12. Visual boundary
 
@@ -222,9 +251,13 @@ Quality Gateの結果は`passed`、`failed`、`unavailable`のいずれか。
 - Human reviewなしに`VISUAL_ACCEPTED`としない。
 - 固有Character、Logo、Architecture、配置を直接複製しない。
 
-## 13. Generated artifacts
+## 13. Generated artifacts and MCP ownership
 
-UnityAgentを参照して生成した製品FeatureはUnityAIGC-Archiveへ保存する。UnityAgent内の製品Feature用`Implementation/`または`Specs/`へ新規生成しない。
+UnityAgentを参照して生成した通常の製品FeatureはUnityAIGC-Archiveへ保存する。UnityAgent内の製品Feature用`Implementation/`または`Specs/`へ新規生成しない。
+
+UnityAgentMCP、Creator Workflow、Domain MCP、Capability Module、Catalog、Manifest、Tool Schema、Package Source、MCP固有仕様とTestはMyUnityMCPへ保存する。UnityAgentまたはUnityAIGC-Archiveへこれらを新規生成しない。
+
+MCPが対象Unity Projectへ生成・変更するScene、Prefab、Material、Shader、RendererFeature、Timeline、Volume Profile、Lighting Data等は対象Unity Projectが所有する。明示的なExport依頼なしに外部Repositoryへ複製しない。
 
 Generic PlanningのPortable成果物はProject固有Pathや名前を持たず、Setup Wizard、Integration Contract、未解決Binding、Validation手順を含める。
 
@@ -237,6 +270,8 @@ Domain SkillはExecution Ownerへ次を返す。
 - Confirmed context
 - 適用したContext Pack
 - Primary Knowledgeと追加Related Knowledge
+- 選択したCreatorまたはPrimary Domain MCP
+- 選択したTool Group
 - Domain findings
 - Mutation constraints
 - Required validation

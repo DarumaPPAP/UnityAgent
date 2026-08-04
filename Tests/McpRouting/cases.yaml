@@ -1,0 +1,83 @@
+version: 1
+cases:
+  - id: MCP-ROUTE-001
+    category: creator-selection
+    prompt: "華やかなアイドルライブを作って。キャラが背景に埋もれないようにして。"
+    expected_primary_kind: creator
+    expected_primary: live_creator
+    expected_domain_mcp:
+      - unity_graphics_mcp
+      - unity_cinematic_mcp
+    must_not_load:
+      - every_mcp_manifest
+      - package_source
+      - mutate
+      - bake
+    pass_condition: "LiveCreatorと必要Domainだけを選択し、InspectまたはPlanより先へ進まない。"
+
+  - id: MCP-ROUTE-002
+    category: domain-selection
+    prompt: "このSceneのLightmap、Light Probe、Reflection Probeの状態を調べて。変更はしないで。"
+    expected_primary_kind: domain
+    expected_primary: unity_graphics_mcp
+    expected_tool_groups:
+      - inspect
+    must_not_load:
+      - live_creator
+      - movie_creator
+      - package_source
+      - mutate
+      - bake
+    pass_condition: "GraphicsMCPのRead-only Toolだけを公開する。"
+
+  - id: MCP-ROUTE-003
+    category: unrelated-domain
+    prompt: "このHLSLのCompile Errorを修正して。"
+    expected_primary_mcp: none
+    expected_route: shader_change
+    must_not_load:
+      - unity_graphics_mcp
+      - creator_catalog_entries
+    pass_condition: "既存Shader Routeを使用し、MyUnityMCPを無関係に起動しない。"
+
+  - id: MCP-ROUTE-004
+    category: mutation-gate
+    prompt: "さっき承認した夕暮れLighting PlanをSceneへ適用して。"
+    expected_primary: unity_graphics_mcp
+    expected_tool_groups:
+      - mutate
+    requires:
+      - approved_plan
+      - expected_revision
+      - explicit_mutation_permission
+      - undo_contract
+    must_not:
+      - automatic_save
+      - automatic_bake
+    pass_condition: "承認済みPlanとRevisionを確認し、Bakeを同時実行しない。"
+
+  - id: MCP-ROUTE-005
+    category: bake-gate
+    prompt: "変更分だけLightingをBakeして。"
+    expected_primary: unity_graphics_mcp
+    expected_tool_groups:
+      - bake
+    requires:
+      - explicit_bake_permission
+      - dirty_dependency_set
+    must_not:
+      - unconditional_full_bake
+    pass_condition: "Dirty DependencyだけをBake対象にする。"
+
+  - id: MCP-ROUTE-006
+    category: source-read-guard
+    prompt: "参考画像に合わせてSceneを提案して。"
+    expected_primary: unity_graphics_mcp
+    expected_tool_groups:
+      - inspect
+      - plan
+    must_not_load:
+      - Packages_source
+      - unselected_tool_schemas
+      - unrelated_domain_knowledge
+    pass_condition: "Catalog、選択Manifest、必要Tool SchemaだけでPlanを生成する。"

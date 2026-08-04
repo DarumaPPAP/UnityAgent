@@ -1,8 +1,9 @@
 id: graphics.unity_graphics_mcp
-version: "1.0.0"
+version: "1.1.0"
 status: draft
 
 use_when:
+  - UnityAgentMCP
   - UnityGraphicsMCP
   - visual director tooling
   - graphics scene inspection and controlled mutation
@@ -20,11 +21,18 @@ required_inputs:
   - prohibited_changes
 
 implementation_contract:
-  - UnityAgent stores compressed domain contracts while product specifications and implementation live in UnityAIGC-Archive
+  - UnityAgent stores preferences routing and compressed domain contracts
+  - MyUnityMCP stores UnityAgentMCP Creator Domain MCP Capability Module specifications manifests schemas workflows package source and tests
+  - generated Scene Prefab Material Timeline VolumeProfile and other project assets remain owned by the target Unity project
+  - UnityAgent selects exactly one primary Creator or Domain MCP
+  - at most two conditional Domain MCP modules are added when their conditions are satisfied
+  - normal MCP use reads the catalog selected manifests and selected tool schemas but not package source
+  - tool groups are exposed progressively as inspect plan mutate bake and capture
+  - mutation requires an approved plan explicit permission revision check diff and undo contract
+  - bake requires separate explicit permission and must use dependency invalidation instead of unconditional full bake
   - visual intent is pipeline independent and pipeline native settings are backend specific
   - pipeline and platform are separate resolution axes
   - project capabilities are inspected before selecting Lightmap LightProbe APV Reflection Decal Volume or custom rendering backends
-  - inspect plan dry_run apply bake capture refine are separate operations
   - read only inspection does not dirty scenes assets materials timelines or profiles
   - project settings renderer data render pipeline assets and bake operations require explicit approval
   - proposed numeric settings include range reason dependencies confidence and platform impact
@@ -35,7 +43,7 @@ implementation_contract:
 
 naming_contract:
   - resolve namespace from existing code asmdef rootNamespace or Specs/ProjectProfile.md
-  - when RootNamespace is NONE use UnityGraphicsMcp
+  - when RootNamespace is NONE use UnityAgentMcp UnityGraphicsMcp or the approved single level Feature namespace
   - never emit Namespace RootNamespace CHANGE_ME or leading_or_trailing_dot namespaces
   - enum types use E_UPPER_SNAKE_CASE
   - struct types use S_UPPER_SNAKE_CASE only when a struct is justified
@@ -43,6 +51,9 @@ naming_contract:
   - constants use SCREAMING_SNAKE_CASE
 
 architecture_contract:
+  - UnityAgentMCP is a thin control plane and does not implement graphics operations
+  - Creator owns the completion workflow Domain MCP owns technical decisions and Capability Module owns bounded Unity API operations
+  - logical modules do not require separate MCP servers processes ports packages or assemblies
   - start with the smallest cohesive URP editor implementation that satisfies the approved milestone
   - do not create Controller Manager Service Profile Adapter Interface or asmdef only to complete a pattern
   - an interface is allowed only when multiple real pipeline implementations coexist or an external package boundary requires it
@@ -59,12 +70,14 @@ visual_scope:
   - Adaptive Probe Volumes when supported
   - environment and reflection probes
   - decals particles and VFX backends
-  - Timeline Cinemachine and camera language
+  - Timeline Cinemachine and camera language during the initial integrated milestone
   - Volume post process and custom rendering stages
   - capture evaluation and platform budget
 
 prohibited:
-  - write product source or long product specification into UnityAgent
+  - store MCP implementation or MCP specifications in UnityAgent or UnityAIGC-Archive
+  - load every Creator Domain MCP manifest tool schema or package source
+  - expose mutation or bake tools before their approval gates
   - use namespace Namespace.UnityGraphicsMcp
   - use enum names such as E_RenderPipelineKind
   - create shared nullable settings containing every Built-in URP and HDRP option
@@ -79,6 +92,7 @@ required_evidence:
   - architecture_policy_review
   - naming_review
   - static_contract_review
+  - mcp_catalog_manifest_consistency
 
 conditional_evidence:
   implementation_present:
@@ -100,11 +114,14 @@ conditional_evidence:
 stop_conditions:
   - namespace_is_unresolved_for_code_generation
   - active_pipeline_or_version_is_unknown_and_native_api_choice_depends_on_it
+  - selected_creator_or_domain_manifest_cannot_be_resolved
   - mutation_requires_project_settings_or_asset_approval_that_has_not_been_given
   - requested_visual_acceptance_has_no_reference_or_human_review_path
 
 human_reference:
-  repository: DarumaPPAP/UnityAIGC-Archive
-  feature: UnityGraphicsMCP
-  specification: Specs/UnityGraphicsMCP/spec.md
-  plan: Specs/UnityGraphicsMCP/plan.md
+  repository: DarumaPPAP/MyUnityMCP
+  control_plane_specification: Specs/UnityAgentMCP/spec.md
+  graphics_feature: UnityGraphicsMCP
+  graphics_specification: Specs/UnityGraphicsMCP/spec.md
+  graphics_plan: Specs/UnityGraphicsMCP/plan.md
+  graphics_tasks: Specs/UnityGraphicsMCP/tasks.md
