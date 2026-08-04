@@ -1,0 +1,74 @@
+schema_version: "1.0"
+
+repositories:
+  policy: DarumaPPAP/UnityAgent
+  mcp: DarumaPPAP/MyUnityMCP
+
+catalogs:
+  mcp: Catalog/mcp-catalog.yaml
+  creator: Catalog/creator-catalog.yaml
+  capability: Catalog/capability-catalog.yaml
+
+selection:
+  select_exactly_one_primary_creator_or_domain_mcp: true
+  conditional_domain_mcp_limit: 2
+  load_all_catalog_entries: false
+  load_all_manifests: false
+  load_all_tool_schemas: false
+  load_package_source_by_default: false
+
+activation:
+  level_0:
+    load:
+      - compact_catalog_entry
+  level_1:
+    condition: primary_creator_or_domain_selected
+    load:
+      - selected_manifest
+      - selected_workflow_contract_when_creator
+  level_2:
+    condition: operation_requires_tools
+    expose:
+      - selected_tool_group_only
+  level_3:
+    condition: approved_plan_and_explicit_mutation_permission
+    expose:
+      - mutate
+  level_4:
+    condition: separate_explicit_bake_permission
+    expose:
+      - bake
+  level_5:
+    condition: editor_connection_and_evidence_requirement
+    expose:
+      - capture
+
+standard_tool_group_order:
+  - inspect
+  - plan
+  - mutate
+  - bake
+  - capture
+
+source_read_policy:
+  normal_tool_use: prohibited
+  mcp_implementation: allowed_for_selected_package_and_direct_dependencies
+  mcp_bug_fix: allowed_for_selected_package_and_direct_dependencies
+  schema_audit: allowed_for_selected_package_and_direct_dependencies
+  unity_version_migration: allowed_for_selected_package_and_direct_dependencies
+  security_review: allowed_for_selected_package_and_direct_dependencies
+  all_package_scan: prohibited
+
+ownership:
+  user_preferences_and_unity_domain_contracts: DarumaPPAP/UnityAgent
+  mcp_specs_workflows_manifests_schemas_packages_and_tests: DarumaPPAP/MyUnityMCP
+  generated_unity_assets: target_unity_project
+
+safety:
+  inspect_is_read_only: true
+  plan_is_read_only: true
+  mutate_requires_revision_diff_undo_and_explicit_permission: true
+  bake_requires_dependency_invalidation_and_separate_permission: true
+  automatic_save: prohibited
+  silent_fallback: prohibited
+  visual_acceptance_requires_human_review: true
