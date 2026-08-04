@@ -28,16 +28,31 @@ Namespace規則:
 - RenderPipeline: URP 17+
 - RenderGraph: Enabled
 - RenderingPath: Forward
-- PrimaryPlatform: Nintendo Switch
-- OtherPlatforms: Nintendo Switch 2 / PlayStation 4 / PlayStation 5 / PC
+- RuntimePlatformPolicy: Platform-independent
+- PlatformDependencies: None by default
+- ExplicitPlatformIntegrations: None
+- PerformanceClass: Low-spec console class
+- PerformanceReferenceExample: Nintendo Switch-equivalent constraints
 - XR: Not targeted
+
+`PerformanceReferenceExample`はCPU、GPU、Memory、Bandwidth、Frame Budgetの目安であり、対応Platform、Build Target、SDK依存、Module依存、専用define、完了条件を意味しない。
+
+特定Platform名は、次の場合だけ`ExplicitPlatformIntegrations`へ追加する。
+
+- Platform SDK、Platform API、専用Package、専用defineを使用する
+- Platform固有Buildを成果物として要求する
+- Platform固有の互換性または性能を保証する
+
+単に「Nintendo Switchでも動く程度に軽くする」場合はPlatform IntegrationではなくPerformance Classとして扱う。
 
 Environment情報の優先順位:
 
 1. 対象Unity Projectから検出した事実
-2. 今回の依頼で明示されたTargetと制約
+2. 今回の依頼で明示された実装依存と制約
 3. このProject Profile
 4. UnityAgentの既定Preference
+
+Platform Build TargetとPerformance Targetを混同しない。Target Platformが未指定でも、Platform非依存の設計、実装、検証を継続する。
 
 ## Workspace policy
 

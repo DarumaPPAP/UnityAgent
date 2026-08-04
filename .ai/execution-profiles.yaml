@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 planning_baseline:
   project_context_required: false
@@ -6,11 +6,30 @@ planning_baseline:
   minimum_manual_inputs:
     - unity_version
     - render_pipeline
-    - target_platforms
     - goal
     - constraints
     - prohibited_changes
     - expected_result
+  conditional_manual_inputs:
+    target_platforms:
+      required_when:
+        - platform_sdk_or_api_is_used
+        - platform_specific_build_is_requested
+        - platform_specific_compatibility_is_claimed
+        - platform_specific_performance_is_claimed
+    performance_class:
+      required_when:
+        - performance_budget_is_part_of_goal
+  platform_policy:
+    runtime_default: platform_independent
+    separate_performance_class_from_target_platform: true
+    performance_reference_does_not_imply:
+      - supported_platform
+      - build_target
+      - sdk_dependency
+      - module_dependency
+      - platform_define
+      - completion_gate
   unresolved_project_bindings:
     policy: record_and_continue
     never_guess:
@@ -84,12 +103,48 @@ profiles:
       - organization_metadata_access
       - customer_metadata_access
 
+environment_fallback:
+  policy: record_once_and_continue
+  retry_same_capability_check: prohibited
+  missing_module_device_license_or_tool:
+    does_not_block:
+      - platform_independent_design
+      - implementation
+      - static_review
+      - unity_compile
+      - editmode_tests
+      - playmode_tests
+      - available_player_validation
+      - burst_compatibility_review
+      - aot_and_stripping_static_review
+      - available_profiler_measurement
+    fallback_order:
+      - static_review
+      - unity_compile
+      - editmode_tests
+      - playmode_tests
+      - available_player
+      - burst_compatibility_review
+      - aot_and_stripping_static_review
+      - available_fixed_environment_performance_measurement
+    unavailable_evidence:
+      status: deferred_environment
+      scope: unavailable_claim_only
+      continue_independent_tasks: true
+  block_only_when:
+    - implementation_requires_unavailable_platform_specific_dependency
+    - no_platform_independent_fallback_exists
+    - user_explicitly_requires_named_platform_artifact_as_current_deliverable
+
 quality_gate_result:
   allowed_statuses:
     - passed
     - failed
     - unavailable
+    - deferred_environment
   unavailable_policy:
     continue_planning: true
+    continue_implementation: true
     claim_success: false
     append_to_remaining_validation: true
+    record_capability_once_per_goal: true
