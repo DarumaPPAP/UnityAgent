@@ -21,6 +21,10 @@ knowledge:
         - rendering.transparent_rendering
         - rendering.shader_variants
 
+  lighting.stage_lighting_data:
+    path: .ai/knowledge/lighting/stage-lighting-data.yaml
+    status: draft
+
   rendering.temporal_anti_aliasing:
     path: .ai/knowledge/rendering/temporal-anti-aliasing.yaml
     status: reviewed
