@@ -1,0 +1,67 @@
+schema_version: "1.0"
+
+cases:
+  - id: editor_mesh_generation_tool
+    input:
+      scope: feature
+      description: >-
+        EditorWindowでScene Objectを検索し、結合候補を検証してPreviewを表示し、
+        Mesh AssetとScene Objectを生成する。Undo、Cancellation、Rollback、
+        Lightmap設定維持、SceneView Bounds表示を含む。
+    anti_monolith_triggers:
+      - read_only_analysis_and_asset_mutation_co_location
+      - preview_and_generation_co_location
+      - ui_state_and_analysis_result_mixing
+      - undo_rollback_and_asset_save_owned_by_analysis_type
+      - primary_type_owns_three_or_more_execution_phases
+    expected_initial_candidate:
+      files:
+        - name: MeshCombineToolWindow.cs
+          responsibility: editor_presentation_and_events
+        - name: MeshCombineToolModels.cs
+          responsibility: feature_local_data_contracts
+        - name: MeshCombineAnalyzer.cs
+          responsibility: read_only_search_validation_and_plan
+        - name: MeshCombineGenerator.cs
+          responsibility: scene_asset_mutation_undo_and_rollback
+    forbidden_outcomes:
+      - one_processor_owns_search_validation_plan_generation_and_persistence
+      - file_count_is_used_as_primary_success_metric
+      - one_type_per_minor_model_without_split_reason
+    required_evidence:
+      - split_reason_per_file
+      - keep_together_reason_for_models
+      - execution_mutation_and_failure_boundaries
+      - human_readability_review
+
+  - id: small_local_component
+    input:
+      scope: local_behavior
+      description: >-
+        一つのGameObjectで完結し、SerializeFieldを読み、Updateで単純な局所挙動を実行する。
+        SceneまたはAsset mutation、外部I/O、独立したFailure Boundaryを持たない。
+    expected_initial_candidate:
+      files:
+        - name: FeatureName.cs
+          responsibility: local_behavior
+    forbidden_outcomes:
+      - speculative_controller
+      - speculative_service
+      - speculative_interface
+      - model_file_created_only_for_line_count
+    required_evidence:
+      - keep_together_reason
+
+  - id: preview_and_apply_same_feature
+    input:
+      scope: feature
+      description: >-
+        Read-only Previewを作り、承認後にSceneまたはAssetへ適用するEditor Feature。
+        Applyは失敗時Rollbackを必要とする。
+    expected_boundaries:
+      - read_only_preview
+      - mutation_transaction
+      - editor_presentation
+    decision_rule: >-
+      PreviewとApplyを同一Primary Typeへ保持する場合、同一mutation boundaryと
+      同一failure boundaryを説明するKeep-Together Reasonが必須。説明できなければ分離する。
