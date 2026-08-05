@@ -1,13 +1,13 @@
 ---
 name: unity-architecture-design
-description: Unityの新規Feature、System、UI、ECS、Jobs/Burst、ScriptableObject、C#ファイル構成を、所有権・Lifetime・変更軸・性能要件から選定する。小規模機能への過剰分割を防ぎ、各新規ファイルのSplit Reasonと不採用案を明示する。
+description: Unityの新規Feature、System、UI、ECS、Jobs/Burst、ScriptableObject、C#ファイル構成を、所有権・Lifetime・変更軸・性能要件から選定する。小規模機能への過剰分割と、複数Phaseを抱える一枚岩の両方を防ぎ、各新規ファイルのSplit ReasonとKeep-Together Reasonを明示する。
 allowed-tools:
   - Read
   - Write
   - Edit
   - Bash
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # Unity Architecture Design
@@ -22,6 +22,7 @@ Unityの設計をPattern名から決めず、問題の規模、所有権、Lifet
 - Controller、Manager、Service、Interfaceの必要性を監査する
 - ECS、Jobs、Burst、GameObjectとのHybrid構成を評価する
 - C#ファイルの作りすぎ、薄いクラスの乱造を見直す
+- 巨大Processor、Manager、EditorWindow等への責務集中を見直す
 
 既知の局所バグ修正には`csharp-safe-patch`を使う。
 原因不明の障害にはIncident Skillを使う。
@@ -32,8 +33,9 @@ Unityの設計をPattern名から決めず、問題の規模、所有権、Lifet
 1. `SkillReferences/ARCHITECTURE_DECISION_POLICY.md`
 2. `SkillReferences/ARCHITECTURE_STANDARDS.md`
 3. `SkillReferences/CODING_STANDARDS.md`
-4. 対象Sourceと直接依存
-5. ECS、Rendering、UI等の条件付きReference
+4. `SkillReferences/COHESION_AND_FILE_GRANULARITY_STANDARDS.md`
+5. 対象Sourceと直接依存
+6. ECS、Rendering、UI等の条件付きReference
 
 全Pattern、全Skill、全Referenceを一括で読まない。
 
@@ -61,6 +63,7 @@ Unityの設計をPattern名から決めず、問題の規模、所有権、Lifet
 - Primary Unity Typeと同一ファイル内のprivateまたはFeature-local補助型
 
 成立する場合は、Pattern適用のためだけに層を増やさない。
+同時に、検索、検証、計画、生成、永続化等の複数Phaseを最小ファイル数へ押し込まない。
 
 ### Step 3 — OwnershipとLifetimeを固定する
 
@@ -91,7 +94,22 @@ Unityの設計をPattern名から決めず、問題の規模、所有権、Lifet
 
 「将来変わるかもしれない」はVariation Axisにしない。
 
-### Step 5 — 2～4候補を比較する
+### Step 5 — Execution、Mutation、Failure Boundaryを特定する
+
+次を独立して確認する。
+
+- read-only analysis
+- preview / plan
+- runtime execution
+- Scene / Asset mutation
+- save / persistence
+- undo / rollback
+- retry / cancellation
+- Editor presentation
+
+異なるBoundaryを同一Primary Typeへ保持する場合はKeep-Together Reasonを記録する。
+
+### Step 6 — 2～4候補を比較する
 
 問題に適合する候補だけを比較する。
 
@@ -100,6 +118,7 @@ Unityの設計をPattern名から決めず、問題の規模、所有権、Lifet
 - MonoBehaviour + Plain C# logic
 - MonoBehaviour + ScriptableObject Profile
 - Feature Coordinator
+- Analyzer + Generator
 - MVP / MVVM
 - State / Strategy / Command / Observer
 - Ports and Adapters
@@ -110,7 +129,7 @@ Unityの設計をPattern名から決めず、問題の規模、所有権、Lifet
 
 各候補について利点、欠点、Runtime Cost、Authoring Cost、Migration Costを簡潔に示す。
 
-### Step 6 — ECS Opportunity Check
+### Step 7 — ECS Opportunity Check
 
 データ並列処理では、次の成立数を確認する。
 
@@ -126,7 +145,7 @@ Unityの設計をPattern名から決めず、問題の規模、所有権、Lifet
 3項目以上ならECSまたはJobs/Burst案を候補から除外しない。
 本番採用時はGameObject Baseline、Jobs/Burst、ECSの比較Evidenceを要求する。
 
-### Step 7 — File Planを作る
+### Step 8 — File Planを作る
 
 各ファイルへ次を記載する。
 
@@ -135,22 +154,43 @@ Unityの設計をPattern名から決めず、問題の規模、所有権、Lifet
 - responsibility
 - owner
 - lifetime
+- execution phase
+- side effects
+- mutation boundary
+- failure boundary
+- primary change reasons
 - consumers
 - Split Reason
+- Keep-Together Reason
 - 同一ファイルへ統合できない理由
 
 同一ファイルへ保持する型と、意図的に作らない型も記載する。
 
-### Step 8 — Quality Gate
+### Step 9 — Anti-monolith review
+
+次を確認する。
+
+- read-only解析とSceneまたはAsset mutationが同居していないか
+- previewと本生成が同居していないか
+- UI stateとanalysis resultが混在していないか
+- Undo、Rollback、Asset保存を通常解析が直接所有していないか
+- 一つのPrimary Typeが3 Phase以上を所有していないか
+- 広い名前の型が無関係な責務を吸収していないか
+- entry pointと主要Phaseを短時間で発見できるか
+
+Triggerがある場合、機械的に分割せず、Split ReasonとKeep-Together Reasonを比較して決定する。
+
+### Step 10 — Quality Gate
 
 - Architecture Fit
 - File Granularity
+- Cohesion and Readability
 - Ownership and Lifetime
 - Serialization Validation
 - ECS Data Layout when applicable
 - Performance Capture when Production performance adoption
 
-### Step 9 — Decisionを返す
+### Step 11 — Decisionを返す
 
 - Selected Architecture
 - Rejected Alternatives
@@ -159,12 +199,14 @@ Unityの設計をPattern名から決めず、問題の規模、所有権、Lifet
 - Serialization Contracts
 - Validation Plan
 - Re-evaluation Conditions
+- Human Readability Review
 
 ## Non-negotiable rules
 
 - Single Cohesive Script Firstを既定とする。
 - Architecture Patternを満たすためだけに型やファイルを増やさない。
 - 新規ファイルごとにHard Split Reasonを要求する。
+- 複雑な責務を同居させる場合はKeep-Together Reasonを要求する。
 - hypothetical reuseを分割理由にしない。
 - 単純転送Controller、Manager、Service、UseCaseを作らない。
 - 1実装しかないInterfaceを慣習だけで作らない。
@@ -172,6 +214,7 @@ Unityの設計をPattern名から決めず、問題の規模、所有権、Lifet
 - ECS Component、Tag、Aspect、Jobを1型1ファイルへ機械的に分割しない。
 - MVPまたはMVVMをProject全体へ強制しない。
 - 行数だけでファイルを自動分割しない。
+- ファイル数を最小化するために異なるExecution、Mutation、Failure Boundaryを統合しない。
 - 性能改善を計測なしで確定しない。
 
 ## Output contract
@@ -183,14 +226,16 @@ Unityの設計をPattern名から決めず、問題の規模、所有権、Lifet
 3. Confirmed Context
 4. Ownership and Lifetime
 5. Change Axes
-6. Candidate Architectures
-7. Selected Architecture
-8. Rejected Alternatives
-9. File Plan
-10. Types Kept in the Same File
-11. Intentionally Not Created Types
-12. Dependency Direction
-13. Data and Execution Flow
-14. Serialization Contracts
-15. Validation Plan
-16. Re-evaluation Conditions
+6. Execution, Mutation and Failure Boundaries
+7. Candidate Architectures
+8. Selected Architecture
+9. Rejected Alternatives
+10. File Plan
+11. Types Kept in the Same File
+12. Intentionally Not Created Types
+13. Dependency Direction
+14. Data and Execution Flow
+15. Serialization Contracts
+16. Validation Plan
+17. Re-evaluation Conditions
+18. Human Readability Review
