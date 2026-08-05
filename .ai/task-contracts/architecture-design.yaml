@@ -27,12 +27,15 @@ prohibited_mutations:
   - unrelated_refactor
   - project_setting_change_without_approval
   - public_or_serialized_contract_change_without_analysis
+  - file_count_minimization_by_merging_independent_boundaries
 
-required_knowledge: []
+required_knowledge:
+  - cohesion_and_file_granularity_standards
 
 required_quality_gates:
   - architecture_fit
   - file_granularity
+  - cohesion_and_readability
   - ownership_and_lifetime
   - serialization_validation
 
@@ -50,6 +53,10 @@ completion:
   - selected_architecture_is_explained
   - rejected_alternatives_are_explained
   - every_planned_file_has_a_split_reason
+  - complex_co_location_has_a_keep_together_reason
+  - execution_mutation_and_failure_boundaries_are_declared
+  - anti_monolith_triggers_are_resolved
+  - human_readability_review_is_recorded
   - unnecessary_abstractions_are_removed
   - reevaluation_conditions_are_defined
 
@@ -60,6 +67,6 @@ stop_conditions:
 
 result_format:
   summary: architecture_decision
-  changed_artifacts: paths_responsibilities_and_split_reasons
+  changed_artifacts: paths_responsibilities_boundaries_and_reasons
   validation: gate_statuses
   unresolved: bindings_risks_and_reevaluation_conditions
