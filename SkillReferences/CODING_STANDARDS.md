@@ -42,6 +42,11 @@ Root Namespaceが未設定または不明な場合、プレースホルダーを
 - private補助型、Feature専用Enum、Result、Comparer、Job、ECS Component、Tag、Aspect、System専用型を無条件に別ファイルへ分離しない。
 - 新規C#ファイルにはowner、lifetime、execution boundary、confirmed reuseまたはindependent contractのSplit Reasonを要求する。
 - hypothetical reuse、Pattern適合、Mock可能性、行数だけを分離理由にしない。
+- ファイル数そのものを最小化しない。理解と変更に必要な責務境界を最小化する。
+- 複数の実行Phase、副作用、Failure Boundaryを同一Primary Typeへ保持する場合はKeep-Together Reasonを要求する。
+- Read-only解析とSceneまたはAsset Mutation、Previewと本生成、UI StateとDomain Resultを機械的に同居させない。
+- `Processor`、`Manager`、`Controller`、`System`等の広い名前へ検索、検証、計画、生成、永続化を集約しない。
+- File Granularityの詳細監査では`COHESION_AND_FILE_GRANULARITY_STANDARDS.md`を使用する。
 - Do not add mutable static state, static events, Singleton or Service Locator.
 - Do not create `Manager`, `Controller`, `Util`, `Common`, `Helper` without a precise responsibility.
 - Controller、Manager、Serviceは状態、順序、Lifetime、Resource、複数参加要素の調停を所有しない場合は作成しない。
