@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 result_statuses:
   - passed
@@ -29,9 +29,23 @@ gates:
       - every_new_file_has_a_split_reason
       - feature_local_types_were_considered_for_co_location
       - speculative_abstractions_are_not_required_by_the_plan
+      - complex_co_location_has_a_keep_together_reason
     does_not_prove:
       - long_term_maintainability
       - runtime_correctness
+
+  cohesion_and_readability:
+    proves:
+      - execution_phases_are_declared
+      - read_only_and_mutation_boundaries_are_reviewed
+      - failure_and_transaction_boundaries_are_reviewed
+      - anti_monolith_triggers_are_resolved
+      - entry_points_and_primary_change_reasons_are_identifiable
+      - non_obvious_constraints_have_maintenance_comments
+    does_not_prove:
+      - unity_compile
+      - runtime_correctness
+      - long_term_maintainability_without_future_change_evidence
 
   ownership_and_lifetime:
     proves:
