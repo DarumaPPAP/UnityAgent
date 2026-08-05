@@ -22,12 +22,18 @@ prohibited_mutations:
   - assumed_renderer_data_name
   - automatic_project_settings_change
   - automatic_scene_or_prefab_mutation
+  - file_count_minimization_by_merging_independent_boundaries
 
 required_knowledge:
   - select_primary_knowledge_from_index
+  - cohesion_and_file_granularity_standards
+
 required_quality_gates:
   - static_review
   - package_structure_validation
+  - file_granularity
+  - cohesion_and_readability
+
 conditional_quality_gates:
   - compile
   - editmode
@@ -37,6 +43,8 @@ completion:
   - portable_source_is_project_agnostic
   - setup_entry_point_is_provided
   - unresolved_project_bindings_are_explicit
+  - execution_mutation_and_failure_boundaries_are_reviewed
+  - anti_monolith_triggers_are_resolved
   - integration_and_validation_instructions_are_provided
   - unavailable_unity_gates_are_listed_for_import_time
 
@@ -46,6 +54,6 @@ stop_conditions:
 
 result_format:
   summary: portable_feature_and_supported_environment
-  changed_artifacts: package_paths
+  changed_artifacts: package_paths_and_responsibility_boundaries
   validation: static_and_available_gate_statuses
   unresolved: project_bindings_and_import_time_checks
