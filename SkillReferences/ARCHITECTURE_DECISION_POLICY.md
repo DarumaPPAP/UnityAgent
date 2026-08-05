@@ -4,7 +4,7 @@
 
 Unityの設計をMVP、Clean Architecture、Controller、ScriptableObject、ECS等の名称から開始せず、問題の規模、所有権、Lifetime、変更軸、データ配置、実行方式から決定する。
 
-このPolicyは、過剰なC#ファイル分割と不要な抽象化を防ぎながら、ECS、Jobs、Burstを適合する問題で積極的に評価するための判断契約である。
+このPolicyは、過剰なC#ファイル分割と不要な抽象化を防ぎながら、巨大な一枚岩も防止し、ECS、Jobs、Burstを適合する問題で積極的に評価するための判断契約である。
 
 ## 2. Default: Single Cohesive Script First
 
@@ -26,6 +26,8 @@ Local Behavior
 - MonoBehaviourを薄く見せたい
 
 責務を一つにすることと、型やファイルを一つの処理単位まで細分化することは同義ではない。
+
+`Single Cohesive Script First`は、複数の実行Phase、副作用、Failure Boundaryを一つのPrimary Typeへ押し込むための規則ではない。ファイル数を最小化せず、理解と変更に必要な責務境界を最小化する。
 
 ## 3. Scope classification
 
@@ -83,6 +85,8 @@ Jobs、Burst、ECS、Hybrid GameObject + ECSを積極評価する。
 - 単独で置換するBackend
 - 独立テスト価値の高い複雑なロジック
 - 独立した性能計測またはJob依存を持つ
+- read-only解析とSceneまたはAsset mutationの境界が異なる
+- failure、retry、cancellation、rollbackの責任が異なる
 
 該当しない型は、Primary Typeと同一ファイルまたは既存責務へ統合する。
 
@@ -114,22 +118,55 @@ Unity上で独立してアタッチ、生成、参照される次の型は、原
 
 複数のpublic Unity Object型を一つのファイルへ詰め込むことを推奨する規則ではない。
 
-## 6. Soft Review Gates
+Feature-localであること、internalまたはprivateであること、同じFeatureだけが使用することは、単独ではKeep-Together Reasonにならない。
 
-数値は上限ではなく、分割理由を再確認するTriggerである。
+## 6. Symmetric Cohesion Review
+
+新しいファイルにはSplit Reasonを要求する。同時に、複雑な処理や補助型を同一Primary Typeまたは同一ファイルへ保持する場合はKeep-Together Reasonを要求する。
+
+Keep-Together Reasonでは次を確認する。
+
+- 同一owner
+- 同一lifetime
+- 同一execution phase
+- 同一mutation boundary
+- 同一failure boundary
+- 主な変更理由が同じ
+- 単独で理解または変更する価値が低い
+
+次は自動分割条件ではなく、責務と依存方向を再評価するAnti-monolith Triggerである。
+
+- read-only解析とScene、Asset、Prefab、Project Settings等のmutationが同居する
+- previewまたはplan作成と本生成が同居する
+- UI stateとdomain resultまたはanalysis resultが同じ型に混在する
+- Undo、Rollback、Asset保存、Folder作成を通常の解析ロジックが直接所有する
+- 一つのPrimary Typeが検索、検証、計画、生成、永続化のうち3 Phase以上を所有する
+- 一つのメソッドが複数のfailure boundaryまたはtransaction boundaryを所有する
+- `Processor`、`Manager`、`Controller`、`System`等の広い名前へ無関係な責務が集約される
+- Primary Typeへ到達する前に多数のtop-level補助型が並び、entry pointの発見を妨げる
+- 一つの仕様変更で、独立Phaseを含むファイル全体の理解が必要になる
+- SceneまたはAssetを変更しないロジックを単独検証できるのに、Unity Editor mutationへ密結合している
+
+行数、型数、メソッド数は単独で分割理由にしない。ただしAnti-monolith Triggerと同時に増大している場合は肥大化Evidenceとして扱う。
+
+詳細は`COHESION_AND_FILE_GRANULARITY_STANDARDS.md`を使用する。
+
+## 7. Soft Review Gates
+
+数値は上限ではなく、分割理由またはKeep-Together Reasonを再確認するTriggerである。
 
 | Scope | Initial shape | Review trigger |
 |---|---:|---:|
-| Local Behavior | Runtime 1 | 2ファイル超 |
-| Small Feature | Runtime 1～2 | Runtime 3ファイル超 |
+| Local Behavior | Runtime 1 | 2ファイル超、または2 execution phase超 |
+| Small Feature | Runtime 1～2 | Runtime 3ファイル超、またはread-onlyとmutationの同居 |
 | Profile Feature | Runtime 1～2 + Profile 1 | 合計4ファイル超 |
-| Medium System | 3～6 | 6ファイル超 |
+| Medium System | 3～6 | 6ファイル超、または1 Primary Typeが3 phase以上を所有 |
 | RendererFeature | C# 2前後 + Shader | C# 4ファイル超 |
 | ECS Feature | Runtime 1 + Authoring 1 | 合計3ファイル超 |
 
-Triggerを超えた場合、各ファイルについてResponsibility、Owner、Lifetime、Consumers、Split Reason、統合不可理由を提示する。
+Triggerを超えた場合、各ファイルについてResponsibility、Owner、Lifetime、Execution Phase、Side Effects、Mutation Boundary、Failure Boundary、Consumers、Split Reason、Keep-Together Reason、統合不可理由を提示する。
 
-## 7. Controller, Manager and Service
+## 8. Controller, Manager and Service
 
 作成を許可する条件:
 
@@ -148,10 +185,11 @@ Triggerを超えた場合、各ファイルについてResponsibility、Owner、
 - Stateや順序を持たない
 - 名前を付けるためだけ
 - Pattern構造を完成させるためだけ
+- 広い名前を付け、検索、検証、計画、生成、永続化を無制限に吸収する
 
 `Manager`、`Controller`、`Coordinator`、`Service`、`System`という名前自体は責務の証明にならない。
 
-## 8. Interface
+## 9. Interface
 
 Interfaceを許可する条件:
 
@@ -172,7 +210,7 @@ Interfaceを許可する条件:
 
 Interface採用時はImplementations、Consumer、Variation Axis、Concrete dependencyでは不足する理由を記録する。
 
-## 9. ScriptableObject
+## 10. ScriptableObject
 
 積極採用条件:
 
@@ -198,7 +236,7 @@ Interface採用時はImplementations、Consumer、Variation Axis、Concrete depe
 
 Runtime Set、Event Channel、Mutable Runtime StateはOwner、初期化、解除、Domain Reload、Editor Asset汚染を追加確認する。
 
-## 10. Presentation Architecture
+## 11. Presentation Architecture
 
 ### Direct View Logic
 
@@ -214,7 +252,7 @@ UI Toolkit Runtime Data Binding、多数Fieldの同期、明確なViewModel単�
 
 MVPまたはMVVMをProject全体の標準にはしない。
 
-## 11. ECS, Jobs and Burst
+## 12. ECS, Jobs and Burst
 
 ### Opportunity Check
 
@@ -297,7 +335,7 @@ EnemyMovementEcs.cs
 
 性能ArchitectureはBefore / AfterとRevert条件なしに採用確定しない。
 
-## 12. Architecture Decision output
+## 13. Architecture Decision output
 
 設計結果は次を含む。
 
@@ -317,5 +355,6 @@ EnemyMovementEcs.cs
 14. Serialization Contracts
 15. Validation Plan
 16. Re-evaluation Conditions
+17. Human Readability Review
 
-File Planでは、各新規ファイルのPrimary Type、Responsibility、Owner、Lifetime、Consumers、Split Reasonを記載する。
+File Planでは、各新規ファイルのPrimary Type、Responsibility、Owner、Lifetime、Execution Phase、Side Effects、Mutation Boundary、Failure Boundary、Primary Change Reasons、Consumers、Split Reason、Keep-Together Reasonを記載する。
