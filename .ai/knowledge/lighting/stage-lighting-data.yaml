@@ -1,0 +1,90 @@
+id: lighting.stage_lighting_data
+version: "1.0.0"
+status: draft
+
+use_when:
+  - stage_scene_lighting_data_assignment
+  - bootstrap_scene_lighting_lifetime
+  - scene_to_lighting_data_asset_registry
+  - last_loaded_stage_priority
+  - lighting_data_excel_round_trip
+
+required_inputs:
+  - unity_version
+  - bootstrap_scene_binding
+  - registered_stage_scenes
+  - registered_lighting_data_assets
+  - stage_scene_overlap_model
+  - source_namespace_and_assembly_boundary
+
+implementation_contract:
+  - scene_loaded_and_scene_unloaded_events_drive_runtime_lifetime
+  - latest_registered_scene_load_sequence_wins
+  - unloading_the_winner_restores_the_previous_loaded_registered_scene
+  - no_registered_scene_falls_back_to_bootstrap_or_non_registered_scene
+  - lighting_data_asset_assignment_is_saved_to_each_scene_through_editor_api
+  - player_uses_unity_scene_load_patching_instead_of_direct_lighting_data_asset_assignment
+  - scriptable_object_path_is_Assets_Settings_LightingData_StageLightingData_asset
+  - excel_path_is_project_root_Excel_StageLightingData_xlsx
+  - excel_identity_prefers_asset_guid_then_falls_back_to_asset_path
+  - excel_import_is_transactional_and_rejects_duplicate_scene_registration
+  - runtime_and_editor_assemblies_are_separated_by_editor_compilation_boundary
+  - unused_asset_unload_is_optional_and_deferred
+
+prohibited:
+  - use_UnityEditor_LightingDataAsset_from_player_code
+  - claim_public_runtime_LightingDataAsset_hot_swap_support
+  - set_LightmapSettings_lightmaps_to_null_on_stage_unload
+  - destroy_or_delete_project_lighting_assets_during_runtime_unload
+  - mutate_scene_yaml_directly
+  - create_singleton_service_locator_or_static_mutable_registry
+  - add_third_party_excel_package_without_explicit_need
+  - require_platform_specific_feature_support_when_the_system_is_platform_independent
+
+required_evidence:
+  - static_contract_review
+  - architecture_fit
+  - file_granularity
+  - ownership_and_lifetime
+  - serialization_validation
+  - missing_reference_check
+  - editor_compile
+  - player_compile
+  - scene_a_then_scene_b_load_priority_case
+  - winning_scene_unload_restores_previous_case
+  - all_registered_scenes_unloaded_fallback_case
+  - scene_lighting_data_assignment_persists_after_reopen
+  - excel_export_import_round_trip
+
+conditional_evidence:
+  resources_unload_unused_assets_enabled:
+    - profiler_hitch_and_memory_release_measurement
+  addressables_scene_loading:
+    - addressables_scene_path_and_unload_case
+  overlapping_stage_lightmaps:
+    - multi_scene_lightmap_integrity_case
+
+failure_signatures:
+  - lighting_data_asset_reference_missing_after_scene_reopen
+  - later_loaded_stage_does_not_become_active
+  - previous_stage_is_not_restored_after_unload
+  - global_lightmaps_disappear_from_unrelated_loaded_scene
+  - editor_type_reference_in_player_assembly
+  - excel_guid_resolves_to_wrong_asset
+  - excel_import_partially_mutates_data_on_failure
+  - resources_unload_unused_assets_causes_visible_hitch
+
+related:
+  required: []
+  conditional: []
+
+stop_conditions:
+  - true_runtime_lighting_data_asset_swap_without_scene_reload_is_mandatory
+  - bootstrap_scene_identity_is_unresolved_for_scene_mutation
+  - requested_multi_scene_lightmap_composition_requires_a_separate_runtime_payload_system
+  - requested_success_claim_requires_unavailable_unity_compile_or_scene_runtime_evidence
+
+human_reference:
+  repository: DarumaPPAP/UnityAIGC-Archive
+  knowledge_id: lighting.stage_lighting_data
+  entry: Specs/StageLightingData/spec.md
