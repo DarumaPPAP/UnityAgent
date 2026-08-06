@@ -4,7 +4,12 @@ description: Use when reviewing Japanese comments in Unity, C#, Shader, HLSL, or
 allowed-tools:
   - Read
 metadata:
-  version: "2.0.0"
+  version: "2.1.0"
+  kind: user-policy-operation
+  policy_owner: user
+  policy_source: .ai/user-policy.yaml#comment_system
+  protected: true
+  entrypoint: conditional
 ---
 
 # Comment Quality Reviewer
@@ -13,10 +18,11 @@ metadata:
 
 ## Required references
 
-1. `SkillReferences/JAPANESE_CODE_COMMENT_STANDARDS.md`
-2. `SkillReferences/COMMENT_REVIEW_CHECKLIST.md`
-3. 本番用なら`Production`、学習用なら`Learning`プロファイル
-4. 対象分野に応じた既存Standards
+1. `.ai/user-policy.yaml`
+2. `SkillReferences/JAPANESE_CODE_COMMENT_STANDARDS.md`
+3. `SkillReferences/COMMENT_REVIEW_CHECKLIST.md`
+4. 本番用なら`Production`、学習用なら`Learning`プロファイル
+5. 対象分野に応じた既存Standards
 
 ## Workflow
 
@@ -46,6 +52,7 @@ metadata:
 
 ## Checklist
 
+- [ ] `.ai/user-policy.yaml`のコメントPolicyを適用した
 - [ ] Profileを確定した
 - [ ] コメントとコードを照合した
 - [ ] 不足と冗長を両方確認した
