@@ -1,19 +1,50 @@
 # UnityAgent
 
-Unity / C# / URP / RenderGraph / Shader / Performance / Visual DirectionのDomain Skill、Knowledge Contract、Task Contract、Standards、Validatorを管理する正本Repositoryです。
+Unity / C# / URP / RenderGraph / Shader / Performance / Visual DirectionのDomain Skill、Knowledge Contract、Task Contract、Standards、Validatorと、**ユーザー固有のUnity開発Policy**を管理する正本Repositoryです。
+
+UnityAgentは汎用的なUnity Best Practice集ではありません。ユーザーが決めた設計思想、ファイル粒度、コメント品質、禁止事項、安全境界を、外部記事や一般的推奨より優先して適用する個人専用Unity開発Agentです。
 
 汎用の実行モード、Task Graph、Retry、Token Budget、Checkpoint、Human Gateは`DarumaPPAP/Unity-Graph-Engineering`が所有します。
 
 ## Source of truth
 
-- `DarumaPPAP/UnityAgent`: Unity Domain Skill、圧縮Knowledge YAML、Task Contract、Quality Gate、Validator
+- `DarumaPPAP/UnityAgent`: ユーザー固有Policy、Unity Domain Skill、圧縮Knowledge YAML、Task Contract、Quality Gate、Validator
 - `DarumaPPAP/Unity-Graph-Engineering`: Prompt / Graph-Loop実行、Budget、State、Recovery、Human Gate
+- `DarumaPPAP/MyUnityMCP`: UnityAgentMCP、Creator Workflow、Domain MCP、Capability Module、Catalog、Manifest、Tool Schema、Package実装
 - `DarumaPPAP/UnityAIGC-Archive`: 生成した製品コード、製品仕様、導入資料
 - `DarumaPPAP/Beautiful-Definition`: Visual Intent、Beauty Definition、Human feedback
 - `DarumaPPAP/Unity-Knowledge-Products`: 人間向けHTML、詳細解説、実験、Decisionを置く予定の知的資産Repository
 - Google Drive: PDF、PowerPoint、画像、動画、Capture、外部資料の原資料庫
 
 UnityAgent内へ長い技術解説や製品Feature用の新しい`Implementation/`または`Specs/`を作成しません。
+
+## User policy authority
+
+ユーザー固有Policyの正本は`.ai/user-policy.yaml`です。
+
+```text
+今回のユーザー明示指示
+  ↓
+UnityAgent User Policy
+  ↓
+Project固有Policy
+  ↓
+Unity Domain Standard
+  ↓
+外部Reference
+  ↓
+一般的Best Practice
+```
+
+Projectから検出した事実とユーザーのPreferenceは分離します。対象ProjectのUnity Version、Render Pipeline、既存namespaceなどの事実は推測しません。一方、ファイル分割、過剰設計防止、日本語コメント、Team Safe ImportなどのユーザーPolicyは一般論で上書きしません。
+
+古いPolicyは現在のPolicyへ自動マージしません。競合時は現在のPolicyを保持し、古い重複・廃止情報を削除します。
+
+コメント体系は保護対象です。
+
+- 本番コード: `production-code-comments`
+- 学習・コードリーディング: `learning-code-comments`
+- コメント品質監査: `comment-quality-reviewer`
 
 ## Execution profiles
 
@@ -27,7 +58,7 @@ UnityAgent内へ長い技術解説や製品Feature用の新しい`Implementation
 
 ### Generic Planning
 
-Unity Version、Render Pipeline、Platform、Goal、Constraints、禁止事項、期待結果の最小手動入力だけで計画できます。Project固有Path、Scene、Renderer Data、Layer、ShaderTagは推測せず、未解決Bindingとして残します。
+Unity Version、Render Pipeline、Goal、Constraints、禁止事項、期待結果の最小手動入力だけで計画できます。Target PlatformはPlatform固有API、Build、互換性または性能主張がある場合だけ必須です。Project固有Path、Scene、Renderer Data、Layer、ShaderTagは推測せず、未解決Bindingとして残します。
 
 ### Personal Full-Control
 
@@ -46,6 +77,10 @@ Unity-Graph-Engineering Execution Router
   ↓
 UnityAgent Execution Profile
   ↓
+UnityAgent User Policy
+  ↓
+One Primary Domain Route
+  ↓
 One Task Contract
   ↓
 One Context Pack
@@ -59,14 +94,24 @@ Target Source or Portable Output
 
 ## Context Engineering
 
-入口は`.ai/context-index.yaml`です。
+Unity Domain Routingの唯一の入口は`.ai/context-index.yaml`です。
 
 ```text
 .ai/
+├─ user-policy.yaml
 ├─ context-index.yaml
 ├─ execution-profiles.yaml
 ├─ context-packs/
-│  └─ architecture-design.yaml
+│  ├─ architecture-design.yaml
+│  ├─ graphics-mcp.yaml
+│  ├─ csharp-local-fix.yaml
+│  ├─ rendering-incident.yaml
+│  ├─ shader-change.yaml
+│  ├─ renderer-feature-change.yaml
+│  ├─ performance.yaml
+│  ├─ asset-data-change.yaml
+│  ├─ portable-feature.yaml
+│  └─ visual-direction.yaml
 ├─ knowledge/
 │  ├─ knowledge.schema.yaml
 │  ├─ index.yaml
@@ -74,6 +119,7 @@ Target Source or Portable Output
 ├─ task-contracts/
 │  ├─ task-contract.schema.yaml
 │  ├─ architecture-design.yaml
+│  ├─ graphics-mcp.yaml
 │  ├─ csharp-local-fix.yaml
 │  ├─ rendering-incident.yaml
 │  ├─ shader-change.yaml
@@ -81,18 +127,21 @@ Target Source or Portable Output
 │  ├─ performance-experiment.yaml
 │  ├─ asset-data-change.yaml
 │  ├─ portable-feature.yaml
-│  └─ safe-import-integration.yaml
+│  ├─ safe-import-integration.yaml
+│  └─ visual-direction.yaml
 ├─ quality-gates.yaml
 ├─ mutation-channels.yaml
 ├─ risk-levels.yaml
 └─ knowledge-graph-pilot.yaml
 ```
 
-全Skill、全Reference、全Knowledgeを一括で読みません。Primary Domain Skill、Task Contract、Primary Knowledgeをそれぞれ一つに限定し、Related Knowledgeは条件成立時だけ追加します。
+全Skill、全Reference、全Knowledgeを一括で読みません。Primary Domain Route、Task Contract、Context Pack、Primary Domain Skillをそれぞれ一つに限定し、Related KnowledgeとConditional Operationは条件成立時だけ追加します。
+
+`SkillReferences/UNITY_SKILL_ROUTING.md`と`unity-production-workflow`は旧参照互換だけを持ち、Routing正本として使用しません。
 
 ## Architecture intelligence
 
-新規Feature、System、C#ファイル構成、MonoBehaviour / Plain C# / ScriptableObject / ECSの境界判断には`architecture_design` Routeを使用します。
+新規Feature、System、C#ファイル構成、MonoBehaviour / Plain C# / ScriptableObject / ECSの境界判断には`architecture-design` Routeを使用します。
 
 - 小規模機能はSingle Cohesive Script First
 - 新規ファイルごとにSplit Reasonを要求
@@ -102,7 +151,7 @@ Target Source or Portable Output
 - ECS Component、Tag、Aspect、Jobを1型1ファイルへ機械的に分割しない
 - Architecture Decisionへ採用案、不採用案、File Plan、再評価条件を残す
 
-判断Policyの正本は`SkillReferences/ARCHITECTURE_DECISION_POLICY.md`です。
+判断Policyの正本は`.ai/user-policy.yaml`と`SkillReferences/ARCHITECTURE_DECISION_POLICY.md`です。
 
 ## Knowledge boundary
 
@@ -132,6 +181,7 @@ PDF、PowerPoint、画像、動画、Profiler／GPU Captureなどの原資料を
 | Contract | 主用途 |
 |---|---|
 | `architecture-design` | 新規Feature/System、ファイル粒度、MVP/MVVM/SO/ECS選定 |
+| `graphics-mcp` | MyUnityMCPのGraphics Domain、Creator Workflow、Capability設計 |
 | `csharp-local-fix` | 確定済みの局所C#修正 |
 | `rendering-incident` | 原因不明の描画、RenderGraph、Editor / Player差 |
 | `shader-change` | ShaderLab、HLSL、Compute |
@@ -140,6 +190,7 @@ PDF、PowerPoint、画像、動画、Profiler／GPU Captureなどの原資料を
 | `asset-data-change` | Scene、Prefab、Material、Serialized Asset |
 | `portable-feature` | Project非依存のUPM Package／外部Authoring |
 | `safe-import-integration` | Team用一方向Staging Import |
+| `visual-direction` | Lighting、Composition、LookDev、Capture、Human Review |
 
 ## Capability-independent validation
 
@@ -147,6 +198,7 @@ Quality Gateの結果は`passed`、`failed`、`unavailable`です。
 
 - `unavailable`はTask失敗ではありません。
 - `unavailable`を成功と報告しません。
+- 環境待ちは`unavailable`と`reason_code: deferred-environment`で表現します。
 - 実行できないGateは理由と残作業へ移します。
 - Compile成功だけでRuntime、Visual、Performance、実機を保証しません。
 - Architecture用Gateとして`architecture_fit`、`file_granularity`、`ownership_and_lifetime`、`ecs_data_layout`を使用します。
@@ -177,6 +229,18 @@ python Tools/ContractValidator/validate_contracts.py
 python Tools/ContractValidator/validate_contracts.py --json
 ```
 
+Context Pack Validator:
+
+```bash
+python Tools/ContextPackValidator/validate_context_packs.py
+```
+
+Canonical Route Graph／User Policy Validator:
+
+```bash
+python Tools/RouteGraphValidator/validate_route_graph.py
+```
+
 Routing Case:
 
 ```text
@@ -202,5 +266,6 @@ Motion Vector、Transparent、Outline、UI Composition、Shader VariantはRelate
 - Verifier品質低下: 0
 - Missed Dependency悪化: 0
 - 未検証の成功報告: 0
+- ユーザー固有Policyの欠落: 0
 
 削減率は公開事例ではなく、同じUnity TaskとSource revisionによるA/B比較で判断します。
