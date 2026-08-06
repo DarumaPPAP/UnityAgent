@@ -7,9 +7,19 @@ required_inputs:
   - system_scope
   - current_or_expected_scale
   - ownership_and_lifetime
-  - target_platform
-  - performance_constraints
   - prohibited_changes
+
+conditional_inputs:
+  target_platform:
+    required_when:
+      - platform_specific_api_is_used
+      - platform_specific_build_is_requested
+      - platform_specific_compatibility_is_claimed
+      - platform_specific_performance_is_claimed
+  performance_constraints:
+    required_when:
+      - performance_budget_is_part_of_goal
+      - ecs_jobs_burst_adoption_is_being_evaluated
 
 allowed_mutations:
   - architecture_specification
@@ -27,6 +37,7 @@ prohibited_mutations:
   - unrelated_refactor
   - project_setting_change_without_approval
   - public_or_serialized_contract_change_without_analysis
+  - generic_best_practice_overriding_user_policy
 
 required_knowledge: []
 
@@ -51,12 +62,14 @@ completion:
   - rejected_alternatives_are_explained
   - every_planned_file_has_a_split_reason
   - unnecessary_abstractions_are_removed
+  - user_policy_is_preserved
   - reevaluation_conditions_are_defined
 
 stop_conditions:
   - required_existing_contract_is_unknown
   - architecture_change_requires_unapproved_serialization_break
   - project_wide_refactor_scope_is_not_authorized
+  - proposed_design_conflicts_with_user_policy_without_explicit_user_approval
 
 result_format:
   summary: architecture_decision
