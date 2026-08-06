@@ -2,6 +2,36 @@
 
 UnityAgentはUnity / C# / URP / RenderGraph / Shader / Performance / Visual DirectionのDomain Knowledgeと、ユーザー固有の設計思想・運用規則の正本です。UnityAgentMCP、Creator Workflow、Domain MCP、Capability Moduleの仕様と実装は`DarumaPPAP/MyUnityMCP`が所有します。汎用の実行モード、Task Graph、Retry、Token Budget、Checkpointは`DarumaPPAP/Unity-Graph-Engineering`が所有します。
 
+## 0. User policy authority
+
+UnityAgentは汎用Best Practiceを適用するためのAgentではなく、ユーザー専用Unity開発Agentです。今回のユーザー明示指示と`.ai/user-policy.yaml`を、一般的推奨、外部記事、他Agentの既定設計より優先します。
+
+優先順位:
+
+1. 今回のユーザー明示指示
+2. `.ai/user-policy.yaml`
+3. 対象Project固有Policy
+4. Unity Domain Standard
+5. 外部Reference
+6. 一般的Best Practice
+
+Projectから検出した事実とユーザーPreferenceを混同しない。Unity Version、Render Pipeline、既存namespaceなどの事実は対象Projectを優先し、ファイル粒度、過剰設計防止、日本語コメント、Team Safe Import、安全境界などのユーザーPolicyは一般論で上書きしない。
+
+- 古いPolicyを現在のPolicyへ自動マージしない。
+- 競合時は現在のPolicyを保持して報告する。
+- 古いSourceにしかない現行User Policyだけを移行してから古いSourceを削除する。
+- コメント体系、ファイル粒度、Architecture Preference、Security、Team Safe Import、Rendering Preference、Validation要求、禁止事項は保護対象とする。
+- Policyの削除または簡略化はユーザー承認とPolicy Loss確認を要求する。
+
+コメント体系の正本:
+
+- `.ai/user-policy.yaml#comment_system`
+- `.agents/skills/production-code-comments/SKILL.md`
+- `.agents/skills/learning-code-comments/SKILL.md`
+- `.agents/skills/comment-quality-reviewer/SKILL.md`
+- `SkillReferences/JAPANESE_CODE_COMMENT_STANDARDS.md`
+- `SkillReferences/COMMENT_REVIEW_CHECKLIST.md`
+
 ## 1. Workspace
 
 - このRepositoryはUnityプロジェクト本体ではない。
@@ -21,6 +51,7 @@ Execution Modeが未指定の場合はUnity-Graph-EngineeringのPolicyによりP
 
 UnityAgentは次を担当する。
 
+- User Policy
 - Domain route
 - Context Pack
 - Knowledge Contract
@@ -49,21 +80,25 @@ UnityAgentは次を担当しない。
 - Token Accounting
 - Human Gate orchestration
 
-Compatibility adapter:
+Compatibility-only path:
 
 - `.agents/skills/unity-production-workflow/SKILL.md`
 - `SkillReferences/UNITY_AGENT_SUPERVISOR_MODEL.md`
+- `SkillReferences/UNITY_SKILL_ROUTING.md`
+
+これらはRouting入口ではない。旧State Machine、旧Lane、旧Skill選択表を再構築しない。
 
 ## 3. Execution profiles
 
-最初に`.ai/execution-profiles.yaml`を読み、次のProfileを選ぶ。
+`.ai/user-policy.yaml`を確認した後、`.ai/execution-profiles.yaml`を読み、次のProfileを選ぶ。
 
 ### Generic Planning
 
-Projectへアクセスしない標準Profile。Unity Version、Render Pipeline、Platform、Goal、Constraints、禁止事項、期待結果の最小手動入力だけで計画とPortable成果物を作る。
+Projectへアクセスしない標準Profile。Unity Version、Render Pipeline、Goal、Constraints、禁止事項、期待結果の最小手動入力だけで計画とPortable成果物を作る。
 
 - Project Contextは必須ではない。
 - Capability Manifestは必須ではない。
+- Target PlatformはPlatform固有API、Build、互換性または性能主張がある場合だけ必須。
 - 未解決のPath、Scene、Renderer Data、Layer、ShaderTagを推測しない。
 - 未解決Bindingを記録し、残りの設計と実装を継続する。
 
@@ -86,15 +121,17 @@ Projectへアクセスしない標準Profile。Unity Version、Render Pipeline�
 
 ## 4. Context and MCP routing
 
-最初に`.ai/context-index.yaml`を読み、依頼に一致するContext PackとTask Contractを一つずつ選ぶ。MCP能力が必要な場合だけ`.ai/mcp-routing.yaml`を読み、MyUnityMCPのCatalogからCreatorまたはPrimary Domain MCPを一つ選ぶ。
+`.ai/context-index.yaml`をUnity Domain Routingの唯一の入口とし、依頼に一致するPrimary Route、Context Pack、Task Contractを一つずつ選ぶ。MCP能力が必要な場合だけ`.ai/mcp-routing.yaml`を読み、MyUnityMCPのCatalogからCreatorまたはPrimary Domain MCPを一つ選ぶ。
 
 - 全Skillを一括で読まない。
 - 全Referenceを一括で読まない。
+- Primary Domain Routeは一つ。
 - Primary Domain Skillは一つ。
 - Primary Task Contractは一つ。
 - Primary Knowledgeは一つ。
 - Primary CreatorまたはPrimary Domain MCPは一つ。
 - Conditional Domain MCPは条件成立時だけ追加し、原則2つまでとする。
+- コメント追加・監査は`.ai/user-policy.yaml#comment_system`からConditional Operationを選ぶ。
 - 全MCP Manifestを一括で読まない。
 - 全Tool Schemaを一括で読まない。
 - 通常のMCP利用ではPackage C# Sourceを読まない。
@@ -106,6 +143,7 @@ Projectへアクセスしない標準Profile。Unity Version、Render Pipeline�
 - 対象Sourceと直接依存を優先する。
 - Knowledge Graphは候補Artifactの絞り込みにだけ使い、変更前にSourceを直接読む。
 - 人間向けHTMLは設計理由、比較、実験、Visual Reference、Decision履歴が必要な場合だけ読む。
+- Route不一致時に旧Routing文書へFallbackしない。
 
 Context Pack:
 
@@ -114,7 +152,10 @@ Context Pack:
 - `.ai/context-packs/csharp-local-fix.yaml`
 - `.ai/context-packs/rendering-incident.yaml`
 - `.ai/context-packs/shader-change.yaml`
+- `.ai/context-packs/renderer-feature-change.yaml`
 - `.ai/context-packs/performance.yaml`
+- `.ai/context-packs/asset-data-change.yaml`
+- `.ai/context-packs/portable-feature.yaml`
 - `.ai/context-packs/visual-direction.yaml`
 
 Task Contract:
@@ -129,6 +170,7 @@ Task Contract:
 - `.ai/task-contracts/asset-data-change.yaml`
 - `.ai/task-contracts/portable-feature.yaml`
 - `.ai/task-contracts/safe-import-integration.yaml`
+- `.ai/task-contracts/visual-direction.yaml`
 
 ## 5. Minimum project facts
 
@@ -137,11 +179,12 @@ Project ContextやUnity Toolがなくても計画を止めない。最低限、�
 - Unity Version
 - Render Pipeline
 - RenderGraph使用有無
-- Target Platform
 - Goal
 - Constraints
 - Prohibited Changes
 - Expected Result
+
+Target PlatformはPlatform固有API、Build、互換性または性能主張がある場合だけ追加する。
 
 対象Repositoryへアクセスできる場合は、既存コード、asmdef、Feature Spec、Project Contextから追加事実を確定する。
 
@@ -177,6 +220,7 @@ Quality Gateの結果は`passed`、`failed`、`unavailable`のいずれか。
 
 - `unavailable`はTask失敗ではない。
 - `unavailable`を成功として報告しない。
+- 環境待ちは`unavailable`と`reason_code: deferred-environment`で表現する。
 - 実行できないGateは理由と残作業へ移す。
 - Compile成功だけでRuntime、Visual、Performance、実機を承認しない。
 - AIの自己申告だけをEvidenceにしない。
@@ -202,7 +246,8 @@ Quality Gateの結果は`passed`、`failed`、`unavailable`のいずれか。
 - mutable static状態、static event、Singleton、Service Locatorを安易に追加しない。
 - 不要なController、Manager、Setup、自動探索、Fallback、Cache、Debug UIを追加しない。
 - public API、SerializeField、Prefab、Scene、Save Data互換性を無断変更しない。
-- コメントは日本語で意図、制約、危険箇所を書く。
+- コメントは日本語で意図、制約、所有権、寿命、実行順、危険箇所を必要な密度で書く。
+- 本番用と学習用のコメント密度を混同しない。
 
 詳細は選択Context Packから対応Referenceを読む。新規Architectureまたはファイル構成判断では`SkillReferences/ARCHITECTURE_DECISION_POLICY.md`を必ず読む。
 
@@ -259,13 +304,15 @@ UnityAgentMCP、Creator Workflow、Domain MCP、Capability Module、Catalog、Ma
 
 MCPが対象Unity Projectへ生成・変更するScene、Prefab、Material、Shader、RendererFeature、Timeline、Volume Profile、Lighting Data等は対象Unity Projectが所有する。明示的なExport依頼なしに外部Repositoryへ複製しない。
 
-Generic PlanningのPortable成果物はProject固有Pathや名前を持たず、Setup Wizard、Integration Contract、未解決Binding、Validation手順を含める。
+Generic PlanningのPortable成果物はProject固有Pathや名前を持たず、Integration Contract、未解決Binding、Validation手順を含める。Setup Wizardや環境構築はユーザーが明示した場合だけ成果物へ含める。
 
 ## 14. Completion contribution
 
 Domain SkillはExecution Ownerへ次を返す。
 
+- 適用したUser Policy
 - Execution Profile
+- Primary Domain Route
 - Task Contract
 - Confirmed context
 - 適用したContext Pack
