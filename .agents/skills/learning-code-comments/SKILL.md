@@ -6,7 +6,12 @@ allowed-tools:
   - Write
   - Edit
 metadata:
-  version: "2.0.0"
+  version: "2.1.0"
+  kind: user-policy-operation
+  policy_owner: user
+  policy_source: .ai/user-policy.yaml#comment_system
+  protected: true
+  entrypoint: conditional
 ---
 
 # Learning Code Comments
@@ -15,9 +20,10 @@ Unityコードを学習・コードリーディング向けに解説する日本
 
 ## Required references
 
-1. `SkillReferences/JAPANESE_CODE_COMMENT_STANDARDS.md`
-2. `SkillReferences/COMMENT_REVIEW_CHECKLIST.md`
-3. 対象分野に応じた既存Standards
+1. `.ai/user-policy.yaml`
+2. `SkillReferences/JAPANESE_CODE_COMMENT_STANDARDS.md`
+3. `SkillReferences/COMMENT_REVIEW_CHECKLIST.md`
+4. 対象分野に応じた既存Standards
 
 `Learning`プロファイルを使用する。
 
@@ -50,6 +56,7 @@ Unityコードを学習・コードリーディング向けに解説する日本
 
 ## Checklist
 
+- [ ] `.ai/user-policy.yaml`のコメントPolicyを適用した
 - [ ] 対象読者が明確
 - [ ] SDS / CRFを理解単位で使った
 - [ ] 処理順とデータフローを説明した

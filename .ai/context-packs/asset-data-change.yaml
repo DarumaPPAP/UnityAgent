@@ -1,0 +1,62 @@
+schema_version: "1.0"
+id: asset-data-change
+primary_skill: .agents/skills/csharp-safe-patch/SKILL.md
+
+use_when:
+  - Scene Prefab Material or ScriptableObject asset change
+  - serialized Unity asset migration
+  - Editor API based asset mutation
+  - team safe import staging integration
+
+required:
+  - .ai/user-policy.yaml
+  - target_assets
+  - expected_serialized_change
+  - reference_integrity_requirements
+  - authoritative_mutation_channel
+  - rollback_asset_or_revision
+  - .ai/mutation-channels.yaml
+
+conditional:
+  project_specific_change:
+    - Specs/ProjectProfile.md
+  editor_script:
+    - SkillReferences/CODING_STANDARDS.md
+    - target editor source and direct dependencies
+  material_or_shader_contract:
+    - .ai/context-packs/shader-change.yaml
+  renderer_data_or_pipeline_asset:
+    - .ai/context-packs/renderer-feature-change.yaml
+  team_safe_import:
+    - .ai/execution-profiles.yaml
+    - .ai/task-contracts/safe-import-integration.yaml
+
+excluded_by_default:
+  - raw Unity YAML mutation
+  - unrelated runtime source
+  - automatic save and implicit dirtying
+  - project scanner or source export in team safe import
+  - legacy Supervisor routing documents
+
+rules:
+  raw_yaml_mutation: false
+  serialized_reference_preservation: true
+  automatic_save: false
+  explicit_asset_scope_required: true
+  read_only_operation_must_not_dirty_assets: true
+  project_settings_and_pipeline_asset_change_require_explicit_approval: true
+  user_policy_has_priority_over_generic_asset_workflow: true
+
+limits:
+  initial_file_reads: 6
+  context_expansion_hops: 1
+
+output:
+  - target_asset_scope
+  - mutation_channel
+  - serialized_contract
+  - reference_integrity_validation
+  - changed_assets
+  - required_validation
+  - unresolved_bindings
+  - rollback

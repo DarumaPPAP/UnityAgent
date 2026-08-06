@@ -1,8 +1,38 @@
-version: 1
+version: 2
 cases:
+  - id: CONTEXT-USER-POLICY-001
+    prompt: "一般的な推奨設計より、UnityAgentに登録した私のファイル分割方針を優先して。"
+    expected_behavior: apply_user_policy_first
+    must_load:
+      - .ai/user-policy.yaml
+    must_include:
+      - generic_best_practice_must_not_override_user_policy
+      - every_new_file_requires_split_reason
+
+  - id: CONTEXT-COMMENT-PRODUCTION-001
+    prompt: "完成コードへ俺が読みやすい本番用日本語コメントを追加して。"
+    expected_operation: production-code-comments
+    must_load:
+      - .ai/user-policy.yaml
+      - SkillReferences/JAPANESE_CODE_COMMENT_STANDARDS.md
+      - SkillReferences/COMMENT_REVIEW_CHECKLIST.md
+    must_not:
+      - line_by_line_translation
+      - logic_change
+
+  - id: CONTEXT-COMMENT-LEARNING-001
+    prompt: "新人が処理順とUnityライフサイクルを理解できるよう詳しくコメントして。"
+    expected_operation: learning-code-comments
+    must_include:
+      - execution_flow
+      - data_flow
+      - target_reader
+    must_not:
+      - logic_change
+
   - id: CONTEXT-001
     prompt: "このC#コンパイルエラーを指定ファイルだけ直して。"
-    expected_route: csharp_local_fix
+    expected_route: csharp-local-fix
     expected_context_pack: .ai/context-packs/csharp-local-fix.yaml
     must_not_load:
       - SkillReferences/RENDERING_STANDARDS.md
@@ -10,7 +40,7 @@ cases:
 
   - id: CONTEXT-002
     prompt: "Editorでは正常だがSwitch実機だけRenderQueueが変わる原因を調査して。"
-    expected_route: rendering_incident
+    expected_route: rendering-incident
     expected_context_pack: .ai/context-packs/rendering-incident.yaml
     expected_primary_skill: unity-incident-investigation
     conditional_secondary:
@@ -18,17 +48,15 @@ cases:
 
   - id: CONTEXT-003
     prompt: "このHLSL PassへMotion Vector対応を追加して。"
-    expected_route: shader_change
+    expected_route: shader-change
     expected_context_pack: .ai/context-packs/shader-change.yaml
     must_load:
       - SkillReferences/RENDERING_STANDARDS.md
       - SkillReferences/SHADER_PERFORMANCE_STANDARDS.md
-    must_not_load:
-      - SkillReferences/BEAUTIFUL_DEFINITION_INTEGRATION.md
 
   - id: CONTEXT-004
     prompt: "SwitchでTransparentのGPU時間を下げ、同条件でBefore/Afterを測って。"
-    expected_route: performance
+    expected_route: performance-experiment
     expected_context_pack: .ai/context-packs/performance.yaml
     must_include:
       - measurable_metric
@@ -37,17 +65,17 @@ cases:
 
   - id: CONTEXT-005
     prompt: "高品質なライブステージLightingと構図を設計して。"
-    expected_route: visual_direction
+    expected_route: visual-direction
     expected_context_pack: .ai/context-packs/visual-direction.yaml
+    expected_task_contract: .ai/task-contracts/visual-direction.yaml
     expected_primary_skill: unity-visual-direction
     must_include:
-      - selected_definition
       - visual_intent_before_mutation
       - human_review_required_for_visual_acceptance
 
   - id: CONTEXT-006
     prompt: "Shader Graph Reportだけを根拠に修正して。"
-    expected_route: shader_change
+    expected_route: shader-change
     must_reject:
       - graph_only_mutation
     must_include:
@@ -63,13 +91,9 @@ cases:
 
   - id: CONTEXT-008
     prompt: "新しいGameplay FeatureのArchitectureとC#ファイル構成を設計して。"
-    expected_route: architecture_design
+    expected_route: architecture-design
     expected_context_pack: .ai/context-packs/architecture-design.yaml
     expected_primary_skill: unity-architecture-design
-    must_load:
-      - SkillReferences/ARCHITECTURE_DECISION_POLICY.md
-      - SkillReferences/ARCHITECTURE_STANDARDS.md
-      - SkillReferences/CODING_STANDARDS.md
     must_include:
       - single_cohesive_script_first
       - every_new_file_requires_split_reason
@@ -78,10 +102,53 @@ cases:
 
   - id: CONTEXT-009
     prompt: "大量Projectile処理をGameObject、Jobs、ECSのどれで設計するべきか比較して。"
-    expected_route: architecture_design
+    expected_route: architecture-design
     expected_context_pack: .ai/context-packs/architecture-design.yaml
     must_include:
       - ecs_opportunity_check_required_for_data_parallel_work
       - ownership_and_lifetime
-      - file_plan
       - performance_capture
+
+  - id: CONTEXT-010
+    prompt: "Shaderは変更せずRendererFeatureのInjection PointとRendererListを修正して。"
+    expected_route: renderer-feature-change
+    expected_context_pack: .ai/context-packs/renderer-feature-change.yaml
+    must_not_require:
+      - target_shader
+
+  - id: CONTEXT-011
+    prompt: "MaterialのSerialized PropertyだけをEditor API経由で更新して。"
+    expected_route: asset-data-change
+    expected_context_pack: .ai/context-packs/asset-data-change.yaml
+    must_not_require:
+      - direct_callers_or_interfaces
+
+  - id: CONTEXT-012
+    prompt: "Project非依存のUnity Editor ToolをPortable UPM Packageとして設計して。"
+    expected_route: portable-feature
+    expected_context_pack: .ai/context-packs/portable-feature.yaml
+    expected_primary_skill: unity-architecture-design
+    must_not_default_to:
+      - shader-change
+
+  - id: CONTEXT-013
+    prompt: "会社Projectへ外部生成Packageを安全にStaging Importして。"
+    expected_route: safe-import-integration
+    expected_profile: team_safe_import
+    must_not_include:
+      - project_scanner
+      - source_export
+      - screenshot_capture
+
+  - id: CONTEXT-014
+    prompt: "MyUnityMCPのGraphics Creator WorkflowとCapability構成を設計して。"
+    expected_route: graphics-mcp
+    expected_context_pack: .ai/context-packs/graphics-mcp.yaml
+    expected_primary_skill: unity-architecture-design
+
+  - id: CONTEXT-FALLBACK-001
+    prompt: "この短いUnity APIの意味だけ説明して。変更はしない。"
+    expected_behavior: simple_read_only_explanation_without_domain_route
+    must_not:
+      - legacy_routing_document
+      - supervisor_state_machine

@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: "1.1"
 id: architecture-design
 primary_skill: .agents/skills/unity-architecture-design/SKILL.md
 
@@ -12,18 +12,22 @@ use_when:
   - excessive file split or architecture refactoring review
 
 required:
+  - .ai/user-policy.yaml
   - goal
   - system_scope
   - current_or_expected_scale
   - ownership_and_lifetime
-  - target_platform
-  - performance_constraints
   - prohibited_changes
   - SkillReferences/ARCHITECTURE_DECISION_POLICY.md
   - SkillReferences/ARCHITECTURE_STANDARDS.md
   - SkillReferences/CODING_STANDARDS.md
 
 conditional:
+  platform_specific_api_build_compatibility_or_performance_claim:
+    - target_platform
+  performance_sensitive_goal:
+    - performance_constraints
+    - measurable_workload
   existing_project:
     - target source and direct dependencies
     - asmdef and rootNamespace
@@ -47,8 +51,10 @@ excluded_by_default:
   - all architecture patterns
   - all project source files
   - long human Knowledge Products without a comparison need
+  - legacy Supervisor routing documents
 
 rules:
+  user_policy_has_priority_over_generic_architecture_pattern: true
   single_cohesive_script_first: true
   architecture_is_local_to_problem: true
   every_new_file_requires_split_reason: true
@@ -58,6 +64,7 @@ rules:
   ecs_opportunity_check_required_for_data_parallel_work: true
   production_performance_claim_requires_evidence: true
   public_and_serialized_contracts_are_preserved: true
+  target_platform_is_conditional_not_global_default: true
 
 limits:
   initial_file_reads: 8

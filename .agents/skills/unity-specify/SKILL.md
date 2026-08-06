@@ -6,7 +6,10 @@ allowed-tools:
   - Write
   - Edit
 metadata:
-  version: "2.0.0"
+  version: "2.1.0"
+  kind: operation
+  entrypoint: false
+  user_policy: .ai/user-policy.yaml
 ---
 
 # Unity Specify
@@ -23,14 +26,17 @@ Unity新機能または仕様変更を、実装判断に使える検証可能な
 
 原因不明の不具合には`unity-incident-investigation`を使う。
 Taskと受け入れ条件が既に明確な局所修正へ、形式的なSpecを強制しない。
+Primary Domain Routeは`.ai/context-index.yaml`で選択済みであることを前提とし、このSkill自身をRouting入口にしない。
 
 ## Inputs
 
-1. `Specs/ProjectProfile.md`
-2. `Specs/ProjectConstitution.md`
-3. 関連する既存Spec、コード、ログ、参考資料
-4. ユーザーが明示した対象、禁止事項、Target Platform
+1. ユーザーの今回の明示指示
+2. `.ai/user-policy.yaml`
+3. `Specs/ProjectProfile.md`
+4. 関連する既存Spec、コード、ログ、参考資料
+5. ユーザーが明示した対象、禁止事項、Target Platform
 
+古いPolicy文書を現在のUser Policyへ上書き統合しない。
 既に確定している情報を質問し直さない。判断できない内容は推測で確定せず、未決定事項へ残す。
 
 ## Workflow
@@ -55,6 +61,8 @@ Taskと受け入れ条件が既に明確な局所修正へ、形式的なSpecを
 - Development / Release
 - Burst / Jobs / Entities
 - Scene、Camera、Renderer、Qualityなどの前提
+
+Target PlatformはPlatform固有API、Build、互換性または性能主張に必要な場合だけ必須とする。
 
 ### Step 3 — Define compatibility contracts
 
@@ -90,9 +98,10 @@ Taskと受け入れ条件が既に明確な局所修正へ、形式的なSpecを
 
 ### Step 7 — Save and index
 
-- `Specs/<FeatureName>/spec.md`へ保存する。
-- `Specs/INDEX.md`へ追加する。
+- 対象Repositoryの正本規則に従って`spec.md`を保存する。
+- 既存Indexがある場合だけ更新する。
 - 既存Specを更新する場合は、変更理由と互換性影響を記録する。
+- UnityAgent自身へ製品固有Specを保存しない。
 
 ## Required spec sections
 
@@ -122,9 +131,11 @@ Taskと受け入れ条件が既に明確な局所修正へ、形式的なSpecを
 - クラス構造やアルゴリズムを最終決定しない。
 - ユーザーが禁止した機能をFallbackとして追加しない。
 - 未計測の性能値を受け入れ条件として捏造しない。
+- 一般的Best PracticeでUser Policyを上書きしない。
 
 ## Checklist
 
+- [ ] `.ai/user-policy.yaml`を適用した
 - [ ] 目的と期待結果が実装手段から分離されている
 - [ ] Unity環境が必要な粒度で確定している
 - [ ] FR / NFR / ACに安定IDがある
@@ -140,3 +151,4 @@ Taskと受け入れ条件が既に明確な局所修正へ、形式的なSpecを
 - 既存Prefab、Scene、Material、Save Data互換性を無視する。
 - 対象外を記録せず、Agentが親切心で追加実装できる状態にする。
 - 小さな局所修正へ不要なSpec一式を強制する。
+- 古いProject Constitutionを現在のPolicyより優先する。

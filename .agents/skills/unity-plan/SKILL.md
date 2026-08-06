@@ -6,7 +6,10 @@ allowed-tools:
   - Write
   - Edit
 metadata:
-  version: "2.0.0"
+  version: "2.1.0"
+  kind: operation
+  entrypoint: false
+  user_policy: .ai/user-policy.yaml
 ---
 
 # Unity Plan
@@ -23,14 +26,18 @@ metadata:
 
 要件自体が未確定なら`unity-specify`へ戻す。
 単一ファイルの局所修正で変更境界が明確なら、不要なPlanを増やさない。
+Primary Domain Routeは`.ai/context-index.yaml`で選択済みであることを前提とし、このSkill自身をRouting入口にしない。
 
 ## Inputs
 
-1. `Specs/ProjectProfile.md`
-2. `Specs/ProjectConstitution.md`
-3. 対象Featureの`spec.md`
-4. 関連する既存コードと規約
-5. 既存アーキテクチャ、Asset、Prefab、Scene、Shader契約
+1. ユーザーの今回の明示指示
+2. `.ai/user-policy.yaml`
+3. `Specs/ProjectProfile.md`
+4. 対象Featureの`spec.md`
+5. 関連する既存コードと規約
+6. 既存アーキテクチャ、Asset、Prefab、Scene、Shader契約
+
+古いPolicy文書を現在のUser Policyへ上書き統合しない。
 
 ## Workflow
 
@@ -49,6 +56,7 @@ Specに根拠のない機能、設定、FallbackをPlanへ追加しない。
 - 新規ファイルが本当に必要か
 
 `Manager`、`Controller`、`Util`を責務の説明なしで追加しない。
+`Single Cohesive Script First`を先に評価し、層分割を一般論だけで正当化しない。
 
 ### Step 3 — Define ownership and lifetime
 
@@ -85,6 +93,7 @@ Renderingでは、Texture、Buffer、RendererList、History、Global Stateの寿
 - 依存方向
 - 循環依存を作らない境界
 
+各新規C#ファイルに具体的なSplit Reasonを付ける。
 パスを推測してUnityプロジェクト構造を新規作成しない。
 
 ### Step 6 — Define execution phases
@@ -113,8 +122,9 @@ Renderingでは、Texture、Buffer、RendererList、History、Global Stateの寿
 
 ### Step 8 — Save the plan
 
-`Specs/<FeatureName>/plan.md`へ保存する。
-未決定事項またはSpecとの差異は`decisions.md`へ記録する。
+対象Repositoryの正本規則に従って`plan.md`を保存する。
+未決定事項またはSpecとの差異は、既存のDecision管理先がある場合だけ記録する。
+UnityAgent自身へ製品固有Planを保存しない。
 
 ## Required plan sections
 
@@ -148,12 +158,15 @@ Renderingでは、Texture、Buffer、RendererList、History、Global Stateの寿
 - 既存契約を暗黙に破壊しない。
 - 性能向上を計測前に確定しない。
 - 実装Taskを巨大な一件へまとめない。
+- 一般的Best PracticeでUser Policyを上書きしない。
 
 ## Checklist
 
+- [ ] `.ai/user-policy.yaml`を適用した
 - [ ] 全主要判断がRequirement IDへ追跡できる
 - [ ] 責務と依存方向が明確
 - [ ] 状態とResourceの所有者・寿命が明確
+- [ ] 新規ファイルごとのSplit Reasonがある
 - [ ] public/serialized/Shader契約を確認した
 - [ ] MigrationとRollbackを定義した
 - [ ] Before/After条件を必要時に定義した
@@ -162,7 +175,9 @@ Renderingでは、Texture、Buffer、RendererList、History、Global Stateの寿
 ## Common mistakes
 
 - PlanへSpec外の便利機能を追加する。
+- 小規模機能へController、Service、Profileを機械的に追加する。
 - Unity lifecycle objectへ計算、状態、I/Oを集中させる。
 - RenderGraph resourceのCreatorと使用Passだけを書き、寿命と破棄を省く。
 - Serialized field変更のPrefab/Scene影響を無視する。
 - Platform差を最後の実機確認だけへ押し込む。
+- 古いProject Constitutionを現在のPolicyより優先する。

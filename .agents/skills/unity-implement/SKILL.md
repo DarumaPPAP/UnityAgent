@@ -7,13 +7,17 @@ allowed-tools:
   - Edit
   - Bash
 metadata:
-  version: "2.0.1"
+  version: "2.1.0"
+  kind: operation
+  entrypoint: false
+  user_policy: .ai/user-policy.yaml
 ---
 
 # Unity Implement
 
 承認済みTask、Confirmed Incident、または依頼文で完全に境界づけられた局所変更を、最小差分で実装する。
 このSkillは「選択された一件の実装」を所有する。
+Primary Domain Routeは`.ai/context-index.yaml`で選択済みであることを前提とし、このSkill自身をRouting入口にしない。
 
 ## When to use
 
@@ -30,12 +34,13 @@ Read-only監査には対応Audit Skillを使う。
 優先順に読む。
 
 1. ユーザーが指定したTask ID、ファイル、禁止事項
-2. `Specs/ProjectProfile.md`
-3. `Specs/ProjectConstitution.md`
+2. `.ai/user-policy.yaml`
+3. `Specs/ProjectProfile.md`
 4. Feature `spec.md`、`plan.md`、`tasks.md`
 5. 対象コードと直接依存
 6. 適用されるCoding / Architecture / Rendering standards
 
+古いPolicy文書を現在のUser Policyへ上書き統合しない。
 全Referenceを無条件に読まない。対象変更に必要なものだけを読む。
 
 ## Delegates to
@@ -83,7 +88,8 @@ Namespaceは既存コード、asmdef、Project Profileから確定する。Root 
 ### Step 3 — Select the smallest causal change
 
 - 根因またはTask要件へ直接対応する。
-- 新規クラスより既存責務への局所変更を先に検討する。
+- `Single Cohesive Script First`を適用し、新規クラスより既存責務への局所変更を先に検討する。
+- 新規C#ファイルには具体的なSplit Reasonを要求する。
 - Controller、Manager、Profile、Fallback、Cache、Debug UIを仕様外で追加しない。
 - static状態やSingletonへ所有権を逃がさない。
 - 別問題を発見しても現在のPatchへ混ぜない。
@@ -101,7 +107,7 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - 既存コードを変更する場合は既存namespaceを保持する。
 - `Namespace`、`RootNamespace`、`<RootNamespace>`、`CHANGE_ME`をC# namespace、asmdef名、`rootNamespace`、Assembly参照へ出力しない。
 - 先頭または末尾が`.`のnamespaceを生成しない。
-- コメントは必要な理由、制約、意図だけを日本語で書く。
+- コメントは`.ai/user-policy.yaml`のコメント体系に従い、日本語で意図、制約、所有権、寿命、危険箇所を必要な密度で書く。
 
 ### Step 5 — Self-review the diff
 
@@ -116,6 +122,8 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - Serialization、AOT、stripping
 - Shader state、Queue、Pass、Keyword
 - Debug codeと一時ログの残存
+- 新規ファイルごとのSplit Reason
+- コメントがProductionまたはLearning Profileに一致している
 
 ### Step 6 — Validate at the strongest available level
 
@@ -140,6 +148,7 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - Changed files
 - 変更内容と理由
 - 使用したnamespaceとAssembly名
+- 新規ファイルのSplit Reason
 - 保持または変更した互換性契約
 - Spec / Planとの差異
 - 実施した検証と結果
@@ -155,17 +164,21 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - 勝手に追加システムやDebug UIを作らない。
 - 未確定のRoot Namespaceをプレースホルダーで埋めない。
 - Unityコンパイル、Player、実機、性能を未実施のまま成功扱いしない。
+- 一般的Best PracticeでUser Policyを上書きしない。
 
 ## Checklist
 
 - [ ] Task / Incident / Rule IDを固定した
+- [ ] `.ai/user-policy.yaml`を適用した
 - [ ] Changed filesとNon-goalsを確認した
 - [ ] 必要な規約だけを読んだ
 - [ ] Namespaceとasmdef名を既存コードまたはProject Profileから確定した
 - [ ] Namespace placeholderが残っていない
 - [ ] 最小の因果変更に限定した
+- [ ] 新規ファイルごとのSplit Reasonがある
 - [ ] public/serialized/Shader契約を確認した
 - [ ] Diffを自己レビューした
+- [ ] コメントProfileを確認した
 - [ ] 検証状態を正確に報告した
 - [ ] 次Taskへ進んでいない
 
@@ -180,3 +193,4 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - RendererFeature修正で無関係なShader Passを追加する。
 - Editorでコンパイルしていないのに「動作確認済み」と書く。
 - 性能に良さそうなコード変更を、実測済み最適化として報告する。
+- 古いProject Constitutionを現在のPolicyより優先する。

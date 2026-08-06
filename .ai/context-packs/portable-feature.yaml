@@ -1,0 +1,63 @@
+schema_version: "1.0"
+id: portable-feature
+primary_skill: .agents/skills/unity-architecture-design/SKILL.md
+
+use_when:
+  - project independent Unity package
+  - portable UPM feature
+  - external authoring without project source access
+  - reusable Unity feature with unresolved project bindings
+
+required:
+  - .ai/user-policy.yaml
+  - portable_goal
+  - portable_domain
+  - supported_unity_and_pipeline_range
+  - prohibited_project_assumptions
+  - unresolved_project_bindings
+  - integration_contract
+
+conditional:
+  csharp_feature:
+    - SkillReferences/CODING_STANDARDS.md
+    - SkillReferences/ARCHITECTURE_DECISION_POLICY.md
+  rendering_feature:
+    - .ai/context-packs/renderer-feature-change.yaml
+  shader_feature:
+    - .ai/context-packs/shader-change.yaml
+  asset_authoring:
+    - .ai/context-packs/asset-data-change.yaml
+  team_safe_import:
+    - .ai/execution-profiles.yaml
+    - .ai/task-contracts/safe-import-integration.yaml
+
+excluded_by_default:
+  - assumed project paths scene names renderer data layers and shader tags
+  - personal project tools in team safe import
+  - project settings mutation
+  - platform SDK dependency without an explicit requirement
+  - setup systems that were not requested
+  - legacy Supervisor routing documents
+
+rules:
+  portable_domain_must_be_resolved_before_implementation: true
+  project_bindings_must_remain_explicit: true
+  no_project_path_guessing: true
+  no_unrequested_environment_setup: true
+  single_cohesive_script_first: true
+  every_new_file_requires_split_reason: true
+  user_policy_has_priority_over_generic_package_architecture: true
+
+limits:
+  initial_file_reads: 7
+  context_expansion_hops: 1
+
+output:
+  - portable_domain
+  - package_boundary
+  - architecture_and_file_plan
+  - integration_contract
+  - unresolved_project_bindings
+  - validation_instructions
+  - compatibility_range
+  - rollback_or_uninstall_contract

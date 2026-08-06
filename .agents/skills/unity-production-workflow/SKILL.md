@@ -1,126 +1,71 @@
 ---
 name: unity-production-workflow
-description: Compatibility adapter for Unity production requests. Delegates execution mode, task graph, budgets, state, recovery, and human gates to DarumaPPAP/Unity-Graph-Engineering, then routes only the required Unity domain skill and Context Pack from UnityAgent. Do not use it as an independent Supervisor implementation.
+description: Compatibility adapter for legacy Unity production prompts. Redirects execution ownership to DarumaPPAP/Unity-Graph-Engineering and Unity domain routing to `.ai/context-index.yaml`. Does not act as an independent Supervisor, choose domain routes itself, or own state and budgets.
 allowed-tools:
   - Read
 metadata:
-  version: "3.1.0"
+  version: "4.0.0"
+  kind: compatibility
+  deprecated: true
+  entrypoint: false
 ---
 
-# Unity Production Workflow Adapter
+# Unity Production Workflow Compatibility Adapter
 
-このSkillは旧`unity-production-workflow`利用者を、新しいExecution OwnerとUnityAgent Domain Skillsへ接続するAdapterです。
+このSkillは旧`unity-production-workflow`参照を現在の正本へ転送するだけのCompatibility Adapterです。
 
-## Ownership
+## Canonical flow
 
-### Unity-Graph-Engineering
-
-- Prompt / Graph-Loop Mode
-- Mode変更確認
-- Goal Contract
-- Task Graph
-- Node Loop
-- Budget
-- State / Checkpoint
-- Recovery
-- Independent Verifier
-- Human Gate
-
-### UnityAgent
-
-- Domain route
-- Context Pack
-- Unity固有規約
-- C# / Rendering / Shader / Performance / Visual Skill
-- Domain validation requirements
-
-汎用Supervisor処理をこのSkillへコピーしません。
-
-## Entry flow
-
-1. Unity-Graph-Engineeringの`unity-execution-router`でModeを確定する。
-2. 無指定ならPrompt Engineeringを選ぶ。
-3. `.ai/context-index.yaml`からTask classを選ぶ。
-4. 対応Context PackとPrimary Domain Skillだけを読む。
-5. Domain outputをExecution Ownerへ返す。
+1. `DarumaPPAP/Unity-Graph-Engineering`でExecution Mode、State、Budget、Recovery、Human Gateを管理する。
+2. `.ai/user-policy.yaml`を読み、ユーザー固有Policyを最優先する。
+3. `.ai/context-index.yaml`からPrimary Route、Task Contract、Context Packを一つずつ選ぶ。
+4. 選択されたPrimary Domain Skillと必要なConditional Operationだけを読む。
+5. Domain結果をExecution Ownerへ返す。
 
 ```text
-Execution Router
+Unity-Graph-Engineering
   ↓
-Prompt or Graph / Loop
+UnityAgent user-policy
   ↓
-UnityAgent Context Index
+UnityAgent context-index
   ↓
-One Context Pack
+One Route / One Task Contract / One Context Pack
   ↓
 One Primary Domain Skill
 ```
 
-## Domain routes
+## Ownership boundary
 
-- 原因不明のエラー、回帰、Editor / Player差: `unity-incident-investigation`
-- C#局所修正: `csharp-safe-patch`
-- Unity 6 URP / RenderGraph / RendererFeature: `unity-rendering`
-- Shader監査: `shader-performance-auditor`
-- Confirmed Shader修正: `shader-performance-refactor`
-- Keyword / Variant / Strip: `unity-shader-variant-governor`
-- CPU / GPU / Memory Evidence: `unity-runtime-evidence`または対応Evidence Skill
-- 美的Scene / Lighting / LookDev: `unity-visual-direction`
-- 仕様、設計、Task分割が成果物として必要: `unity-specify`、`unity-plan`、`unity-tasks`
+このSkillは次を所有しません。
 
-全Skillを一括で読みません。
+- Supervisor State Machine
+- Prompt / Graph / Loop選択
+- Task Graph
+- Retry
+- Token Budget
+- Checkpoint
+- Recovery orchestration
+- Human Gate
+- Unity Domain Routeの独自選択表
 
-## Prompt Mode contribution
+## Compatibility rule
 
-Prompt Modeでは次だけを返します。
+旧PromptがこのSkillを明示した場合も、このSkill自身をPrimary Skillとして実行しません。
+現在の正本へ転送し、旧Stateや旧Routing Tableを再構築しません。
 
-- Minimal Contractに必要なDomain constraints
-- 対象Sourceと直接依存
-- 一つのPrimary Skill
-- 必須Validator
-- Compatibility / Revert条件
+## Output
 
-Prompt Modeは既存Projectと既存Repositoryへコードを直接実装する前提です。
-
-- ユーザーが明示していない環境構築、Project生成、Package導入、ProjectSettings変更、雛形生成、Setup Tool作成をDomain要件へ追加しない。
-- Project Context GeneratorやUnity Toolを必須条件にしない。
-- 情報不足だけを理由にSource実装を止めず、推測不要な範囲を先に実装する。
-- 本当に欠けている依存は未解決Bindingまたは未検証Gateとして返す。
-- ユーザーが環境構築も依頼した場合だけ、コード実装とは別Scopeとして扱う。
-
-Task Graphや永続StateをUnityAgent側で生成しません。
-
-## Graph / Loop contribution
-
-Graph / Loopでは各Nodeへ必要なDomain Contextだけを返します。
-
-- NodeごとのContext Pack
-- Owned artifact constraints
-- Domain evidence requirements
-- Failure classification hints
-
-Maker / Verifierへ同一の巨大Contextを渡しません。
-
-## Output contract
-
-```yaml
-context_pack: ""
-primary_domain_skill: ""
-confirmed_context: []
-constraints: []
-required_validation: []
-evidence_required: []
-unresolved_bindings: []
-unverified: []
-revert_condition: ""
-```
+- execution_owner
+- user_policy
+- selected_route
+- selected_task_contract
+- selected_context_pack
+- primary_domain_skill
+- unresolved_bindings
 
 ## Common mistakes
 
-- UnityAgent内で別のSupervisor State Machineを再構築する
-- 無指定TaskをGraphへ送る
-- 全Referenceを常時読む
-- Domain SkillへToken Budget管理を持たせる
-- Compile成功をRuntime、Visual、Performanceの完了とする
-- Prompt Modeへ依頼されていない環境構築やSetup作業を混ぜる
-- 検証Tool不足を理由に、コード実装より先にTool導入を始める
+- このCompatibility SkillへSupervisor処理を戻す
+- `.ai/context-index.yaml`を読まずにSkill名だけでRoutingする
+- 全Skillと全Referenceを読み込む
+- 一般的Best Practiceでユーザー固有Policyを上書きする
