@@ -1,6 +1,7 @@
-schema_version: "2.1"
+schema_version: "2.2"
 repository_role: unity_domain_knowledge
 execution_owner: DarumaPPAP/Unity-Graph-Engineering
+user_policy: .ai/user-policy.yaml
 execution_profiles: .ai/execution-profiles.yaml
 task_contract_schema: .ai/task-contracts/task-contract.schema.yaml
 knowledge_index: .ai/knowledge/index.yaml
@@ -11,6 +12,8 @@ mcp_activation_policy: .ai/mcp-routing.yaml
 mcp_repository: DarumaPPAP/MyUnityMCP
 
 routing_rules:
+  user_policy_must_be_loaded_before_domain_decision: true
+  generic_best_practice_must_not_override_user_policy: true
   select_exactly_one_primary_route: true
   select_exactly_one_primary_task_contract: true
   select_at_most_one_primary_knowledge: true
@@ -26,6 +29,8 @@ routing_rules:
   direct_source_read_required_before_mutation: true
   knowledge_graph_is_navigation_only: true
   human_html_is_conditional_reference: true
+  route_id_format: kebab-case
+  mapping_key_is_not_route_id: true
 
 profile_selection:
   project_not_accessible:
@@ -35,8 +40,20 @@ profile_selection:
   company_project_external_authoring_or_import:
     profile: team_safe_import
 
+conditional_operations:
+  production_comment_addition:
+    skill: production-code-comments
+    policy: .ai/user-policy.yaml#comment_system
+  learning_comment_addition:
+    skill: learning-code-comments
+    policy: .ai/user-policy.yaml#comment_system
+  existing_comment_review:
+    skill: comment-quality-reviewer
+    policy: .ai/user-policy.yaml#comment_system
+
 routes:
   architecture_design:
+    id: architecture-design
     triggers:
       - new Unity feature architecture
       - new gameplay system design
@@ -54,6 +71,7 @@ routes:
     knowledge_selection: optional
 
   graphics_mcp:
+    id: graphics-mcp
     triggers:
       - UnityAgentMCP
       - MyUnityMCP
@@ -74,6 +92,7 @@ routes:
     mcp_selection: required
 
   csharp_local_fix:
+    id: csharp-local-fix
     triggers:
       - bounded C# change
       - known compile error
@@ -83,6 +102,7 @@ routes:
     task_contract: .ai/task-contracts/csharp-local-fix.yaml
 
   rendering_incident:
+    id: rendering-incident
     triggers:
       - unknown rendering failure
       - Editor Player difference
@@ -93,6 +113,7 @@ routes:
     task_contract: .ai/task-contracts/rendering-incident.yaml
 
   shader_change:
+    id: shader-change
     triggers:
       - ShaderLab
       - HLSL
@@ -104,6 +125,7 @@ routes:
     knowledge_selection: required_when_domain_matches
 
   renderer_feature_change:
+    id: renderer-feature-change
     triggers:
       - RendererFeature
       - ScriptableRenderPass
@@ -111,11 +133,12 @@ routes:
       - injection point change
       - renderer resource integration
     primary_skill: unity-rendering
-    context_pack: .ai/context-packs/shader-change.yaml
+    context_pack: .ai/context-packs/renderer-feature-change.yaml
     task_contract: .ai/task-contracts/renderer-feature-change.yaml
     knowledge_selection: required_when_domain_matches
 
   performance_experiment:
+    id: performance-experiment
     triggers:
       - CPU optimization
       - GPU optimization
@@ -128,37 +151,42 @@ routes:
     task_contract: .ai/task-contracts/performance-experiment.yaml
 
   asset_data_change:
+    id: asset-data-change
     triggers:
       - Scene asset change
       - Prefab change
       - Material change
+      - ScriptableObject asset change
       - serialized asset change
     primary_skill: csharp-safe-patch
-    context_pack: .ai/context-packs/csharp-local-fix.yaml
+    context_pack: .ai/context-packs/asset-data-change.yaml
     task_contract: .ai/task-contracts/asset-data-change.yaml
 
   portable_feature:
+    id: portable-feature
     triggers:
       - project independent package
       - external authoring
       - portable UPM package
       - company project without source access
-    primary_skill: unity-rendering
-    context_pack: .ai/context-packs/shader-change.yaml
+    primary_skill: unity-architecture-design
+    context_pack: .ai/context-packs/portable-feature.yaml
     task_contract: .ai/task-contracts/portable-feature.yaml
     forced_profile: generic_planning
 
   safe_import_integration:
+    id: safe-import-integration
     triggers:
       - team safe import
       - staging package import
       - local package security validation
     primary_skill: csharp-safe-patch
-    context_pack: .ai/context-packs/csharp-local-fix.yaml
+    context_pack: .ai/context-packs/asset-data-change.yaml
     task_contract: .ai/task-contracts/safe-import-integration.yaml
     forced_profile: team_safe_import
 
   visual_direction:
+    id: visual-direction
     triggers:
       - scene beauty
       - lighting look development
@@ -167,56 +195,59 @@ routes:
       - visual quality review
     primary_skill: unity-visual-direction
     context_pack: .ai/context-packs/visual-direction.yaml
-    task_contract: .ai/task-contracts/portable-feature.yaml
+    task_contract: .ai/task-contracts/visual-direction.yaml
     knowledge_selection: optional
 
 conflicts:
   architecture_design_and_csharp_local_fix:
-    primary_when_structure_is_undecided: architecture_design
-    primary_when_change_is_bounded: csharp_local_fix
+    primary_when_structure_is_undecided: architecture-design
+    primary_when_change_is_bounded: csharp-local-fix
 
   architecture_design_and_performance_experiment:
-    primary_when_runtime_baseline_is_goal: performance_experiment
-    primary_when_execution_model_is_undecided: architecture_design
+    primary_when_runtime_baseline_is_goal: performance-experiment
+    primary_when_execution_model_is_undecided: architecture-design
 
   architecture_design_and_renderer_feature_change:
-    primary_when_pass_structure_is_undecided: architecture_design
-    primary_when_rendering_contract_is_confirmed: renderer_feature_change
+    primary_when_pass_structure_is_undecided: architecture-design
+    primary_when_rendering_contract_is_confirmed: renderer-feature-change
 
   graphics_mcp_and_architecture_design:
-    primary_when_goal_is_UnityAgentMCP_MyUnityMCP_GraphicsMCP_Creator_or_Module_architecture: graphics_mcp
-    primary_when_goal_is_unrelated_Unity_architecture: architecture_design
+    primary_when_goal_is_UnityAgentMCP_MyUnityMCP_GraphicsMCP_Creator_or_Module_architecture: graphics-mcp
+    primary_when_goal_is_unrelated_Unity_architecture: architecture-design
 
   graphics_mcp_and_visual_direction:
-    primary_when_goal_is_tool_contract_capability_mutation_or_creator_workflow: graphics_mcp
-    primary_when_goal_is_scene_beauty_or_human_visual_review: visual_direction
+    primary_when_goal_is_tool_contract_capability_mutation_or_creator_workflow: graphics-mcp
+    primary_when_goal_is_scene_beauty_or_human_visual_review: visual-direction
 
   graphics_mcp_and_renderer_feature_change:
-    primary_when_goal_is_MCP_orchestrated_graphics_system: graphics_mcp
-    primary_when_goal_is_bounded_RendererFeature_implementation: renderer_feature_change
+    primary_when_goal_is_MCP_orchestrated_graphics_system: graphics-mcp
+    primary_when_goal_is_bounded_RendererFeature_implementation: renderer-feature-change
 
   rendering_incident_and_architecture_design:
-    primary: rendering_incident
-    secondary_after_evidence: architecture_design
+    primary: rendering-incident
+    secondary_after_evidence: architecture-design
 
   rendering_incident_and_shader_change:
-    primary: rendering_incident
-    secondary_after_evidence: shader_change
+    primary: rendering-incident
+    secondary_after_evidence: shader-change
 
   rendering_incident_and_renderer_feature_change:
-    primary: rendering_incident
-    secondary_after_evidence: renderer_feature_change
+    primary: rendering-incident
+    secondary_after_evidence: renderer-feature-change
 
   visual_direction_and_rendering:
-    primary_when_goal_is_beauty: visual_direction
-    primary_when_goal_is_technical_fix: rendering_incident
+    primary_when_goal_is_beauty: visual-direction
+    primary_when_goal_is_technical_fix: rendering-incident
 
   portable_feature_and_direct_project_change:
-    primary_when_project_is_not_accessible: portable_feature
-    primary_when_personal_access_is_authorized: renderer_feature_change
+    primary_when_project_is_not_accessible: portable-feature
+    primary_when_personal_access_is_authorized: renderer-feature-change
 
 fallback:
-  action: use SkillReferences/UNITY_SKILL_ROUTING.md
+  action: report_unmatched_route_and_continue_with_bounded_generic_planning
+  allow_simple_read_only_explanation_without_domain_route: true
+  do_not_use_legacy_routing_document: true
   do_not_load_every_route: true
   do_not_load_every_mcp_manifest: true
   continue_with_generic_planning_when_project_context_is_missing: true
+  never_guess_project_binding: true
