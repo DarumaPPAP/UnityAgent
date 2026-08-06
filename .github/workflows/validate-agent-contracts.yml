@@ -5,9 +5,16 @@ on:
     paths:
       - ".agents/skills/**"
       - ".ai/**"
+      - "AGENTS.md"
+      - "README.md"
+      - "SkillReferences/**"
       - "Tools/SkillValidator/**"
       - "Tools/ContractValidator/**"
+      - "Tools/ContextPackValidator/**"
+      - "Tools/RouteGraphValidator/**"
       - "Tests/ContractValidator/**"
+      - "Tests/ContextRouting/**"
+      - "Tests/SkillRouting/**"
       - ".github/workflows/validate-agent-contracts.yml"
   push:
     branches:
@@ -15,9 +22,16 @@ on:
     paths:
       - ".agents/skills/**"
       - ".ai/**"
+      - "AGENTS.md"
+      - "README.md"
+      - "SkillReferences/**"
       - "Tools/SkillValidator/**"
       - "Tools/ContractValidator/**"
+      - "Tools/ContextPackValidator/**"
+      - "Tools/RouteGraphValidator/**"
       - "Tests/ContractValidator/**"
+      - "Tests/ContextRouting/**"
+      - "Tests/SkillRouting/**"
 
 jobs:
   validate:
@@ -40,8 +54,17 @@ jobs:
           from pathlib import Path
           import yaml
 
-          paths = sorted((Path('.ai')).rglob('*.yaml'))
-          paths += sorted((Path('Tests/ContractValidator')).rglob('*.yaml'))
+          roots = (
+              Path('.ai'),
+              Path('Tests/ContractValidator'),
+              Path('Tests/ContextRouting'),
+              Path('Tests/SkillRouting'),
+          )
+          paths = []
+          for root in roots:
+              if root.exists():
+                  paths.extend(sorted(root.rglob('*.yaml')))
+
           for path in paths:
               with path.open(encoding='utf-8') as stream:
                   yaml.safe_load(stream)
@@ -53,3 +76,9 @@ jobs:
 
       - name: Validate Knowledge and Task Contracts
         run: python Tools/ContractValidator/validate_contracts.py
+
+      - name: Validate Context Packs
+        run: python Tools/ContextPackValidator/validate_context_packs.py
+
+      - name: Validate Canonical Route Graph and User Policy
+        run: python Tools/RouteGraphValidator/validate_route_graph.py
