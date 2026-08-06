@@ -1,0 +1,57 @@
+schema_version: "1.0"
+id: renderer-feature-change
+primary_skill: .agents/skills/unity-rendering/SKILL.md
+
+use_when:
+  - RendererFeature or ScriptableRenderPass change
+  - RenderGraph pass structure change
+  - injection point or rendering filter change
+  - renderer resource integration
+
+required:
+  - .ai/user-policy.yaml
+  - target_renderer_feature_or_pass
+  - direct_pass_dependencies
+  - injection_point
+  - render_queue_layer_shader_tag_and_sorting_contract
+  - resource_reads_writes_and_lifetime
+  - SkillReferences/RENDERING_STANDARDS.md
+
+conditional:
+  shader_change:
+    - .ai/context-packs/shader-change.yaml
+  unknown_rendering_failure:
+    - .ai/context-packs/rendering-incident.yaml
+  performance_claim:
+    - .ai/context-packs/performance.yaml
+  project_specific_change:
+    - Specs/ProjectProfile.md
+    - target source and direct dependencies
+
+excluded_by_default:
+  - unrelated shader rule catalogs
+  - visual definitions without a visual goal
+  - package source when only a bounded RendererFeature is changed
+  - legacy Supervisor routing documents
+
+rules:
+  inspect_existing_pass_before_adding_new_pass: true
+  injection_filtering_and_resource_contract_required: true
+  render_graph_and_compatibility_api_must_not_be_mixed_without_explicit_design: true
+  shader_contract_change_is_conditional_not_assumed: true
+  project_setting_change_requires_explicit_approval: true
+  user_policy_has_priority_over_generic_rendering_pattern: true
+
+limits:
+  initial_file_reads: 7
+  context_expansion_hops: 1
+
+output:
+  - confirmed_pass_contract
+  - injection_and_filtering_contract
+  - resource_lifetime_and_access
+  - changed_files
+  - compatibility_constraints
+  - required_validation
+  - unresolved_bindings
+  - revert_condition
