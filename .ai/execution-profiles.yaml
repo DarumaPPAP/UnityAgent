@@ -1,4 +1,4 @@
-schema_version: "1.1"
+schema_version: "1.2"
 
 planning_baseline:
   project_context_required: false
@@ -128,7 +128,8 @@ environment_fallback:
       - aot_and_stripping_static_review
       - available_fixed_environment_performance_measurement
     unavailable_evidence:
-      status: deferred_environment
+      status: unavailable
+      reason_code: deferred-environment
       scope: unavailable_claim_only
       continue_independent_tasks: true
   block_only_when:
@@ -141,10 +142,10 @@ quality_gate_result:
     - passed
     - failed
     - unavailable
-    - deferred_environment
   unavailable_policy:
     continue_planning: true
     continue_implementation: true
     claim_success: false
     append_to_remaining_validation: true
     record_capability_once_per_goal: true
+    reason_code_required: true
