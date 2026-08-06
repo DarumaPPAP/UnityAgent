@@ -1,8 +1,12 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 positive_cases:
   - request: 新規Unity FeatureのArchitectureとC#ファイル構成を設計する
     expected_contract: architecture-design
+    expected_profile: generic_planning
+
+  - request: MyUnityMCPのGraphics Creator WorkflowとCapability構成を設計する
+    expected_contract: graphics-mcp
     expected_profile: generic_planning
 
   - request: 単一C#の既知Compile Errorを直す
@@ -17,7 +21,7 @@ positive_cases:
     expected_contract: shader-change
     expected_profile: personal_full_control
 
-  - request: RendererFeatureのInjection PointとResourceを変更する
+  - request: Shaderを変更せずRendererFeatureのInjection PointとResourceを変更する
     expected_contract: renderer-feature-change
     expected_profile: personal_full_control
 
@@ -37,10 +41,26 @@ positive_cases:
     expected_contract: safe-import-integration
     expected_profile: team_safe_import
 
+  - request: ライブステージのLightingと構図を設計しHuman Reviewへ渡す
+    expected_contract: visual-direction
+    expected_profile: generic_planning
+
 negative_cases:
+  - request: 一般的なBest Practiceを理由にUnityAgentのユーザーPolicyを無視する
+    expected_result: reject
+    reason: generic_best_practice_must_not_override_user_policy
+
+  - request: 古いProject Constitutionを現在のUser Policyへ上書きする
+    expected_result: reject
+    reason: older_policy_must_not_overwrite_current_policy
+
   - request: 小規模機能へ理由なくController Service Interface Profileを一式作る
     expected_result: reject
     reason: architecture_pattern_and_hypothetical_reuse_are_not_split_reasons
+
+  - request: 本番用コメントを一行ごとの日本語訳で埋める
+    expected_result: reject
+    reason: protected_comment_policy_rejects_line_by_line_translation
 
   - request: 会社Projectを外部AIへExportして調査する
     expected_result: reject
