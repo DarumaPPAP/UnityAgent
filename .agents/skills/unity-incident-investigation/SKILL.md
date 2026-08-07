@@ -7,7 +7,7 @@ allowed-tools:
   - Edit
   - Bash
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # Unity Incident Investigation
@@ -35,6 +35,7 @@ metadata:
 - Shader修正: `shader-performance-refactor`
 - Variant / Strip / Strict Variant: `unity-shader-variant-governor`
 - Before/After: `unity-runtime-evidence`または`shader-runtime-evidence`
+- High-risk Fresh-context review: `unity-doubt-review`
 - 修正後レビュー: `unity-review`
 
 ## Step 1 — Freeze the observation
@@ -165,6 +166,20 @@ Confirmedの条件:
 
 証拠不足ならHigh confidenceまたはEvidence requiredに留める。
 
+## Step 6.5 — High-risk doubt gate
+
+次のいずれかに該当する場合、Mutationまたは完成判定の前に`unity-doubt-review`へFresh-context reviewを委譲する。
+
+- Editor / Player / Console実機差が原因または受け入れ条件に含まれる
+- Rendering、Lighting、Addressables、Serializationなど変更波及が広い
+- public / serialized / Shader契約へ影響する
+- Regression historyがある
+- 複数の競合仮説がまだ成立する
+- 性能値またはVisual Evidenceを採用判断へ使う
+
+`unity-doubt-review`が`Rework`ならStep 3へ戻る。`Inconclusive`なら未検証Gateを明示して、検証済みと報告しない。
+Low-riskかつ原因・変更境界が明確な局所修正へ、このGateを儀式的に強制しない。
+
 ## Step 7 — Apply one minimal fix
 
 - Confirmed仮説に直接対応する箇所だけを変更する。
@@ -184,6 +199,16 @@ Confirmedの条件:
 - Rendering変更では対象外Queue、Layer、Camera、Pass
 - Serialization変更では既存Prefab/Scene/Save Data
 
+## Anti-Rationalization
+
+| よくある判断 | 実際のルール |
+|---|---|
+| 「症状が消えたので根因確定」 | 因果経路と反証テストが必要 |
+| 「Editorで直ったから完了」 | Player / 実機依存の主張には対応Evidenceが必要 |
+| 「ついでに整理すると綺麗」 | Confirmed cause外の変更は別Task |
+| 「将来使うのでInterface化」 | 実在するVariation Axisがなければ追加しない |
+| 「計測できないが改善するはず」 | 未計測を改善済みと報告しない |
+
 ## Output contract
 
 - Incident statement
@@ -191,6 +216,7 @@ Confirmedの条件:
 - Confirmed observations
 - Hypothesis ledger
 - Root causeまたは現時点の確度
+- Doubt review decision when required
 - Changed files and exact fix
 - Preserved contracts
 - Verification performed
@@ -205,6 +231,7 @@ Confirmedの条件:
 - [ ] 仮説を確度順に並べた
 - [ ] 一つの仮説だけを切り分けた
 - [ ] 因果確認後に最小修正した
+- [ ] High-risk条件ではFresh-context doubt reviewを行った
 - [ ] 同じ再現手順で再検証した
 - [ ] 未実施のPlayer/実機確認を明記した
 
@@ -216,3 +243,4 @@ Confirmedの条件:
 - RenderQueue、Shader、Keyword、Passの実値を確認せずShaderコードを修正する。
 - 症状が消えただけで根因確定とする。
 - 調査Patchへ設計リファクタリングを混ぜる。
+- High-risk変更でPrimary SkillのconfidenceをFresh reviewへそのまま引き継ぐ。

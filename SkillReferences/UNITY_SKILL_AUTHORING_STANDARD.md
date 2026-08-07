@@ -2,8 +2,12 @@
 
 UnityAgentで追加・更新するSkillの設計規約。
 `Unity-Technologies/skills`の公開構造を参考にしつつ、本リポジトリのSpec駆動、最小差分、実測証拠、Console実機対応へ合わせる。
+また、`addyosmani/agent-skills`のProgressive Disclosure、Process over Knowledge、Skill Eval、Evidence-first、Anti-Rationalizationの考え方を、UnityAgentの既存責務分離を壊さない範囲で採用する。
 
-Reference: `https://github.com/Unity-Technologies/skills`
+References:
+
+- `https://github.com/Unity-Technologies/skills`
+- `https://github.com/addyosmani/agent-skills`
 
 ## 1. Core model
 
@@ -258,7 +262,8 @@ Skillの対象に応じて次を明示する。
 6. **Scope guard** — 禁止された追加実装を行わないか。
 7. **Evidence guard** — 未計測を計測済みと断定しないか。
 
-テストケースは`Tests/SkillRouting/`へ追加する。
+従来の個別Routing回帰ケースは`Tests/SkillRouting/`へ置く。
+新規・大幅更新Skillでは、機械検証可能なEval Contractを`Tests/SkillEvals/`へ追加し、`Tools/SkillEval/validate_skill_evals.py`でschemaとcoverageを検証する。
 
 ## 10. Review gate
 
@@ -286,3 +291,86 @@ Skill追加・更新時に確認する。
 - Tool名やCLI構文を検証せずハードコードする。
 - 対象外機能を親切心で追加する。
 - Editor結果だけでPlayerまたはConsole実機を保証する。
+
+## 12. Trigger vocabulary
+
+Skill descriptionとRouting triggerは、Domain用語だけでなくユーザーが実際に入力する症状・口語表現も考慮する。
+
+例:
+
+- Rendering incident: `真っ黒`、`ピンク`、`描画されない`、`Editorでは動く`、`実機だけ壊れる`
+- Shader: `compile error`、`keyword missing`、`Passが拾われない`
+- Performance: `重い`、`GPUが跳ねる`、`SetPassが増えた`、`GC Allocが出る`
+
+ただし、曖昧語を大量追加して全Skillが発火する状態にしない。
+Trigger vocabulary追加時はPositive paraphraseとNegative adjacentのEvalをセットで追加する。
+
+## 13. Anti-Rationalization
+
+高リスクなModifier、Incident、Evidence Skillでは`Common mistakes`に加えて、AIがScope・Evidence・Architecture境界を破る時に使いがちな合理化を明示的に潰す。
+
+最低限検討する例:
+
+| Rationalization | Required response |
+|---|---|
+| 小さい修正だからTest不要 | 変更量ではなくRegression Surfaceで判断する |
+| Editorで動いたから完成 | Player / 実機依存の主張には対応Evidenceを要求する |
+| 症状が消えたのでRoot cause確定 | 因果経路と反証テストを要求する |
+| ついでに整理した方が綺麗 | Scope外変更を別Taskへ分離する |
+| 将来使うのでInterface化 | 実在するVariation Axisがなければ作らない |
+| Captureが取れたのでVisual Accepted | CaptureとHuman visual approvalを分離する |
+| 計測できないが速くなるはず | 未計測を改善済みと報告しない |
+
+## 14. Behavioral and evidence eval
+
+Skill品質はMarkdown構造だけでなく行動契約でも評価する。
+
+Eval caseは最低限次を持つ。
+
+```yaml
+id: SKILL-EVAL-XXX
+category: scope_guard
+evaluation_type: behavior
+prompt: "..."
+expected_primary: unity-example
+must_include:
+  - "..."
+must_not:
+  - "..."
+pass_condition: "..."
+```
+
+評価層:
+
+1. **Routing eval** — 適切なPrimary Skillを選ぶか。
+2. **Behavior eval** — Scope、順序、禁止事項を守るか。
+3. **Evidence eval** — `unavailable`、未計測、Editor-only結果を成功へ昇格しないか。
+
+CIの`validate_skill_evals.py`はEval Contractのschema、ID重複、最低coverageを検証する。
+モデル出力そのもののSemantic EvalはAgent Runner側の責務とし、GitHub Actionsの静的Validatorだけで「Agent behaviorを実行検証済み」と表現しない。
+
+## 15. Fresh-context doubt review and characterization
+
+高リスク変更では、Primary Skillが自分の仮説を自己承認し続けないよう、必要時のみ`unity-doubt-review`を使う。
+
+対象例:
+
+- Editor / Player / Console実機差
+- Rendering / Lighting / Addressables / Serializationの広範囲変更
+- public / serialized / Shader契約変更
+- Regression historyあり
+- 性能またはVisual Evidenceによる採用判断
+
+Doubt ReviewはPrimary Skillのconfidenceを引き継がず、競合仮説、Cheapest falsifier、blast radiusを再確認する。
+Low-risk local fixには強制しない。
+
+既存挙動を壊すリスクが高いBrownfield変更では、変更前にCharacterization Evidenceを確保する。
+形式は一律にUnit Testへ限定しない。
+
+- EditMode / PlayMode Test
+- Golden ScreenshotまたはCapture
+- Serialized State Snapshot
+- Profiler Baseline
+- 実機再現手順
+
+「既存挙動を何で固定したか」を説明できればよい。形式的なTest追加そのものを目的化しない。
