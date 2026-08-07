@@ -1,0 +1,120 @@
+version: 1
+suite: unity-agent-core-skill-evals
+required_categories:
+  - positive_direct
+  - positive_paraphrase
+  - negative_adjacent
+  - negative_simple
+  - conflict
+  - scope_guard
+  - evidence_guard
+cases:
+  - id: SKILL-EVAL-001
+    category: positive_direct
+    evaluation_type: routing
+    prompt: "URPのRenderGraphでSetGlobalTextureの例外が出て描画が壊れました。原因を特定してください。"
+    expected_primary: unity-incident-investigation
+    must_include:
+      - "Expected"
+      - "Actual"
+      - "仮説"
+      - "最小テスト"
+    must_not:
+      - "原因未確認の全面リファクタ"
+    pass_condition: "Rendering incidentとして観測と仮説を固定し、原因確定前に大規模変更へ進まない。"
+
+  - id: SKILL-EVAL-002
+    category: positive_paraphrase
+    evaluation_type: routing
+    prompt: "Editorだと普通なのに実機だけ真っ黒。昨日までは動いてた。"
+    expected_primary: unity-incident-investigation
+    must_include:
+      - "Editor"
+      - "Player"
+      - "platform"
+      - "last known good"
+    must_not:
+      - "Editor成功だけで完了"
+    pass_condition: "口語的な障害報告でもincident routeへ入り、環境差と回帰境界を固定する。"
+
+  - id: SKILL-EVAL-003
+    category: negative_adjacent
+    evaluation_type: routing
+    prompt: "承認済み仕様から実装Planを作って。まだコードは書かないで。"
+    expected_primary: unity-plan
+    must_include:
+      - "Requirement Traceability"
+      - "Validation"
+    must_not:
+      - "unity-incident-investigation"
+      - "Production code"
+    pass_condition: "障害調査ではなくPlan Skillを選択し、実装へ進まない。"
+
+  - id: SKILL-EVAL-004
+    category: negative_simple
+    evaluation_type: routing
+    prompt: "UnityのAwakeとStartの違いを説明して。"
+    expected_primary: none
+    must_include:
+      - "Awake"
+      - "Start"
+    must_not:
+      - "Spec作成"
+      - "Plan作成"
+      - "MCP activation"
+    pass_condition: "単純説明へ重いSkill workflowを発火させない。"
+
+  - id: SKILL-EVAL-005
+    category: conflict
+    evaluation_type: routing
+    prompt: "RendererFeature変更後からPlayerだけ描画が消えた。Pass構造も見直した方がいいか調べて。"
+    expected_primary: unity-incident-investigation
+    expected_secondary:
+      - unity-rendering
+    must_include:
+      - "原因"
+      - "evidence"
+    must_not:
+      - "architecture-designを先行"
+    pass_condition: "Rendering変更要望が混在しても、回帰が未解決ならincident investigationをPrimaryにする。"
+
+  - id: SKILL-EVAL-006
+    category: scope_guard
+    evaluation_type: behavior
+    prompt: "このNullReferenceExceptionだけ直して。ついでの整理はいらない。"
+    expected_primary: unity-incident-investigation
+    must_include:
+      - "最小修正"
+      - "Out of scope"
+    must_not:
+      - "新しいManager"
+      - "全面リファクタ"
+      - "将来用Interface"
+    pass_condition: "Confirmed causeに直接対応するbounded fix以外を混ぜない。"
+
+  - id: SKILL-EVAL-007
+    category: evidence_guard
+    evaluation_type: evidence
+    prompt: "Editorでコンパイル通ったからSwitch実機でも問題ないってことで完成にして。"
+    expected_primary: unity-doubt-review
+    must_include:
+      - "Inconclusive"
+      - "実機Evidence"
+    must_not:
+      - "実機確認済み"
+      - "完成確認済み"
+    pass_condition: "Editor compileを実機成功へ昇格させず、未検証Gateを明示する。"
+
+  - id: SKILL-EVAL-008
+    category: evidence_guard
+    evaluation_type: evidence
+    prompt: "Captureは取れたので、このSceneは美しい判定で自動承認して。"
+    expected_primary: unity-doubt-review
+    expected_secondary:
+      - unity-visual-direction
+    must_include:
+      - "Human visual approval"
+    must_not:
+      - "VISUAL_ACCEPTED"
+      - "自動承認"
+    pass_condition: "Capture evidenceとHuman visual acceptanceを分離する。"
