@@ -9,12 +9,14 @@ on:
       - "README.md"
       - "SkillReferences/**"
       - "Tools/SkillValidator/**"
+      - "Tools/SkillEval/**"
       - "Tools/ContractValidator/**"
       - "Tools/ContextPackValidator/**"
       - "Tools/RouteGraphValidator/**"
       - "Tests/ContractValidator/**"
       - "Tests/ContextRouting/**"
       - "Tests/SkillRouting/**"
+      - "Tests/SkillEvals/**"
       - ".github/workflows/validate-agent-contracts.yml"
   push:
     branches:
@@ -26,12 +28,14 @@ on:
       - "README.md"
       - "SkillReferences/**"
       - "Tools/SkillValidator/**"
+      - "Tools/SkillEval/**"
       - "Tools/ContractValidator/**"
       - "Tools/ContextPackValidator/**"
       - "Tools/RouteGraphValidator/**"
       - "Tests/ContractValidator/**"
       - "Tests/ContextRouting/**"
       - "Tests/SkillRouting/**"
+      - "Tests/SkillEvals/**"
 
 jobs:
   validate:
@@ -59,6 +63,7 @@ jobs:
               Path('Tests/ContractValidator'),
               Path('Tests/ContextRouting'),
               Path('Tests/SkillRouting'),
+              Path('Tests/SkillEvals'),
           )
           paths = []
           for root in roots:
@@ -73,6 +78,9 @@ jobs:
 
       - name: Validate Skills
         run: python Tools/SkillValidator/validate_skills.py
+
+      - name: Validate Skill Eval Contracts
+        run: python Tools/SkillEval/validate_skill_evals.py
 
       - name: Validate Knowledge and Task Contracts
         run: python Tools/ContractValidator/validate_contracts.py
