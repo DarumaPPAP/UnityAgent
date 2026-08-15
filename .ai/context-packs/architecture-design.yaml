@@ -1,4 +1,4 @@
-schema_version: "1.1"
+schema_version: "1.2"
 id: architecture-design
 primary_skill: .agents/skills/unity-architecture-design/SKILL.md
 
@@ -14,15 +14,24 @@ use_when:
 required:
   - .ai/user-policy.yaml
   - goal
-  - system_scope
-  - current_or_expected_scale
-  - ownership_and_lifetime
+  - scope_classification
   - prohibited_changes
   - SkillReferences/ARCHITECTURE_DECISION_POLICY.md
   - SkillReferences/ARCHITECTURE_STANDARDS.md
   - SkillReferences/CODING_STANDARDS.md
 
 conditional:
+  csharp_output:
+    - SkillReferences/CODE_FORMATTING_STANDARDS.md
+  local_behavior:
+    - attachment_target
+    - lifecycle_or_callback
+    - state_or_resource
+    - side_effect_or_restore
+  feature_or_larger:
+    - current_or_expected_scale
+    - ownership_and_lifetime
+    - change_axes
   platform_specific_api_build_compatibility_or_performance_claim:
     - target_platform
   performance_sensitive_goal:
@@ -55,7 +64,13 @@ excluded_by_default:
 
 rules:
   user_policy_has_priority_over_generic_architecture_pattern: true
-  single_cohesive_script_first: true
+  minimum_cohesive_solution_first: true
+  local_behavior_fast_path: true
+  unity_lifecycle_first: true
+  requirement_surface_lock: true
+  no_extra_state_without_reason: true
+  no_premature_generalization: true
+  architecture_depth_is_scope_dependent: true
   architecture_is_local_to_problem: true
   every_new_file_requires_split_reason: true
   hypothetical_reuse_is_not_split_reason: true
@@ -65,24 +80,27 @@ rules:
   production_performance_claim_requires_evidence: true
   public_and_serialized_contracts_are_preserved: true
   target_platform_is_conditional_not_global_default: true
+  naming_convention_is_preserved: true
 
 limits:
   initial_file_reads: 8
   context_expansion_hops: 1
   architecture_candidates: 4
+  local_behavior_architecture_candidates: 1
 
 output:
   - scope_classification
   - confirmed_context
-  - ownership_and_lifetime
-  - change_axes
-  - architecture_candidates
   - selected_architecture
-  - rejected_alternatives
-  - file_plan
+  - validation_plan
+  - local_behavior_fast_path_result_when_applicable
+  - ownership_and_lifetime_when_applicable
+  - change_axes_when_applicable
+  - architecture_candidates_when_applicable
+  - rejected_alternatives_when_applicable
+  - file_plan_when_multiple_files_are_needed
   - types_kept_in_same_file
   - intentionally_not_created_types
-  - dependency_direction
-  - serialization_contracts
-  - validation_plan
-  - reevaluation_conditions
+  - dependency_direction_when_applicable
+  - serialization_contracts_when_applicable
+  - reevaluation_conditions_when_applicable
