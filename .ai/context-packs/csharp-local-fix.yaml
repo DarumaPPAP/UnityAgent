@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: "1.1"
 id: csharp-local-fix
 primary_skill: .agents/skills/csharp-safe-patch/SKILL.md
 
@@ -12,10 +12,12 @@ required:
   - direct_callers_or_interfaces
   - Specs/ProjectProfile.md
   - SkillReferences/CODING_STANDARDS.md
+  - SkillReferences/CODE_FORMATTING_STANDARDS.md
 
 conditional:
   architecture_change:
     - SkillReferences/ARCHITECTURE_STANDARDS.md
+    - SkillReferences/ARCHITECTURE_DECISION_POLICY.md
   antipattern_finding:
     - SkillReferences/CSHARP_ANTIPATTERN_RULES.md
     - SkillReferences/CSHARP_ANTIPATTERN_POLICY.md
@@ -27,6 +29,13 @@ excluded_by_default:
   - SkillReferences/RENDERING_STANDARDS.md
   - SkillReferences/SHADER_PERFORMANCE_STANDARDS.md
   - SkillReferences/BEAUTIFUL_DEFINITION_INTEGRATION.md
+
+rules:
+  preserve_current_naming_convention: true
+  short_assignment_stays_on_one_line: true
+  no_mechanical_line_break_after_assignment_operator: true
+  no_unrelated_formatting_churn: true
+  no_premature_generalization: true
 
 limits:
   initial_file_reads: 5
