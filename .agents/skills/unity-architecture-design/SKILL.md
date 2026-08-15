@@ -1,18 +1,18 @@
 ---
 name: unity-architecture-design
-description: Unityの新規Feature、System、UI、ECS、Jobs/Burst、ScriptableObject、C#ファイル構成を、所有権・Lifetime・変更軸・性能要件から選定する。小規模機能への過剰分割を防ぎ、各新規ファイルのSplit Reasonと不採用案を明示する。
+description: Unityの新規Feature、System、UI、ECS、Jobs/Burst、ScriptableObject、C#ファイル構成を、問題規模に応じた思考量で選定する。Local BehaviorはLifecycleと最小構成を先に評価し、Feature/System以上では所有権・Lifetime・変更軸・性能要件から設計する。
 allowed-tools:
   - Read
   - Write
   - Edit
   - Bash
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # Unity Architecture Design
 
-Unityの設計をPattern名から決めず、問題の規模、所有権、Lifetime、データ、実行方式、制作フローから決定する。
+Unityの設計をPattern名から決めず、最初に問題規模を判定する。Local BehaviorはUnity Lifecycleと既存APIで解決できるかを優先し、重いArchitecture分析は必要な規模にだけ適用する。
 
 ## When to use
 
@@ -22,6 +22,7 @@ Unityの設計をPattern名から決めず、問題の規模、所有権、Lifet
 - Controller、Manager、Service、Interfaceの必要性を監査する
 - ECS、Jobs、Burst、GameObjectとのHybrid構成を評価する
 - C#ファイルの作りすぎ、薄いクラスの乱造を見直す
+- Local Behaviorが不要な監視、状態、汎用化を持っていないか確認する
 
 既知の局所バグ修正には`csharp-safe-patch`を使う。
 原因不明の障害にはIncident Skillを使う。
@@ -32,8 +33,9 @@ Unityの設計をPattern名から決めず、問題の規模、所有権、Lifet
 1. `SkillReferences/ARCHITECTURE_DECISION_POLICY.md`
 2. `SkillReferences/ARCHITECTURE_STANDARDS.md`
 3. `SkillReferences/CODING_STANDARDS.md`
-4. 対象Sourceと直接依存
-5. ECS、Rendering、UI等の条件付きReference
+4. `SkillReferences/CODE_FORMATTING_STANDARDS.md` when C# output is produced
+5. 対象Sourceと直接依存
+6. ECS、Rendering、UI等の条件付きReference
 
 全Pattern、全Skill、全Referenceを一括で読まない。
 
@@ -44,16 +46,47 @@ Unityの設計をPattern名から決めず、問題の規模、所有権、Lifet
 次から最も近いものを一つ選ぶ。
 
 - Local Behavior
-- Feature
+- Small Feature / Feature
 - System
 - Project Infrastructure
 - Data-parallel Simulation
 
 ファイル数や行数ではなく、所有範囲、変更範囲、実行モデルで判断する。
 
-### Step 2 — 最小構成を先に評価する
+### Step 2 — Local Behavior Fast Path
 
-最初に次で成立するか検討する。
+Local Behaviorの場合は、Architecture候補比較より先に次を確認する。
+
+1. ユーザーが指定したAttach先、Component、Assetだけで成立するか。
+2. `Awake`、`OnEnable`、`Start`、`OnDisable`、`OnDestroy`等で成立するか。
+3. Unity標準Callbackまたは既存Project Eventで成立するか。
+4. Unity APIまたは既存Domain Objectが状態のSource of Truthを持っていないか。
+5. Serialized Target、Watcher、Trigger、Previous State、Initialized Flagが本当に必要か。
+6. `Update` / Pollingを使わず成立するか。
+7. 1 Primary Unity Typeで成立するか。
+
+成立する場合はここでArchitecture決定を完了し、次を追加しない。
+
+- 任意Target化
+- 将来用Interface
+- Manager / Controller / Service
+- Profile / ScriptableObject
+- 独自Event relay
+- 不要な状態Cache
+- System級の候補Architecture比較
+
+Local Behaviorの出力は次へ縮小する。
+
+- Goal
+- Attachment Target
+- Lifecycle / Callback
+- State / Resource
+- Side Effect / Restore
+- Validation
+
+### Step 3 — Minimum Cohesive Solutionを評価する
+
+Fast Pathで完結しない場合も、最初に次で成立するか検討する。
 
 - 1 MonoBehaviour
 - 1 Plain C# Type
@@ -62,7 +95,9 @@ Unityの設計をPattern名から決めず、問題の規模、所有権、Lifet
 
 成立する場合は、Pattern適用のためだけに層を増やさない。
 
-### Step 3 — OwnershipとLifetimeを固定する
+### Step 4 — OwnershipとLifetimeを固定する
+
+Feature / System以上、またはResource寿命が実際に問題になる場合に確認する。
 
 - creator
 - owner
@@ -76,7 +111,7 @@ Unityの設計をPattern名から決めず、問題の規模、所有権、Lifet
 
 未解決項目はBindingとして記録し、名前やPathを推測しない。
 
-### Step 4 — Change Axisを特定する
+### Step 5 — Change Axisを特定する
 
 実際に独立して変化するものだけを列挙する。
 
@@ -91,9 +126,11 @@ Unityの設計をPattern名から決めず、問題の規模、所有権、Lifet
 
 「将来変わるかもしれない」はVariation Axisにしない。
 
-### Step 5 — 2～4候補を比較する
+### Step 6 — 必要な場合だけ2～4候補を比較する
 
-問題に適合する候補だけを比較する。
+Local Behavior Fast Pathで完結した場合は候補比較を行わない。
+
+Feature / System以上で構造選定が必要な場合のみ、問題に適合する候補を比較する。
 
 - Single MonoBehaviour
 - MonoBehaviour + local helper types
@@ -110,7 +147,7 @@ Unityの設計をPattern名から決めず、問題の規模、所有権、Lifet
 
 各候補について利点、欠点、Runtime Cost、Authoring Cost、Migration Costを簡潔に示す。
 
-### Step 6 — ECS Opportunity Check
+### Step 7 — ECS Opportunity Check
 
 データ並列処理では、次の成立数を確認する。
 
@@ -126,9 +163,9 @@ Unityの設計をPattern名から決めず、問題の規模、所有権、Lifet
 3項目以上ならECSまたはJobs/Burst案を候補から除外しない。
 本番採用時はGameObject Baseline、Jobs/Burst、ECSの比較Evidenceを要求する。
 
-### Step 7 — File Planを作る
+### Step 8 — File Planを作る
 
-各ファイルへ次を記載する。
+新規ファイルが複数必要な場合、各ファイルへ次を記載する。
 
 - pathまたはportable filename
 - Primary Type
@@ -141,16 +178,19 @@ Unityの設計をPattern名から決めず、問題の規模、所有権、Lifet
 
 同一ファイルへ保持する型と、意図的に作らない型も記載する。
 
-### Step 8 — Quality Gate
+### Step 9 — Quality Gate
 
 - Architecture Fit
 - File Granularity
-- Ownership and Lifetime
+- Ownership and Lifetime when applicable
 - Serialization Validation
 - ECS Data Layout when applicable
 - Performance Capture when Production performance adoption
 
-### Step 9 — Decisionを返す
+### Step 10 — Decisionを返す
+
+Local BehaviorではFast Pathの縮小出力を返す。
+Feature / System以上では必要に応じて次を返す。
 
 - Selected Architecture
 - Rejected Alternatives
@@ -162,7 +202,11 @@ Unityの設計をPattern名から決めず、問題の規模、所有権、Lifet
 
 ## Non-negotiable rules
 
-- Single Cohesive Script Firstを既定とする。
+- Minimum Cohesive Solution Firstを既定とする。
+- Local BehaviorへSystem級Architecture分析を機械的に適用しない。
+- Unity Lifecycleまたは既存Callbackで成立する場合、`Update` / Pollingを先に選ばない。
+- ユーザー指定対象を再利用性だけで任意Target化しない。
+- Unityまたは既存Domainが持つ状態を理由なく二重管理しない。
 - Architecture Patternを満たすためだけに型やファイルを増やさない。
 - 新規ファイルごとにHard Split Reasonを要求する。
 - hypothetical reuseを分割理由にしない。
@@ -176,16 +220,25 @@ Unityの設計をPattern名から決めず、問題の規模、所有権、Lifet
 
 ## Output contract
 
-# Architecture Decision
+### Local Behavior
+
+1. Goal
+2. Attachment Target
+3. Lifecycle / Callback
+4. State / Resource
+5. Side Effect / Restore
+6. Validation
+
+### Feature / System以上
 
 1. Goal
 2. Scope
 3. Confirmed Context
 4. Ownership and Lifetime
 5. Change Axes
-6. Candidate Architectures
+6. Candidate Architectures when needed
 7. Selected Architecture
-8. Rejected Alternatives
+8. Rejected Alternatives when compared
 9. File Plan
 10. Types Kept in the Same File
 11. Intentionally Not Created Types
