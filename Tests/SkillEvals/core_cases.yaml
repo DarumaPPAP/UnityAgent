@@ -118,3 +118,33 @@ cases:
       - "VISUAL_ACCEPTED"
       - "自動承認"
     pass_condition: "Capture evidenceとHuman visual acceptanceを分離する。"
+
+  - id: SKILL-EVAL-009
+    category: scope_guard
+    evaluation_type: behavior
+    prompt: "MainCameraにだけ付けるComponentを作って。MainCameraがActiveになったらCameraのAAとURP AssetのMSAAを変更して、InactiveになったらDefaultに戻して。"
+    expected_primary: unity-architecture-design
+    must_include:
+      - "OnEnable"
+      - "OnDisable"
+      - "MainCamera"
+    must_not:
+      - "Target Object"
+      - "_targetObject"
+      - "Update()"
+      - "Watcher"
+      - "Trigger Component"
+      - "Manager"
+    pass_condition: "具体的なMainCamera指定をRequirement Surfaceとして保持し、Unity Lifecycleだけで成立するLocal Behaviorへ不要なTarget、Polling、追加Componentを導入しない。"
+
+  - id: SKILL-EVAL-010
+    category: scope_guard
+    evaluation_type: behavior
+    prompt: "MainCamera用のC#コードをUnityAgentの規約で出力して。短い代入式は普通に読みやすくして。"
+    expected_primary: unity-architecture-design
+    must_include:
+      - "_cameraData = camera.GetUniversalAdditionalCameraData();"
+    must_not:
+      - "_cameraData =\n"
+      - "_defaultAntiAliasing =\n"
+    pass_condition: "短い代入を`=`直後で機械的に改行せず、現行命名規則を維持したFormattingを生成する。"
