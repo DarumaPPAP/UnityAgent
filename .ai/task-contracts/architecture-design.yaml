@@ -4,12 +4,25 @@ risk_level: R1
 
 required_inputs:
   - goal
-  - system_scope
-  - current_or_expected_scale
-  - ownership_and_lifetime
+  - scope_classification
   - prohibited_changes
 
 conditional_inputs:
+  local_behavior:
+    required_when:
+      - scope_classification_is_local_behavior
+    inputs:
+      - attachment_target
+      - lifecycle_or_callback
+      - state_or_resource
+      - side_effect_or_restore
+  feature_or_larger:
+    required_when:
+      - scope_classification_is_not_local_behavior
+    inputs:
+      - current_or_expected_scale
+      - ownership_and_lifetime
+      - change_axes
   target_platform:
     required_when:
       - platform_specific_api_is_used
@@ -30,13 +43,19 @@ allowed_mutations:
 
 prohibited_mutations:
   - architecture_pattern_application_without_problem_fit
+  - system_level_analysis_for_resolved_local_behavior
+  - speculative_target_generalization
+  - speculative_watcher_or_trigger
+  - speculative_state_cache
   - speculative_controller_or_manager
   - speculative_interface
   - speculative_scriptable_object
   - speculative_dependency_injection_container
+  - polling_when_unity_lifecycle_or_existing_callback_is_sufficient
   - unrelated_refactor
   - project_setting_change_without_approval
   - public_or_serialized_contract_change_without_analysis
+  - naming_convention_change_without_user_approval
   - generic_best_practice_overriding_user_policy
 
 required_knowledge: []
@@ -44,10 +63,10 @@ required_knowledge: []
 required_quality_gates:
   - architecture_fit
   - file_granularity
-  - ownership_and_lifetime
   - serialization_validation
 
 conditional_quality_gates:
+  - ownership_and_lifetime
   - ecs_data_layout
   - static_review
   - compile
@@ -58,12 +77,17 @@ conditional_quality_gates:
   - target_device
 
 completion:
+  - scope_specific_design_depth_is_used
+  - local_behavior_uses_fast_path_when_sufficient
+  - unity_lifecycle_is_checked_before_polling
+  - requirement_surface_is_preserved
+  - unnecessary_state_and_generalization_are_removed
   - selected_architecture_is_explained
-  - rejected_alternatives_are_explained
   - every_planned_file_has_a_split_reason
   - unnecessary_abstractions_are_removed
   - user_policy_is_preserved
-  - reevaluation_conditions_are_defined
+  - naming_convention_is_preserved
+  - reevaluation_conditions_are_defined_when_needed
 
 stop_conditions:
   - required_existing_contract_is_unknown
