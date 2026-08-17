@@ -2,18 +2,34 @@
 
 ## Core principles
 
-- Specification, semantics, ownership and lifetime precede convenience.
+- Specification, semantics, ownership and lifetime precede convenience when the problem scale requires them.
 - Architecture is selected per problem domain, not imposed project-wide.
-- Prefer the smallest cohesive structure that satisfies the confirmed requirements.
+- Prefer the minimum cohesive solution that satisfies the confirmed requirements.
+- Local BehaviorではUnity Lifecycle、既存Component、既存Callbackによる直接解決を最初に評価する。
+- Feature / System以上ではOwnership、Lifetime、Change Axisを必要な深さで確認する。
 - Separate configuration, orchestration, runtime execution and evidence collection only when those responsibilities have different owners, lifetimes or change axes.
 - Prefer explicit dependencies over global lookup, service locators or mutable static state.
 - Do not introduce Controller/Manager/Pool/Cache/DI/Fallback/Debug layers without a requirement and measurable benefit.
 - Keep one primary responsibility per type and one primary hypothesis per patch.
 - Pattern names, future possibilities and file line counts are not architecture evidence.
+- ユーザーが指定した具体対象を、将来再利用だけを理由に一般化しない。
+
+## Local behavior
+
+一つのGameObjectまたはComponentで完結する処理は、次の順で確認する。
+
+1. ユーザー指定のAttach先と既存Componentだけで成立するか。
+2. Unity Lifecycleで成立するか。
+3. 既存Callback / Eventで成立するか。
+4. Unity APIまたは既存Domain Objectが必要な状態を保持していないか。
+5. 追加状態、Watcher、Trigger、Serialized Targetが本当に必要か。
+6. `Update` / Pollingなしで成立するか。
+
+成立する場合はSystem級のArchitecture候補比較や汎用化を省略する。
 
 ## File granularity
 
-Use Single Cohesive Script First for local behavior and small features.
+Use Minimum Cohesive Solution First for local behavior and small features.
 
 Create a new C# file only when at least one split reason exists:
 
@@ -32,6 +48,27 @@ Unity上で独立してアタッチ、生成、参照されるMonoBehaviour、Sc
 Do not mechanically split private helpers, feature-local enums, results, comparers, jobs, ECS components, tags, aspects, system-local types or RenderGraph PassData into separate files.
 
 Do not split by line count alone. When a small feature exceeds its normal file shape, document responsibility, owner, lifetime, consumers, split reason and why co-location is insufficient.
+
+## Requirement surface
+
+ユーザーが明示したGameObject、Component、Asset、対象範囲を最小Requirement Surfaceとして扱う。
+
+再利用性、将来拡張、汎用性だけを理由に次を追加しない。
+
+- 任意Target参照
+- Profile
+- Watcher
+- Trigger
+- Manager / Controller / Service
+- Interface
+
+追加する場合は、現在要求を満たすための実在理由を示す。
+
+## State ownership
+
+Unity APIまたは既存Domain ObjectがSource of Truthを持つ状態を、理由なく別fieldへ複製しない。
+
+CacheやPrevious Stateは、変更検出、高コスト取得回避、履歴、Frame境界Snapshot等の実在理由がある場合だけ追加する。
 
 ## Abstraction policy
 
@@ -84,7 +121,7 @@ Do not automatically change:
 
 ## Runtime ownership
 
-For managed, native and GPU resources, document:
+For managed, native and GPU resources, document as needed by the problem scale:
 
 - creator
 - owner
@@ -92,6 +129,8 @@ For managed, native and GPU resources, document:
 - readers/writers
 - synchronization
 - release/disposal responsibility
+
+Local BehaviorでUnity自身が所有するComponent状態まで重複して管理表へ展開しない。
 
 ## Rendering architecture
 
@@ -101,7 +140,16 @@ Before adding a Shader Pass, evaluate RendererFeature filtering, RenderQueue, La
 
 ## Architecture decision output
 
-New architecture work must report:
+Local Behaviorは次へ縮小する。
+
+- Goal
+- Attachment Target
+- Lifecycle / Callback
+- State / Resource
+- Side Effect / Restore
+- Validation
+
+Feature / System以上の新規Architecture workは必要に応じて次を報告する。
 
 - scope classification
 - confirmed context

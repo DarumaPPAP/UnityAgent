@@ -4,18 +4,29 @@
 
 Unityの設計をMVP、Clean Architecture、Controller、ScriptableObject、ECS等の名称から開始せず、問題の規模、所有権、Lifetime、変更軸、データ配置、実行方式から決定する。
 
-このPolicyは、過剰なC#ファイル分割と不要な抽象化を防ぎながら、ECS、Jobs、Burstを適合する問題で積極的に評価するための判断契約である。
+このPolicyは、過剰なC#ファイル分割と不要な抽象化を防ぎながら、問題規模に応じて思考量そのものを切り替えるための判断契約である。
 
-## 2. Default: Single Cohesive Script First
+## 2. Default: Minimum Cohesive Solution First
 
-小規模な機能は、理解可能な一つの責務を一つのC#ファイルへ実装することから開始する。
+小規模な機能は、ファイル数を減らすことではなく、ユーザー要求を満たす最小の凝集した解決から開始する。
 
 ```text
 Local Behavior
-└── FeatureName.cs
+└── 必要なUnity Component / Lifecycleだけで解決
 ```
 
-次の理由だけでは分割しない。
+次を必要性なしに追加しない。
+
+- Target Object
+- Watcher / Trigger
+- Previous State / Initialized Flag
+- Manager / Controller / Service
+- Profile / ScriptableObject
+- Interface
+- Event relay
+- Update Polling
+
+次の理由だけでは分割または一般化しない。
 
 - Single Responsibility Principleという名称
 - Architecture Patternへの適合
@@ -25,9 +36,9 @@ Local Behavior
 - ファイル行数
 - MonoBehaviourを薄く見せたい
 
-責務を一つにすることと、型やファイルを一つの処理単位まで細分化することは同義ではない。
+責務を一つにすることと、型や状態を細分化することは同義ではない。
 
-## 3. Scope classification
+## 3. Scope classification and design depth
 
 ### Local Behavior
 
@@ -36,9 +47,13 @@ Local Behavior
 既定候補:
 
 - Single MonoBehaviour
+- Unity Lifecycle
+- 既存Unity Component / API
 - Primary Typeと同一ファイル内のprivate補助型
 
-### Feature
+Local Behaviorは後述のFast Pathを使用し、成立する場合はSystem級Architecture分析を省略する。
+
+### Small Feature / Feature
 
 一つのユーザー機能またはゲーム機能。
 
@@ -47,6 +62,8 @@ Local Behavior
 - MonoBehaviour
 - 必要時のみPlain C# Logic
 - 独立Assetとして価値がある場合のみScriptableObject
+
+複数参加要素、独立Lifetime、実在するChange Axisが現れた場合にのみ構造を増やす。
 
 ### System
 
@@ -66,7 +83,89 @@ Ports and Adapters、Backend Interface、Composition Rootを必要性に応じ�
 
 Jobs、Burst、ECS、Hybrid GameObject + ECSを積極評価する。
 
-## 4. Hard Split Reasons
+## 4. Local Behavior Fast Path
+
+Local Behaviorでは、次の順序だけを先に確認する。
+
+1. **Requirement Surface** — ユーザーが明示したGameObject、Component、Assetだけで成立するか。
+2. **Unity Lifecycle** — `Awake`、`OnEnable`、`Start`、`OnDisable`、`OnDestroy`等で直接解決できるか。
+3. **Existing Callback / API** — Unity標準Callbackや既存Component APIで解決できるか。
+4. **Source of Truth** — Unityまたは既存Domain Objectが必要な状態をすでに保持していないか。
+5. **Extra State Check** — 状態Cache、監視対象、Watcher、Triggerが本当に必要か。
+6. **Polling Check** — `Update`やCoroutine Pollingを使わずに成立するか。
+7. **File Check** — 1 Primary Unity Typeで成立するか。
+
+上記で成立した場合は、次を省略する。
+
+- 2～4 Architecture候補の比較
+- Change Axis列挙
+- System級Ownership表
+- 将来利用を想定した抽象化
+- 不要なFile Plan拡張
+
+Local Behaviorの出力は原則次だけでよい。
+
+1. Goal
+2. Attachment Target
+3. Lifecycle / Callback
+4. State / Resource
+5. Side Effect / Restore
+6. Validation
+
+## 5. Unity Lifecycle First
+
+Unity Componentの有効化、無効化、生成、破棄、Scene境界などに直接対応する処理は、次の優先順で解決する。
+
+```text
+Unity Lifecycle
+↓
+Existing Unity Callback / Event
+↓
+Existing project event
+↓
+Explicit custom event
+↓
+Coroutine / Timer
+↓
+Update / Polling
+```
+
+`Update`は常時監視が要件そのものである場合、または上位手段で状態変化を検出できない場合にのみ採用する。
+
+## 6. Requirement Surface Lock
+
+ユーザーが具体的な対象を指定している場合、その対象を最小Requirement Surfaceとして保持する。
+
+例:
+
+```text
+「MainCameraに付ける」
+```
+
+から、再利用性だけを理由に次を追加してはならない。
+
+- 任意のTarget GameObject
+- 別Trigger Component
+- Profile Asset
+- Watcher
+- Manager
+
+一般化が必要な場合は、現在要求を満たすための実在理由を示す。
+
+## 7. No Extra State
+
+Unity APIまたは既存Domain ObjectがSource of Truthを持つ場合、同じ意味の状態をprivate fieldへ複製しない。
+
+状態Cacheを許可する代表例:
+
+- 変更検出に前回値が必要
+- 取得コストを避ける必要がある
+- 履歴自体が仕様
+- 非同期またはFrame境界をまたぐSnapshotが必要
+
+`_initialized`、`_previousState`、`_hasState`等は「安全そう」という理由だけで追加しない。
+
+## 8. Hard Split Reasons
 
 新しいC#ファイルには最低一つの理由が必要である。
 
@@ -86,7 +185,7 @@ Jobs、Burst、ECS、Hybrid GameObject + ECSを積極評価する。
 
 該当しない型は、Primary Typeと同一ファイルまたは既存責務へ統合する。
 
-## 5. One Primary Unity Type per File
+## 9. One Primary Unity Type per File
 
 Unity上で独立してアタッチ、生成、参照される次の型は、原則として1 File 1 Primary Typeとする。
 
@@ -114,7 +213,7 @@ Unity上で独立してアタッチ、生成、参照される次の型は、原
 
 複数のpublic Unity Object型を一つのファイルへ詰め込むことを推奨する規則ではない。
 
-## 6. Soft Review Gates
+## 10. Soft Review Gates
 
 数値は上限ではなく、分割理由を再確認するTriggerである。
 
@@ -129,7 +228,7 @@ Unity上で独立してアタッチ、生成、参照される次の型は、原
 
 Triggerを超えた場合、各ファイルについてResponsibility、Owner、Lifetime、Consumers、Split Reason、統合不可理由を提示する。
 
-## 7. Controller, Manager and Service
+## 11. Controller, Manager and Service
 
 作成を許可する条件:
 
@@ -151,7 +250,7 @@ Triggerを超えた場合、各ファイルについてResponsibility、Owner、
 
 `Manager`、`Controller`、`Coordinator`、`Service`、`System`という名前自体は責務の証明にならない。
 
-## 8. Interface
+## 12. Interface
 
 Interfaceを許可する条件:
 
@@ -172,7 +271,7 @@ Interfaceを許可する条件:
 
 Interface採用時はImplementations、Consumer、Variation Axis、Concrete dependencyでは不足する理由を記録する。
 
-## 9. ScriptableObject
+## 13. ScriptableObject
 
 積極採用条件:
 
@@ -198,7 +297,7 @@ Interface採用時はImplementations、Consumer、Variation Axis、Concrete depe
 
 Runtime Set、Event Channel、Mutable Runtime StateはOwner、初期化、解除、Domain Reload、Editor Asset汚染を追加確認する。
 
-## 10. Presentation Architecture
+## 14. Presentation Architecture
 
 ### Direct View Logic
 
@@ -214,7 +313,7 @@ UI Toolkit Runtime Data Binding、多数Fieldの同期、明確なViewModel単�
 
 MVPまたはMVVMをProject全体の標準にはしない。
 
-## 11. ECS, Jobs and Burst
+## 15. ECS, Jobs and Burst
 
 ### Opportunity Check
 
@@ -297,9 +396,9 @@ EnemyMovementEcs.cs
 
 性能ArchitectureはBefore / AfterとRevert条件なしに採用確定しない。
 
-## 12. Architecture Decision output
+## 16. Architecture Decision output
 
-設計結果は次を含む。
+Local Behavior Fast Pathで完結しないFeature / System以上では次を含む。
 
 1. Goal
 2. Scope

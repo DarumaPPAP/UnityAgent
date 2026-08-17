@@ -45,15 +45,27 @@ core_user_policies:
   single_purpose_change:
     rule: 変更理由を一つに限定し、便利機能の寄せ集めへ拡張しない
   ownership_and_lifetime:
-    rule: 状態とResourceの生成者、所有者、変更権限、寿命、破棄を明確にする
+    rule: 状態とResourceの生成者、所有者、変更権限、寿命、破棄を明確にする。ただしLocal Behaviorへ不要な状態管理や設計層を追加する理由にはしない
   no_unrequested_implementation:
     rule: 仕様外のController、Manager、Service、Profile、Fallback、Cache、Setup、Debug UIを追加しない
-  single_cohesive_script_first:
-    rule: 小規模機能ではまず一つの凝集した実装を検討し、過剰な層分割を避ける
+  minimum_cohesive_solution_first:
+    rule: 小規模機能ではファイル数ではなく要求を満たす最小の凝集した解決を優先し、追加のObject、状態、監視、抽象化を必要性なしに作らない
+  case_by_case_design_depth:
+    rule: Local Behavior、Feature、System、Project Infrastructure、Data Parallelで思考量を切り替え、Local BehaviorへSystem級のArchitecture分析を機械的に適用しない
+  unity_lifecycle_first:
+    rule: Unity Lifecycleまたは既存Callbackで直接解決できる処理は、独自Event、Coroutine、Timer、UpdateやPollingより先に採用可否を確認する
+  requirement_surface_lock:
+    rule: ユーザーが明示したGameObject、Component、Asset、対象範囲を最小Requirement Surfaceとして保持し、再利用性や一般化だけを理由にTarget、Profile、Watcher等を追加しない
+  no_extra_state:
+    rule: Unity APIまたは既存Domain ObjectがSource of Truthを持つ場合、同じ意味の状態をprivate fieldへ複製しない。状態Cacheは変更検出、高コスト取得回避、履歴保持など実在する理由がある場合だけ追加する
+  no_premature_generalization:
+    rule: 具体的な対象が指定されている場合、将来の再利用可能性だけを理由に任意Target化、Interface化、Profile化、汎用Manager化しない
   file_split_reason:
     rule: 新規C#ファイルごとに実在するSplit Reasonを要求し、仮想的な再利用性を理由にしない
   preserve_existing_structure:
     rule: 依頼外の命名変更、ファイル移動、巨大Refactor、公開・Serialized契約変更を行わない
+  preserve_current_naming_convention:
+    rule: 現行UnityAgentの命名規則を維持し、Formatting改善を理由にenum、struct、field、const等の命名規則を変更しない
   evidence_scoped_claims:
     rule: Static、Compile、Editor、Player、実機、Performance、Visualの検証状態を分離して報告する
   performance_requires_measurement:
