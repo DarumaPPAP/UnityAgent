@@ -1,0 +1,107 @@
+version: 1
+suite: runtime-debugger-harness-skill-evals
+required_categories:
+  - positive_direct
+  - positive_paraphrase
+  - negative_adjacent
+  - negative_simple
+  - conflict
+  - scope_guard
+  - evidence_guard
+cases:
+  - id: RUNTIME-DEBUG-EVAL-001
+    category: positive_direct
+    evaluation_type: routing
+    prompt: "Unityの実機でClassごとにIMGUIのDebug Windowを出して、Attributeを付けたprivate fieldを監視できる汎用Debugger Harnessを作りたい。"
+    expected_primary: unity-runtime-debugger-harness
+    must_include:
+      - "Class"
+      - "Window"
+      - "Attribute"
+      - "RuntimeDebugHost"
+    must_not:
+      - "RuntimeDebugManager"
+      - "全private field自動公開"
+    pass_condition: "Class単位WindowとAttribute opt-inを中心にRuntime Debugger Harness routeを選ぶ。"
+
+  - id: RUNTIME-DEBUG-EVAL-002
+    category: positive_paraphrase
+    evaluation_type: routing
+    prompt: "EditorじゃなくSwitch実機で、今ADVControllerの値がどうなってるか小窓で見たい。関数が呼ばれた回数も追えたら嬉しい。"
+    expected_primary: unity-runtime-debugger-harness
+    must_include:
+      - "Player"
+      - "実機"
+      - "Trace"
+      - "IL2CPP"
+    must_not:
+      - "ReflectionだけでMethod callを自動検出"
+    pass_condition: "口語的な実機監視要求でもHarness routeへ入り、TraceとIL2CPP境界を扱う。"
+
+  - id: RUNTIME-DEBUG-EVAL-003
+    category: negative_adjacent
+    evaluation_type: routing
+    prompt: "実機だけADVのAnimation Eventが飛ぶ。原因を特定して直して。"
+    expected_primary: unity-incident-investigation
+    must_include:
+      - "原因"
+      - "Evidence"
+    must_not:
+      - "Debugger Harnessを先に実装"
+    pass_condition: "観測Tool作成ではなく原因不明の障害調査なのでIncidentをPrimaryにする。"
+
+  - id: RUNTIME-DEBUG-EVAL-004
+    category: negative_simple
+    evaluation_type: routing
+    prompt: "UnityのOnGUIって何？"
+    expected_primary: none
+    must_include:
+      - "OnGUI"
+    must_not:
+      - "RuntimeDebugHost実装"
+      - "Spec作成"
+    pass_condition: "単純説明にHarness workflowを発火させない。"
+
+  - id: RUNTIME-DEBUG-EVAL-005
+    category: conflict
+    evaluation_type: routing
+    prompt: "Playerだけで起きる不具合を追うためにRuntime Debug Windowも欲しいけど、まず原因不明の描画消失を調べたい。"
+    expected_primary: unity-incident-investigation
+    expected_secondary:
+      - unity-runtime-debugger-harness
+    must_include:
+      - "Incident"
+      - "観測"
+    must_not:
+      - "Harness実装を原因調査より先行"
+    pass_condition: "未解決IncidentをPrimaryにし、Harnessは必要な観測手段としてSecondaryに留める。"
+
+  - id: RUNTIME-DEBUG-EVAL-006
+    category: scope_guard
+    evaluation_type: behavior
+    prompt: "Runtime Debuggerを作って。Enemyが500体いても各EnemyごとにWindowを500個出す必要はない。"
+    expected_primary: unity-runtime-debugger-harness
+    must_include:
+      - "Type"
+      - "Instance Selector"
+      - "1 Window"
+    must_not:
+      - "500 Window"
+      - "毎Frame Reflection Scan"
+      - "Singleton"
+      - "Service Locator"
+    pass_condition: "Type単位WindowとInstance Selectorを維持し、Window増殖と過剰なGlobal Architectureを避ける。"
+
+  - id: RUNTIME-DEBUG-EVAL-007
+    category: evidence_guard
+    evaluation_type: evidence
+    prompt: "Editor PlayModeでAttribute Watchが見えたからIL2CPP実機でも完成扱いでいいよね。"
+    expected_primary: unity-runtime-debugger-harness
+    must_include:
+      - "IL2CPP"
+      - "stripping"
+      - "未検証"
+    must_not:
+      - "実機確認済み"
+      - "完成確認済み"
+    pass_condition: "Editor結果をPlayer/IL2CPP/実機Evidenceへ昇格させず、AOT/stripping Gateを残す。"
