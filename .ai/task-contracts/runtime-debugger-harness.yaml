@@ -1,0 +1,104 @@
+id: runtime-debugger-harness
+default_execution_profile: generic_planning
+risk_level: R1
+
+required_inputs:
+  - goal
+  - desired_debug_surface
+  - prohibited_changes
+
+conditional_inputs:
+  existing_project:
+    required_when:
+      - source_mutation_is_requested
+    inputs:
+      - unity_version
+      - target_assembly
+      - root_namespace
+      - existing_public_and_serialized_contracts
+  player_target:
+    required_when:
+      - player_support_is_claimed
+      - target_device_support_is_claimed
+    inputs:
+      - editor_or_player
+      - mono_or_il2cpp
+      - development_or_release
+      - target_platform
+  trace_backend:
+    required_when:
+      - automatic_attribute_only_trace_is_requested
+    inputs:
+      - target_unity_compilation_pipeline
+      - instrumentation_support_evidence
+  performance:
+    required_when:
+      - performance_cost_is_part_of_acceptance
+    inputs:
+      - watch_count
+      - active_window_count
+      - refresh_frequency
+      - measurement_environment
+
+allowed_mutations:
+  - runtime_debugger_specification
+  - runtime_debugger_agent_files
+  - runtime_debugger_skill_files
+  - runtime_debugger_prompt_files
+  - explicitly_requested_runtime_debugger_source_files
+  - explicitly_requested_editor_instrumentation_files
+  - routing_and_skill_eval_entries_for_this_feature
+
+prohibited_mutations:
+  - unrelated_gameplay_refactor
+  - automatic_exposure_of_all_private_members
+  - implicit_runtime_state_mutation_without_attribute_opt_in
+  - every_frame_scene_wide_reflection_scan
+  - reflection_only_claim_for_automatic_method_call_interception
+  - runtime_reference_to_unityeditor
+  - release_debug_command_path_without_explicit_policy
+  - unjustified_mutable_static_registry
+  - unjustified_singleton_or_service_locator
+  - remote_console_or_network_transport_without_requirement
+  - docking_or_profiler_replacement_without_requirement
+  - public_or_serialized_contract_change_without_analysis
+
+required_knowledge: []
+
+required_quality_gates:
+  - architecture_fit
+  - file_granularity
+  - static_review
+
+conditional_quality_gates:
+  - compile
+  - editmode
+  - playmode
+  - player
+  - target_device
+  - performance_capture
+  - serialization_validation
+
+completion:
+  - class_window_boundary_is_defined
+  - multiple_instance_behavior_is_defined
+  - watch_and_mutation_are_separated
+  - reflection_scan_and_value_refresh_are_separated
+  - trace_backend_limitations_are_explicit
+  - runtime_editor_boundary_is_preserved
+  - il2cpp_aot_stripping_plan_exists_when_player_support_matters
+  - release_exclusion_plan_exists
+  - every_new_file_has_a_split_reason
+  - editor_results_are_not_promoted_to_target_device_evidence
+
+stop_conditions:
+  - automatic_trace_is_required_but_target_instrumentation_path_is_unknown
+  - source_mutation_requires_unknown_public_or_serialized_contract
+  - proposed_debugger_requires_release_mutation_path_without_approval
+  - target_device_success_is_required_but_no_target_device_validation_is_available
+
+result_format:
+  summary: runtime_debugger_harness_decision
+  changed_artifacts: paths_responsibilities_and_split_reasons
+  validation: gate_statuses
+  unresolved: instrumentation_platform_and_target_device_gates
