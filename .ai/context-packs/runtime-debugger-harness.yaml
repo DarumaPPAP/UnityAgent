@@ -1,0 +1,89 @@
+schema_version: "1.0"
+id: runtime-debugger-harness
+primary_skill: .agents/skills/unity-runtime-debugger-harness/SKILL.md
+
+use_when:
+  - runtime debugger harness
+  - in-game debugger
+  - IMGUI debug window
+  - runtime debug attribute
+  - class per debug window
+  - player runtime inspector
+  - target device debug window
+  - method call trace debug
+
+required:
+  - .ai/user-policy.yaml
+  - goal
+  - SkillReferences/CODING_STANDARDS.md
+  - SkillReferences/ARCHITECTURE_DECISION_POLICY.md
+  - SkillReferences/CSHARP_ANTIPATTERN_RULES.md
+  - Specs/RuntimeDebuggerHarness/spec.md
+
+conditional:
+  csharp_output:
+    - SkillReferences/CODE_FORMATTING_STANDARDS.md
+  existing_project:
+    - target source and direct dependencies
+    - asmdef and rootNamespace
+    - public and serialized contracts
+  player_or_target_device:
+    - unity_version
+    - editor_or_player
+    - mono_or_il2cpp
+    - development_or_release
+    - target_platform
+    - managed_stripping_level_when_known
+  automatic_method_trace:
+    - target Unity compilation pipeline
+    - IL instrumentation compatibility
+    - Editor Runtime assembly boundary
+  performance_claim:
+    - measurable watch count
+    - refresh frequency
+    - target device evidence
+
+excluded_by_default:
+  - unrelated architecture patterns
+  - all project source files
+  - remote console architecture
+  - profiler replacement
+  - docking system
+  - production telemetry
+
+rules:
+  class_is_default_window_unit: true
+  multiple_instances_use_selector: true
+  attribute_opt_in_only: true
+  watch_is_read_only_by_default: true
+  mutation_requires_explicit_opt_in: true
+  reflection_metadata_scan_is_not_per_frame: true
+  hidden_windows_do_not_refresh_values: true
+  trace_attribute_does_not_imply_reflection_interception: true
+  runtime_editor_boundary_is_required: true
+  il2cpp_aot_stripping_review_is_required: true
+  release_exclusion_is_required: true
+  no_unjustified_mutable_static_state: true
+  no_unjustified_singleton_or_service_locator: true
+  editor_success_is_not_player_evidence: true
+
+limits:
+  initial_file_reads: 10
+  context_expansion_hops: 1
+  default_runtime_primary_files: 2
+
+output:
+  - runtime_environment
+  - selected_harness_architecture
+  - window_model
+  - attribute_surface
+  - widget_surface
+  - ownership_and_lifetime
+  - reflection_and_refresh_strategy
+  - trace_backend
+  - il2cpp_aot_stripping_strategy
+  - release_exclusion_strategy
+  - file_plan_and_split_reasons
+  - implementation_prompt_or_changed_files
+  - validation_plan
+  - unverified_target_device_items
