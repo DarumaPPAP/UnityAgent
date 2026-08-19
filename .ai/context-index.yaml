@@ -101,6 +101,24 @@ routes:
     context_pack: .ai/context-packs/csharp-local-fix.yaml
     task_contract: .ai/task-contracts/csharp-local-fix.yaml
 
+  runtime_debugger_harness:
+    id: runtime-debugger-harness
+    triggers:
+      - runtime debugger harness
+      - in-game debugger
+      - IMGUI debug window
+      - runtime debug attribute
+      - class per debug window
+      - player runtime inspector
+      - target device debug window
+      - method call trace debug
+      - 実機でprivate fieldを見たい
+      - 実機で関数が呼ばれたか見たい
+    primary_skill: unity-runtime-debugger-harness
+    context_pack: .ai/context-packs/runtime-debugger-harness.yaml
+    task_contract: .ai/task-contracts/runtime-debugger-harness.yaml
+    knowledge_selection: optional
+
   rendering_incident:
     id: rendering-incident
     triggers:
@@ -202,6 +220,18 @@ conflicts:
   architecture_design_and_csharp_local_fix:
     primary_when_structure_is_undecided: architecture-design
     primary_when_change_is_bounded: csharp-local-fix
+
+  architecture_design_and_runtime_debugger_harness:
+    primary_when_goal_is_runtime_debugger_or_in_game_diagnostics_harness: runtime-debugger-harness
+    primary_when_goal_is_general_unrelated_unity_architecture: architecture-design
+
+  runtime_debugger_harness_and_rendering_incident:
+    primary_when_root_cause_is_unknown: rendering-incident
+    secondary_when_runtime_observation_harness_is_needed: runtime-debugger-harness
+
+  runtime_debugger_harness_and_csharp_local_fix:
+    primary_when_harness_structure_or_capability_is_requested: runtime-debugger-harness
+    primary_when_change_is_a_confirmed_bounded_harness_bug_fix: csharp-local-fix
 
   architecture_design_and_performance_experiment:
     primary_when_runtime_baseline_is_goal: performance-experiment
