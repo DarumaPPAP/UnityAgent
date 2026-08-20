@@ -1,0 +1,34 @@
+schema_version: "1.0"
+
+# Context Manifest records the exact Context selected for one task execution.
+# It does not replace context-index.yaml or user-policy.yaml.
+# It provides traceability for Context Engineering.
+
+task:
+  route: required
+  intent: optional
+  scope: optional
+
+policy:
+  loaded: []
+
+project_facts:
+  loaded: []
+
+context:
+  context_pack: required
+  primary_skill: optional
+  source_files: []
+  excluded_context: []
+
+knowledge:
+  loaded: []
+
+harness:
+  task_contract: optional
+  quality_gates: []
+  mutation_channel: optional
+
+execution:
+  evidence: []
+  status: optional
