@@ -31,7 +31,6 @@ conditional:
     - matching Variant Policy
 
 excluded_by_default:
-  - SkillReferences/UNITY_AGENT_SUPERVISOR_MODEL.md
   - SkillReferences/BEAUTIFUL_DEFINITION_INTEGRATION.md
   - unrelated domain catalogs
 

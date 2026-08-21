@@ -28,7 +28,6 @@ conditional:
     - build and platform evidence
 
 excluded_by_default:
-  - SkillReferences/UNITY_AGENT_SUPERVISOR_MODEL.md
   - SkillReferences/BEAUTIFUL_DEFINITION_INTEGRATION.md
   - unrelated CSharp antipattern catalog
 

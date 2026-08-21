@@ -9,11 +9,11 @@ from pathlib import Path
 
 
 AGENTS_PATH = Path("AGENTS.md")
+README_PATH = Path("README.md")
 INDEX_PATH = Path(".ai/context-index.yaml")
 USER_POLICY_PATH = Path(".ai/user-policy.yaml")
 EXECUTION_PROFILES_PATH = Path(".ai/execution-profiles.yaml")
 QUALITY_GATES_PATH = Path(".ai/harness/quality-gates.yaml")
-LEGACY_ROUTING_PATH = Path("SkillReferences/UNITY_SKILL_ROUTING.md")
 OBSOLETE_CONSTITUTION_PATH = Path("Specs/ProjectConstitution.md")
 OBSOLETE_HARNESS_PATHS = (
     Path(".ai/task-contracts"),
@@ -21,6 +21,11 @@ OBSOLETE_HARNESS_PATHS = (
     Path(".ai/mutation-channels.yaml"),
     Path(".ai/risk-levels.yaml"),
     Path(".ai/mcp-routing.yaml"),
+)
+OBSOLETE_COMPATIBILITY_PATHS = (
+    Path(".agents/skills/unity-production-workflow/SKILL.md"),
+    Path("SkillReferences/UNITY_AGENT_SUPERVISOR_MODEL.md"),
+    Path("SkillReferences/UNITY_SKILL_ROUTING.md"),
 )
 
 BOOTSTRAP_REQUIRED_MARKERS = (
@@ -33,6 +38,7 @@ BOOTSTRAP_REQUIRED_MARKERS = (
     "`DarumaPPAP/Unity-Graph-Engineering`",
     "`DarumaPPAP/MyUnityMCP`",
     "詳細Ruleを`AGENTS.md`へ複製せず",
+    "旧Supervisor / Skill Routing互換AdapterはPhase 4で削除済み",
 )
 BOOTSTRAP_FORBIDDEN_DETAIL_HEADINGS = (
     "Non-negotiable C# constraints",
@@ -178,6 +184,29 @@ def validate(root: Path) -> list[str]:
         if (root / obsolete_path).exists():
             errors.append(f"Obsolete pre-Harness path must not be restored: {obsolete_path}")
 
+    for obsolete_path in OBSOLETE_COMPATIBILITY_PATHS:
+        if (root / obsolete_path).exists():
+            errors.append(f"Deleted compatibility adapter must not be restored: {obsolete_path}")
+
+    reference_scan_paths = [AGENTS_PATH, README_PATH]
+    context_pack_root = root / ".ai" / "context-packs"
+    if context_pack_root.is_dir():
+        reference_scan_paths.extend(
+            path.relative_to(root) for path in sorted(context_pack_root.glob("*.yaml"))
+        )
+    for relative_path in reference_scan_paths:
+        full_path = root / relative_path
+        if not full_path.is_file():
+            continue
+        text = full_path.read_text(encoding="utf-8")
+        for obsolete_path in OBSOLETE_COMPATIBILITY_PATHS:
+            obsolete_reference = obsolete_path.as_posix()
+            if obsolete_reference in text:
+                errors.append(
+                    f"Deleted compatibility adapter is still referenced by {relative_path}: "
+                    f"{obsolete_reference}"
+                )
+
     ids = {data.get("id", "") for data in routes.values()}
     missing_ids = REQUIRED_ROUTE_IDS - ids
     unexpected_ids = ids - REQUIRED_ROUTE_IDS
@@ -255,19 +284,6 @@ def validate(root: Path) -> list[str]:
 
     if (root / OBSOLETE_CONSTITUTION_PATH).exists():
         errors.append("Obsolete Specs/ProjectConstitution.md must not be restored.")
-
-    legacy_routing = root / LEGACY_ROUTING_PATH
-    if legacy_routing.is_file():
-        legacy_text = legacy_routing.read_text(encoding="utf-8")
-        if "Compatibility Reference" not in legacy_text:
-            errors.append("Legacy routing path must remain a compatibility-only reference.")
-        for obsolete_heading in (
-            "## 3. State-based routing",
-            "## 4. Failure routing",
-            "## 5. Intent classifiers",
-        ):
-            if obsolete_heading in legacy_text:
-                errors.append(f"Legacy routing table was restored: {obsolete_heading}")
 
     for skill_path in PROTECTED_COMMENT_SKILLS:
         full_path = root / skill_path

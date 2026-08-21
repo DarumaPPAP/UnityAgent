@@ -140,7 +140,7 @@ Unity Domain Routingの唯一の入口は`.ai/context-index.yaml`です。Contex
 
 全Skill、全Reference、全Knowledgeを一括で読みません。Primary Domain Route、Task Contract、Context Pack、Primary Domain Skillをそれぞれ一つに限定し、Related KnowledgeとConditional Operationは条件成立時だけ追加します。
 
-`SkillReferences/UNITY_SKILL_ROUTING.md`と`unity-production-workflow`は旧参照互換だけを持ち、Routing正本として使用しません。
+旧Supervisor / Skill Routing互換AdapterはPhase 4で削除済みです。過去互換情報はGit履歴だけをArchiveとし、Routing正本へ戻しません。
 
 ## Harness Engineering
 

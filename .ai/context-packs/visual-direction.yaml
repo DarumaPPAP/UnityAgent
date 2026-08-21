@@ -26,7 +26,6 @@ conditional:
     - .ai/context-packs/performance.yaml
 
 excluded_by_default:
-  - SkillReferences/UNITY_AGENT_SUPERVISOR_MODEL.md
   - unselected_visual_definitions
   - unrelated_shader_rule_catalogs
 
