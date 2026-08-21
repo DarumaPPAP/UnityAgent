@@ -16,6 +16,7 @@ YAML_ROOTS = (
     Path(".ai"),
     Path("Tests/ContractValidator"),
     Path("Tests/ContextRouting"),
+    Path("Tests/ContextManifest"),
     Path("Tests/SkillRouting"),
     Path("Tests/SkillEvals"),
 )
@@ -28,6 +29,7 @@ VALIDATORS = (
     Path("Tools/RouteGraphValidator/validate_route_graph.py"),
     Path("Tools/TaskFingerprintValidator/validate_task_fingerprints.py"),
     Path("Tools/GraphContractValidator/validate_graph_contract.py"),
+    Path("Tools/ContextManifest/validate_context_manifest.py"),
 )
 
 

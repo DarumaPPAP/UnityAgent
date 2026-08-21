@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 purpose: define_machine_readable_graph_projection_for_unityagent
 
@@ -75,6 +75,7 @@ provenance:
     - direct_dependency
     - required_context
     - conditional_context
+    - excluded_context
     - user_policy
     - project_fact
     - harness_contract
@@ -94,9 +95,13 @@ projection_rules:
 
   execution_graph:
     root_source: .ai/context-manifest.schema.yaml
+    runtime_builder: Tools/ContextManifest/build_context_manifest.py
+    runtime_projector: Tools/ContextManifest/project_execution_graph.py
     manifest_is_graph_instance: true
     include_only_selected_context: true
     include_attempt_and_evidence_when_available: true
+    generated_artifact_default_root: Artifacts/ContextManifests
+    generated_artifact_is_not_source_of_truth: true
 
 visualization_contract:
   required_views:
@@ -118,6 +123,7 @@ visualization_contract:
   execution_view_focus:
     - attempt
     - source
+    - project_fact
     - mutation_rule
     - quality_gate
     - evidence

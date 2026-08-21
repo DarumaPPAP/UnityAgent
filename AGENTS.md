@@ -33,7 +33,7 @@
 8. MCP能力が必要な場合だけ`.ai/harness/mcp-activation.yaml`から必要Tool Groupを段階的に公開する。
 9. `.ai/harness/`のMutation ContractとRequired Quality Gateで結果を検証する。
 10. Evidenceを`passed` / `failed` / `unavailable`で返し、未検証範囲を成功扱いしない。
-11. Context Traceを生成する場合は`.ai/context-manifest.schema.yaml`に従い、`.ai/graph-contract.yaml`へExecution Graphとして投影可能なstable ID、typed edge、provenanceを保持する。
+11. Primary Routeを選んでDomain Taskを実行する場合は`.ai/context-manifest.schema.yaml`に従うContext Manifestを標準Traceとして生成し、`.ai/graph-contract.yaml`へExecution Graphとして投影可能なstable ID、typed edge、provenanceを保持する。Primary Route不要の単純read-only説明だけは省略できる。
 12. Loop / Graph / Retry / Budget / Checkpoint / Human Gateは`DarumaPPAP/Unity-Graph-Engineering`へ委譲する。
 
 ## 3. Canonical map
@@ -43,7 +43,7 @@
 | User Policy | `.ai/user-policy.yaml` | ユーザー固有の正しさ、Preference、禁止事項 |
 | Execution Profile | `.ai/execution-profiles.yaml` | Generic / Personal / Team Safeの実行境界 |
 | Domain Routing | `.ai/context-index.yaml` | Task Fingerprint、Primary Route、Pack、Contract、Skill選択 |
-| Context Trace | `.ai/context-manifest.schema.yaml` | 今回読ませたContext、Attempt、Evidenceの追跡 |
+| Context Trace | `.ai/context-manifest.schema.yaml` | Primary Route実行ごとのContext、Attempt、Evidence追跡 |
 | Graph Projection | `.ai/graph-contract.yaml` | Definition / Execution GraphのNode、Edge、Provenance、Visualization契約 |
 | Context Packs | `.ai/context-packs/` | TaskごとのRequired / Conditional / Excluded Context |
 | Knowledge | `.ai/knowledge/` | AI実装用の圧縮Knowledge Contract |
@@ -56,7 +56,7 @@
 
 ## 4. Repository ownership
 
-- `DarumaPPAP/UnityAgent`: User Policy、Context、Unity Harness Contract、Domain Skill、Validator、Eval、Graph Projection Contract。
+- `DarumaPPAP/UnityAgent`: User Policy、Context、Unity Harness Contract、Domain Skill、Validator、Eval、Context Manifest Runtime、Graph Projection Contract。
 - `DarumaPPAP/Unity-Graph-Engineering`: Execution Mode、Loop / Graph、Retry、State、Budget、Checkpoint、Human Gate。
 - `DarumaPPAP/MyUnityMCP`: UnityAgentMCP、Creator Workflow、Domain MCP、Capability、Catalog、Manifest、Tool Schema、Package実装。
 - `DarumaPPAP/UnityAIGC-Archive`: 生成した製品コード、製品仕様、導入資料。
@@ -75,6 +75,7 @@ UnityAgent内へ通常の製品コードやMCP Package実装を複製しませ�
 - Knowledge GraphはNavigationにだけ使い、変更前にSourceを直接確認する。
 - 人間向け長文Referenceは設計理由、比較、実験、Visual Decisionが必要な場合だけ読む。
 - Context不足は未解決Bindingとして残し、無関係なContext追加で埋めない。
+- Context ManifestへCanonical YAML全体や前Attempt全体を複製せず、今回選択したContextと前Attempt Failure要約だけを記録する。
 
 ## 6. Harness guards
 
@@ -116,6 +117,8 @@ Domain実行結果はExecution Ownerへ最低限次を返します。
 - selected_context_pack
 - selected_task_contract
 - primary_domain_skill
+- context_manifest_id
+- attempt
 - confirmed_context
 - mutation_constraints
 - required_validation
@@ -129,6 +132,7 @@ Domain実行結果はExecution Ownerへ最低限次を返します。
 - `AGENTS.md`へ詳細なCoding / Architecture / Rendering / Shader / Visual規約本文を戻さない。
 - Rule変更はCanonical Sourceを変更し、必要なValidator / Eval / Regression Caseを更新する。
 - Route選択を`triggers`やTechnology Keyword中心へ戻さない。
+- Primary Route実行でContext Manifest Traceを理由なく省略しない。
 - Graph ProjectionをCanonical Policyの正本へ昇格させない。
 - stable node ID、typed edge、provenanceを将来の可視化都合だけで削除しない。
 - 削除済みのLegacy Supervisor / Skill Routing Adapterを復活させない。

@@ -8,15 +8,8 @@ on:
       - "AGENTS.md"
       - "README.md"
       - "SkillReferences/**"
-      - "Tools/SkillValidator/**"
-      - "Tools/SkillEval/**"
-      - "Tools/ContractValidator/**"
-      - "Tools/ContextPackValidator/**"
-      - "Tools/RouteGraphValidator/**"
-      - "Tests/ContractValidator/**"
-      - "Tests/ContextRouting/**"
-      - "Tests/SkillRouting/**"
-      - "Tests/SkillEvals/**"
+      - "Tools/**"
+      - "Tests/**"
       - ".github/workflows/validate-agent-contracts.yml"
   push:
     branches:
@@ -27,15 +20,9 @@ on:
       - "AGENTS.md"
       - "README.md"
       - "SkillReferences/**"
-      - "Tools/SkillValidator/**"
-      - "Tools/SkillEval/**"
-      - "Tools/ContractValidator/**"
-      - "Tools/ContextPackValidator/**"
-      - "Tools/RouteGraphValidator/**"
-      - "Tests/ContractValidator/**"
-      - "Tests/ContextRouting/**"
-      - "Tests/SkillRouting/**"
-      - "Tests/SkillEvals/**"
+      - "Tools/**"
+      - "Tests/**"
+      - ".github/workflows/validate-agent-contracts.yml"
 
 jobs:
   validate:
@@ -52,41 +39,5 @@ jobs:
       - name: Install YAML parser
         run: python -m pip install --disable-pip-version-check pyyaml
 
-      - name: Validate YAML syntax
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          import yaml
-
-          roots = (
-              Path('.ai'),
-              Path('Tests/ContractValidator'),
-              Path('Tests/ContextRouting'),
-              Path('Tests/SkillRouting'),
-              Path('Tests/SkillEvals'),
-          )
-          paths = []
-          for root in roots:
-              if root.exists():
-                  paths.extend(sorted(root.rglob('*.yaml')))
-
-          for path in paths:
-              with path.open(encoding='utf-8') as stream:
-                  yaml.safe_load(stream)
-              print(f'validated: {path}')
-          PY
-
-      - name: Validate Skills
-        run: python Tools/SkillValidator/validate_skills.py
-
-      - name: Validate Skill Eval Contracts
-        run: python Tools/SkillEval/validate_skill_evals.py
-
-      - name: Validate Knowledge and Task Contracts
-        run: python Tools/ContractValidator/validate_contracts.py
-
-      - name: Validate Context Packs
-        run: python Tools/ContextPackValidator/validate_context_packs.py
-
-      - name: Validate Canonical Route Graph and User Policy
-        run: python Tools/RouteGraphValidator/validate_route_graph.py
+      - name: Validate UnityAgent locally-equivalent contracts
+        run: python Tools/validate_all.py
