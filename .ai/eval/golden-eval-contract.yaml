@@ -1,0 +1,54 @@
+schema_version: "1.0"
+purpose: preserve_user_accepted_unityagent_behavior_and_detect_regression
+
+source_of_truth:
+  golden_tasks: Tests/GoldenTasks/cases.yaml
+  golden_task_schema: Tests/GoldenTasks/golden-task.schema.yaml
+  candidate_result_schema: Tests/GoldenTasks/candidate-result.schema.yaml
+  failure_taxonomy: .ai/eval/failure-taxonomy.yaml
+
+rules:
+  regression_eval_targets_previously_accepted_behavior: true
+  capability_eval_is_not_regression_eval: true
+  agent_self_report_is_not_sufficient_evidence: true
+  deterministic_grader_first: true
+  model_or_human_grader_only_when_deterministic_grading_is_insufficient: true
+  exact_source_code_match_is_not_required: true
+  outcome_and_invariants_are_primary: true
+  positive_negative_boundary_pairs_required: true
+  broken_eval_must_be_distinguished_from_model_failure: true
+  unavailable_is_not_passed: true
+  generated_results_are_not_canonical_policy: true
+
+initial_suite:
+  minimum_cases: 20
+  minimum_boundary_pairs: 8
+  target_categories:
+    - lifecycle
+    - architecture
+    - formatting
+    - state
+    - file_granularity
+    - mutation
+    - evidence
+    - asset
+    - performance
+    - knowledge
+
+metrics:
+  - regression_pass_rate
+  - first_pass_rate
+  - policy_violation_rate
+  - routing_miss_rate
+  - context_miss_rate
+  - mutation_violation_rate
+  - gate_failure_rate
+  - unavailable_rate
+  - retry_count
+
+runtime:
+  validator: Tools/GoldenEval/validate_golden_tasks.py
+  runner: Tools/GoldenEval/run_golden_evals.py
+  default_result_root: Artifacts/GoldenEval
+  github_actions_required: false
+  graph_projector: Tools/GoldenEval/project_regression_graph.py
