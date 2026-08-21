@@ -1,0 +1,46 @@
+version: 1
+name: real_data_projection_contract
+
+principles:
+  source_of_truth: canonical_yaml
+  graph_is_projection: true
+  mutation_allowed: false
+
+projections:
+  context:
+    nodes:
+      - context_pack
+      - knowledge
+      - source
+    edges:
+      - requires
+      - reads_source
+
+  harness:
+    nodes:
+      - task_contract
+      - mutation_rule
+      - quality_gate
+    edges:
+      - requires_gate
+      - prohibits_mutation
+      - allows_mutation
+
+  execution:
+    nodes:
+      - task
+      - attempt
+      - evidence
+    edges:
+      - produces_attempt
+      - produces_evidence
+      - validates
+
+  regression:
+    nodes:
+      - golden_task
+      - grader
+      - regression_result
+    edges:
+      - evaluated_by
+      - compares_to

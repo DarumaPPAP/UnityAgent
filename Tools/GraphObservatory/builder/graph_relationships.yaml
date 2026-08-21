@@ -1,0 +1,20 @@
+relationships:
+  - requires
+  - conditionally_requires
+  - excludes
+  - applies_policy
+  - uses_skill
+  - reads_source
+  - allows_mutation
+  - prohibits_mutation
+  - requires_gate
+  - produces_evidence
+  - validates
+  - retries_as
+  - evaluated_by
+  - compares_to
+
+rules:
+  - source_of_truth: canonical_yaml
+  - graph_is_projection: true
+  - edge_without_relation: invalid
