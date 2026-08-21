@@ -14,6 +14,7 @@ from context_manifest_runtime import (
     project_execution_graph,
     validate_manifest,
 )
+from execution_graph_validator import validate_execution_graph
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -71,6 +72,9 @@ def main() -> int:
             except ValueError:
                 manifest_source = output_path.as_posix()
             graph = project_execution_graph(ROOT, updated, manifest_source)
+            graph_errors = validate_execution_graph(ROOT, graph)
+            if graph_errors:
+                raise ManifestError(graph_errors)
             write_yaml(graph_path, graph)
 
         print(f"Context Manifest evidence recorded: {output_path}")
