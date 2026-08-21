@@ -156,7 +156,7 @@ def main() -> int:
     args = parse_args()
     root = Path(args.root).expanduser().resolve()
     knowledge_root = root / ".ai" / "knowledge" / "rendering"
-    task_root = root / ".ai" / "task-contracts"
+    task_root = root / ".ai" / "harness" / "task-contracts"
 
     knowledge_files = sorted(knowledge_root.glob("*.yaml")) if knowledge_root.is_dir() else []
     task_files = (

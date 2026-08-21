@@ -94,12 +94,13 @@ Target Source or Portable Output
 
 ## Context Engineering
 
-Unity Domain Routingの唯一の入口は`.ai/context-index.yaml`です。
+Unity Domain Routingの唯一の入口は`.ai/context-index.yaml`です。Context側は「今回AIへ何を渡すか」、Harness側は「何を変更でき、何を検証し、どこで止めるか」を所有します。
 
 ```text
 .ai/
 ├─ user-policy.yaml
 ├─ context-index.yaml
+├─ context-manifest.schema.yaml
 ├─ execution-profiles.yaml
 ├─ context-packs/
 │  ├─ architecture-design.yaml
@@ -116,28 +117,42 @@ Unity Domain Routingの唯一の入口は`.ai/context-index.yaml`です。
 │  ├─ knowledge.schema.yaml
 │  ├─ index.yaml
 │  └─ rendering/
-├─ task-contracts/
-│  ├─ task-contract.schema.yaml
-│  ├─ architecture-design.yaml
-│  ├─ graphics-mcp.yaml
-│  ├─ csharp-local-fix.yaml
-│  ├─ rendering-incident.yaml
-│  ├─ shader-change.yaml
-│  ├─ renderer-feature-change.yaml
-│  ├─ performance-experiment.yaml
-│  ├─ asset-data-change.yaml
-│  ├─ portable-feature.yaml
-│  ├─ safe-import-integration.yaml
-│  └─ visual-direction.yaml
-├─ quality-gates.yaml
-├─ mutation-channels.yaml
-├─ risk-levels.yaml
+├─ harness/
+│  ├─ task-contracts/
+│  │  ├─ task-contract.schema.yaml
+│  │  ├─ architecture-design.yaml
+│  │  ├─ graphics-mcp.yaml
+│  │  ├─ csharp-local-fix.yaml
+│  │  ├─ rendering-incident.yaml
+│  │  ├─ shader-change.yaml
+│  │  ├─ renderer-feature-change.yaml
+│  │  ├─ performance-experiment.yaml
+│  │  ├─ asset-data-change.yaml
+│  │  ├─ portable-feature.yaml
+│  │  ├─ safe-import-integration.yaml
+│  │  └─ visual-direction.yaml
+│  ├─ quality-gates.yaml
+│  ├─ mutation-channels.yaml
+│  ├─ risk-levels.yaml
+│  └─ mcp-activation.yaml
 └─ knowledge-graph-pilot.yaml
 ```
 
 全Skill、全Reference、全Knowledgeを一括で読みません。Primary Domain Route、Task Contract、Context Pack、Primary Domain Skillをそれぞれ一つに限定し、Related KnowledgeとConditional Operationは条件成立時だけ追加します。
 
 `SkillReferences/UNITY_SKILL_ROUTING.md`と`unity-production-workflow`は旧参照互換だけを持ち、Routing正本として使用しません。
+
+## Harness Engineering
+
+`.ai/harness/`はUnity固有の実行制約と検証契約を所有します。
+
+- `task-contracts/`: Taskごとの入力、許可Mutation、禁止Mutation、必須Gate、完了条件、Stop条件
+- `quality-gates.yaml`: Static / Compile / EditMode / PlayMode / Player / Rendering / Performance / Target Device等のEvidence境界
+- `mutation-channels.yaml`: C#、Shader、Scene、Prefab、Material、Package、Project Settingsの正規変更経路
+- `risk-levels.yaml`: R0〜R4とMutation RiskのEscalation
+- `mcp-activation.yaml`: MyUnityMCPのCatalog、Manifest、Tool Groupを段階的に公開するActivation Policy
+
+Loop / Graph / Retry / Checkpoint / Token BudgetはHarnessへ戻さず、`DarumaPPAP/Unity-Graph-Engineering`を正本とします。
 
 ## Architecture intelligence
 

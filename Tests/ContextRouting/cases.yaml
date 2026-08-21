@@ -67,7 +67,7 @@ cases:
     prompt: "高品質なライブステージLightingと構図を設計して。"
     expected_route: visual-direction
     expected_context_pack: .ai/context-packs/visual-direction.yaml
-    expected_task_contract: .ai/task-contracts/visual-direction.yaml
+    expected_task_contract: .ai/harness/task-contracts/visual-direction.yaml
     expected_primary_skill: unity-visual-direction
     must_include:
       - visual_intent_before_mutation

@@ -121,7 +121,7 @@ Projectへアクセスしない標準Profile。Unity Version、Render Pipeline�
 
 ## 4. Context and MCP routing
 
-`.ai/context-index.yaml`をUnity Domain Routingの唯一の入口とし、依頼に一致するPrimary Route、Context Pack、Task Contractを一つずつ選ぶ。MCP能力が必要な場合だけ`.ai/mcp-routing.yaml`を読み、MyUnityMCPのCatalogからCreatorまたはPrimary Domain MCPを一つ選ぶ。
+`.ai/context-index.yaml`をUnity Domain Routingの唯一の入口とし、依頼に一致するPrimary Route、Context Pack、Task Contractを一つずつ選ぶ。MCP能力が必要な場合だけ`.ai/harness/mcp-activation.yaml`を読み、MyUnityMCPのCatalogからCreatorまたはPrimary Domain MCPを一つ選ぶ。
 
 - 全Skillを一括で読まない。
 - 全Referenceを一括で読まない。
@@ -160,17 +160,17 @@ Context Pack:
 
 Task Contract:
 
-- `.ai/task-contracts/architecture-design.yaml`
-- `.ai/task-contracts/graphics-mcp.yaml`
-- `.ai/task-contracts/csharp-local-fix.yaml`
-- `.ai/task-contracts/rendering-incident.yaml`
-- `.ai/task-contracts/shader-change.yaml`
-- `.ai/task-contracts/renderer-feature-change.yaml`
-- `.ai/task-contracts/performance-experiment.yaml`
-- `.ai/task-contracts/asset-data-change.yaml`
-- `.ai/task-contracts/portable-feature.yaml`
-- `.ai/task-contracts/safe-import-integration.yaml`
-- `.ai/task-contracts/visual-direction.yaml`
+- `.ai/harness/task-contracts/architecture-design.yaml`
+- `.ai/harness/task-contracts/graphics-mcp.yaml`
+- `.ai/harness/task-contracts/csharp-local-fix.yaml`
+- `.ai/harness/task-contracts/rendering-incident.yaml`
+- `.ai/harness/task-contracts/shader-change.yaml`
+- `.ai/harness/task-contracts/renderer-feature-change.yaml`
+- `.ai/harness/task-contracts/performance-experiment.yaml`
+- `.ai/harness/task-contracts/asset-data-change.yaml`
+- `.ai/harness/task-contracts/portable-feature.yaml`
+- `.ai/harness/task-contracts/safe-import-integration.yaml`
+- `.ai/harness/task-contracts/visual-direction.yaml`
 
 ## 5. Minimum project facts
 
