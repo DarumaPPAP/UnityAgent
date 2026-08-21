@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: "1.1"
 kind: unityagent_golden_candidate_result_schema
 
 result_fields:
@@ -10,9 +10,21 @@ result_fields:
   signals: []
   knowledge: []
   unresolved: []
+  failure_types: []
   outcome: required
   attempt_count: optional
   manifest_path: optional
+
+failure_types_allowed:
+  - routing_miss
+  - context_miss
+  - policy_violation
+  - harness_violation
+  - mutation_violation
+  - evidence_overclaim
+  - model_failure
+  - broken_eval
+  - unavailable_evidence
 
 outcome_allowed:
   - passed
