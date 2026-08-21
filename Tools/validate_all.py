@@ -17,6 +17,7 @@ YAML_ROOTS = (
     Path("Tests/ContractValidator"),
     Path("Tests/ContextRouting"),
     Path("Tests/ContextManifest"),
+    Path("Tests/GoldenTasks"),
     Path("Tests/SkillRouting"),
     Path("Tests/SkillEvals"),
 )
@@ -30,6 +31,9 @@ VALIDATORS = (
     Path("Tools/TaskFingerprintValidator/validate_task_fingerprints.py"),
     Path("Tools/GraphContractValidator/validate_graph_contract.py"),
     Path("Tools/ContextManifest/validate_context_manifest.py"),
+    Path("Tools/GoldenEval/validate_gate_catalog.py"),
+    Path("Tools/GoldenEval/validate_required_knowledge.py"),
+    Path("Tools/GoldenEval/validate_golden_tasks.py"),
 )
 
 
