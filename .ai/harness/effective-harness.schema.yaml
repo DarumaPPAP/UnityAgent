@@ -1,0 +1,33 @@
+schema_version: "1.0"
+kind: effective_harness
+source_of_truth: false
+
+required_fields:
+  - task_contract
+  - execution_profile
+  - risk_level
+  - permission
+  - allowed_mutations
+  - prohibited_mutations
+  - mutation_channels
+  - tool_groups
+  - quality_gates
+  - human_gates
+  - stop_conditions
+  - unresolved_bindings
+  - provenance
+
+permission:
+  read: [allowed, blocked]
+  plan: [allowed, blocked]
+  mutate: [allowed, approval-dependent, blocked]
+
+gate_status:
+  allowed: [passed, failed, unavailable, required]
+
+invariants:
+  r0_mutation_is_blocked: true
+  prohibited_mutation_wins: true
+  unknown_project_binding_blocks_direct_mutation: true
+  unavailable_is_not_passed: true
+  source_of_truth_remains_canonical_files: true

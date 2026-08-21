@@ -1,0 +1,52 @@
+schema_version: "1.0"
+kind: unityagent_loop_handoff_contract
+owner: DarumaPPAP/Unity-Graph-Engineering
+unityagent_role: context_harness_evidence_provider
+loop_role: execution_retry_budget_state_human_gate_owner
+
+external_contracts:
+  orchestration_policy: "1.1"
+  execution_ticket: "1.0"
+  source_repository: DarumaPPAP/Unity-Graph-Engineering
+
+unityagent_to_loop:
+  required:
+    - task_id
+    - context_manifest_id
+    - route_id
+    - task_fingerprint
+    - execution_profile
+    - risk_level
+    - selected_contexts
+    - allowed_mutations
+    - prohibited_mutations
+    - required_quality_gates
+    - conditional_quality_gates
+    - unresolved_bindings
+  selected_contexts:
+    required_fields: [id, source_hash]
+  evidence_policy:
+    transcript_body: forbidden
+    evidence_body: forbidden
+
+loop_to_unityagent:
+  required:
+    - run_id
+    - node_id
+    - attempt
+    - verdict
+    - evidence_refs
+    - gate_results
+    - failure_signature
+    - stop_reason
+    - metrics_ref
+    - next_transition
+  evidence_policy:
+    transcript_body: forbidden
+    evidence_body: forbidden
+
+ownership_invariants:
+  loop_engine_is_not_duplicated: true
+  loop_owns_retry_budget_and_state: true
+  unityagent_cannot_override_retry_or_budget: true
+  policy_writeback_requires_human_review: true

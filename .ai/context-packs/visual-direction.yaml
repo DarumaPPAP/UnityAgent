@@ -2,6 +2,25 @@ schema_version: "1.0"
 id: visual-direction
 primary_skill: .agents/skills/unity-visual-direction/SKILL.md
 
+metadata:
+  type: context
+  title: Visual Direction
+  summary:
+    - Define scene composition, lighting, color, atmosphere, and human visual review.
+  purpose:
+    - Separate visual intent, technical validation, and beauty acceptance.
+  decisions:
+    - id: visual-intent-before-mutation
+      label: Visual intent and beauty gates remain authoritative
+      source_ref: .ai/context-packs/visual-direction.yaml#rules
+  forbidden:
+    - id: visual-acceptance-without-human-review
+      label: Visual acceptance without human review is forbidden
+      source_ref: .ai/harness/task-contracts/visual-direction.yaml#prohibited_mutations
+  related: []
+  priority: normal
+  tags: [visual, beauty, human-review]
+
 use_when:
   - scene visual quality
   - lighting and look development

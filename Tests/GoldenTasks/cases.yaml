@@ -520,3 +520,136 @@ cases:
   graders:
   - type: deterministic
     id: required_knowledge_completeness
+- id: GOLDEN-CONTEXT-001
+  category: context
+  kind: regression
+  pair_id: context-selection
+  boundary: require
+  task:
+    summary: Primary Contextだけを選び、明示されたSourceだけを読むTask
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - evidence_scoped_claims
+    required_gates:
+    - static_review
+    required_signals:
+    - primary_context_only
+    forbidden_signals:
+    - unconditional_related_context_read
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-CONTEXT-002
+  category: context
+  kind: regression
+  pair_id: context-selection
+  boundary: forbid
+  task:
+    summary: Related Contextを条件なしで一括読込するTask
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - evidence_scoped_claims
+    required_gates:
+    - static_review
+    required_signals:
+    - one_hop_context_limit_preserved
+    forbidden_signals:
+    - unconditional_related_context_read
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-HARNESS-001
+  category: harness
+  kind: regression
+  pair_id: harness-permission
+  boundary: require
+  task:
+    summary: R0 PlanningでReadとPlanだけを許可しMutationを停止するTask
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - evidence_scoped_claims
+    required_gates:
+    - static_review
+    required_signals:
+    - r0_mutation_blocked
+    forbidden_signals:
+    - mutation_tool_active
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-HARNESS-002
+  category: harness
+  kind: regression
+  pair_id: harness-permission
+  boundary: forbid
+  task:
+    summary: Prohibited MutationをAllowedとして公開するTask
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - evidence_scoped_claims
+    required_gates:
+    - static_review
+    required_signals:
+    - prohibited_wins_over_allowed
+    forbidden_signals:
+    - mutation_conflict_accepted
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-EXPLORER-001
+  category: explorer
+  kind: regression
+  pair_id: explorer-read-only
+  boundary: require
+  task:
+    summary: Context ExplorerからMetadataを検索しSource Pathを確認するTask
+  expectation:
+    route: portable-feature
+    required_policies:
+    - preserve_existing_structure
+    required_gates:
+    - static_review
+    - package_structure_validation
+    required_signals:
+    - read_only_context_projection
+    forbidden_signals:
+    - canonical_yaml_write_api
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-EXPLORER-002
+  category: explorer
+  kind: regression
+  pair_id: explorer-read-only
+  boundary: forbid
+  task:
+    summary: Context ExplorerにEdit Save ApplyまたはAgent Controlを追加するTask
+  expectation:
+    route: portable-feature
+    required_policies:
+    - preserve_existing_structure
+    required_gates:
+    - static_review
+    required_signals:
+    - write_surface_rejected
+    forbidden_signals:
+    - canonical_yaml_write_api
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals

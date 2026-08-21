@@ -2,6 +2,25 @@ schema_version: "1.0"
 id: performance
 primary_skill: .agents/skills/unity-runtime-evidence/SKILL.md
 
+metadata:
+  type: context
+  title: Performance Evidence
+  summary:
+    - Measure CPU, GPU, memory, build, or load performance under fixed conditions.
+  purpose:
+    - Require a baseline, candidate measurement, quality check, and revert condition.
+  decisions:
+    - id: measured-performance-only
+      label: Performance claims require measurement
+      source_ref: .ai/context-packs/performance.yaml#rules
+  forbidden:
+    - id: unmeasured-optimization-claim
+      label: Unmeasured optimization claims are forbidden
+      source_ref: .ai/harness/task-contracts/performance-experiment.yaml#prohibited_mutations
+  related: []
+  priority: high
+  tags: [performance, evidence, measurement]
+
 use_when:
   - CPU GPU or memory optimization
   - render performance change

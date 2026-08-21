@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UnityAgent Context Explorer</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="layout">
+    <aside class="sidebar" aria-label="Context search">
+      <h1>Context Explorer</h1>
+      <label for="search">Search</label>
+      <input id="search" type="search" autocomplete="off">
+      <label for="priority">Priority</label>
+      <select id="priority"><option value="">All</option><option>critical</option><option>high</option><option>normal</option><option>low</option></select>
+      <ul id="context-list" role="listbox" aria-label="Contexts"></ul>
+    </aside>
+    <section class="graph" aria-label="Selected context relations">
+      <h2 id="selected-title">Select a context</h2>
+      <p id="selected-summary"></p>
+      <div id="relations"></div>
+    </section>
+    <aside class="details" aria-label="Context details">
+      <section><h2>Purpose</h2><ul id="purpose"></ul></section>
+      <section><h2>Decisions</h2><ul id="decisions"></ul></section>
+      <section><h2>Forbidden</h2><ul id="forbidden"></ul></section>
+      <section><h2>Related</h2><ul id="related"></ul></section>
+      <section><h2>Source</h2><button id="copy-source" type="button">Copy source path</button><code id="source-path"></code></section>
+    </aside>
+  </main>
+  <script>window.__CONTEXT_GRAPH__ = null;</script>
+  <script src="app.js"></script>
+</body>
+</html>

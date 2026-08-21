@@ -1,5 +1,7 @@
 """Execution trace projection adapter."""
 
+from graph_builder import AgentGraph, GraphNode
+
 
 def project_execution(manifests):
     nodes = []
@@ -17,3 +19,12 @@ def project_execution(manifests):
             nodes.append({"id": evidence_id, "type": "evidence", "label": evidence_id})
             edges.append({"source": attempt_id, "target": evidence_id, "relation": "produces_evidence"})
     return nodes, edges
+
+
+def build_execution_graph(source):
+    graph = AgentGraph(view="execution")
+    items = source if isinstance(source, list) else source.get("manifests", [])
+    for item in items:
+        task_id = item.get("task", {}).get("id", "task")
+        graph.add_node(GraphNode(id=f"task:{task_id}", type="task", label=task_id))
+    return graph

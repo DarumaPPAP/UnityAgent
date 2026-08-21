@@ -1,0 +1,14 @@
+:root { color-scheme: light; font-family: system-ui, sans-serif; }
+body { margin: 0; background: #f5f7fb; color: #182230; }
+.layout { display: grid; grid-template-columns: 250px 1fr 330px; min-height: 100vh; }
+.sidebar, .details { padding: 1rem; background: #fff; border-right: 1px solid #d9e0ea; }
+.details { border-left: 1px solid #d9e0ea; border-right: 0; }
+.graph { padding: 2rem; }
+input, select, button { width: 100%; box-sizing: border-box; padding: .55rem; margin: .35rem 0 1rem; }
+ul { padding-left: 1.2rem; }
+#context-list { list-style: none; padding: 0; }
+#context-list button { text-align: left; background: #fff; border: 1px solid #cbd5e1; border-radius: .35rem; cursor: pointer; }
+#context-list button:focus, #context-list button[aria-selected="true"] { outline: 3px solid #76a9fa; background: #e8f0ff; }
+.relation { display: inline-block; padding: .5rem .7rem; margin: .3rem; border: 1px solid #b8c4d6; border-radius: .5rem; background: #fff; }
+code { display: block; overflow-wrap: anywhere; }
+@media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .details, .sidebar { border: 0; border-bottom: 1px solid #d9e0ea; } }

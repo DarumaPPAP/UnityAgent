@@ -11,6 +11,7 @@ import yaml
 
 
 ROOT = Path(__file__).resolve().parents[1]
+GRAPH_SCHEMA = Path("Tools/GraphObservatory/schema/graph.schema.json")
 
 YAML_ROOTS = (
     Path(".ai"),
@@ -30,6 +31,10 @@ VALIDATORS = (
     Path("Tools/RouteGraphValidator/validate_route_graph.py"),
     Path("Tools/TaskFingerprintValidator/validate_task_fingerprints.py"),
     Path("Tools/GraphContractValidator/validate_graph_contract.py"),
+    Path("Tools/ContextCatalog/validate_context_catalog.py"),
+    Path("Tools/HarnessProjection/validate_effective_harness.py"),
+    Path("Tools/LoopIntegration/validate_loop_integration.py"),
+    Path("Tools/GraphObservatory/validate_context_explorer.py"),
     Path("Tools/ContextManifest/validate_context_manifest.py"),
     Path("Tools/GoldenEval/validate_gate_catalog.py"),
     Path("Tools/GoldenEval/validate_required_knowledge.py"),
@@ -80,6 +85,8 @@ def main() -> int:
     print("YAML syntax validation passed.")
 
     failed: list[str] = []
+    if not (ROOT / GRAPH_SCHEMA).is_file():
+        failed.append(str(GRAPH_SCHEMA))
     for validator in VALIDATORS:
         if run_validator(validator) != 0:
             failed.append(str(validator))

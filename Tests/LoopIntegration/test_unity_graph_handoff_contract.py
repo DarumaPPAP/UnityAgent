@@ -1,0 +1,34 @@
+"""UnityAgent / Unity-Graph-Engineering handoff boundary tests."""
+
+from __future__ import annotations
+
+import sys
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "Tools/LoopIntegration"))
+from handoff import build_from_loop, build_to_loop, validate_handoff  # noqa: E402
+from improvement_candidate import build_improvement_candidate, validate_improvement_candidate  # noqa: E402
+
+
+class UnityGraphHandoffContractTests(unittest.TestCase):
+    def test_to_loop_handoff_contains_fields_not_transcript_or_budget(self) -> None:
+        document = build_to_loop(
+            {"task_id": "task-1", "route_id": "csharp-local-fix", "selected_contexts": [{"id": "csharp-local-fix", "source_hash": "abc"}]},
+            {"manifest": {"id": "manifest-1"}, "task": {"fingerprint": {}}},
+            {"execution_profile": "generic_planning", "risk_level": "R0", "allowed_mutations": [], "prohibited_mutations": [], "quality_gates": {"required": [], "conditional": []}, "unresolved_bindings": []},
+        )
+        self.assertEqual(validate_handoff(document, "to_loop"), [])
+        self.assertNotIn("transcript", document)
+        self.assertNotIn("budget", document)
+
+    def test_loop_result_is_reference_only(self) -> None:
+        document = build_from_loop({"run_id": "run-1", "node_id": "node-1", "attempt": 1, "verdict": "APPROVE", "evidence_refs": ["ev-1"], "gate_results": {}, "failure_signature": None, "stop_reason": None, "metrics_ref": "m-1", "next_transition": "complete"})
+        self.assertEqual(validate_handoff(document, "from_loop"), [])
+
+    def test_improvement_candidate_requires_evidence_and_human_review_for_acceptance(self) -> None:
+        candidate = build_improvement_candidate({"run_id": "run-1", "evidence_refs": ["ev-1"], "canonical_owner": ".ai/context-packs", "target": "context", "failure_signature": "miss", "boundary_pair": "context-selection"})
+        self.assertEqual(validate_improvement_candidate(candidate), [])
+        candidate["status"] = "accepted"
+        self.assertIn("accepted candidate requires human_review_ref", validate_improvement_candidate(candidate))

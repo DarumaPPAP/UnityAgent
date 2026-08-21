@@ -37,3 +37,15 @@ class CanonicalReader:
                 tasks.append(yaml.safe_load(stream) or {})
 
         return tasks
+
+
+def read_context(root: str = ".") -> dict[str, Any]:
+    return CanonicalReader(root).read_context()
+
+
+def read_harness(root: str = ".") -> dict[str, Any]:
+    return CanonicalReader(root).read_harness()
+
+
+def read_golden_tasks(root: str = ".") -> list[dict[str, Any]]:
+    return CanonicalReader(root).read_golden_tasks()

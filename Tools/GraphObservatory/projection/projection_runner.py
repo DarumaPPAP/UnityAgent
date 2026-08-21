@@ -5,6 +5,9 @@ Canonical YAML remains the source of truth.
 """
 
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "builder"))
 
 from context_projection import build_context_graph
 from harness_projection import build_harness_graph

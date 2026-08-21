@@ -1,0 +1,52 @@
+schema_version: "2.0"
+kind: context_pack_metadata_contract
+
+metadata:
+  type: context
+  title:
+    max_length: 80
+  summary:
+    min_items: 1
+    max_items: 3
+    item_max_length: 160
+  purpose:
+    min_items: 1
+    max_items: 5
+  decisions:
+    min_items: 1
+    max_items: 12
+    required_fields: [id, label, source_ref]
+  forbidden:
+    min_items: 1
+    max_items: 12
+    required_fields: [id, label, source_ref]
+  related:
+    max_items: 8
+    required_fields: [id, relation, reason, source_ref]
+  priority:
+    allowed: [critical, high, normal, low]
+  tags:
+    max_items: 8
+
+relations:
+  allowed:
+    - related-to
+    - depends-on
+    - hands-off-to
+    - conflicts-with
+    - refines
+
+source_refs:
+  allowed_roots:
+    - .ai/
+    - .agents/
+    - SkillReferences/
+    - Specs/
+    - Tools/
+  fragment_separator: "#"
+  fragment_format: dot-separated-mapping-keys
+
+invariants:
+  metadata_is_not_execution_authority: true
+  related_context_must_be_explicit: true
+  execution_sections_are_unchanged_by_metadata: true

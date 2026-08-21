@@ -2,6 +2,25 @@ schema_version: "1.0"
 id: portable-feature
 primary_skill: .agents/skills/unity-architecture-design/SKILL.md
 
+metadata:
+  type: context
+  title: Portable Feature
+  summary:
+    - Design a project-independent Unity package with explicit unresolved bindings.
+  purpose:
+    - Keep portable source independent from guessed project paths and settings.
+  decisions:
+    - id: portable-boundaries-explicit
+      label: Portable package boundaries remain explicit
+      source_ref: .ai/context-packs/portable-feature.yaml#rules
+  forbidden:
+    - id: guessed-project-binding
+      label: Guessed project bindings and unrequested setup are forbidden
+      source_ref: .ai/harness/task-contracts/portable-feature.yaml#prohibited_mutations
+  related: []
+  priority: normal
+  tags: [portable, package, bindings]
+
 use_when:
   - project independent Unity package
   - portable UPM feature

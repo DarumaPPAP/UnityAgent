@@ -1,17 +1,10 @@
 """Generate Graph Observatory nodes from canonical readers."""
 
-from dataclasses import asdict
-
-from graph_builder import AgentGraph
+from graph_builder import AgentGraph, GraphNode
 
 
 def add_node(graph: AgentGraph, node_id: str, node_type: str, label: str, **metadata) -> None:
-    graph.add_node(
-        node_id=node_id,
-        node_type=node_type,
-        label=label,
-        metadata=metadata,
-    )
+    graph.add_node(GraphNode(id=node_id, type=node_type, label=label, metadata=metadata))
 
 
 def build_architecture_graph(graph: AgentGraph, context: dict, harness: dict) -> None:

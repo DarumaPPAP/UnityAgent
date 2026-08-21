@@ -2,6 +2,25 @@ schema_version: "1.2"
 id: architecture-design
 primary_skill: .agents/skills/unity-architecture-design/SKILL.md
 
+metadata:
+  type: context
+  title: Architecture Design
+  summary:
+    - Select architecture depth and file responsibility for Unity features.
+  purpose:
+    - Decide the smallest cohesive architecture supported by the task scope.
+  decisions:
+    - id: architecture-rules-authoritative
+      label: Existing architecture rules remain authoritative
+      source_ref: .ai/context-packs/architecture-design.yaml#rules
+  forbidden:
+    - id: speculative-architecture-mutation
+      label: Speculative architecture changes are forbidden
+      source_ref: .ai/harness/task-contracts/architecture-design.yaml#prohibited_mutations
+  related: []
+  priority: high
+  tags: [architecture, csharp, unity]
+
 use_when:
   - new Unity feature or system architecture
   - class and C# file responsibility design

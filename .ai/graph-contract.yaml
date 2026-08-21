@@ -29,6 +29,7 @@ node_types:
   - policy
   - project_fact
   - context_pack
+  - context
   - knowledge
   - source
   - task_contract
@@ -71,6 +72,10 @@ edge_types:
   - evaluated_by
   - produces_regression_result
   - compares_to
+  - related-to
+  - hands-off-to
+  - conflicts-with
+  - refines
 
 provenance:
   required_fields:

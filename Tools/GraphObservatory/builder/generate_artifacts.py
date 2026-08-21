@@ -26,6 +26,14 @@ def generate_artifacts(graph: dict, output_dir: str) -> None:
 
 if __name__ == "__main__":
     generate_artifacts(
-        {"nodes": [], "edges": [], "metadata": {"generated_by": "GraphObservatory"}},
+        {
+            "nodes": [],
+            "edges": [],
+            "metadata": {
+                "version": "1.0",
+                "generated_from": "canonical-yaml",
+                "generated_by": "GraphObservatory",
+            },
+        },
         "Artifacts/graph",
     )

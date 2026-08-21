@@ -2,6 +2,25 @@ schema_version: "1.3"
 id: graphics-mcp
 primary_skill: .agents/skills/unity-architecture-design/SKILL.md
 
+metadata:
+  type: context
+  title: Graphics MCP
+  summary:
+    - Route Unity graphics inspection, planning, mutation, bake, and capture contracts.
+  purpose:
+    - Select one primary graphics MCP capability while preserving UnityAgent ownership.
+  decisions:
+    - id: mcp-contract-authority
+      label: UnityAgent MCP routing rules remain authoritative
+      source_ref: .ai/context-packs/graphics-mcp.yaml#rules
+  forbidden:
+    - id: unapproved-graphics-mutation
+      label: Unapproved graphics mutation, bake, or capture is forbidden
+      source_ref: .ai/harness/task-contracts/graphics-mcp.yaml#prohibited_mutations
+  related: []
+  priority: critical
+  tags: [mcp, graphics, routing]
+
 use_when:
   - UnityAgentMCP architecture or requirements
   - UnityGraphicsMCP architecture or requirements

@@ -1,0 +1,125 @@
+schema_version: '1.0'
+generated: true
+source_of_truth: false
+builder_version: 1.0.0
+contexts:
+- id: architecture-design
+  title: Architecture Design
+  summary:
+  - Select architecture depth and file responsibility for Unity features.
+  priority: high
+  tags:
+  - architecture
+  - csharp
+  - unity
+  related: []
+  pack_path: .ai/context-packs/architecture-design.yaml
+  source_sha256: 57cd2cb6595f50161c66cada6aa877c029a48b33883fddfc76a13df4ebfc2b24
+- id: asset-data-change
+  title: Asset Data Change
+  summary:
+  - Plan bounded serialized Unity asset changes through authoritative editor channels.
+  priority: high
+  tags:
+  - asset
+  - editor
+  - serialization
+  related: []
+  pack_path: .ai/context-packs/asset-data-change.yaml
+  source_sha256: b97958053aca06951ecb43cbb44b395f4a3aee13a7c9f5a099a3ca0e71f35d97
+- id: csharp-local-fix
+  title: CSharp Local Fix
+  summary:
+  - Apply a bounded CSharp correction with deterministic validation.
+  priority: normal
+  tags:
+  - compile
+  - csharp
+  - local-fix
+  related: []
+  pack_path: .ai/context-packs/csharp-local-fix.yaml
+  source_sha256: 2e9e1043065f2fca6518afa0940375bd55873225045f10f19d855db4d09e7357
+- id: graphics-mcp
+  title: Graphics MCP
+  summary:
+  - Route Unity graphics inspection, planning, mutation, bake, and capture contracts.
+  priority: critical
+  tags:
+  - graphics
+  - mcp
+  - routing
+  related: []
+  pack_path: .ai/context-packs/graphics-mcp.yaml
+  source_sha256: 077ffdb3a8fc9b484c510606d2472cc4144e6f86a8d920a88fd3a52cc2c217ed
+- id: performance
+  title: Performance Evidence
+  summary:
+  - Measure CPU, GPU, memory, build, or load performance under fixed conditions.
+  priority: high
+  tags:
+  - evidence
+  - measurement
+  - performance
+  related: []
+  pack_path: .ai/context-packs/performance.yaml
+  source_sha256: e8d7fafc06a88c7cc996cf3b14e6b1fba28cac0db31edce7d06f84dcca4bb78f
+- id: portable-feature
+  title: Portable Feature
+  summary:
+  - Design a project-independent Unity package with explicit unresolved bindings.
+  priority: normal
+  tags:
+  - bindings
+  - package
+  - portable
+  related: []
+  pack_path: .ai/context-packs/portable-feature.yaml
+  source_sha256: eb15ef6976685975963ae43eec8bc252c6180c2416cce19975a921d715c68922
+- id: renderer-feature-change
+  title: Renderer Feature Change
+  summary:
+  - Design a bounded RendererFeature or RenderGraph pass change.
+  priority: high
+  tags:
+  - renderer-feature
+  - rendergraph
+  - rendering
+  related: []
+  pack_path: .ai/context-packs/renderer-feature-change.yaml
+  source_sha256: 11beeea39f3c46dfb8bd0443c6148936229f2f132be074941f683870a8903a93
+- id: rendering-incident
+  title: Rendering Incident
+  summary:
+  - Investigate unknown rendering, platform, RenderGraph, or visual regressions.
+  priority: critical
+  tags:
+  - incident
+  - investigation
+  - rendering
+  related: []
+  pack_path: .ai/context-packs/rendering-incident.yaml
+  source_sha256: 774db91364875e0510adb3589d0e5277efa776920f32e41f45ddf0a727964b09
+- id: shader-change
+  title: Shader Change
+  summary:
+  - Change ShaderLab, HLSL, or Compute Shader code under explicit compatibility constraints.
+  priority: high
+  tags:
+  - hlsl
+  - rendering
+  - shader
+  related: []
+  pack_path: .ai/context-packs/shader-change.yaml
+  source_sha256: 2c757c059b04826339a02436ba29f9aa78d0fc696fb572754e3b8b652edcc836
+- id: visual-direction
+  title: Visual Direction
+  summary:
+  - Define scene composition, lighting, color, atmosphere, and human visual review.
+  priority: normal
+  tags:
+  - beauty
+  - human-review
+  - visual
+  related: []
+  pack_path: .ai/context-packs/visual-direction.yaml
+  source_sha256: 93fe29ee9640a3c72212c4699e2eac0896e6857818f21c6127268e5dae0c32da

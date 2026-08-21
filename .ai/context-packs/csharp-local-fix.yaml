@@ -2,6 +2,25 @@ schema_version: "1.1"
 id: csharp-local-fix
 primary_skill: .agents/skills/csharp-safe-patch/SKILL.md
 
+metadata:
+  type: context
+  title: CSharp Local Fix
+  summary:
+    - Apply a bounded CSharp correction with deterministic validation.
+  purpose:
+    - Keep a local source fix compatible with existing structure and naming.
+  decisions:
+    - id: bounded-csharp-change
+      label: Bounded CSharp rules remain authoritative
+      source_ref: .ai/context-packs/csharp-local-fix.yaml#rules
+  forbidden:
+    - id: unrelated-source-churn
+      label: Unrelated refactoring and formatting churn are forbidden
+      source_ref: .ai/harness/task-contracts/csharp-local-fix.yaml#prohibited_mutations
+  related: []
+  priority: normal
+  tags: [csharp, local-fix, compile]
+
 use_when:
   - bounded C# correction
   - known compile failure

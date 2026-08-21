@@ -1,0 +1,20 @@
+schema_version: "1.0"
+kind: context_explorer_expansion_gate
+source_of_truth: false
+
+required_comparison_fields:
+  - same_task
+  - same_source_revision
+  - same_acceptance_criteria
+
+thresholds:
+  context_file_read_reduction: 0.30
+  total_token_reduction: 0.30
+  verifier_quality_delta: 0.0
+  missed_dependency_delta: 0.0
+  user_policy_loss: 0
+  unverified_success_claims: 0
+  stale_index: 0
+
+outcomes: [ADOPT, DEFER]
+missing_evidence_outcome: DEFER

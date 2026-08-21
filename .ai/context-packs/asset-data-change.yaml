@@ -2,6 +2,25 @@ schema_version: "1.0"
 id: asset-data-change
 primary_skill: .agents/skills/csharp-safe-patch/SKILL.md
 
+metadata:
+  type: context
+  title: Asset Data Change
+  summary:
+    - Plan bounded serialized Unity asset changes through authoritative editor channels.
+  purpose:
+    - Preserve serialized references while keeping asset mutation explicit and reversible.
+  decisions:
+    - id: serialized-asset-channel
+      label: Serialized asset rules remain authoritative
+      source_ref: .ai/context-packs/asset-data-change.yaml#rules
+  forbidden:
+    - id: raw-unity-yaml-mutation
+      label: Raw Scene, Prefab, or Material YAML mutation is forbidden
+      source_ref: .ai/harness/task-contracts/asset-data-change.yaml#prohibited_mutations
+  related: []
+  priority: high
+  tags: [asset, serialization, editor]
+
 use_when:
   - Scene Prefab Material or ScriptableObject asset change
   - serialized Unity asset migration
