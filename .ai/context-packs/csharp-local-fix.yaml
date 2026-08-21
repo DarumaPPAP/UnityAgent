@@ -25,7 +25,6 @@ conditional:
     - matching Burst Jobs Entities reference
 
 excluded_by_default:
-  - SkillReferences/UNITY_AGENT_SUPERVISOR_MODEL.md
   - SkillReferences/RENDERING_STANDARDS.md
   - SkillReferences/SHADER_PERFORMANCE_STANDARDS.md
   - SkillReferences/BEAUTIFUL_DEFINITION_INTEGRATION.md
