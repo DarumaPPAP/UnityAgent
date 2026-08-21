@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
-"""Context Manifest Runtime primitives for UnityAgent.
-
-Canonical YAML remains the source of truth. This module builds one runtime
-Context Manifest from a Task Fingerprint and explicit bindings, validates the
-manifest against current Context/Harness contracts, records gate evidence, and
-projects an Execution Graph view.
-"""
+"""Runtime primitives for UnityAgent Context Manifest generation and tracing."""
 
 from __future__ import annotations
 
@@ -15,234 +9,200 @@ from typing import Any
 
 import yaml
 
+INDEX_PATH = Path('.ai/context-index.yaml')
+GRAPH_CONTRACT_PATH = Path('.ai/graph-contract.yaml')
+USER_POLICY_PATH = Path('.ai/user-policy.yaml')
+QUALITY_GATES_PATH = Path('.ai/harness/quality-gates.yaml')
+RISK_LEVELS_PATH = Path('.ai/harness/risk-levels.yaml')
+MCP_ACTIVATION_PATH = Path('.ai/harness/mcp-activation.yaml')
 
-INDEX_PATH = Path(".ai/context-index.yaml")
-GRAPH_CONTRACT_PATH = Path(".ai/graph-contract.yaml")
-USER_POLICY_PATH = Path(".ai/user-policy.yaml")
-QUALITY_GATES_PATH = Path(".ai/harness/quality-gates.yaml")
-RISK_LEVELS_PATH = Path(".ai/harness/risk-levels.yaml")
-MCP_ACTIVATION_PATH = Path(".ai/harness/mcp-activation.yaml")
-
-MANIFEST_SCHEMA_VERSION = "3.0"
-GRAPH_SCHEMA_VERSION = "1.0"
-
-EXECUTION_STATUSES = {
-    "in_progress",
-    "passed",
-    "failed",
-    "complete_with_unavailable",
-}
-MUTATION_EFFECTS = {"allow", "prohibit"}
-GATE_REQUIREMENTS = {"required", "conditional"}
-
+MANIFEST_SCHEMA_VERSION = '3.0'
+GRAPH_SCHEMA_VERSION = '1.0'
+EXECUTION_STATUSES = {'in_progress', 'passed', 'failed', 'complete_with_unavailable'}
+MUTATION_EFFECTS = {'allow', 'prohibit'}
+GATE_REQUIREMENTS = {'required', 'conditional'}
 PATH_SUFFIXES = (
-    ".md",
-    ".yaml",
-    ".yml",
-    ".cs",
-    ".shader",
-    ".hlsl",
-    ".compute",
-    ".asmdef",
-    ".json",
+    '.md', '.yaml', '.yml', '.cs', '.shader', '.hlsl', '.compute', '.asmdef', '.json'
 )
 
 
 class ManifestError(ValueError):
-    """Raised when a manifest request cannot be built safely."""
+    """Raised when runtime data cannot satisfy the Context Manifest contract."""
 
     def __init__(self, errors: list[str]):
         self.errors = errors
-        super().__init__("\n".join(errors))
+        super().__init__('\n'.join(errors))
 
 
 def load_yaml(path: Path) -> dict[str, Any]:
     if not path.is_file():
-        raise ManifestError([f"Missing file: {path.as_posix()}"])
-    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        raise ManifestError([f'Missing file: {path.as_posix()}'])
+    data = yaml.safe_load(path.read_text(encoding='utf-8')) or {}
     if not isinstance(data, dict):
-        raise ManifestError([f"Expected YAML mapping: {path.as_posix()}"])
+        raise ManifestError([f'Expected YAML mapping: {path.as_posix()}'])
     return data
 
 
+def dump_yaml(data: dict[str, Any]) -> str:
+    return yaml.safe_dump(data, sort_keys=False, allow_unicode=True, default_flow_style=False)
+
+
 def stable_node_id(node_type: str, stable_id: str) -> str:
-    return f"{node_type}:{stable_id}"
+    return f'{node_type}:{stable_id}'
 
 
 def _is_path_reference(value: str) -> bool:
-    return "/" in value or value.endswith(PATH_SUFFIXES)
+    return '/' in value or value.endswith(PATH_SUFFIXES)
 
 
-def _routes(index: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    raw = index.get("routes", {})
-    if not isinstance(raw, dict):
+def _route_map(index: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    routes = index.get('routes', {})
+    if not isinstance(routes, dict):
         return {}
     return {
-        str(route.get("id")): route
-        for route in raw.values()
-        if isinstance(route, dict) and route.get("id")
+        str(route['id']): route
+        for route in routes.values()
+        if isinstance(route, dict) and route.get('id')
     }
 
 
-def _validate_fingerprint(
-    index: dict[str, Any],
-    route: dict[str, Any],
-    fingerprint: dict[str, Any],
+def _fingerprint_errors(
+    index: dict[str, Any], route: dict[str, Any], fingerprint: dict[str, Any]
 ) -> list[str]:
     errors: list[str] = []
-    contract = index.get("task_fingerprint", {})
-    dimensions = contract.get("dimensions", {}) if isinstance(contract, dict) else {}
-    required_dimensions = (
-        contract.get("required_dimensions", []) if isinstance(contract, dict) else []
-    )
+    contract = index.get('task_fingerprint', {})
+    dimensions = contract.get('dimensions', {}) if isinstance(contract, dict) else {}
+    required = contract.get('required_dimensions', []) if isinstance(contract, dict) else []
 
     if not isinstance(fingerprint, dict):
-        return ["task.fingerprint must be a mapping."]
+        return ['task.fingerprint must be a mapping.']
 
-    for dimension in required_dimensions:
+    for dimension in required:
         if dimension not in fingerprint:
-            errors.append(f"Missing Task Fingerprint dimension: {dimension}")
+            errors.append(f'Missing Task Fingerprint dimension: {dimension}')
 
     for dimension, value in fingerprint.items():
         allowed = dimensions.get(dimension)
         if not isinstance(allowed, list):
-            errors.append(f"Unknown Task Fingerprint dimension: {dimension}")
+            errors.append(f'Unknown Task Fingerprint dimension: {dimension}')
         elif value not in allowed:
-            errors.append(f"Unsupported Task Fingerprint value: {dimension}={value}")
+            errors.append(f'Unsupported Task Fingerprint value: {dimension}={value}')
 
-    match = route.get("fingerprint_match", {})
+    match = route.get('fingerprint_match', {})
     if not isinstance(match, dict):
-        errors.append(f"Route {route.get('id')} has no fingerprint_match mapping.")
-        return errors
-
+        return errors + [f"Route {route.get('id')} has no fingerprint_match mapping."]
     for dimension, accepted in match.items():
         if dimension not in fingerprint:
             errors.append(
                 f"Fingerprint lacks route-match dimension for {route.get('id')}: {dimension}"
             )
-            continue
-        if fingerprint[dimension] not in accepted:
+        elif fingerprint[dimension] not in accepted:
             errors.append(
                 f"Fingerprint does not match route {route.get('id')}: "
                 f"{dimension}={fingerprint[dimension]} not in {accepted}"
             )
-
     return errors
 
 
-def _normalize_binding(name: str, raw: Any) -> dict[str, Any]:
+def _binding(name: str, raw: Any) -> dict[str, Any]:
     if isinstance(raw, dict):
-        kind = str(raw.get("kind", "scalar"))
-        values = raw.get("values", [])
-        reason = str(raw.get("reason", "required_context"))
+        kind = str(raw.get('kind', 'scalar'))
+        values = raw.get('values', [])
+        reason = str(raw.get('reason', 'required_context'))
     else:
-        kind = "scalar"
+        kind = 'scalar'
         values = raw if isinstance(raw, list) else [raw]
-        reason = "required_context"
-
+        reason = 'required_context'
     if not isinstance(values, list):
         values = [values]
-
     return {
-        "name": name,
-        "kind": kind,
-        "values": [str(value) for value in values],
-        "reason": reason,
+        'name': name,
+        'kind': kind,
+        'values': [str(value) for value in values],
+        'reason': reason,
     }
 
 
-def _canonical_context_item(source_path: str, reason: str) -> dict[str, Any]:
+def _context_item(source_path: str, reason: str) -> dict[str, Any]:
     return {
-        "node_id": stable_node_id("source", source_path),
-        "source_path": source_path,
-        "reason": reason,
+        'node_id': stable_node_id('source', source_path),
+        'source_path': source_path,
+        'reason': reason,
     }
 
 
-def _gate_entries(contract: dict[str, Any]) -> list[dict[str, Any]]:
-    gates: list[dict[str, Any]] = []
-    for gate in contract.get("required_quality_gates", []) or []:
-        gates.append(
-            {
-                "node_id": stable_node_id("quality_gate", str(gate)),
-                "id": str(gate),
-                "requirement": "required",
-            }
-        )
-    for gate in contract.get("conditional_quality_gates", []) or []:
-        gates.append(
-            {
-                "node_id": stable_node_id("quality_gate", str(gate)),
-                "id": str(gate),
-                "requirement": "conditional",
-            }
-        )
-    return gates
+def _mutation_rules(contract_id: str, contract: dict[str, Any]) -> list[dict[str, Any]]:
+    result: list[dict[str, Any]] = []
+    for effect, key in (('allow', 'allowed_mutations'), ('prohibit', 'prohibited_mutations')):
+        for raw in contract.get(key, []) or []:
+            rule_id = str(raw)
+            result.append(
+                {
+                    'node_id': stable_node_id(
+                        'mutation_rule', f'{contract_id}:{effect}:{rule_id}'
+                    ),
+                    'id': rule_id,
+                    'effect': effect,
+                }
+            )
+    return result
 
 
-def _mutation_entries(contract_id: str, contract: dict[str, Any]) -> list[dict[str, Any]]:
-    entries: list[dict[str, Any]] = []
-    for rule in contract.get("allowed_mutations", []) or []:
-        rule_id = str(rule)
-        entries.append(
-            {
-                "node_id": stable_node_id(
-                    "mutation_rule", f"{contract_id}:allow:{rule_id}"
-                ),
-                "id": rule_id,
-                "effect": "allow",
-            }
-        )
-    for rule in contract.get("prohibited_mutations", []) or []:
-        rule_id = str(rule)
-        entries.append(
-            {
-                "node_id": stable_node_id(
-                    "mutation_rule", f"{contract_id}:prohibit:{rule_id}"
-                ),
-                "id": rule_id,
-                "effect": "prohibit",
-            }
-        )
-    return entries
+def _quality_gates(contract: dict[str, Any]) -> list[dict[str, Any]]:
+    result: list[dict[str, Any]] = []
+    for requirement, key in (
+        ('required', 'required_quality_gates'),
+        ('conditional', 'conditional_quality_gates'),
+    ):
+        for raw in contract.get(key, []) or []:
+            gate_id = str(raw)
+            result.append(
+                {
+                    'node_id': stable_node_id('quality_gate', gate_id),
+                    'id': gate_id,
+                    'requirement': requirement,
+                }
+            )
+    return result
 
 
-def _loaded_paths(manifest: dict[str, Any]) -> set[str]:
+def _selected_paths(manifest: dict[str, Any]) -> set[str]:
     paths: set[str] = set()
-    for section, key in (("policy", "loaded"), ("knowledge", "loaded")):
-        values = manifest.get(section, {}).get(key, [])
-        if isinstance(values, list):
-            for item in values:
-                if isinstance(item, dict) and item.get("source_path"):
-                    paths.add(str(item["source_path"]))
-
-    context = manifest.get("context", {})
-    for key in ("required_context", "conditional_context", "source_files"):
-        values = context.get(key, [])
-        if isinstance(values, list):
-            for item in values:
-                if isinstance(item, dict) and item.get("source_path"):
-                    paths.add(str(item["source_path"]))
+    for section, key in (('policy', 'loaded'), ('knowledge', 'loaded')):
+        for item in manifest.get(section, {}).get(key, []) or []:
+            if isinstance(item, dict) and item.get('source_path'):
+                paths.add(str(item['source_path']))
+    context = manifest.get('context', {})
+    for key in ('required_context', 'conditional_context', 'source_files'):
+        for item in context.get(key, []) or []:
+            if isinstance(item, dict) and item.get('source_path'):
+                paths.add(str(item['source_path']))
     return paths
 
 
 def derive_execution_status(manifest: dict[str, Any]) -> str:
-    gates = manifest.get("harness", {}).get("quality_gates", [])
-    required = [
+    gates = [
         gate
-        for gate in gates
-        if isinstance(gate, dict) and gate.get("requirement") == "required"
+        for gate in manifest.get('harness', {}).get('quality_gates', []) or []
+        if isinstance(gate, dict)
     ]
+    if any(gate.get('status') == 'failed' for gate in gates):
+        return 'failed'
 
-    statuses = [gate.get("status") for gate in required]
-    if any(status == "failed" for status in statuses):
-        return "failed"
-    if required and all(status == "passed" for status in statuses):
-        return "passed"
-    if required and all(status in {"passed", "unavailable"} for status in statuses):
-        if any(status == "unavailable" for status in statuses):
-            return "complete_with_unavailable"
-    return "in_progress"
+    required = [gate for gate in gates if gate.get('requirement') == 'required']
+    required_statuses = [gate.get('status') for gate in required]
+    if not required or not all(
+        status in {'passed', 'unavailable'} for status in required_statuses
+    ):
+        return 'in_progress'
+
+    activated_conditional = [
+        gate for gate in gates
+        if gate.get('requirement') == 'conditional' and gate.get('status') is not None
+    ]
+    if any(gate.get('status') == 'unavailable' for gate in required + activated_conditional):
+        return 'complete_with_unavailable'
+    return 'passed'
 
 
 def build_manifest(
@@ -250,292 +210,263 @@ def build_manifest(
     request: dict[str, Any],
     previous_manifest: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    errors: list[str] = []
     index = load_yaml(root / INDEX_PATH)
-    route_by_id = _routes(index)
-
-    task = request.get("task", {})
+    routes = _route_map(index)
+    task = request.get('task', {})
     if not isinstance(task, dict):
-        raise ManifestError(["request.task must be a mapping."])
+        raise ManifestError(['request.task must be a mapping.'])
 
-    task_id = str(task.get("id", "")).strip()
-    route_id = str(task.get("route", "")).strip()
-    fingerprint = task.get("fingerprint", {})
-
+    task_id = str(task.get('id', '')).strip()
+    route_id = str(task.get('route', '')).strip()
+    fingerprint = task.get('fingerprint', {})
+    errors: list[str] = []
     if not task_id:
-        errors.append("request.task.id is required.")
+        errors.append('request.task.id is required.')
     if not route_id:
-        errors.append("request.task.route is required.")
-    route = route_by_id.get(route_id)
+        errors.append('request.task.route is required.')
+    route = routes.get(route_id)
     if route is None:
-        errors.append(f"Unknown route: {route_id}")
+        errors.append(f'Unknown route: {route_id}')
     else:
-        errors.extend(_validate_fingerprint(index, route, fingerprint))
-
+        errors.extend(_fingerprint_errors(index, route, fingerprint))
     if errors:
         raise ManifestError(errors)
 
-    context_pack_path = Path(str(route["context_pack"]))
-    contract_path = Path(str(route["task_contract"]))
+    context_pack_path = Path(str(route['context_pack']))
+    contract_path = Path(str(route['task_contract']))
     context_pack = load_yaml(root / context_pack_path)
     contract = load_yaml(root / contract_path)
 
-    previous_attempt = None
-    previous_manifest_id = None
     attempt = 1
-    previous_failure = None
+    previous_id: str | None = None
+    previous_attempt: int | None = None
+    previous_failure: dict[str, Any] | None = None
     if previous_manifest is not None:
-        previous_meta = previous_manifest.get("manifest", {})
-        previous_attempt = int(previous_meta.get("attempt", 0))
-        previous_manifest_id = str(previous_meta.get("id", "")).strip()
-        if previous_attempt < 1 or not previous_manifest_id:
-            raise ManifestError(["Previous manifest has invalid id or attempt."])
-        previous_task = previous_manifest.get("task", {})
-        if previous_task.get("id") != task_id:
-            raise ManifestError(["Previous manifest task id does not match retry request."])
+        previous_errors = validate_manifest(root, previous_manifest)
+        if previous_errors:
+            raise ManifestError([f'Invalid previous manifest: {error}' for error in previous_errors])
+        previous_meta = previous_manifest['manifest']
+        previous_task = previous_manifest['task']
+        if previous_task.get('id') != task_id:
+            raise ManifestError(['Previous manifest task id does not match retry request.'])
+        previous_id = str(previous_meta['id'])
+        previous_attempt = int(previous_meta['attempt'])
         attempt = previous_attempt + 1
-        previous_execution = previous_manifest.get("execution", {})
+        execution = previous_manifest.get('execution', {})
         previous_failure = {
-            "manifest_id": previous_manifest_id,
-            "attempt": previous_attempt,
-            "status": previous_execution.get("status"),
-            "failure_reason": previous_execution.get("failure_reason"),
-            "evidence_ids": [
-                item.get("id")
-                for item in previous_execution.get("evidence", [])
-                if isinstance(item, dict) and item.get("id")
+            'manifest_id': previous_id,
+            'attempt': previous_attempt,
+            'status': execution.get('status'),
+            'failure_reason': execution.get('failure_reason'),
+            'evidence_ids': [
+                item.get('id')
+                for item in execution.get('evidence', []) or []
+                if isinstance(item, dict) and item.get('id')
             ],
         }
 
-    manifest_id = str(request.get("manifest_id", "")).strip()
-    if not manifest_id:
-        manifest_id = f"{task_id}-a{attempt}"
+    manifest_id = str(request.get('manifest_id', '')).strip() or f'{task_id}-a{attempt}'
 
-    bindings_raw = request.get("bindings", {})
-    if not isinstance(bindings_raw, dict):
-        raise ManifestError(["request.bindings must be a mapping."])
-    bindings = [
-        _normalize_binding(str(name), raw)
-        for name, raw in sorted(bindings_raw.items())
-    ]
-    binding_names = {binding["name"] for binding in bindings}
+    raw_bindings = request.get('bindings', {})
+    if not isinstance(raw_bindings, dict):
+        raise ManifestError(['request.bindings must be a mapping.'])
+    bindings = [_binding(str(name), raw) for name, raw in sorted(raw_bindings.items())]
+    binding_names = {item['name'] for item in bindings}
 
     source_files: list[dict[str, Any]] = []
-    for binding in bindings:
-        if binding["kind"] != "source":
+    for item in bindings:
+        if item['kind'] != 'source':
             continue
-        for source_path in binding["values"]:
+        for source_path in item['values']:
             source_files.append(
                 {
-                    "node_id": stable_node_id("source", source_path),
-                    "source_path": source_path,
-                    "binding": binding["name"],
-                    "reason": binding["reason"],
+                    'node_id': stable_node_id('source', source_path),
+                    'source_path': source_path,
+                    'binding': item['name'],
+                    'reason': item['reason'],
                 }
             )
 
-    conditions = request.get("conditions", []) or []
-    if not isinstance(conditions, list):
-        raise ManifestError(["request.conditions must be a list."])
-    conditions = [str(value) for value in conditions]
+    conditions_raw = request.get('conditions', []) or []
+    if not isinstance(conditions_raw, list):
+        raise ManifestError(['request.conditions must be a list.'])
+    conditions = [str(value) for value in conditions_raw]
 
     required_context: list[dict[str, Any]] = []
     conditional_context: list[dict[str, Any]] = []
-    unresolved: set[str] = {
-        str(value) for value in (request.get("unresolved_bindings", []) or [])
-    }
+    unresolved = {str(value) for value in request.get('unresolved_bindings', []) or []}
 
-    for value in context_pack.get("required", []) or []:
-        value = str(value)
+    for raw in context_pack.get('required', []) or []:
+        value = str(raw)
         if _is_path_reference(value):
-            required_context.append(_canonical_context_item(value, "required_context"))
+            required_context.append(_context_item(value, 'required_context'))
         elif value not in binding_names:
             unresolved.add(value)
 
-    conditional_map = context_pack.get("conditional", {}) or {}
+    conditional_map = context_pack.get('conditional', {}) or {}
     if not isinstance(conditional_map, dict):
-        raise ManifestError([f"{context_pack_path} conditional must be a mapping."])
-
+        raise ManifestError([f'{context_pack_path} conditional must be a mapping.'])
     for condition in conditions:
         values = conditional_map.get(condition)
         if values is None:
-            raise ManifestError(
-                [f"Unknown Context Pack condition for {route_id}: {condition}"]
-            )
-        for value in values or []:
-            value = str(value)
+            raise ManifestError([f'Unknown Context Pack condition for {route_id}: {condition}'])
+        for raw in values or []:
+            value = str(raw)
             if _is_path_reference(value):
-                conditional_context.append(
-                    _canonical_context_item(value, "conditional_context")
-                )
+                conditional_context.append(_context_item(value, 'conditional_context'))
             elif value not in binding_names:
                 unresolved.add(value)
 
-    for required_input in contract.get("required_inputs", []) or []:
-        required_input = str(required_input)
-        if required_input not in binding_names:
-            unresolved.add(required_input)
+    for raw in contract.get('required_inputs', []) or []:
+        value = str(raw)
+        if value not in binding_names:
+            unresolved.add(value)
 
     project_facts: list[dict[str, Any]] = []
-    for item in request.get("project_facts", []) or []:
-        if not isinstance(item, dict):
-            raise ManifestError(["project_facts entries must be mappings."])
-        key = str(item.get("key", "")).strip()
-        source_path = str(item.get("source_path", "")).strip()
-        if not key or not source_path:
-            raise ManifestError(["project_facts require key and source_path."])
+    for raw in request.get('project_facts', []) or []:
+        if not isinstance(raw, dict):
+            raise ManifestError(['project_facts entries must be mappings.'])
+        key = str(raw.get('key', '')).strip()
+        source_path = str(raw.get('source_path', '')).strip()
+        if not key or not source_path or 'value' not in raw:
+            raise ManifestError(['project_facts require key, value and source_path.'])
         project_facts.append(
             {
-                "node_id": stable_node_id("project_fact", key),
-                "key": key,
-                "value": item.get("value"),
-                "source_path": source_path,
-                "reason": str(item.get("reason", "project_fact")),
+                'node_id': stable_node_id('project_fact', key),
+                'key': key,
+                'value': raw['value'],
+                'source_path': source_path,
+                'reason': str(raw.get('reason', 'project_fact')),
             }
         )
 
     knowledge: list[dict[str, Any]] = []
-    for raw in request.get("knowledge", []) or []:
+    for raw in request.get('knowledge', []) or []:
         if isinstance(raw, str):
-            source_path = raw
-            reason = "required_context"
+            source_path, reason = raw, 'required_context'
         elif isinstance(raw, dict):
-            source_path = str(raw.get("source_path", "")).strip()
-            reason = str(raw.get("reason", "required_context"))
+            source_path = str(raw.get('source_path', '')).strip()
+            reason = str(raw.get('reason', 'required_context'))
         else:
-            raise ManifestError(["knowledge entries must be strings or mappings."])
+            raise ManifestError(['knowledge entries must be strings or mappings.'])
         if not source_path:
-            raise ManifestError(["knowledge source_path must not be empty."])
+            raise ManifestError(['knowledge source_path must not be empty.'])
         knowledge.append(
             {
-                "node_id": stable_node_id("knowledge", source_path),
-                "source_path": source_path,
-                "reason": reason,
+                'node_id': stable_node_id('knowledge', source_path),
+                'source_path': source_path,
+                'reason': reason,
             }
         )
 
     tools: list[dict[str, Any]] = []
-    for raw in request.get("tools", []) or []:
-        if not isinstance(raw, dict) or not raw.get("id"):
-            raise ManifestError(["tools entries require id."])
-        tool_id = str(raw["id"])
+    for raw in request.get('tools', []) or []:
+        if not isinstance(raw, dict) or not raw.get('id'):
+            raise ManifestError(['tools entries require id.'])
+        tool_id = str(raw['id'])
         tools.append(
             {
-                "node_id": stable_node_id("tool", tool_id),
-                "id": tool_id,
-                "reason": str(raw.get("reason", "harness_contract")),
+                'node_id': stable_node_id('tool', tool_id),
+                'id': tool_id,
+                'reason': str(raw.get('reason', 'harness_contract')),
             }
         )
 
     excluded_context = [
         {
-            "node_id": stable_node_id("source", str(value)),
-            "source_path": str(value),
-            "reason": "excluded_context",
+            'node_id': stable_node_id('source', str(raw)),
+            'source_path': str(raw),
+            'reason': 'excluded_context',
         }
-        for value in context_pack.get("excluded_by_default", []) or []
+        for raw in context_pack.get('excluded_by_default', []) or []
     ]
 
-    primary_skill_name = str(route.get("primary_skill", "")).strip()
-    primary_skill_path = (
-        f".agents/skills/{primary_skill_name}/SKILL.md"
-        if primary_skill_name
-        else None
-    )
-    contract_id = str(contract.get("id", route_id))
+    skill_name = str(route.get('primary_skill', '')).strip()
+    skill_path = f'.agents/skills/{skill_name}/SKILL.md'
+    contract_id = str(contract.get('id', route_id))
 
     manifest: dict[str, Any] = {
-        "schema_version": MANIFEST_SCHEMA_VERSION,
-        "manifest": {
-            "id": manifest_id,
-            "graph_kind": "execution",
-            "attempt": attempt,
-        },
-        "task": {
-            "id": task_id,
-            "route": route_id,
-            "fingerprint": copy.deepcopy(fingerprint),
-        },
-        "policy": {
-            "loaded": [
+        'schema_version': MANIFEST_SCHEMA_VERSION,
+        'manifest': {'id': manifest_id, 'graph_kind': 'execution', 'attempt': attempt},
+        'task': {'id': task_id, 'route': route_id, 'fingerprint': copy.deepcopy(fingerprint)},
+        'policy': {
+            'loaded': [
                 {
-                    "node_id": stable_node_id("policy", "user-policy"),
-                    "source_path": USER_POLICY_PATH.as_posix(),
-                    "reason": "user_policy",
+                    'node_id': stable_node_id('policy', 'user-policy'),
+                    'source_path': USER_POLICY_PATH.as_posix(),
+                    'reason': 'user_policy',
                 }
             ]
         },
-        "project_facts": {"loaded": project_facts},
-        "context": {
-            "context_pack": {
-                "node_id": stable_node_id("context_pack", str(context_pack.get("id"))),
-                "source_path": context_pack_path.as_posix(),
+        'project_facts': {'loaded': project_facts},
+        'context': {
+            'context_pack': {
+                'node_id': stable_node_id('context_pack', str(context_pack.get('id'))),
+                'source_path': context_pack_path.as_posix(),
             },
-            "primary_skill": {
-                "node_id": stable_node_id("skill", primary_skill_name),
-                "source_path": primary_skill_path,
+            'primary_skill': {
+                'node_id': stable_node_id('skill', skill_name),
+                'source_path': skill_path,
             },
-            "bindings": bindings,
-            "conditions_applied": conditions,
-            "required_context": required_context,
-            "conditional_context": conditional_context,
-            "source_files": source_files,
-            "excluded_context": excluded_context,
+            'bindings': bindings,
+            'conditions_applied': conditions,
+            'required_context': required_context,
+            'conditional_context': conditional_context,
+            'source_files': source_files,
+            'excluded_context': excluded_context,
         },
-        "knowledge": {"loaded": knowledge},
-        "harness": {
-            "task_contract": {
-                "node_id": stable_node_id("task_contract", contract_id),
-                "source_path": contract_path.as_posix(),
+        'knowledge': {'loaded': knowledge},
+        'harness': {
+            'task_contract': {
+                'node_id': stable_node_id('task_contract', contract_id),
+                'source_path': contract_path.as_posix(),
             },
-            "mutation_rules": _mutation_entries(contract_id, contract),
-            "risk_level": {
-                "node_id": stable_node_id("risk_level", str(contract.get("risk_level"))),
-                "id": contract.get("risk_level"),
+            'mutation_rules': _mutation_rules(contract_id, contract),
+            'risk_level': {
+                'node_id': stable_node_id('risk_level', str(contract.get('risk_level'))),
+                'id': contract.get('risk_level'),
             },
-            "quality_gates": _gate_entries(contract),
+            'quality_gates': _quality_gates(contract),
         },
-        "tools": {"activated": tools},
-        "execution": {
-            "evidence": [],
-            "unresolved_bindings": sorted(unresolved),
-            "status": "in_progress",
+        'tools': {'activated': tools},
+        'execution': {
+            'evidence': [],
+            'unresolved_bindings': sorted(unresolved),
+            'status': 'in_progress',
         },
-        "graph_projection": {
-            "contract": GRAPH_CONTRACT_PATH.as_posix(),
-            "graph_kind": "execution",
-            "manifest_is_graph_instance": True,
-            "stable_node_ids_required_when_emitted": True,
-            "typed_edges_required": True,
-            "provenance_required": True,
-            "source_of_truth_remains_canonical_yaml": True,
+        'graph_projection': {
+            'contract': GRAPH_CONTRACT_PATH.as_posix(),
+            'graph_kind': 'execution',
+            'manifest_is_graph_instance': True,
+            'stable_node_ids_required_when_emitted': True,
+            'typed_edges_required': True,
+            'provenance_required': True,
+            'source_of_truth_remains_canonical_yaml': True,
         },
     }
+    if previous_id is not None:
+        manifest['manifest']['previous_manifest_id'] = previous_id
+        manifest['manifest']['previous_attempt'] = previous_attempt
+        manifest['execution']['previous_failure'] = previous_failure
 
-    if previous_manifest_id is not None:
-        manifest["manifest"]["previous_manifest_id"] = previous_manifest_id
-        manifest["manifest"]["previous_attempt"] = previous_attempt
-        manifest["execution"]["previous_failure"] = previous_failure
-
-    for evidence in request.get("evidence", []) or []:
+    for evidence in request.get('evidence', []) or []:
         if not isinstance(evidence, dict):
-            raise ManifestError(["evidence entries must be mappings."])
+            raise ManifestError(['evidence entries must be mappings.'])
         manifest = apply_gate_evidence(
             root,
             manifest,
-            gate=str(evidence.get("gate", "")),
-            status=str(evidence.get("status", "")),
-            evidence_id=str(evidence.get("id", "")),
-            reason=str(evidence.get("reason", "")),
-            source_path=evidence.get("source_path"),
-            remaining_validation=evidence.get("remaining_validation"),
-            failure_reason=evidence.get("failure_reason"),
+            gate=str(evidence.get('gate', '')),
+            status=str(evidence.get('status', '')),
+            evidence_id=str(evidence.get('id', '')),
+            reason=str(evidence.get('reason', '')),
+            source_path=evidence.get('source_path'),
+            remaining_validation=evidence.get('remaining_validation'),
+            failure_reason=evidence.get('failure_reason'),
         )
 
-    validation_errors = validate_manifest(root, manifest)
-    if validation_errors:
-        raise ManifestError(validation_errors)
-
+    errors = validate_manifest(root, manifest)
+    if errors:
+        raise ManifestError(errors)
     return manifest
 
 
@@ -545,267 +476,258 @@ def validate_manifest(root: Path, manifest: dict[str, Any]) -> list[str]:
     graph_contract = load_yaml(root / GRAPH_CONTRACT_PATH)
     quality_contract = load_yaml(root / QUALITY_GATES_PATH)
 
-    if manifest.get("schema_version") != MANIFEST_SCHEMA_VERSION:
-        errors.append(
-            f"Context Manifest schema_version must be {MANIFEST_SCHEMA_VERSION}."
-        )
+    if manifest.get('schema_version') != MANIFEST_SCHEMA_VERSION:
+        errors.append(f'Context Manifest schema_version must be {MANIFEST_SCHEMA_VERSION}.')
 
-    meta = manifest.get("manifest", {})
+    meta = manifest.get('manifest', {})
     if not isinstance(meta, dict):
-        return ["manifest must be a mapping."]
-    manifest_id = str(meta.get("id", "")).strip()
+        return ['manifest must be a mapping.']
+    manifest_id = str(meta.get('id', '')).strip()
     if not manifest_id:
-        errors.append("manifest.id is required.")
-    if meta.get("graph_kind") != "execution":
-        errors.append("manifest.graph_kind must be execution.")
-    attempt = meta.get("attempt")
+        errors.append('manifest.id is required.')
+    if meta.get('graph_kind') != 'execution':
+        errors.append('manifest.graph_kind must be execution.')
+    attempt = meta.get('attempt')
     if not isinstance(attempt, int) or attempt < 1:
-        errors.append("manifest.attempt must be an integer >= 1.")
-    elif attempt > 1:
-        if not meta.get("previous_manifest_id"):
-            errors.append("Retry manifest requires previous_manifest_id.")
-        if meta.get("previous_attempt") != attempt - 1:
-            errors.append("Retry manifest previous_attempt must equal attempt - 1.")
+        errors.append('manifest.attempt must be an integer >= 1.')
+    elif attempt == 1:
+        if meta.get('previous_manifest_id') or meta.get('previous_attempt') is not None:
+            errors.append('Attempt 1 must not reference a previous manifest.')
+    else:
+        if not meta.get('previous_manifest_id'):
+            errors.append('Retry manifest requires previous_manifest_id.')
+        if meta.get('previous_attempt') != attempt - 1:
+            errors.append('Retry manifest previous_attempt must equal attempt - 1.')
 
-    task = manifest.get("task", {})
+    task = manifest.get('task', {})
     if not isinstance(task, dict):
-        return errors + ["task must be a mapping."]
-    task_id = str(task.get("id", "")).strip()
-    route_id = str(task.get("route", "")).strip()
+        return errors + ['task must be a mapping.']
+    task_id = str(task.get('id', '')).strip()
+    route_id = str(task.get('route', '')).strip()
     if not task_id:
-        errors.append("task.id is required.")
+        errors.append('task.id is required.')
 
-    route = _routes(index).get(route_id)
+    route = _route_map(index).get(route_id)
     if route is None:
-        errors.append(f"Manifest references unknown route: {route_id}")
-        return errors
-    errors.extend(_validate_fingerprint(index, route, task.get("fingerprint", {})))
+        return errors + [f'Manifest references unknown route: {route_id}']
+    errors.extend(_fingerprint_errors(index, route, task.get('fingerprint', {})))
 
-    context_pack_path = str(route.get("context_pack", ""))
-    contract_path = str(route.get("task_contract", ""))
+    pack_path = str(route.get('context_pack', ''))
+    contract_path = str(route.get('task_contract', ''))
+    pack = load_yaml(root / Path(pack_path))
     contract = load_yaml(root / Path(contract_path))
-    context_pack = load_yaml(root / Path(context_pack_path))
 
-    policy_loaded = manifest.get("policy", {}).get("loaded", [])
+    policy_loaded = manifest.get('policy', {}).get('loaded', []) or []
     if not any(
-        isinstance(item, dict)
-        and item.get("source_path") == USER_POLICY_PATH.as_posix()
+        isinstance(item, dict) and item.get('source_path') == USER_POLICY_PATH.as_posix()
         for item in policy_loaded
     ):
-        errors.append("Context Manifest must record .ai/user-policy.yaml.")
+        errors.append('Context Manifest must record .ai/user-policy.yaml.')
 
-    context = manifest.get("context", {})
-    if context.get("context_pack", {}).get("source_path") != context_pack_path:
-        errors.append("Context Pack binding does not match canonical route.")
+    context = manifest.get('context', {})
+    if not isinstance(context, dict):
+        return errors + ['context must be a mapping.']
+    if context.get('context_pack', {}).get('source_path') != pack_path:
+        errors.append('Context Pack binding does not match canonical route.')
+    expected_skill = f".agents/skills/{route.get('primary_skill')}/SKILL.md"
+    if context.get('primary_skill', {}).get('source_path') != expected_skill:
+        errors.append('Primary Skill binding does not match canonical route.')
 
-    primary_skill = str(route.get("primary_skill", ""))
-    expected_skill_path = f".agents/skills/{primary_skill}/SKILL.md"
-    if context.get("primary_skill", {}).get("source_path") != expected_skill_path:
-        errors.append("Primary Skill binding does not match canonical route.")
-
-    harness = manifest.get("harness", {})
-    if harness.get("task_contract", {}).get("source_path") != contract_path:
-        errors.append("Task Contract binding does not match canonical route.")
-
-    if harness.get("risk_level", {}).get("id") != contract.get("risk_level"):
-        errors.append("Risk level does not match selected Task Contract.")
+    harness = manifest.get('harness', {})
+    if not isinstance(harness, dict):
+        return errors + ['harness must be a mapping.']
+    if harness.get('task_contract', {}).get('source_path') != contract_path:
+        errors.append('Task Contract binding does not match canonical route.')
+    if harness.get('risk_level', {}).get('id') != contract.get('risk_level'):
+        errors.append('Risk level does not match selected Task Contract.')
 
     expected_mutations = {
-        ("allow", str(rule))
-        for rule in contract.get("allowed_mutations", []) or []
+        ('allow', str(rule)) for rule in contract.get('allowed_mutations', []) or []
     } | {
-        ("prohibit", str(rule))
-        for rule in contract.get("prohibited_mutations", []) or []
+        ('prohibit', str(rule)) for rule in contract.get('prohibited_mutations', []) or []
     }
     actual_mutations = {
-        (str(item.get("effect")), str(item.get("id")))
-        for item in harness.get("mutation_rules", [])
+        (str(item.get('effect')), str(item.get('id')))
+        for item in harness.get('mutation_rules', []) or []
         if isinstance(item, dict)
     }
     missing_mutations = expected_mutations - actual_mutations
     if missing_mutations:
-        errors.append(
-            f"Manifest is missing Task Contract mutation rules: {sorted(missing_mutations)}"
-        )
+        errors.append(f'Manifest is missing Task Contract mutation rules: {sorted(missing_mutations)}')
     for effect, _ in actual_mutations:
         if effect not in MUTATION_EFFECTS:
-            errors.append(f"Unsupported mutation effect: {effect}")
+            errors.append(f'Unsupported mutation effect: {effect}')
 
-    gate_statuses = set(quality_contract.get("result_statuses", []) or [])
-    known_gates = set((quality_contract.get("gates", {}) or {}).keys())
+    allowed_gate_statuses = set(quality_contract.get('result_statuses', []) or [])
+    known_gates = set((quality_contract.get('gates', {}) or {}).keys())
     actual_gates: dict[str, dict[str, Any]] = {}
-    for gate in harness.get("quality_gates", []) or []:
-        if not isinstance(gate, dict) or not gate.get("id"):
-            errors.append("quality_gates entries require id.")
+    for gate in harness.get('quality_gates', []) or []:
+        if not isinstance(gate, dict) or not gate.get('id'):
+            errors.append('quality_gates entries require id.')
             continue
-        gate_id = str(gate["id"])
+        gate_id = str(gate['id'])
         actual_gates[gate_id] = gate
         if gate_id not in known_gates:
-            errors.append(f"Unknown quality gate: {gate_id}")
-        requirement = gate.get("requirement")
-        if requirement not in GATE_REQUIREMENTS:
-            errors.append(f"Unsupported gate requirement: {gate_id}={requirement}")
-        status = gate.get("status")
-        if status is not None and status not in gate_statuses:
-            errors.append(f"Unsupported gate status: {gate_id}={status}")
+            errors.append(f'Unknown quality gate: {gate_id}')
+        if gate.get('requirement') not in GATE_REQUIREMENTS:
+            errors.append(f"Unsupported gate requirement: {gate_id}={gate.get('requirement')}")
+        if gate.get('status') is not None and gate.get('status') not in allowed_gate_statuses:
+            errors.append(f"Unsupported gate status: {gate_id}={gate.get('status')}")
 
-    for gate_id in contract.get("required_quality_gates", []) or []:
-        gate = actual_gates.get(str(gate_id))
-        if gate is None or gate.get("requirement") != "required":
-            errors.append(f"Missing required quality gate: {gate_id}")
-    for gate_id in contract.get("conditional_quality_gates", []) or []:
-        gate = actual_gates.get(str(gate_id))
-        if gate is None or gate.get("requirement") != "conditional":
-            errors.append(f"Missing conditional quality gate: {gate_id}")
+    for key, requirement in (
+        ('required_quality_gates', 'required'),
+        ('conditional_quality_gates', 'conditional'),
+    ):
+        for raw in contract.get(key, []) or []:
+            gate_id = str(raw)
+            gate = actual_gates.get(gate_id)
+            if gate is None or gate.get('requirement') != requirement:
+                errors.append(f'Missing {requirement} quality gate: {gate_id}')
 
-    bindings = context.get("bindings", []) or []
+    bindings = context.get('bindings', []) or []
     binding_names = {
-        str(item.get("name"))
+        str(item.get('name'))
         for item in bindings
-        if isinstance(item, dict) and item.get("name")
+        if isinstance(item, dict) and item.get('name')
     }
     unresolved = {
         str(value)
-        for value in manifest.get("execution", {}).get("unresolved_bindings", []) or []
+        for value in manifest.get('execution', {}).get('unresolved_bindings', []) or []
+    }
+    required_paths = {
+        str(item.get('source_path'))
+        for item in context.get('required_context', []) or []
+        if isinstance(item, dict) and item.get('source_path')
+    }
+    conditional_paths = {
+        str(item.get('source_path'))
+        for item in context.get('conditional_context', []) or []
+        if isinstance(item, dict) and item.get('source_path')
     }
 
-    required_context_paths = {
-        str(item.get("source_path"))
-        for item in context.get("required_context", []) or []
-        if isinstance(item, dict) and item.get("source_path")
-    }
-    conditional_context_paths = {
-        str(item.get("source_path"))
-        for item in context.get("conditional_context", []) or []
-        if isinstance(item, dict) and item.get("source_path")
-    }
-
-    for value in context_pack.get("required", []) or []:
-        value = str(value)
+    for raw in pack.get('required', []) or []:
+        value = str(raw)
         if _is_path_reference(value):
-            if value not in required_context_paths:
-                errors.append(f"Missing required Context Pack source: {value}")
+            if value not in required_paths:
+                errors.append(f'Missing required Context Pack source: {value}')
         elif value not in binding_names and value not in unresolved:
-            errors.append(
-                f"Required Context Pack binding is neither resolved nor unresolved: {value}"
-            )
+            errors.append(f'Required Context Pack binding is neither resolved nor unresolved: {value}')
 
-    conditional_map = context_pack.get("conditional", {}) or {}
-    for condition in context.get("conditions_applied", []) or []:
+    conditional_map = pack.get('conditional', {}) or {}
+    for condition in context.get('conditions_applied', []) or []:
         if condition not in conditional_map:
-            errors.append(f"Unknown applied Context Pack condition: {condition}")
+            errors.append(f'Unknown applied Context Pack condition: {condition}')
             continue
-        for value in conditional_map.get(condition, []) or []:
-            value = str(value)
+        for raw in conditional_map.get(condition, []) or []:
+            value = str(raw)
             if _is_path_reference(value):
-                if value not in conditional_context_paths:
+                if value not in conditional_paths:
                     errors.append(
-                        f"Missing conditional Context Pack source for {condition}: {value}"
+                        f'Missing conditional Context Pack source for {condition}: {value}'
                     )
             elif value not in binding_names and value not in unresolved:
-                errors.append(
-                    f"Conditional binding is neither resolved nor unresolved: {value}"
-                )
+                errors.append(f'Conditional binding is neither resolved nor unresolved: {value}')
 
-    for required_input in contract.get("required_inputs", []) or []:
-        required_input = str(required_input)
-        if required_input not in binding_names and required_input not in unresolved:
-            errors.append(
-                f"Task Contract input is neither resolved nor unresolved: {required_input}"
-            )
+    for raw in contract.get('required_inputs', []) or []:
+        value = str(raw)
+        if value not in binding_names and value not in unresolved:
+            errors.append(f'Task Contract input is neither resolved nor unresolved: {value}')
 
-    loaded_paths = _loaded_paths(manifest)
-    for item in context.get("excluded_context", []) or []:
-        if not isinstance(item, dict):
-            continue
-        source_path = str(item.get("source_path", ""))
-        if source_path and source_path in loaded_paths:
-            errors.append(f"Excluded Context was loaded: {source_path}")
+    selected_paths = _selected_paths(manifest)
+    for item in context.get('excluded_context', []) or []:
+        if isinstance(item, dict):
+            source_path = str(item.get('source_path', ''))
+            if source_path and source_path in selected_paths:
+                errors.append(f'Excluded Context was loaded: {source_path}')
 
-    provenance_reasons = set(
-        graph_contract.get("provenance", {}).get("reasons", []) or []
-    )
+    allowed_reasons = set(graph_contract.get('provenance', {}).get('reasons', []) or [])
     provenance_lists = [
         policy_loaded,
-        manifest.get("project_facts", {}).get("loaded", []),
-        context.get("required_context", []),
-        context.get("conditional_context", []),
-        context.get("source_files", []),
-        context.get("excluded_context", []),
-        manifest.get("knowledge", {}).get("loaded", []),
-        manifest.get("tools", {}).get("activated", []),
-        manifest.get("execution", {}).get("evidence", []),
+        manifest.get('project_facts', {}).get('loaded', []),
+        context.get('bindings', []),
+        context.get('required_context', []),
+        context.get('conditional_context', []),
+        context.get('source_files', []),
+        context.get('excluded_context', []),
+        manifest.get('knowledge', {}).get('loaded', []),
+        manifest.get('tools', {}).get('activated', []),
+        manifest.get('execution', {}).get('evidence', []),
     ]
     for items in provenance_lists:
+        local_ids: list[str] = []
         for item in items or []:
             if not isinstance(item, dict):
                 continue
-            reason = item.get("reason")
+            reason = item.get('reason')
             if not reason:
-                errors.append(
-                    f"Missing provenance reason on item: {item.get('node_id') or item}"
-                )
-            elif reason not in provenance_reasons:
-                errors.append(f"Unsupported provenance reason: {reason}")
+                errors.append(f"Missing provenance reason on item: {item.get('node_id') or item}")
+            elif reason not in allowed_reasons:
+                errors.append(f'Unsupported provenance reason: {reason}')
+            if item.get('node_id'):
+                local_ids.append(str(item['node_id']))
+        if len(local_ids) != len(set(local_ids)):
+            errors.append('Duplicate stable node_id within one manifest section.')
 
-    for items in provenance_lists:
-        local = [
-            str(item["node_id"])
-            for item in items or []
-            if isinstance(item, dict) and item.get("node_id")
-        ]
-        if len(local) != len(set(local)):
-            errors.append("Duplicate stable node_id within one manifest section.")
-
-    execution = manifest.get("execution", {})
-    evidence = execution.get("evidence", []) or []
+    execution = manifest.get('execution', {})
+    evidence = execution.get('evidence', []) or []
     evidence_ids: set[str] = set()
+    evidence_by_gate: dict[str, list[dict[str, Any]]] = {}
     for item in evidence:
         if not isinstance(item, dict):
-            errors.append("evidence entries must be mappings.")
+            errors.append('evidence entries must be mappings.')
             continue
-        evidence_id = str(item.get("id", "")).strip()
-        status = item.get("status")
-        gate_id = str(item.get("gate", "")).strip()
+        evidence_id = str(item.get('id', '')).strip()
+        gate_id = str(item.get('gate', '')).strip()
+        status = item.get('status')
         if not evidence_id:
-            errors.append("Evidence id is required.")
+            errors.append('Evidence id is required.')
         elif evidence_id in evidence_ids:
-            errors.append(f"Duplicate evidence id: {evidence_id}")
+            errors.append(f'Duplicate evidence id: {evidence_id}')
         evidence_ids.add(evidence_id)
-        if status not in gate_statuses:
-            errors.append(f"Unsupported evidence status: {evidence_id}={status}")
-        if gate_id and gate_id not in actual_gates:
-            errors.append(f"Evidence references unselected gate: {evidence_id}->{gate_id}")
-        if status == "unavailable" and not item.get("remaining_validation"):
-            errors.append(
-                f"Unavailable evidence requires remaining_validation: {evidence_id}"
-            )
+        if status not in allowed_gate_statuses:
+            errors.append(f'Unsupported evidence status: {evidence_id}={status}')
+        if not gate_id or gate_id not in actual_gates:
+            errors.append(f'Evidence references unselected gate: {evidence_id}->{gate_id}')
+        else:
+            evidence_by_gate.setdefault(gate_id, []).append(item)
+        if status == 'unavailable' and not item.get('remaining_validation'):
+            errors.append(f'Unavailable evidence requires remaining_validation: {evidence_id}')
+
+    for gate_id, gate in actual_gates.items():
+        status = gate.get('status')
+        if status is None:
+            continue
+        matching = evidence_by_gate.get(gate_id, [])
+        if not any(item.get('status') == status for item in matching):
+            errors.append(f'Gate status lacks matching evidence: {gate_id}={status}')
 
     expected_status = derive_execution_status(manifest)
-    actual_status = execution.get("status")
+    actual_status = execution.get('status')
     if actual_status not in EXECUTION_STATUSES:
-        errors.append(f"Unsupported execution.status: {actual_status}")
+        errors.append(f'Unsupported execution.status: {actual_status}')
     elif actual_status != expected_status:
         errors.append(
-            f"execution.status is inconsistent with required gates: "
-            f"{actual_status} != {expected_status}"
+            f'execution.status is inconsistent with selected gates: {actual_status} != {expected_status}'
         )
+    if actual_status == 'failed' and not execution.get('failure_reason'):
+        errors.append('Failed execution requires failure_reason.')
+    if actual_status != 'failed' and execution.get('failure_reason'):
+        errors.append('Non-failed execution must not keep stale failure_reason.')
 
-    projection = manifest.get("graph_projection", {})
-    if projection.get("contract") != GRAPH_CONTRACT_PATH.as_posix():
-        errors.append("graph_projection.contract must reference .ai/graph-contract.yaml.")
-    if projection.get("graph_kind") != "execution":
-        errors.append("graph_projection.graph_kind must be execution.")
+    projection = manifest.get('graph_projection', {})
+    if projection.get('contract') != GRAPH_CONTRACT_PATH.as_posix():
+        errors.append('graph_projection.contract must reference .ai/graph-contract.yaml.')
+    if projection.get('graph_kind') != 'execution':
+        errors.append('graph_projection.graph_kind must be execution.')
     for key in (
-        "manifest_is_graph_instance",
-        "stable_node_ids_required_when_emitted",
-        "typed_edges_required",
-        "provenance_required",
-        "source_of_truth_remains_canonical_yaml",
+        'manifest_is_graph_instance',
+        'stable_node_ids_required_when_emitted',
+        'typed_edges_required',
+        'provenance_required',
+        'source_of_truth_remains_canonical_yaml',
     ):
         if projection.get(key) is not True:
-            errors.append(f"graph_projection.{key} must be true.")
-
+            errors.append(f'graph_projection.{key} must be true.')
     return errors
 
 
@@ -822,303 +744,186 @@ def apply_gate_evidence(
     failure_reason: str | None = None,
 ) -> dict[str, Any]:
     result = copy.deepcopy(manifest)
-    quality_contract = load_yaml(root / QUALITY_GATES_PATH)
-    allowed_statuses = set(quality_contract.get("result_statuses", []) or [])
-
+    quality = load_yaml(root / QUALITY_GATES_PATH)
+    allowed_statuses = set(quality.get('result_statuses', []) or [])
     errors: list[str] = []
     if status not in allowed_statuses:
-        errors.append(f"Unsupported gate status: {status}")
+        errors.append(f'Unsupported gate status: {status}')
     if not gate:
-        errors.append("gate is required.")
+        errors.append('gate is required.')
     if not evidence_id:
-        errors.append("evidence_id is required.")
+        errors.append('evidence_id is required.')
     if not reason:
-        errors.append("evidence reason is required.")
-    if status == "unavailable" and not remaining_validation:
-        errors.append("unavailable evidence requires remaining_validation.")
+        errors.append('evidence reason is required.')
+    if status == 'unavailable' and not remaining_validation:
+        errors.append('unavailable evidence requires remaining_validation.')
     if errors:
         raise ManifestError(errors)
 
-    gates = result.get("harness", {}).get("quality_gates", [])
+    gates = result.get('harness', {}).get('quality_gates', []) or []
     selected_gate = next(
         (
-            item
-            for item in gates
-            if isinstance(item, dict) and str(item.get("id")) == gate
+            item for item in gates
+            if isinstance(item, dict) and str(item.get('id')) == gate
         ),
         None,
     )
     if selected_gate is None:
-        raise ManifestError([f"Gate is not selected by this manifest: {gate}"])
-    selected_gate["status"] = status
+        raise ManifestError([f'Gate is not selected by this manifest: {gate}'])
+    selected_gate['status'] = status
 
-    evidence_item: dict[str, Any] = {
-        "node_id": stable_node_id(
-            "evidence", f"{result['manifest']['id']}:{evidence_id}"
-        ),
-        "id": evidence_id,
-        "gate": gate,
-        "status": status,
-        "reason": reason,
+    item: dict[str, Any] = {
+        'node_id': stable_node_id('evidence', f"{result['manifest']['id']}:{evidence_id}"),
+        'id': evidence_id,
+        'gate': gate,
+        'status': status,
+        'reason': reason,
     }
     if source_path:
-        evidence_item["source_path"] = str(source_path)
+        item['source_path'] = str(source_path)
     if remaining_validation:
-        evidence_item["remaining_validation"] = str(remaining_validation)
+        item['remaining_validation'] = str(remaining_validation)
 
-    evidence_list = result.setdefault("execution", {}).setdefault("evidence", [])
-    evidence_list[:] = [
-        item
-        for item in evidence_list
-        if not (isinstance(item, dict) and item.get("id") == evidence_id)
+    evidence = result.setdefault('execution', {}).setdefault('evidence', [])
+    evidence[:] = [
+        existing for existing in evidence
+        if not (isinstance(existing, dict) and existing.get('id') == evidence_id)
     ]
-    evidence_list.append(evidence_item)
+    evidence.append(item)
 
-    if failure_reason:
-        result["execution"]["failure_reason"] = str(failure_reason)
-
-    result["execution"]["status"] = derive_execution_status(result)
+    result['execution']['status'] = derive_execution_status(result)
+    if result['execution']['status'] == 'failed':
+        result['execution']['failure_reason'] = str(
+            failure_reason or result['execution'].get('failure_reason') or f'{gate}_failed'
+        )
+    else:
+        result['execution'].pop('failure_reason', None)
     return result
 
 
 def project_execution_graph(
-    root: Path,
-    manifest: dict[str, Any],
-    manifest_source_path: str,
+    root: Path, manifest: dict[str, Any], manifest_source_path: str
 ) -> dict[str, Any]:
-    validation_errors = validate_manifest(root, manifest)
-    if validation_errors:
-        raise ManifestError(validation_errors)
+    errors = validate_manifest(root, manifest)
+    if errors:
+        raise ManifestError(errors)
 
     nodes: dict[str, dict[str, Any]] = {}
     edges: list[dict[str, Any]] = []
 
     def add_node(
-        node_id: str,
-        node_type: str,
-        label: str,
-        source_path: str,
-        reason: str,
+        node_id: str, node_type: str, label: str, source_path: str, reason: str
     ) -> None:
-        if node_id in nodes:
-            return
-        nodes[node_id] = {
-            "id": node_id,
-            "type": node_type,
-            "label": label,
-            "provenance": {
-                "source_path": source_path,
-                "reason": reason,
+        nodes.setdefault(
+            node_id,
+            {
+                'id': node_id,
+                'type': node_type,
+                'label': label,
+                'provenance': {'source_path': source_path, 'reason': reason},
             },
-        }
+        )
 
     def add_edge(source: str, target: str, edge_type: str, reason: str) -> None:
-        edge = {
-            "source": source,
-            "target": target,
-            "type": edge_type,
-            "reason": reason,
-        }
-        if edge not in edges:
-            edges.append(edge)
+        key = (source, target, edge_type)
+        if any((edge['source'], edge['target'], edge['type']) == key for edge in edges):
+            return
+        edges.append({'source': source, 'target': target, 'type': edge_type, 'reason': reason})
 
-    meta = manifest["manifest"]
-    task = manifest["task"]
-    context = manifest["context"]
-    harness = manifest["harness"]
-    execution = manifest["execution"]
+    meta = manifest['manifest']
+    task = manifest['task']
+    context = manifest['context']
+    harness = manifest['harness']
+    execution = manifest['execution']
 
-    attempt_id = stable_node_id("attempt", meta["id"])
-    task_id = stable_node_id("task", task["id"])
-    fingerprint_id = stable_node_id("task_fingerprint", task["id"])
-    route_id = stable_node_id("route", task["route"])
+    attempt_id = stable_node_id('attempt', str(meta['id']))
+    task_id = stable_node_id('task', str(task['id']))
+    fingerprint_id = stable_node_id('task_fingerprint', str(task['id']))
+    route_id = stable_node_id('route', str(task['route']))
 
-    add_node(
-        attempt_id,
-        "attempt",
-        f"Attempt {meta['attempt']}",
-        manifest_source_path,
-        "runtime_evidence",
-    )
-    add_node(task_id, "task", task["id"], manifest_source_path, "runtime_evidence")
-    add_node(
-        fingerprint_id,
-        "task_fingerprint",
-        "Task Fingerprint",
-        manifest_source_path,
-        "runtime_evidence",
-    )
-    add_node(route_id, "route", task["route"], INDEX_PATH.as_posix(), "canonical_binding")
+    add_node(attempt_id, 'attempt', f"Attempt {meta['attempt']}", manifest_source_path, 'runtime_evidence')
+    add_node(task_id, 'task', str(task['id']), manifest_source_path, 'runtime_evidence')
+    add_node(fingerprint_id, 'task_fingerprint', 'Task Fingerprint', manifest_source_path, 'runtime_evidence')
+    add_node(route_id, 'route', str(task['route']), INDEX_PATH.as_posix(), 'canonical_binding')
+    add_edge(attempt_id, task_id, 'depends_on', 'runtime_evidence')
+    add_edge(task_id, fingerprint_id, 'classifies_as', 'runtime_evidence')
+    add_edge(fingerprint_id, route_id, 'selects', 'canonical_binding')
 
-    add_edge(attempt_id, task_id, "depends_on", "runtime_evidence")
-    add_edge(task_id, fingerprint_id, "classifies_as", "runtime_evidence")
-    add_edge(fingerprint_id, route_id, "selects", "canonical_binding")
+    pack = context['context_pack']
+    add_node(pack['node_id'], 'context_pack', str(task['route']), pack['source_path'], 'canonical_binding')
+    add_edge(route_id, pack['node_id'], 'selects', 'canonical_binding')
 
-    pack = context["context_pack"]
-    pack_id = pack["node_id"]
-    add_node(pack_id, "context_pack", task["route"], pack["source_path"], "canonical_binding")
-    add_edge(route_id, pack_id, "selects", "canonical_binding")
+    skill = context['primary_skill']
+    add_node(skill['node_id'], 'skill', skill['node_id'].split(':', 1)[-1], skill['source_path'], 'canonical_binding')
+    add_edge(route_id, skill['node_id'], 'uses_skill', 'canonical_binding')
 
-    skill = context["primary_skill"]
-    if skill.get("node_id") and skill.get("source_path"):
-        add_node(
-            skill["node_id"],
-            "skill",
-            skill["node_id"].split(":", 1)[-1],
-            skill["source_path"],
-            "canonical_binding",
-        )
-        add_edge(route_id, skill["node_id"], "uses_skill", "canonical_binding")
+    contract = harness['task_contract']
+    add_node(contract['node_id'], 'task_contract', contract['node_id'].split(':', 1)[-1], contract['source_path'], 'harness_contract')
+    add_edge(route_id, contract['node_id'], 'selects', 'harness_contract')
 
-    contract = harness["task_contract"]
-    contract_id = contract["node_id"]
-    add_node(
-        contract_id,
-        "task_contract",
-        contract_id.split(":", 1)[-1],
-        contract["source_path"],
-        "harness_contract",
-    )
-    add_edge(route_id, contract_id, "selects", "harness_contract")
+    for item in manifest.get('policy', {}).get('loaded', []) or []:
+        add_node(item['node_id'], 'policy', item['node_id'].split(':', 1)[-1], item['source_path'], item['reason'])
+        add_edge(task_id, item['node_id'], 'applies_policy', item['reason'])
 
-    for item in manifest.get("policy", {}).get("loaded", []) or []:
-        node_id = item["node_id"]
-        add_node(
-            node_id,
-            "policy",
-            node_id.split(":", 1)[-1],
-            item["source_path"],
-            item["reason"],
-        )
-        add_edge(task_id, node_id, "applies_policy", item["reason"])
+    for item in manifest.get('project_facts', {}).get('loaded', []) or []:
+        add_node(item['node_id'], 'project_fact', str(item['key']), item['source_path'], item['reason'])
+        add_edge(task_id, item['node_id'], 'requires', item['reason'])
 
     for key, edge_type in (
-        ("required_context", "requires"),
-        ("conditional_context", "conditionally_requires"),
-        ("source_files", "reads_source"),
-        ("excluded_context", "excludes"),
+        ('required_context', 'requires'),
+        ('conditional_context', 'conditionally_requires'),
+        ('source_files', 'reads_source'),
+        ('excluded_context', 'excludes'),
     ):
         for item in context.get(key, []) or []:
-            node_id = item["node_id"]
-            add_node(
-                node_id,
-                "source",
-                item["source_path"],
-                item["source_path"],
-                item["reason"],
-            )
-            add_edge(pack_id, node_id, edge_type, item["reason"])
+            add_node(item['node_id'], 'source', item['source_path'], item['source_path'], item['reason'])
+            add_edge(pack['node_id'], item['node_id'], edge_type, item['reason'])
 
-    for item in manifest.get("knowledge", {}).get("loaded", []) or []:
-        node_id = item["node_id"]
-        add_node(
-            node_id,
-            "knowledge",
-            item["source_path"],
-            item["source_path"],
-            item["reason"],
-        )
-        add_edge(pack_id, node_id, "uses_knowledge", item["reason"])
+    for item in manifest.get('knowledge', {}).get('loaded', []) or []:
+        add_node(item['node_id'], 'knowledge', item['source_path'], item['source_path'], item['reason'])
+        add_edge(pack['node_id'], item['node_id'], 'uses_knowledge', item['reason'])
 
-    risk = harness.get("risk_level", {})
-    if risk.get("node_id"):
-        add_node(
-            risk["node_id"],
-            "risk_level",
-            str(risk.get("id")),
-            RISK_LEVELS_PATH.as_posix(),
-            "harness_contract",
-        )
-        add_edge(contract_id, risk["node_id"], "depends_on", "harness_contract")
+    risk = harness['risk_level']
+    add_node(risk['node_id'], 'risk_level', str(risk['id']), RISK_LEVELS_PATH.as_posix(), 'harness_contract')
+    add_edge(contract['node_id'], risk['node_id'], 'depends_on', 'harness_contract')
 
-    for item in harness.get("mutation_rules", []) or []:
-        node_id = item["node_id"]
-        add_node(
-            node_id,
-            "mutation_rule",
-            str(item["id"]),
-            contract["source_path"],
-            "harness_contract",
-        )
-        edge_type = (
-            "allows_mutation" if item["effect"] == "allow" else "prohibits_mutation"
-        )
-        add_edge(contract_id, node_id, edge_type, "harness_contract")
+    for item in harness.get('mutation_rules', []) or []:
+        add_node(item['node_id'], 'mutation_rule', str(item['id']), contract['source_path'], 'harness_contract')
+        edge_type = 'allows_mutation' if item['effect'] == 'allow' else 'prohibits_mutation'
+        add_edge(contract['node_id'], item['node_id'], edge_type, 'harness_contract')
 
-    for gate in harness.get("quality_gates", []) or []:
-        node_id = gate["node_id"]
-        add_node(
-            node_id,
-            "quality_gate",
-            str(gate["id"]),
-            QUALITY_GATES_PATH.as_posix(),
-            "quality_gate",
-        )
-        edge_type = (
-            "requires_gate"
-            if gate.get("requirement") == "required"
-            else "conditionally_requires"
-        )
-        add_edge(contract_id, node_id, edge_type, "quality_gate")
+    for gate in harness.get('quality_gates', []) or []:
+        add_node(gate['node_id'], 'quality_gate', str(gate['id']), QUALITY_GATES_PATH.as_posix(), 'quality_gate')
+        edge_type = 'requires_gate' if gate['requirement'] == 'required' else 'conditionally_requires'
+        add_edge(contract['node_id'], gate['node_id'], edge_type, 'quality_gate')
 
-    for item in manifest.get("tools", {}).get("activated", []) or []:
-        node_id = item["node_id"]
-        add_node(
-            node_id,
-            "tool",
-            str(item["id"]),
-            MCP_ACTIVATION_PATH.as_posix(),
-            item["reason"],
-        )
-        add_edge(attempt_id, node_id, "uses_tool", item["reason"])
+    for item in manifest.get('tools', {}).get('activated', []) or []:
+        add_node(item['node_id'], 'tool', str(item['id']), MCP_ACTIVATION_PATH.as_posix(), item['reason'])
+        add_edge(attempt_id, item['node_id'], 'uses_tool', item['reason'])
 
-    for item in execution.get("evidence", []) or []:
-        node_id = item["node_id"]
-        add_node(
-            node_id,
-            "evidence",
-            str(item["id"]),
-            item.get("source_path") or manifest_source_path,
-            item["reason"],
-        )
-        add_edge(attempt_id, node_id, "produces_evidence", item["reason"])
-        gate_id = item.get("gate")
-        if gate_id:
-            gate_node = stable_node_id("quality_gate", str(gate_id))
-            add_edge(node_id, gate_node, "validates", "quality_gate")
+    for item in execution.get('evidence', []) or []:
+        source_path = item.get('source_path') or manifest_source_path
+        add_node(item['node_id'], 'evidence', str(item['id']), source_path, item['reason'])
+        add_edge(attempt_id, item['node_id'], 'produces_evidence', item['reason'])
+        add_edge(item['node_id'], stable_node_id('quality_gate', str(item['gate'])), 'validates', 'quality_gate')
 
-    previous_id = meta.get("previous_manifest_id")
+    previous_id = meta.get('previous_manifest_id')
     if previous_id:
-        previous_attempt_node = stable_node_id("attempt", str(previous_id))
-        add_node(
-            previous_attempt_node,
-            "attempt",
-            f"Previous Attempt {meta.get('previous_attempt')}",
-            manifest_source_path,
-            "runtime_evidence",
-        )
-        add_edge(previous_attempt_node, attempt_id, "retries_as", "runtime_evidence")
+        previous_node = stable_node_id('attempt', str(previous_id))
+        add_node(previous_node, 'attempt', f"Previous Attempt {meta.get('previous_attempt')}", manifest_source_path, 'runtime_evidence')
+        add_edge(previous_node, attempt_id, 'retries_as', 'runtime_evidence')
 
     return {
-        "schema_version": GRAPH_SCHEMA_VERSION,
-        "graph_kind": "execution",
-        "manifest_id": meta["id"],
-        "root_node": attempt_id,
-        "metadata": {
-            "task_id": task["id"],
-            "route": task["route"],
-            "attempt": meta["attempt"],
-            "status": execution.get("status"),
+        'schema_version': GRAPH_SCHEMA_VERSION,
+        'graph_kind': 'execution',
+        'manifest_id': meta['id'],
+        'root_node': attempt_id,
+        'metadata': {
+            'task_id': task['id'],
+            'route': task['route'],
+            'attempt': meta['attempt'],
+            'status': execution.get('status'),
         },
-        "nodes": list(nodes.values()),
-        "edges": edges,
+        'nodes': list(nodes.values()),
+        'edges': edges,
     }
-
-
-def dump_yaml(data: dict[str, Any]) -> str:
-    return yaml.safe_dump(
-        data,
-        sort_keys=False,
-        allow_unicode=True,
-        default_flow_style=False,
-    )
