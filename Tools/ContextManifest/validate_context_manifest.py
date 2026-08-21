@@ -15,6 +15,7 @@ from context_manifest_runtime import (
     project_execution_graph,
     validate_manifest,
 )
+from execution_graph_validator import validate_execution_graph
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -106,6 +107,7 @@ def run_self_test() -> list[str]:
             manifest_a1,
             "Artifacts/ContextManifests/golden-csharp-local-fix-a1.yaml",
         )
+        errors.extend(validate_execution_graph(ROOT, graph_a1))
         edge_types = {edge["type"] for edge in graph_a1["edges"]}
         for edge_type in (
             "classifies_as",
@@ -139,6 +141,7 @@ def run_self_test() -> list[str]:
             manifest_a2,
             "Artifacts/ContextManifests/golden-csharp-local-fix-a2.yaml",
         )
+        errors.extend(validate_execution_graph(ROOT, graph_a2))
         expect(
             any(edge["type"] == "retries_as" for edge in graph_a2["edges"]),
             "Retry Execution Graph must contain retries_as edge.",
