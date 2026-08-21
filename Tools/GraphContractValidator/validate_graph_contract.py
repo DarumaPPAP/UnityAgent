@@ -54,6 +54,21 @@ REQUIRED_EDGE_TYPES = {
     "evaluated_by",
 }
 
+REQUIRED_PROVENANCE_REASONS = {
+    "canonical_binding",
+    "mutation_target",
+    "direct_dependency",
+    "required_context",
+    "conditional_context",
+    "excluded_context",
+    "user_policy",
+    "project_fact",
+    "harness_contract",
+    "quality_gate",
+    "runtime_evidence",
+    "regression_expectation",
+}
+
 REQUIRED_VIEWS = {"architecture", "task", "execution"}
 
 
@@ -102,8 +117,7 @@ def validate(root: Path) -> list[str]:
         errors.append("Source provenance must be required.")
 
     node_types = set(graph.get("node_types", []))
-    missing_node_types = REQUIRED_NODE_TYPES - node_types
-    for node_type in sorted(missing_node_types):
+    for node_type in sorted(REQUIRED_NODE_TYPES - node_types):
         errors.append(f"Missing required node type: {node_type}")
 
     edge_contract = graph.get("edge_contract", {})
@@ -111,23 +125,43 @@ def validate(root: Path) -> list[str]:
         errors.append("Typed edges must be required.")
 
     edge_types = set(graph.get("edge_types", []))
-    missing_edge_types = REQUIRED_EDGE_TYPES - edge_types
-    for edge_type in sorted(missing_edge_types):
+    for edge_type in sorted(REQUIRED_EDGE_TYPES - edge_types):
         errors.append(f"Missing required edge type: {edge_type}")
 
-    required_provenance = set(graph.get("provenance", {}).get("required_fields", []))
+    provenance = graph.get("provenance", {})
+    required_provenance = set(provenance.get("required_fields", []))
     for field in ("source_path", "reason"):
         if field not in required_provenance:
             errors.append(f"Missing provenance field: {field}")
+    reasons = set(provenance.get("reasons", []))
+    for reason in sorted(REQUIRED_PROVENANCE_REASONS - reasons):
+        errors.append(f"Missing provenance reason: {reason}")
 
     views = set(graph.get("visualization_contract", {}).get("required_views", []))
-    missing_views = REQUIRED_VIEWS - views
-    for view in sorted(missing_views):
+    for view in sorted(REQUIRED_VIEWS - views):
         errors.append(f"Missing required visualization view: {view}")
 
     execution_projection = graph.get("projection_rules", {}).get("execution_graph", {})
     if execution_projection.get("manifest_is_graph_instance") is not True:
         errors.append("Context Manifest must be defined as one Execution Graph instance.")
+    if execution_projection.get("runtime_builder") != "Tools/ContextManifest/build_context_manifest.py":
+        errors.append("Execution Graph must reference the Context Manifest runtime builder.")
+    if execution_projection.get("runtime_projector") != "Tools/ContextManifest/project_execution_graph.py":
+        errors.append("Execution Graph must reference the runtime graph projector.")
+    if execution_projection.get("generated_artifact_is_not_source_of_truth") is not True:
+        errors.append("Generated Execution Graph must remain non-canonical.")
+
+    runtime = manifest.get("runtime", {})
+    for key, expected in (
+        ("builder", "Tools/ContextManifest/build_context_manifest.py"),
+        ("evidence_recorder", "Tools/ContextManifest/record_manifest_evidence.py"),
+        ("validator", "Tools/ContextManifest/validate_context_manifest.py"),
+        ("graph_projector", "Tools/ContextManifest/project_execution_graph.py"),
+    ):
+        if runtime.get(key) != expected:
+            errors.append(f"Context Manifest runtime {key} must be {expected}.")
+    if runtime.get("generated_manifest_is_not_canonical_policy") is not True:
+        errors.append("Generated Context Manifest must remain non-canonical Policy.")
 
     manifest_projection = manifest.get("graph_projection", {})
     if manifest_projection.get("contract") != ".ai/graph-contract.yaml":
@@ -146,8 +180,17 @@ def validate(root: Path) -> list[str]:
     manifest_root = manifest.get("manifest", {})
     if manifest_root.get("graph_kind") != "execution":
         errors.append("Context Manifest root must declare graph_kind: execution.")
-    if manifest_root.get("attempt") != "required":
+    attempt_contract = manifest_root.get("attempt", {})
+    if not isinstance(attempt_contract, dict) or attempt_contract.get("required") is not True:
         errors.append("Context Manifest must require attempt for execution tracing.")
+    if attempt_contract.get("minimum") != 1:
+        errors.append("Context Manifest attempt minimum must be 1.")
+
+    retry_rules = manifest.get("retry_rules", {})
+    if retry_rules.get("retry_decision_owner") != "DarumaPPAP/Unity-Graph-Engineering":
+        errors.append("Retry decision ownership must remain in Unity-Graph-Engineering.")
+    if retry_rules.get("previous_failure_is_summary_not_context_copy") is not True:
+        errors.append("Retry must carry a failure summary instead of copying full previous Context.")
 
     return errors
 
