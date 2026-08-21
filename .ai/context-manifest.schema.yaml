@@ -1,16 +1,35 @@
-schema_version: "2.0"
+schema_version: "3.0"
 
-# Context Manifest records the exact Context selected for one task execution.
-# It does not replace context-index.yaml, graph-contract.yaml or user-policy.yaml.
-# It is a runtime trace and the source for one Execution Graph instance.
+# Context Manifest is one task-attempt runtime trace.
+# Canonical Policy / Context / Harness YAML remains authoritative.
+# Generated manifests belong under ignored Artifacts/ContextManifests by default.
+
+runtime:
+  builder: Tools/ContextManifest/build_context_manifest.py
+  evidence_recorder: Tools/ContextManifest/record_manifest_evidence.py
+  validator: Tools/ContextManifest/validate_context_manifest.py
+  graph_projector: Tools/ContextManifest/project_execution_graph.py
+  default_output_root: Artifacts/ContextManifests
+  generated_manifest_is_not_canonical_policy: true
+  generated_graph_is_derived_view: true
 
 manifest:
   id: required
   graph_kind: execution
-  attempt: required
+  attempt:
+    required: true
+    minimum: 1
+  previous_manifest_id: optional
   previous_attempt: optional
 
-# Task Fingerprint is copied from the selected semantic classification.
+retry_rules:
+  attempt_one_has_no_previous_manifest: true
+  retry_requires_previous_manifest_id: true
+  retry_previous_attempt_equals_current_minus_one: true
+  retry_must_keep_same_task_id: true
+  previous_failure_is_summary_not_context_copy: true
+  retry_decision_owner: DarumaPPAP/Unity-Graph-Engineering
+
 task:
   id: required
   route: required
@@ -26,13 +45,13 @@ task:
 
 policy:
   loaded:
-    - node_id: optional
+    - node_id: required_when_emitted
       source_path: required
       reason: required
 
 project_facts:
   loaded:
-    - node_id: optional
+    - node_id: required_when_emitted
       key: required
       value: required
       source_path: required
@@ -40,58 +59,111 @@ project_facts:
 
 context:
   context_pack:
-    node_id: optional
+    node_id: required_when_emitted
     source_path: required
   primary_skill:
-    node_id: optional
-    source_path: optional
-  source_files:
-    - node_id: optional
+    node_id: required_when_emitted
+    source_path: required
+  bindings:
+    - name: required
+      kind: required
+      values: []
+      reason: required
+  conditions_applied: []
+  required_context:
+    - node_id: required_when_emitted
       source_path: required
       reason: required
+  conditional_context:
+    - node_id: required_when_emitted
+      source_path: required
+      reason: required
+  source_files:
+    - node_id: required_when_emitted
+      source_path: required
+      binding: optional
+      reason: required
   excluded_context:
-    - source_path: required
+    - node_id: required_when_emitted
+      source_path: required
       reason: required
 
 knowledge:
   loaded:
-    - node_id: optional
+    - node_id: required_when_emitted
       source_path: required
       reason: required
 
 harness:
   task_contract:
-    node_id: optional
-    source_path: optional
+    node_id: required_when_emitted
+    source_path: required
   mutation_rules:
-    - node_id: optional
+    - node_id: required_when_emitted
       id: required
-      effect: required
+      effect:
+        allowed:
+          - allow
+          - prohibit
   risk_level:
-    node_id: optional
-    id: optional
+    node_id: required_when_emitted
+    id: required
   quality_gates:
-    - node_id: optional
+    - node_id: required_when_emitted
       id: required
-      status: optional
+      requirement:
+        allowed:
+          - required
+          - conditional
+      status:
+        optional: true
+        allowed:
+          - passed
+          - failed
+          - unavailable
 
 tools:
   activated:
-    - node_id: optional
+    - node_id: required_when_emitted
       id: required
       reason: required
 
 execution:
   evidence:
-    - node_id: optional
+    - node_id: required_when_emitted
       id: required
-      gate: optional
-      status: required
+      gate: required
+      status:
+        allowed:
+          - passed
+          - failed
+          - unavailable
       source_path: optional
       reason: required
+      remaining_validation: required_when_status_is_unavailable
   unresolved_bindings: []
+  previous_failure:
+    manifest_id: optional
+    attempt: optional
+    status: optional
+    failure_reason: optional
+    evidence_ids: []
   failure_reason: optional
-  status: optional
+  status:
+    allowed:
+      - in_progress
+      - passed
+      - failed
+      - complete_with_unavailable
+
+status_rules:
+  required_gate_failed: failed
+  all_required_gates_passed: passed
+  all_required_gates_terminal_with_any_unavailable: complete_with_unavailable
+  otherwise: in_progress
+  unavailable_requires_reason: true
+  unavailable_requires_remaining_validation: true
+  unavailable_is_not_passed: true
 
 graph_projection:
   contract: .ai/graph-contract.yaml
