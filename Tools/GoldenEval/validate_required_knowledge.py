@@ -46,10 +46,12 @@ def main() -> int:
             continue
         covered += 1
         selection = route.get("knowledge_selection")
-        if selection not in {"required", "required_when_domain_matches"}:
+        if selection is not None and selection not in {"required", "required_when_domain_matches", "optional"}:
             errors.append(
-                f"{route.get('id', route_key)}: required_knowledge exists but route knowledge_selection is not required."
+                f"{route.get('id', route_key)}: unsupported knowledge_selection value {selection}."
             )
+        if any(not value.strip() for value in required):
+            errors.append(f"{route.get('id', route_key)}: required_knowledge contains an empty selector.")
 
     for marker in (
         "request.get('knowledge'",
@@ -68,7 +70,7 @@ def main() -> int:
             print(f"- {error}")
         return 1
 
-    print(f"Required Knowledge validation passed: {covered} route contracts require explicit knowledge selection.")
+    print(f"Required Knowledge validation passed: {covered} route contracts declare machine-readable knowledge requirements.")
     return 0
 
 
