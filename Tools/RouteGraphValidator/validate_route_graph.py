@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""UnityAgentのCanonical Route GraphとUser Policy保護状態を検証します。"""
+"""UnityAgentのCanonical Route Graph、Bootstrap Map、User Policy保護状態を検証します。"""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 
+AGENTS_PATH = Path("AGENTS.md")
 INDEX_PATH = Path(".ai/context-index.yaml")
 USER_POLICY_PATH = Path(".ai/user-policy.yaml")
 EXECUTION_PROFILES_PATH = Path(".ai/execution-profiles.yaml")
@@ -21,6 +22,26 @@ OBSOLETE_HARNESS_PATHS = (
     Path(".ai/risk-levels.yaml"),
     Path(".ai/mcp-routing.yaml"),
 )
+
+BOOTSTRAP_REQUIRED_MARKERS = (
+    "<!-- unityagent-bootstrap-map:v1 -->",
+    "bootstrap_map_only: true",
+    "`.ai/user-policy.yaml`",
+    "`.ai/context-index.yaml`",
+    "`.ai/harness/`",
+    "`.agents/skills/`",
+    "`DarumaPPAP/Unity-Graph-Engineering`",
+    "`DarumaPPAP/MyUnityMCP`",
+    "詳細Ruleを`AGENTS.md`へ複製せず",
+)
+BOOTSTRAP_FORBIDDEN_DETAIL_HEADINGS = (
+    "Non-negotiable C# constraints",
+    "Architecture and ECS constraints",
+    "Rendering / Shader constraints",
+    "Audit, mutation, evidence",
+    "Visual boundary",
+)
+BOOTSTRAP_MAX_LINES = 140
 
 REQUIRED_ROUTE_IDS = {
     "architecture-design",
@@ -107,8 +128,26 @@ def parse_routes(index_text: str) -> dict[str, dict[str, str]]:
 def validate(root: Path) -> list[str]:
     errors: list[str] = []
 
+    agents_path = root / AGENTS_PATH
     index_path = root / INDEX_PATH
     user_policy_path = root / USER_POLICY_PATH
+
+    if not agents_path.is_file():
+        errors.append(f"Missing file: {AGENTS_PATH}")
+    else:
+        agents_text = agents_path.read_text(encoding="utf-8")
+        for marker in BOOTSTRAP_REQUIRED_MARKERS:
+            if marker not in agents_text:
+                errors.append(f"AGENTS Bootstrap Map missing marker: {marker}")
+        for heading in BOOTSTRAP_FORBIDDEN_DETAIL_HEADINGS:
+            if heading in agents_text:
+                errors.append(f"Detailed rule section must not be restored to AGENTS.md: {heading}")
+        line_count = len(agents_text.splitlines())
+        if line_count > BOOTSTRAP_MAX_LINES:
+            errors.append(
+                f"AGENTS.md exceeds Bootstrap Map budget: {line_count} > {BOOTSTRAP_MAX_LINES} lines"
+            )
+
     if not index_path.is_file():
         return [f"Missing file: {INDEX_PATH}"]
     if not user_policy_path.is_file():
