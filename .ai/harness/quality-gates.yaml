@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 result_statuses:
   - passed
@@ -70,6 +70,14 @@ gates:
       - visual_quality
       - platform_compatibility
 
+  unity_compile:
+    alias_of: compile
+    proves:
+      - unity_compile_for_executed_scope
+    does_not_prove:
+      - runtime_behavior
+      - target_device_support
+
   shader_compile:
     proves:
       - shader_compilation_for_executed_variants_and_backend
@@ -84,6 +92,13 @@ gates:
     does_not_prove:
       - visual_correctness
       - target_device_support
+
+  runtime_reproduction:
+    proves:
+      - reported_runtime_symptom_was_reproduced_or_resolved_under_recorded_conditions
+    does_not_prove:
+      - other_scenes
+      - other_platforms
 
   editmode:
     proves:
@@ -100,11 +115,32 @@ gates:
     does_not_prove:
       - all_target_devices
 
+  player_capture:
+    alias_of: player
+    proves:
+      - captured_player_output_under_recorded_conditions
+    does_not_prove:
+      - all_target_devices
+
   graphics_compare:
     proves:
       - visual_difference_under_fixed_capture_conditions
     does_not_prove:
       - artistic_acceptance
+
+  material_visual_case:
+    proves:
+      - requested_material_or_shader_visual_case_was_checked_under_recorded_conditions
+    does_not_prove:
+      - all_materials
+      - artistic_acceptance
+
+  editor_capture:
+    proves:
+      - captured_editor_visual_state_under_recorded_conditions
+    does_not_prove:
+      - player_equivalence
+      - target_device_support
 
   performance_capture:
     proves:
@@ -112,15 +148,59 @@ gates:
     does_not_prove:
       - other_platforms_or_scenes
 
+  baseline_measurement:
+    proves:
+      - before_metric_was_measured_under_fixed_conditions
+    does_not_prove:
+      - candidate_improvement
+
+  candidate_measurement:
+    proves:
+      - candidate_metric_was_measured_under_fixed_conditions
+    does_not_prove:
+      - baseline_equivalence_without_recorded_conditions
+
+  quality_regression_check:
+    proves:
+      - declared_quality_constraints_were_checked_for_candidate
+    does_not_prove:
+      - unrelated_visual_or_runtime_quality
+
+  before_after_gpu_measurement:
+    alias_of: performance_capture
+    proves:
+      - before_after_gpu_measurement_under_recorded_conditions
+    does_not_prove:
+      - other_hardware_or_scenes
+
   target_device:
     proves:
       - tested_behavior_on_the_named_device_and_build
+
+  target_device_capture:
+    alias_of: target_device
+    proves:
+      - captured_output_on_the_named_device_and_build
+    does_not_prove:
+      - other_devices_or_builds
 
   package_security_scan:
     proves:
       - configured_rules_found_no_blocking_pattern
     does_not_prove:
       - complete_security_of_all_dependencies
+
+  dependency_validation:
+    proves:
+      - declared_dependencies_were_checked_against_configured_policy
+    does_not_prove:
+      - future_dependency_safety
+
+  staging_integrity:
+    proves:
+      - package_mutation_stayed_inside_the_declared_staging_boundary
+    does_not_prove:
+      - target_project_integration
 
   package_structure_validation:
     proves:
@@ -129,3 +209,39 @@ gates:
   serialization_validation:
     proves:
       - tested_serialization_contract_and_reference_integrity
+
+  missing_reference_check:
+    proves:
+      - checked_changed_asset_scope_for_missing_references
+    does_not_prove:
+      - unrelated_project_assets
+
+  specification_traceability:
+    proves:
+      - requested_mcp_capability_maps_to_explicit_contract_and_artifacts
+    does_not_prove:
+      - runtime_implementation_correctness
+
+  architecture_policy_review:
+    proves:
+      - mcp_architecture_was_reviewed_against_unityagent_policy
+    does_not_prove:
+      - unity_compile
+
+  namespace_and_type_naming_review:
+    proves:
+      - generated_or_planned_names_follow_selected_naming_contract
+    does_not_prove:
+      - runtime_behavior
+
+  mcp_catalog_and_manifest_consistency:
+    proves:
+      - selected_mcp_catalog_manifest_and_tool_schema_bindings_are_consistent
+    does_not_prove:
+      - backend_runtime_availability
+
+  environment_resolution_contract_review:
+    proves:
+      - detected_facts_requested_targets_and_unresolved_bindings_are_separated
+    does_not_prove:
+      - target_environment_availability

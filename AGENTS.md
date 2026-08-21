@@ -34,7 +34,8 @@
 9. `.ai/harness/`のMutation ContractとRequired Quality Gateで結果を検証する。
 10. Evidenceを`passed` / `failed` / `unavailable`で返し、未検証範囲を成功扱いしない。
 11. Primary Routeを選んでDomain Taskを実行する場合は`.ai/context-manifest.schema.yaml`に従うContext Manifestを標準Traceとして生成し、`.ai/graph-contract.yaml`へExecution Graphとして投影可能なstable ID、typed edge、provenanceを保持する。Primary Route不要の単純read-only説明だけは省略できる。
-12. Loop / Graph / Retry / Budget / Checkpoint / Human Gateは`DarumaPPAP/Unity-Graph-Engineering`へ委譲する。
+12. User Policy、Routing、Context Pack、Task Contract、Quality Gate、Eval Contractを変更する場合は`.ai/eval/golden-eval-contract.yaml`と`Tests/GoldenTasks/`の関連Regressionを確認し、以前Acceptedだった挙動を壊していないか検証する。
+13. Loop / Graph / Retry / Budget / Checkpoint / Human Gateは`DarumaPPAP/Unity-Graph-Engineering`へ委譲する。
 
 ## 3. Canonical map
 
@@ -44,7 +45,8 @@
 | Execution Profile | `.ai/execution-profiles.yaml` | Generic / Personal / Team Safeの実行境界 |
 | Domain Routing | `.ai/context-index.yaml` | Task Fingerprint、Primary Route、Pack、Contract、Skill選択 |
 | Context Trace | `.ai/context-manifest.schema.yaml` | Primary Route実行ごとのContext、Attempt、Evidence追跡 |
-| Graph Projection | `.ai/graph-contract.yaml` | Definition / Execution GraphのNode、Edge、Provenance、Visualization契約 |
+| Graph Projection | `.ai/graph-contract.yaml` | Definition / Execution / Regression GraphのNode、Edge、Provenance、Visualization契約 |
+| Golden Regression | `.ai/eval/` + `Tests/GoldenTasks/` | Accepted Behavior、Boundary Pair、Grader、Failure Taxonomy、Regression契約 |
 | Context Packs | `.ai/context-packs/` | TaskごとのRequired / Conditional / Excluded Context |
 | Knowledge | `.ai/knowledge/` | AI実装用の圧縮Knowledge Contract |
 | Harness | `.ai/harness/` | Task Contract、Mutation、Risk、Quality Gate、MCP Activation |
@@ -56,8 +58,8 @@
 
 ## 4. Repository ownership
 
-- `DarumaPPAP/UnityAgent`: User Policy、Context、Unity Harness Contract、Domain Skill、Validator、Eval、Context Manifest Runtime、Graph Projection Contract。
-- `DarumaPPAP/Unity-Graph-Engineering`: Execution Mode、Loop / Graph、Retry、State、Budget、Checkpoint、Human Gate。
+- `DarumaPPAP/UnityAgent`: User Policy、Context、Unity Harness Contract、Domain Skill、Validator、Golden Eval、Context Manifest Runtime、Graph Projection Contract。
+- `DarumaPPAP/Unity-Graph-Engineering`: Execution Mode、Loop / Graph、Retry、State、Budget、Checkpoint、Human Gate、Model比較実行。
 - `DarumaPPAP/MyUnityMCP`: UnityAgentMCP、Creator Workflow、Domain MCP、Capability、Catalog、Manifest、Tool Schema、Package実装。
 - `DarumaPPAP/UnityAIGC-Archive`: 生成した製品コード、製品仕様、導入資料。
 - `DarumaPPAP/Beautiful-Definition`: Visual Intent、Beauty Definition、Human feedback。
@@ -82,6 +84,7 @@ UnityAgent内へ通常の製品コードやMCP Package実装を複製しませ�
 - Mutation可能範囲は選択Task Contractと`.ai/harness/mutation-channels.yaml`に従う。
 - Riskと承認境界は`.ai/harness/risk-levels.yaml`に従う。
 - Required Evidenceは`.ai/harness/quality-gates.yaml`に従う。
+- Task Contractが参照するQuality GateはCanonical Gate Catalogに存在しなければならない。
 - `unavailable`はFailureでもSuccessでもない。理由と残作業を記録する。
 - Compile成功だけでRuntime、Visual、Performance、Player、実機を承認しない。
 - AIの自己申告だけをEvidenceにしない。
@@ -93,9 +96,20 @@ UnityAgent内へ通常の製品コードやMCP Package実装を複製しませ�
 - Graph EditorからPolicy、Context Pack、Task Contract等を直接更新する機能は、別途設計・承認されるまで無効とする。
 - Nodeはstable IDとnode typeを持ち、Edgeは`requires`、`applies_policy`、`requires_gate`等のtyped edgeで意味を保持する。
 - Context Manifestは一回のTask実行を表すExecution Graph Instanceとして扱い、Sourceを選択した理由とEvidence provenanceを失わない。
-- 将来のVisualizerはArchitecture View、Task View、Execution Viewの3 Viewを最低限提供できる構造を維持する。
+- Golden TaskはRegression Graphで`golden_task -> grader -> attempt -> regression_result`として追跡可能な構造を維持する。
+- 将来のVisualizerはArchitecture View、Task View、Execution View、Regression Viewの4 Viewを最低限提供できる構造を維持する。
 
-## 8. Domain detail entrypoints
+## 8. Golden Regression guards
+
+- Golden Taskは以前Acceptedだった挙動と判断境界を保持するRegression Assetとして扱う。
+- 完成Sourceの文字列完全一致を既定Graderにしない。Outcome、Invariant、Mutation Scope、Gate、Policy違反を優先して評価する。
+- Deterministic Graderを優先し、Domain / Human / Model Graderは機械判定できない領域だけに限定する。
+- `require` / `forbid`のBoundary Pairを維持し、ユーザーPolicyを絶対禁止Ruleへ過学習させない。
+- `unavailable`をRegression PASSとして数えない。
+- Agent失敗と`broken_eval`を区別する。
+- Generated Eval ResultとRegression Graphは`Artifacts/GoldenEval/`へ置き、Canonical Policyへ昇格させない。
+
+## 9. Domain detail entrypoints
 
 詳細Ruleが必要な場合だけ、選択Context Packから対応Sourceへ進みます。
 
@@ -105,8 +119,9 @@ UnityAgent内へ通常の製品コードやMCP Package実装を複製しませ�
 - Runtime Evidence / Performance: `unity-runtime-evidence`とPerformance Task Contract / Quality Gate
 - Production / Learning Comment: `.ai/user-policy.yaml#comment_system`と対応Comment Skill
 - Visual Direction: `unity-visual-direction`と必要なBeautiful-Definition Reference
+- Golden Regression: `.ai/eval/golden-eval-contract.yaml`、`Tests/GoldenTasks/`、`Tools/GoldenEval/`
 
-## 9. Completion handoff
+## 10. Completion handoff
 
 Domain実行結果はExecution Ownerへ最低限次を返します。
 
@@ -127,12 +142,14 @@ Domain実行結果はExecution Ownerへ最低限次を返します。
 - unresolved_bindings
 - compatibility_or_revert_conditions
 
-## 10. Anti-regression
+## 11. Anti-regression
 
 - `AGENTS.md`へ詳細なCoding / Architecture / Rendering / Shader / Visual規約本文を戻さない。
 - Rule変更はCanonical Sourceを変更し、必要なValidator / Eval / Regression Caseを更新する。
 - Route選択を`triggers`やTechnology Keyword中心へ戻さない。
 - Primary Route実行でContext Manifest Traceを理由なく省略しない。
+- Accepted Behaviorを変更する場合、Golden Taskを黙って削除・緩和せずユーザー指示またはPolicy変更理由を必要とする。
+- Boundary Pairの片側だけを削除して絶対禁止Rule化しない。
 - Graph ProjectionをCanonical Policyの正本へ昇格させない。
 - stable node ID、typed edge、provenanceを将来の可視化都合だけで削除しない。
 - 削除済みのLegacy Supervisor / Skill Routing Adapterを復活させない。

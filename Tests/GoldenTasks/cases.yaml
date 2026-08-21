@@ -1,0 +1,522 @@
+schema_version: '1.0'
+cases:
+- id: GOLDEN-LIFECYCLE-001
+  category: lifecycle
+  kind: regression
+  pair_id: lifecycle-update
+  boundary: forbid
+  task:
+    summary: Unity Lifecycleまたは既存Callbackで解決できる局所変更
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - unity_lifecycle_first
+    - minimum_cohesive_solution_first
+    required_gates:
+    - static_review
+    - compile
+    required_signals:
+    - lifecycle_or_existing_callback_first
+    forbidden_signals:
+    - unnecessary_update
+    - polling_without_reason
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-LIFECYCLE-002
+  category: lifecycle
+  kind: regression
+  pair_id: lifecycle-update
+  boundary: require
+  task:
+    summary: 継続的な毎Frame観測そのものが要求でUpdateが最小解になるケース
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - case_by_case_design_depth
+    - unity_lifecycle_first
+    required_gates:
+    - static_review
+    - compile
+    required_signals:
+    - update_has_explicit_runtime_reason
+    forbidden_signals:
+    - update_is_globally_forbidden
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-SURFACE-001
+  category: architecture
+  kind: regression
+  pair_id: requirement-surface
+  boundary: forbid
+  task:
+    summary: MainCameraだけを対象にする局所機能
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - requirement_surface_lock
+    - no_premature_generalization
+    required_gates:
+    - static_review
+    - compile
+    required_signals:
+    - uses_existing_main_camera_binding
+    forbidden_signals:
+    - unrequested_target_field
+    - unnecessary_serialized_field
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-SURFACE-002
+  category: architecture
+  kind: regression
+  pair_id: requirement-surface
+  boundary: require
+  task:
+    summary: 複数CameraをInspectorから切り替えることが明示要件の機能
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - requirement_surface_lock
+    required_gates:
+    - static_review
+    - compile
+    required_signals:
+    - explicit_configurable_target_is_preserved
+    forbidden_signals:
+    - hardcoded_main_camera
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-ARCH-001
+  category: architecture
+  kind: regression
+  pair_id: abstraction-depth
+  boundary: forbid
+  task:
+    summary: 一つのComponent内で完結する小規模Local Behavior
+  expectation:
+    route: architecture-design
+    required_policies:
+    - minimum_cohesive_solution_first
+    - no_unrequested_implementation
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    required_signals:
+    - single_cohesive_solution_considered
+    forbidden_signals:
+    - unnecessary_manager
+    - unnecessary_controller
+    - unnecessary_service
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-ARCH-002
+  category: architecture
+  kind: regression
+  pair_id: abstraction-depth
+  boundary: require
+  task:
+    summary: 複数Feature間で中央所有とLifetime管理が実在するSystem
+  expectation:
+    route: architecture-design
+    required_policies:
+    - ownership_and_lifetime
+    - case_by_case_design_depth
+    required_gates:
+    - architecture_fit
+    - ownership_and_lifetime
+    required_signals:
+    - central_owner_has_explicit_responsibility
+    forbidden_signals:
+    - single_script_forced_despite_system_scope
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-FORMAT-001
+  category: formatting
+  kind: regression
+  pair_id: assignment-format
+  boundary: forbid
+  task:
+    summary: 短いCSharp代入文のFormatting
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - preserve_current_naming_convention
+    required_gates:
+    - static_review
+    required_signals:
+    - short_assignment_stays_one_line
+    forbidden_signals:
+    - mechanical_line_break_after_assignment
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-FORMAT-002
+  category: formatting
+  kind: regression
+  pair_id: assignment-format
+  boundary: require
+  task:
+    summary: 十分に長く可読性上の理由がある式の改行
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - preserve_existing_structure
+    required_gates:
+    - static_review
+    required_signals:
+    - line_break_has_readability_reason
+    forbidden_signals:
+    - one_line_is_forced_for_every_expression
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-STATE-001
+  category: state
+  kind: regression
+  pair_id: duplicated-state
+  boundary: forbid
+  task:
+    summary: Unity APIが既にSource of Truthを持つ値を読む局所機能
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - no_extra_state
+    required_gates:
+    - static_review
+    - compile
+    required_signals:
+    - reads_authoritative_state
+    forbidden_signals:
+    - duplicate_state_cache_without_reason
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-STATE-002
+  category: state
+  kind: regression
+  pair_id: duplicated-state
+  boundary: require
+  task:
+    summary: 前回値との差分検出が要件で履歴保持が必要な機能
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - no_extra_state
+    required_gates:
+    - static_review
+    - compile
+    required_signals:
+    - cache_has_change_detection_reason
+    forbidden_signals:
+    - all_private_state_is_forbidden
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-FILE-001
+  category: file_granularity
+  kind: regression
+  pair_id: file-split
+  boundary: forbid
+  task:
+    summary: 将来再利用するかもしれないだけの小規模型分割
+  expectation:
+    route: architecture-design
+    required_policies:
+    - file_split_reason
+    - no_premature_generalization
+    required_gates:
+    - file_granularity
+    required_signals:
+    - feature_local_colocation_considered
+    forbidden_signals:
+    - speculative_file_split
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-FILE-002
+  category: file_granularity
+  kind: regression
+  pair_id: file-split
+  boundary: require
+  task:
+    summary: Attach可能な独立MonoBehaviourと異なるLifetimeを持つ責務
+  expectation:
+    route: architecture-design
+    required_policies:
+    - file_split_reason
+    - ownership_and_lifetime
+    required_gates:
+    - file_granularity
+    - ownership_and_lifetime
+    required_signals:
+    - split_reason_is_concrete
+    forbidden_signals:
+    - forced_colocation_despite_lifetime_boundary
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-MUTATION-001
+  category: mutation
+  kind: regression
+  pair_id: refactor-scope
+  boundary: forbid
+  task:
+    summary: 既知Compile Error一件だけを直す局所Patch
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - single_purpose_change
+    - preserve_existing_structure
+    required_gates:
+    - static_review
+    - compile
+    required_signals:
+    - bounded_patch
+    forbidden_signals:
+    - unrelated_refactor
+    - unrelated_rename
+    - public_contract_change
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-MUTATION-002
+  category: mutation
+  kind: regression
+  pair_id: refactor-scope
+  boundary: require
+  task:
+    summary: ユーザーが明示的にRefactorと公開契約移行を依頼したTask
+  expectation:
+    route: architecture-design
+    required_policies:
+    - preserve_existing_structure
+    required_gates:
+    - architecture_fit
+    - static_review
+    required_signals:
+    - requested_contract_migration_is_explicit
+    forbidden_signals:
+    - refactor_is_globally_forbidden
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-EVIDENCE-001
+  category: evidence
+  kind: regression
+  pair_id: evidence-scope
+  boundary: forbid
+  task:
+    summary: CSharp Compileだけ成功した変更
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - evidence_scoped_claims
+    required_gates:
+    - compile
+    required_signals:
+    - compile_claim_only
+    forbidden_signals:
+    - runtime_pass_claim
+    - target_device_pass_claim
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-EVIDENCE-002
+  category: evidence
+  kind: regression
+  pair_id: evidence-scope
+  boundary: require
+  task:
+    summary: 実機での動作保証を主張するTask
+  expectation:
+    route: performance-experiment
+    required_policies:
+    - evidence_scoped_claims
+    required_gates:
+    - target_device
+    required_signals:
+    - target_device_evidence_present
+    forbidden_signals:
+    - editor_only_evidence_for_device_claim
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-ASSET-001
+  category: asset
+  kind: regression
+  pair_id: asset-mutation
+  boundary: forbid
+  task:
+    summary: Scene Prefab MaterialのSerialized変更
+  expectation:
+    route: asset-data-change
+    required_policies:
+    - preserve_existing_structure
+    required_gates:
+    - serialization_validation
+    required_signals:
+    - authoritative_editor_mutation_path
+    forbidden_signals:
+    - raw_scene_yaml_edit
+    - raw_prefab_yaml_edit
+    - raw_material_yaml_edit
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-ASSET-002
+  category: asset
+  kind: regression
+  pair_id: asset-mutation
+  boundary: require
+  task:
+    summary: SerializedObjectまたはEditor CommandでMaterial値を変更
+  expectation:
+    route: asset-data-change
+    required_policies:
+    - preserve_existing_structure
+    required_gates:
+    - serialization_validation
+    required_signals:
+    - serializedobject_or_editor_command
+    forbidden_signals:
+    - raw_yaml_required
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-PERF-001
+  category: performance
+  kind: regression
+  pair_id: performance-measurement
+  boundary: forbid
+  task:
+    summary: 計測無しで最適化効果を断定する提案
+  expectation:
+    route: performance-experiment
+    required_policies:
+    - performance_requires_measurement
+    - evidence_scoped_claims
+    required_gates:
+    - static_review
+    - baseline_measurement
+    required_signals:
+    - baseline_required_before_claim
+    forbidden_signals:
+    - unmeasured_performance_claim
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-PERF-002
+  category: performance
+  kind: regression
+  pair_id: performance-measurement
+  boundary: require
+  task:
+    summary: 同条件Before After計測とRevert条件がある最適化
+  expectation:
+    route: performance-experiment
+    required_policies:
+    - performance_requires_measurement
+    required_gates:
+    - baseline_measurement
+    - candidate_measurement
+    - quality_regression_check
+    required_signals:
+    - baseline_and_after_capture
+    - revert_condition_recorded
+    forbidden_signals:
+    - measurement_is_optional
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-KNOWLEDGE-001
+  category: knowledge
+  kind: regression
+  pair_id: required-knowledge
+  boundary: require
+  task:
+    summary: Shader Sourceを実際に変更するDomain Task
+  expectation:
+    route: shader-change
+    required_policies:
+    - evidence_scoped_claims
+    required_gates:
+    - static_review
+    - shader_compile
+    required_signals:
+    - primary_rendering_knowledge_selected
+    forbidden_signals:
+    - knowledge_requirement_ignored
+    required_knowledge:
+    - select_primary_rendering_knowledge_from_index
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: required_knowledge_completeness
+- id: GOLDEN-KNOWLEDGE-002
+  category: knowledge
+  kind: regression
+  pair_id: required-knowledge
+  boundary: forbid
+  task:
+    summary: Shader Taskでも全Rendering Knowledgeを無条件一括読込しない
+  expectation:
+    route: shader-change
+    required_policies:
+    - evidence_scoped_claims
+    required_gates:
+    - static_review
+    required_signals:
+    - one_primary_rendering_knowledge_only
+    forbidden_signals:
+    - load_all_rendering_knowledge
+    required_knowledge:
+    - select_primary_rendering_knowledge_from_index
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: required_knowledge_completeness

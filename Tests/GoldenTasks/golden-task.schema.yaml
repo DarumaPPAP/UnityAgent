@@ -1,0 +1,41 @@
+schema_version: "1.0"
+kind: unityagent_golden_task_schema
+
+required_fields:
+  - id
+  - category
+  - kind
+  - pair_id
+  - boundary
+  - task
+  - expectation
+  - graders
+
+allowed:
+  kind:
+    - regression
+  boundary:
+    - require
+    - forbid
+  grader_type:
+    - deterministic
+    - domain
+    - human_or_model
+
+expectation_fields:
+  route: optional
+  fingerprint: optional
+  required_policies: []
+  required_gates: []
+  required_signals: []
+  forbidden_signals: []
+  required_knowledge: []
+  outcome: required
+
+rules:
+  ids_are_unique: true
+  pair_id_requires_at_least_two_cases: true
+  pair_should_cover_opposite_boundary_decisions: true
+  deterministic_grader_is_required: true
+  exact_generated_source_match_is_forbidden_by_default: true
+  unavailable_is_not_passed: true

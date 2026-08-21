@@ -1,4 +1,4 @@
-schema_version: "1.1"
+schema_version: "1.2"
 
 purpose: define_machine_readable_graph_projection_for_unityagent
 
@@ -13,6 +13,8 @@ graph_kinds:
     description: Canonical UnityAgent relationships between Policy, Context, Harness, Skill and Tool definitions.
   execution:
     description: One task execution projected from Context Manifest, selected Context, Harness constraints and Evidence.
+  regression:
+    description: Golden Task expectations, graders, candidate attempts and regression results.
 
 node_contract:
   stable_node_ids_required: true
@@ -38,6 +40,8 @@ node_types:
   - evidence
   - attempt
   - golden_task
+  - grader
+  - regression_result
 
 edge_contract:
   typed_edges_required: true
@@ -63,7 +67,10 @@ edge_types:
   - depends_on
   - escalates_to
   - retries_as
+  - expects
   - evaluated_by
+  - produces_regression_result
+  - compares_to
 
 provenance:
   required_fields:
@@ -103,11 +110,21 @@ projection_rules:
     generated_artifact_default_root: Artifacts/ContextManifests
     generated_artifact_is_not_source_of_truth: true
 
+  regression_graph:
+    root_source: Tests/GoldenTasks/cases.yaml
+    eval_contract: .ai/eval/golden-eval-contract.yaml
+    include_golden_expectations: true
+    include_candidate_attempts_when_available: true
+    include_regression_result: true
+    generated_artifact_default_root: Artifacts/GoldenEval
+    generated_artifact_is_not_source_of_truth: true
+
 visualization_contract:
   required_views:
     - architecture
     - task
     - execution
+    - regression
   architecture_view_focus:
     - policy
     - context
@@ -127,9 +144,17 @@ visualization_contract:
     - mutation_rule
     - quality_gate
     - evidence
+  regression_view_focus:
+    - golden_task
+    - grader
+    - attempt
+    - evidence
+    - regression_result
 
 anti_regression:
   stable_ids_must_not_be_reassigned: true
   edge_semantics_must_not_be_encoded_only_in_labels: true
   source_provenance_must_not_be_dropped: true
   runtime_graph_must_not_become_canonical_policy: true
+  golden_task_must_not_become_generated_source_exact_match_by_default: true
+  unavailable_result_must_not_be_visualized_as_passed: true

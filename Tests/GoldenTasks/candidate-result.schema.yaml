@@ -1,0 +1,32 @@
+schema_version: "1.1"
+kind: unityagent_golden_candidate_result_schema
+
+result_fields:
+  task_id: required
+  route: optional
+  fingerprint: optional
+  applied_policies: []
+  gates: []
+  signals: []
+  knowledge: []
+  unresolved: []
+  failure_types: []
+  outcome: required
+  attempt_count: optional
+  manifest_path: optional
+
+failure_types_allowed:
+  - routing_miss
+  - context_miss
+  - policy_violation
+  - harness_violation
+  - mutation_violation
+  - evidence_overclaim
+  - model_failure
+  - broken_eval
+  - unavailable_evidence
+
+outcome_allowed:
+  - passed
+  - failed
+  - unavailable
