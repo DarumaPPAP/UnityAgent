@@ -27,6 +27,7 @@ VALIDATORS = (
     Path("Tools/ContextPackValidator/validate_context_packs.py"),
     Path("Tools/RouteGraphValidator/validate_route_graph.py"),
     Path("Tools/TaskFingerprintValidator/validate_task_fingerprints.py"),
+    Path("Tools/GraphContractValidator/validate_graph_contract.py"),
 )
 
 
