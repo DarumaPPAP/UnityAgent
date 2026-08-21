@@ -1,4 +1,4 @@
-schema_version: "2.2"
+schema_version: "3.0"
 repository_role: unity_domain_knowledge
 execution_owner: DarumaPPAP/Unity-Graph-Engineering
 user_policy: .ai/user-policy.yaml
@@ -14,6 +14,11 @@ mcp_repository: DarumaPPAP/MyUnityMCP
 routing_rules:
   user_policy_must_be_loaded_before_domain_decision: true
   generic_best_practice_must_not_override_user_policy: true
+  task_fingerprint_required_before_domain_route: true
+  route_match_uses_fingerprint_not_trigger_strings: true
+  primary_goal_controls_fingerprint: true
+  unknown_dimensions_must_not_be_guessed: true
+  prompt_examples_are_test_only: true
   select_exactly_one_primary_route: true
   select_exactly_one_primary_task_contract: true
   select_at_most_one_primary_knowledge: true
@@ -31,6 +36,93 @@ routing_rules:
   human_html_is_conditional_reference: true
   route_id_format: kebab-case
   mapping_key_is_not_route_id: true
+
+task_fingerprint:
+  purpose: classify_task_semantics_before_route_selection
+  required_dimensions:
+    - intent
+    - artifact
+    - scope
+    - failure_mode
+    - architecture_state
+    - mutation_target
+    - evidence_state
+    - project_access
+  dimensions:
+    intent:
+      - explain
+      - investigate
+      - fix
+      - implement
+      - design
+      - optimize
+      - integrate
+      - review
+      - refactor
+    artifact:
+      - csharp
+      - shader
+      - renderer_feature
+      - rendering
+      - asset_data
+      - performance
+      - visual
+      - architecture
+      - mcp
+      - package
+      - editor_tool
+      - mixed
+    scope:
+      - read_only
+      - local
+      - multi_source
+      - project_asset
+      - portable_package
+      - safe_import
+      - cross_system
+    failure_mode:
+      - none
+      - compile
+      - runtime
+      - rendering_unknown
+      - platform_divergence
+      - performance
+      - serialization
+      - visual
+    architecture_state:
+      - decided
+      - undecided
+      - not_applicable
+    mutation_target:
+      - none
+      - source
+      - shader_source
+      - renderer_pipeline
+      - serialized_asset
+      - package
+      - mcp_contract
+      - visual_plan
+    evidence_state:
+      - known
+      - partial
+      - unknown
+      - baseline_required
+      - not_applicable
+    project_access:
+      - authorized
+      - unavailable
+      - restricted
+      - not_required
+  classification_rules:
+    classify_primary_goal_before_mentioned_technologies: true
+    mentioned_api_or_technology_name_is_not_route_authority: true
+    unknown_rendering_root_cause_prefers_incident_classification: true
+    confirmed_shader_change_prefers_shader_artifact: true
+    confirmed_renderer_feature_change_prefers_renderer_feature_artifact: true
+    measurable_optimization_goal_prefers_performance_artifact: true
+    architecture_undecided_prefers_architecture_artifact: true
+    read_only_explanation_does_not_require_domain_mutation_route: true
+    unresolved_dimension_value: unknown_when_supported_otherwise_fallback
 
 profile_selection:
   project_not_accessible:
@@ -54,17 +146,18 @@ conditional_operations:
 routes:
   architecture_design:
     id: architecture-design
-    triggers:
-      - new Unity feature architecture
-      - new gameplay system design
-      - class or file responsibility design
-      - MonoBehaviour and plain C# separation
-      - ScriptableObject adoption decision
-      - MVP MVVM MVC selection
-      - ECS Jobs Burst adoption decision
-      - Controller Manager Service necessity
-      - architecture refactoring
-      - excessive C# file split review
+    fingerprint_match:
+      intent:
+        - design
+        - review
+        - refactor
+      artifact:
+        - architecture
+      architecture_state:
+        - undecided
+      mutation_target:
+        - none
+        - source
     primary_skill: unity-architecture-design
     context_pack: .ai/context-packs/architecture-design.yaml
     task_contract: .ai/harness/task-contracts/architecture-design.yaml
@@ -72,19 +165,21 @@ routes:
 
   graphics_mcp:
     id: graphics-mcp
-    triggers:
-      - UnityAgentMCP
-      - MyUnityMCP
-      - UnityGraphicsMCP
-      - Unity graphics MCP
-      - Unity Visual Director MCP
-      - Creator Workflow
-      - LiveCreator
-      - MovieCreator
-      - reference image to Unity graphics direction
-      - Timeline Cinemachine Volume lighting GI reflection VFX tool integration
-      - Built-in URP HDRP graphics capability routing
-      - graphics inspect plan apply bake capture refine workflow
+    fingerprint_match:
+      intent:
+        - design
+        - implement
+        - integrate
+        - review
+      artifact:
+        - mcp
+      scope:
+        - cross_system
+        - multi_source
+        - read_only
+      mutation_target:
+        - mcp_contract
+        - none
     primary_skill: unity-architecture-design
     context_pack: .ai/context-packs/graphics-mcp.yaml
     task_contract: .ai/harness/task-contracts/graphics-mcp.yaml
@@ -93,32 +188,73 @@ routes:
 
   csharp_local_fix:
     id: csharp-local-fix
-    triggers:
-      - bounded C# change
-      - known compile error
-      - single behavior correction
+    fingerprint_match:
+      intent:
+        - fix
+        - implement
+      artifact:
+        - csharp
+      scope:
+        - local
+      architecture_state:
+        - decided
+        - not_applicable
+      mutation_target:
+        - source
+      evidence_state:
+        - known
+        - partial
     primary_skill: csharp-safe-patch
     context_pack: .ai/context-packs/csharp-local-fix.yaml
     task_contract: .ai/harness/task-contracts/csharp-local-fix.yaml
 
   rendering_incident:
     id: rendering-incident
-    triggers:
-      - unknown rendering failure
-      - Editor Player difference
-      - RenderGraph validation error
-      - rendering regression
+    fingerprint_match:
+      intent:
+        - investigate
+        - fix
+      artifact:
+        - rendering
+        - shader
+        - renderer_feature
+      scope:
+        - local
+        - multi_source
+        - project_asset
+      failure_mode:
+        - rendering_unknown
+        - platform_divergence
+      evidence_state:
+        - unknown
+        - partial
     primary_skill: unity-incident-investigation
     context_pack: .ai/context-packs/rendering-incident.yaml
     task_contract: .ai/harness/task-contracts/rendering-incident.yaml
 
   shader_change:
     id: shader-change
-    triggers:
-      - ShaderLab
-      - HLSL
-      - Compute Shader
-      - motion vector or temporal shader work
+    fingerprint_match:
+      intent:
+        - fix
+        - implement
+        - optimize
+      artifact:
+        - shader
+      architecture_state:
+        - decided
+        - not_applicable
+      failure_mode:
+        - none
+        - compile
+        - runtime
+        - performance
+      mutation_target:
+        - shader_source
+      evidence_state:
+        - known
+        - partial
+        - baseline_required
     primary_skill: unity-rendering
     context_pack: .ai/context-packs/shader-change.yaml
     task_contract: .ai/harness/task-contracts/shader-change.yaml
@@ -126,12 +262,25 @@ routes:
 
   renderer_feature_change:
     id: renderer-feature-change
-    triggers:
-      - RendererFeature
-      - ScriptableRenderPass
-      - RenderGraph pass
-      - injection point change
-      - renderer resource integration
+    fingerprint_match:
+      intent:
+        - fix
+        - implement
+        - refactor
+      artifact:
+        - renderer_feature
+      architecture_state:
+        - decided
+        - not_applicable
+      failure_mode:
+        - none
+        - compile
+        - runtime
+      mutation_target:
+        - renderer_pipeline
+      evidence_state:
+        - known
+        - partial
     primary_skill: unity-rendering
     context_pack: .ai/context-packs/renderer-feature-change.yaml
     task_contract: .ai/harness/task-contracts/renderer-feature-change.yaml
@@ -139,36 +288,68 @@ routes:
 
   performance_experiment:
     id: performance-experiment
-    triggers:
-      - CPU optimization
-      - GPU optimization
-      - memory optimization
-      - shader performance
-      - build size
-      - Before After measurement
+    fingerprint_match:
+      intent:
+        - optimize
+        - investigate
+      artifact:
+        - performance
+      failure_mode:
+        - performance
+      mutation_target:
+        - none
+        - source
+        - shader_source
+        - renderer_pipeline
+      evidence_state:
+        - baseline_required
+        - known
+        - partial
     primary_skill: unity-runtime-evidence
     context_pack: .ai/context-packs/performance.yaml
     task_contract: .ai/harness/task-contracts/performance-experiment.yaml
 
   asset_data_change:
     id: asset-data-change
-    triggers:
-      - Scene asset change
-      - Prefab change
-      - Material change
-      - ScriptableObject asset change
-      - serialized asset change
+    fingerprint_match:
+      intent:
+        - fix
+        - implement
+        - integrate
+      artifact:
+        - asset_data
+      scope:
+        - local
+        - project_asset
+      failure_mode:
+        - none
+        - serialization
+        - runtime
+      mutation_target:
+        - serialized_asset
     primary_skill: csharp-safe-patch
     context_pack: .ai/context-packs/asset-data-change.yaml
     task_contract: .ai/harness/task-contracts/asset-data-change.yaml
 
   portable_feature:
     id: portable-feature
-    triggers:
-      - project independent package
-      - external authoring
-      - portable UPM package
-      - company project without source access
+    fingerprint_match:
+      intent:
+        - design
+        - implement
+      artifact:
+        - package
+        - editor_tool
+        - csharp
+      scope:
+        - portable_package
+      mutation_target:
+        - none
+        - source
+        - package
+      project_access:
+        - unavailable
+        - not_required
     primary_skill: unity-architecture-design
     context_pack: .ai/context-packs/portable-feature.yaml
     task_contract: .ai/harness/task-contracts/portable-feature.yaml
@@ -176,10 +357,17 @@ routes:
 
   safe_import_integration:
     id: safe-import-integration
-    triggers:
-      - team safe import
-      - staging package import
-      - local package security validation
+    fingerprint_match:
+      intent:
+        - integrate
+      artifact:
+        - package
+      scope:
+        - safe_import
+      mutation_target:
+        - package
+      project_access:
+        - restricted
     primary_skill: csharp-safe-patch
     context_pack: .ai/context-packs/asset-data-change.yaml
     task_contract: .ai/harness/task-contracts/safe-import-integration.yaml
@@ -187,12 +375,24 @@ routes:
 
   visual_direction:
     id: visual-direction
-    triggers:
-      - scene beauty
-      - lighting look development
-      - composition
-      - color atmosphere
-      - visual quality review
+    fingerprint_match:
+      intent:
+        - design
+        - review
+        - implement
+      artifact:
+        - visual
+      failure_mode:
+        - none
+        - visual
+      mutation_target:
+        - none
+        - visual_plan
+        - serialized_asset
+      evidence_state:
+        - known
+        - partial
+        - not_applicable
     primary_skill: unity-visual-direction
     context_pack: .ai/context-packs/visual-direction.yaml
     task_contract: .ai/harness/task-contracts/visual-direction.yaml
@@ -200,52 +400,59 @@ routes:
 
 conflicts:
   architecture_design_and_csharp_local_fix:
-    primary_when_structure_is_undecided: architecture-design
-    primary_when_change_is_bounded: csharp-local-fix
+    rule: architecture_state_decides
+    architecture_state_undecided: architecture-design
+    architecture_state_decided_and_local_csharp: csharp-local-fix
 
   architecture_design_and_performance_experiment:
-    primary_when_runtime_baseline_is_goal: performance-experiment
-    primary_when_execution_model_is_undecided: architecture-design
+    rule: primary_goal_decides
+    primary_goal_measurable_performance: performance-experiment
+    primary_goal_execution_model_or_structure: architecture-design
 
   architecture_design_and_renderer_feature_change:
-    primary_when_pass_structure_is_undecided: architecture-design
-    primary_when_rendering_contract_is_confirmed: renderer-feature-change
+    rule: architecture_state_decides
+    architecture_state_undecided: architecture-design
+    architecture_state_decided: renderer-feature-change
 
   graphics_mcp_and_architecture_design:
-    primary_when_goal_is_UnityAgentMCP_MyUnityMCP_GraphicsMCP_Creator_or_Module_architecture: graphics-mcp
-    primary_when_goal_is_unrelated_Unity_architecture: architecture-design
+    rule: artifact_decides
+    artifact_mcp: graphics-mcp
+    artifact_architecture: architecture-design
 
   graphics_mcp_and_visual_direction:
-    primary_when_goal_is_tool_contract_capability_mutation_or_creator_workflow: graphics-mcp
-    primary_when_goal_is_scene_beauty_or_human_visual_review: visual-direction
+    rule: primary_goal_decides
+    primary_goal_tool_contract_or_capability: graphics-mcp
+    primary_goal_scene_beauty_or_human_review: visual-direction
 
   graphics_mcp_and_renderer_feature_change:
-    primary_when_goal_is_MCP_orchestrated_graphics_system: graphics-mcp
-    primary_when_goal_is_bounded_RendererFeature_implementation: renderer-feature-change
-
-  rendering_incident_and_architecture_design:
-    primary: rendering-incident
-    secondary_after_evidence: architecture-design
+    rule: artifact_decides
+    artifact_mcp: graphics-mcp
+    artifact_renderer_feature: renderer-feature-change
 
   rendering_incident_and_shader_change:
-    primary: rendering-incident
-    secondary_after_evidence: shader-change
+    rule: evidence_state_and_failure_mode_decide
+    root_cause_unknown_or_platform_divergence: rendering-incident
+    confirmed_shader_mutation: shader-change
 
   rendering_incident_and_renderer_feature_change:
-    primary: rendering-incident
-    secondary_after_evidence: renderer-feature-change
+    rule: evidence_state_and_failure_mode_decide
+    root_cause_unknown_or_platform_divergence: rendering-incident
+    confirmed_renderer_feature_mutation: renderer-feature-change
 
   visual_direction_and_rendering:
-    primary_when_goal_is_beauty: visual-direction
-    primary_when_goal_is_technical_fix: rendering-incident
+    rule: primary_goal_decides
+    primary_goal_beauty: visual-direction
+    primary_goal_technical_rendering_failure: rendering-incident
 
   portable_feature_and_direct_project_change:
-    primary_when_project_is_not_accessible: portable-feature
-    primary_when_personal_access_is_authorized: renderer-feature-change
+    rule: scope_and_project_access_decide
+    portable_package_without_project_access: portable-feature
+    project_bound_confirmed_change: renderer-feature-change
 
 fallback:
-  action: report_unmatched_route_and_continue_with_bounded_generic_planning
+  action: report_unmatched_fingerprint_and_continue_with_bounded_generic_planning
   allow_simple_read_only_explanation_without_domain_route: true
+  do_not_route_from_technology_keyword_alone: true
   do_not_use_legacy_routing_document: true
   do_not_load_every_route: true
   do_not_load_every_mcp_manifest: true
