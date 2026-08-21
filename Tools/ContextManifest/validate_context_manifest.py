@@ -148,6 +148,44 @@ def run_self_test() -> list[str]:
             errors,
         )
 
+        conditional_failure = build_manifest(ROOT, request_a1)
+        conditional_failure = apply_gate_evidence(
+            ROOT,
+            conditional_failure,
+            gate="static_review",
+            status="passed",
+            evidence_id="static-review-conditional",
+            reason="runtime_evidence",
+        )
+        conditional_failure = apply_gate_evidence(
+            ROOT,
+            conditional_failure,
+            gate="compile",
+            status="passed",
+            evidence_id="compile-conditional",
+            reason="runtime_evidence",
+        )
+        expect(
+            conditional_failure["execution"]["status"] == "passed",
+            "All required gates passed must produce passed before conditional validation runs.",
+            errors,
+        )
+        conditional_failure = apply_gate_evidence(
+            ROOT,
+            conditional_failure,
+            gate="playmode",
+            status="failed",
+            evidence_id="playmode-conditional",
+            reason="runtime_evidence",
+            failure_reason="playmode_regression",
+        )
+        errors.extend(validate_manifest(ROOT, conditional_failure))
+        expect(
+            conditional_failure["execution"]["status"] == "failed",
+            "An activated conditional gate failure must fail execution.",
+            errors,
+        )
+
         unavailable = build_manifest(ROOT, request_a1)
         unavailable = apply_gate_evidence(
             ROOT,
