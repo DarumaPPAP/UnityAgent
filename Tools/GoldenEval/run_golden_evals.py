@@ -13,6 +13,17 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 CASES_PATH = ROOT / "Tests" / "GoldenTasks" / "cases.yaml"
 DEFAULT_OUTPUT = ROOT / "Artifacts" / "GoldenEval" / "summary.json"
+KNOWN_FAILURE_TYPES = {
+    "routing_miss",
+    "context_miss",
+    "policy_violation",
+    "harness_violation",
+    "mutation_violation",
+    "evidence_overclaim",
+    "model_failure",
+    "broken_eval",
+    "unavailable_evidence",
+}
 
 
 def load_yaml(path: Path) -> dict:
@@ -53,12 +64,22 @@ def infer_failures(case: dict, result: dict) -> list[str]:
         if knowledge not in loaded_knowledge and f"knowledge:{knowledge}" not in unresolved:
             failures.append("context_miss")
 
+    for failure_type in result.get("failure_types", []) or []:
+        if failure_type in KNOWN_FAILURE_TYPES:
+            failures.append(str(failure_type))
+        else:
+            failures.append("broken_eval")
+
     if result.get("outcome") == "unavailable":
         failures.append("unavailable_evidence")
     elif result.get("outcome") != expectation.get("outcome", "passed"):
         failures.append("model_failure")
 
     return sorted(set(failures))
+
+
+def rate(failure_counts: Counter[str], failure_type: str, total: int) -> float:
+    return (failure_counts[failure_type] / total) if total else 0.0
 
 
 def main() -> int:
@@ -102,6 +123,11 @@ def main() -> int:
         "failed": total - passed,
         "regression_pass_rate": (passed / total) if total else 0.0,
         "first_pass_rate": (first_pass / total) if total else 0.0,
+        "policy_violation_rate": rate(failure_counts, "policy_violation", total),
+        "routing_miss_rate": rate(failure_counts, "routing_miss", total),
+        "context_miss_rate": rate(failure_counts, "context_miss", total),
+        "mutation_violation_rate": rate(failure_counts, "mutation_violation", total),
+        "gate_failure_rate": rate(failure_counts, "harness_violation", total),
         "unavailable_rate": (unavailable / total) if total else 0.0,
         "retry_count": max(0, attempts - total),
         "failure_counts": dict(sorted(failure_counts.items())),
