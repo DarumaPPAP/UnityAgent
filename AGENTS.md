@@ -49,13 +49,7 @@
 | Human Standards | `SkillReferences/` | 詳細Coding、Formatting、Architecture、Rendering等のReference |
 | Project Fallback | `Specs/ProjectProfile.md` | Project未接続時の補助情報。検出済みFactより弱い |
 
-Compatibility-only:
-
-- `.agents/skills/unity-production-workflow/SKILL.md`
-- `SkillReferences/UNITY_AGENT_SUPERVISOR_MODEL.md`
-- `SkillReferences/UNITY_SKILL_ROUTING.md`
-
-これらをPrimary Routerや旧Supervisor State Machineとして使用しません。
+旧Supervisor / Skill Routing互換AdapterはPhase 4で削除済みです。過去互換情報はGit履歴だけをArchiveとし、Runtime Routingへ戻しません。
 
 ## 4. Repository ownership
 
@@ -121,5 +115,5 @@ Domain実行結果はExecution Ownerへ最低限次を返します。
 
 - `AGENTS.md`へ詳細なCoding / Architecture / Rendering / Shader / Visual規約本文を戻さない。
 - Rule変更はCanonical Sourceを変更し、必要なValidator / Eval / Regression Caseを更新する。
-- Compatibility文書をCanonical Sourceへ昇格させない。
+- 削除済みのLegacy Supervisor / Skill Routing Adapterを復活させない。
 - Context / Harness / Loop / Graphの責務境界を逆流させない。
