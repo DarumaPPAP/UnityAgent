@@ -12,6 +12,7 @@ from context_manifest_runtime import (
     load_yaml,
     project_execution_graph,
 )
+from execution_graph_validator import validate_execution_graph
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -37,6 +38,9 @@ def main() -> int:
         except ValueError:
             manifest_source = manifest_path.as_posix()
         graph = project_execution_graph(ROOT, manifest, manifest_source)
+        graph_errors = validate_execution_graph(ROOT, graph)
+        if graph_errors:
+            raise ManifestError(graph_errors)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(dump_yaml(graph), encoding="utf-8")
         print(f"Execution Graph built: {output_path}")
