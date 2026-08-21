@@ -25,14 +25,16 @@
 
 1. `.ai/user-policy.yaml`を読む。
 2. `.ai/execution-profiles.yaml`からExecution Profileを選ぶ。
-3. `.ai/context-index.yaml`からPrimary Routeを一つ選ぶ。
-4. 選択RouteのContext Pack、Task Contract、Primary Domain Skillを一つずつ読む。
-5. Primary Knowledgeは必要な場合だけ最大一つ選び、Conditional Knowledge / Operationは条件成立時だけ追加する。
-6. Mutation前に対象Sourceと必要な直接依存を読む。
-7. MCP能力が必要な場合だけ`.ai/harness/mcp-activation.yaml`から必要Tool Groupを段階的に公開する。
-8. `.ai/harness/`のMutation ContractとRequired Quality Gateで結果を検証する。
-9. Evidenceを`passed` / `failed` / `unavailable`で返し、未検証範囲を成功扱いしない。
-10. Loop / Graph / Retry / Budget / Checkpoint / Human Gateは`DarumaPPAP/Unity-Graph-Engineering`へ委譲する。
+3. ユーザー要求と確認済みEvidenceから`.ai/context-index.yaml#task_fingerprint`のTask Fingerprintを作る。
+4. Task Fingerprintを`.ai/context-index.yaml#routes`の`fingerprint_match`へ照合し、Primary Routeを一つ選ぶ。技術名や単語だけでRouteを決めない。
+5. 選択RouteのContext Pack、Task Contract、Primary Domain Skillを一つずつ読む。
+6. Primary Knowledgeは必要な場合だけ最大一つ選び、Conditional Knowledge / Operationは条件成立時だけ追加する。
+7. Mutation前に対象Sourceと必要な直接依存を読む。
+8. MCP能力が必要な場合だけ`.ai/harness/mcp-activation.yaml`から必要Tool Groupを段階的に公開する。
+9. `.ai/harness/`のMutation ContractとRequired Quality Gateで結果を検証する。
+10. Evidenceを`passed` / `failed` / `unavailable`で返し、未検証範囲を成功扱いしない。
+11. Context Traceを生成する場合は`.ai/context-manifest.schema.yaml`に従い、`.ai/graph-contract.yaml`へExecution Graphとして投影可能なstable ID、typed edge、provenanceを保持する。
+12. Loop / Graph / Retry / Budget / Checkpoint / Human Gateは`DarumaPPAP/Unity-Graph-Engineering`へ委譲する。
 
 ## 3. Canonical map
 
@@ -40,8 +42,9 @@
 |---|---|---|
 | User Policy | `.ai/user-policy.yaml` | ユーザー固有の正しさ、Preference、禁止事項 |
 | Execution Profile | `.ai/execution-profiles.yaml` | Generic / Personal / Team Safeの実行境界 |
-| Domain Routing | `.ai/context-index.yaml` | Primary Route、Pack、Contract、Skill選択 |
-| Context Trace | `.ai/context-manifest.schema.yaml` | 今回読ませたContextとEvidenceの追跡 |
+| Domain Routing | `.ai/context-index.yaml` | Task Fingerprint、Primary Route、Pack、Contract、Skill選択 |
+| Context Trace | `.ai/context-manifest.schema.yaml` | 今回読ませたContext、Attempt、Evidenceの追跡 |
+| Graph Projection | `.ai/graph-contract.yaml` | Definition / Execution GraphのNode、Edge、Provenance、Visualization契約 |
 | Context Packs | `.ai/context-packs/` | TaskごとのRequired / Conditional / Excluded Context |
 | Knowledge | `.ai/knowledge/` | AI実装用の圧縮Knowledge Contract |
 | Harness | `.ai/harness/` | Task Contract、Mutation、Risk、Quality Gate、MCP Activation |
@@ -53,7 +56,7 @@
 
 ## 4. Repository ownership
 
-- `DarumaPPAP/UnityAgent`: User Policy、Context、Unity Harness Contract、Domain Skill、Validator、Eval。
+- `DarumaPPAP/UnityAgent`: User Policy、Context、Unity Harness Contract、Domain Skill、Validator、Eval、Graph Projection Contract。
 - `DarumaPPAP/Unity-Graph-Engineering`: Execution Mode、Loop / Graph、Retry、State、Budget、Checkpoint、Human Gate。
 - `DarumaPPAP/MyUnityMCP`: UnityAgentMCP、Creator Workflow、Domain MCP、Capability、Catalog、Manifest、Tool Schema、Package実装。
 - `DarumaPPAP/UnityAIGC-Archive`: 生成した製品コード、製品仕様、導入資料。
@@ -67,6 +70,7 @@ UnityAgent内へ通常の製品コードやMCP Package実装を複製しませ�
 
 - 全Skill、全Reference、全Knowledge、全MCP Manifestを最初から一括読込しない。
 - Primary Route / Context Pack / Task Contract / Domain Skillはそれぞれ一つを基本とする。
+- HLSL、RendererFeature、ECS、Materialなどの単語が存在するだけでDomain Routeを確定しない。Primary GoalとTask Fingerprintを先に確定する。
 - Project Path、Scene、Renderer Data、Layer、ShaderTag、Platform条件を推測しない。
 - Knowledge GraphはNavigationにだけ使い、変更前にSourceを直接確認する。
 - 人間向け長文Referenceは設計理由、比較、実験、Visual Decisionが必要な場合だけ読む。
@@ -82,7 +86,15 @@ UnityAgent内へ通常の製品コードやMCP Package実装を複製しませ�
 - AIの自己申告だけをEvidenceにしない。
 - UnityAgentへ汎用Loop / Graph / Retry Schedulerを戻さない。
 
-## 7. Domain detail entrypoints
+## 7. Graph projection guards
+
+- Canonical YAMLをSource of Truthとし、Graphは派生Viewとして扱う。
+- Graph EditorからPolicy、Context Pack、Task Contract等を直接更新する機能は、別途設計・承認されるまで無効とする。
+- Nodeはstable IDとnode typeを持ち、Edgeは`requires`、`applies_policy`、`requires_gate`等のtyped edgeで意味を保持する。
+- Context Manifestは一回のTask実行を表すExecution Graph Instanceとして扱い、Sourceを選択した理由とEvidence provenanceを失わない。
+- 将来のVisualizerはArchitecture View、Task View、Execution Viewの3 Viewを最低限提供できる構造を維持する。
+
+## 8. Domain detail entrypoints
 
 詳細Ruleが必要な場合だけ、選択Context Packから対応Sourceへ進みます。
 
@@ -93,12 +105,13 @@ UnityAgent内へ通常の製品コードやMCP Package実装を複製しませ�
 - Production / Learning Comment: `.ai/user-policy.yaml#comment_system`と対応Comment Skill
 - Visual Direction: `unity-visual-direction`と必要なBeautiful-Definition Reference
 
-## 8. Completion handoff
+## 9. Completion handoff
 
 Domain実行結果はExecution Ownerへ最低限次を返します。
 
 - applied_user_policy
 - execution_profile
+- task_fingerprint
 - selected_route
 - selected_context_pack
 - selected_task_contract
@@ -111,9 +124,12 @@ Domain実行結果はExecution Ownerへ最低限次を返します。
 - unresolved_bindings
 - compatibility_or_revert_conditions
 
-## 9. Anti-regression
+## 10. Anti-regression
 
 - `AGENTS.md`へ詳細なCoding / Architecture / Rendering / Shader / Visual規約本文を戻さない。
 - Rule変更はCanonical Sourceを変更し、必要なValidator / Eval / Regression Caseを更新する。
+- Route選択を`triggers`やTechnology Keyword中心へ戻さない。
+- Graph ProjectionをCanonical Policyの正本へ昇格させない。
+- stable node ID、typed edge、provenanceを将来の可視化都合だけで削除しない。
 - 削除済みのLegacy Supervisor / Skill Routing Adapterを復活させない。
 - Context / Harness / Loop / Graphの責務境界を逆流させない。

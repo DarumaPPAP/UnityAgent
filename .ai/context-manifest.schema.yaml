@@ -1,34 +1,103 @@
-schema_version: "1.0"
+schema_version: "2.0"
 
 # Context Manifest records the exact Context selected for one task execution.
-# It does not replace context-index.yaml or user-policy.yaml.
-# It provides traceability for Context Engineering.
+# It does not replace context-index.yaml, graph-contract.yaml or user-policy.yaml.
+# It is a runtime trace and the source for one Execution Graph instance.
 
+manifest:
+  id: required
+  graph_kind: execution
+  attempt: required
+  previous_attempt: optional
+
+# Task Fingerprint is copied from the selected semantic classification.
 task:
+  id: required
   route: required
-  intent: optional
-  scope: optional
+  fingerprint:
+    intent: required
+    artifact: required
+    scope: required
+    failure_mode: required
+    architecture_state: required
+    mutation_target: required
+    evidence_state: required
+    project_access: required
 
 policy:
-  loaded: []
+  loaded:
+    - node_id: optional
+      source_path: required
+      reason: required
 
 project_facts:
-  loaded: []
+  loaded:
+    - node_id: optional
+      key: required
+      value: required
+      source_path: required
+      reason: required
 
 context:
-  context_pack: required
-  primary_skill: optional
-  source_files: []
-  excluded_context: []
+  context_pack:
+    node_id: optional
+    source_path: required
+  primary_skill:
+    node_id: optional
+    source_path: optional
+  source_files:
+    - node_id: optional
+      source_path: required
+      reason: required
+  excluded_context:
+    - source_path: required
+      reason: required
 
 knowledge:
-  loaded: []
+  loaded:
+    - node_id: optional
+      source_path: required
+      reason: required
 
 harness:
-  task_contract: optional
-  quality_gates: []
-  mutation_channel: optional
+  task_contract:
+    node_id: optional
+    source_path: optional
+  mutation_rules:
+    - node_id: optional
+      id: required
+      effect: required
+  risk_level:
+    node_id: optional
+    id: optional
+  quality_gates:
+    - node_id: optional
+      id: required
+      status: optional
+
+tools:
+  activated:
+    - node_id: optional
+      id: required
+      reason: required
 
 execution:
-  evidence: []
+  evidence:
+    - node_id: optional
+      id: required
+      gate: optional
+      status: required
+      source_path: optional
+      reason: required
+  unresolved_bindings: []
+  failure_reason: optional
   status: optional
+
+graph_projection:
+  contract: .ai/graph-contract.yaml
+  graph_kind: execution
+  manifest_is_graph_instance: true
+  stable_node_ids_required_when_emitted: true
+  typed_edges_required: true
+  provenance_required: true
+  source_of_truth_remains_canonical_yaml: true
