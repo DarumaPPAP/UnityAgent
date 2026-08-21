@@ -11,9 +11,16 @@ from pathlib import Path
 INDEX_PATH = Path(".ai/context-index.yaml")
 USER_POLICY_PATH = Path(".ai/user-policy.yaml")
 EXECUTION_PROFILES_PATH = Path(".ai/execution-profiles.yaml")
-QUALITY_GATES_PATH = Path(".ai/quality-gates.yaml")
+QUALITY_GATES_PATH = Path(".ai/harness/quality-gates.yaml")
 LEGACY_ROUTING_PATH = Path("SkillReferences/UNITY_SKILL_ROUTING.md")
 OBSOLETE_CONSTITUTION_PATH = Path("Specs/ProjectConstitution.md")
+OBSOLETE_HARNESS_PATHS = (
+    Path(".ai/task-contracts"),
+    Path(".ai/quality-gates.yaml"),
+    Path(".ai/mutation-channels.yaml"),
+    Path(".ai/risk-levels.yaml"),
+    Path(".ai/mcp-routing.yaml"),
+)
 
 REQUIRED_ROUTE_IDS = {
     "architecture-design",
@@ -32,19 +39,19 @@ REQUIRED_ROUTE_IDS = {
 EXPECTED_ROUTE_BINDINGS = {
     "renderer-feature-change": (
         ".ai/context-packs/renderer-feature-change.yaml",
-        ".ai/task-contracts/renderer-feature-change.yaml",
+        ".ai/harness/task-contracts/renderer-feature-change.yaml",
     ),
     "asset-data-change": (
         ".ai/context-packs/asset-data-change.yaml",
-        ".ai/task-contracts/asset-data-change.yaml",
+        ".ai/harness/task-contracts/asset-data-change.yaml",
     ),
     "portable-feature": (
         ".ai/context-packs/portable-feature.yaml",
-        ".ai/task-contracts/portable-feature.yaml",
+        ".ai/harness/task-contracts/portable-feature.yaml",
     ),
     "visual-direction": (
         ".ai/context-packs/visual-direction.yaml",
-        ".ai/task-contracts/visual-direction.yaml",
+        ".ai/harness/task-contracts/visual-direction.yaml",
     ),
 }
 
@@ -112,6 +119,11 @@ def validate(root: Path) -> list[str]:
 
     required_index_contracts = (
         "user_policy: .ai/user-policy.yaml",
+        "task_contract_schema: .ai/harness/task-contracts/task-contract.schema.yaml",
+        "quality_gates: .ai/harness/quality-gates.yaml",
+        "mutation_channels: .ai/harness/mutation-channels.yaml",
+        "risk_levels: .ai/harness/risk-levels.yaml",
+        "mcp_activation_policy: .ai/harness/mcp-activation.yaml",
         "user_policy_must_be_loaded_before_domain_decision: true",
         "generic_best_practice_must_not_override_user_policy: true",
         "select_exactly_one_primary_route: true",
@@ -122,6 +134,10 @@ def validate(root: Path) -> list[str]:
     for contract in required_index_contracts:
         if contract not in index_text:
             errors.append(f"Missing canonical routing contract: {contract}")
+
+    for obsolete_path in OBSOLETE_HARNESS_PATHS:
+        if (root / obsolete_path).exists():
+            errors.append(f"Obsolete pre-Harness path must not be restored: {obsolete_path}")
 
     ids = {data.get("id", "") for data in routes.values()}
     missing_ids = REQUIRED_ROUTE_IDS - ids

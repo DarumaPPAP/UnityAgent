@@ -29,7 +29,7 @@ conditional:
     - .ai/context-packs/asset-data-change.yaml
   team_safe_import:
     - .ai/execution-profiles.yaml
-    - .ai/task-contracts/safe-import-integration.yaml
+    - .ai/harness/task-contracts/safe-import-integration.yaml
 
 excluded_by_default:
   - assumed project paths scene names renderer data layers and shader tags

@@ -15,7 +15,7 @@ required:
   - reference_integrity_requirements
   - authoritative_mutation_channel
   - rollback_asset_or_revision
-  - .ai/mutation-channels.yaml
+  - .ai/harness/mutation-channels.yaml
 
 conditional:
   project_specific_change:
@@ -29,7 +29,7 @@ conditional:
     - .ai/context-packs/renderer-feature-change.yaml
   team_safe_import:
     - .ai/execution-profiles.yaml
-    - .ai/task-contracts/safe-import-integration.yaml
+    - .ai/harness/task-contracts/safe-import-integration.yaml
 
 excluded_by_default:
   - raw Unity YAML mutation

@@ -3,12 +3,12 @@ repository_role: unity_domain_knowledge
 execution_owner: DarumaPPAP/Unity-Graph-Engineering
 user_policy: .ai/user-policy.yaml
 execution_profiles: .ai/execution-profiles.yaml
-task_contract_schema: .ai/task-contracts/task-contract.schema.yaml
+task_contract_schema: .ai/harness/task-contracts/task-contract.schema.yaml
 knowledge_index: .ai/knowledge/index.yaml
-quality_gates: .ai/quality-gates.yaml
-mutation_channels: .ai/mutation-channels.yaml
-risk_levels: .ai/risk-levels.yaml
-mcp_activation_policy: .ai/mcp-routing.yaml
+quality_gates: .ai/harness/quality-gates.yaml
+mutation_channels: .ai/harness/mutation-channels.yaml
+risk_levels: .ai/harness/risk-levels.yaml
+mcp_activation_policy: .ai/harness/mcp-activation.yaml
 mcp_repository: DarumaPPAP/MyUnityMCP
 
 routing_rules:
@@ -67,7 +67,7 @@ routes:
       - excessive C# file split review
     primary_skill: unity-architecture-design
     context_pack: .ai/context-packs/architecture-design.yaml
-    task_contract: .ai/task-contracts/architecture-design.yaml
+    task_contract: .ai/harness/task-contracts/architecture-design.yaml
     knowledge_selection: optional
 
   graphics_mcp:
@@ -87,7 +87,7 @@ routes:
       - graphics inspect plan apply bake capture refine workflow
     primary_skill: unity-architecture-design
     context_pack: .ai/context-packs/graphics-mcp.yaml
-    task_contract: .ai/task-contracts/graphics-mcp.yaml
+    task_contract: .ai/harness/task-contracts/graphics-mcp.yaml
     knowledge_selection: required_when_domain_matches
     mcp_selection: required
 
@@ -99,7 +99,7 @@ routes:
       - single behavior correction
     primary_skill: csharp-safe-patch
     context_pack: .ai/context-packs/csharp-local-fix.yaml
-    task_contract: .ai/task-contracts/csharp-local-fix.yaml
+    task_contract: .ai/harness/task-contracts/csharp-local-fix.yaml
 
   rendering_incident:
     id: rendering-incident
@@ -110,7 +110,7 @@ routes:
       - rendering regression
     primary_skill: unity-incident-investigation
     context_pack: .ai/context-packs/rendering-incident.yaml
-    task_contract: .ai/task-contracts/rendering-incident.yaml
+    task_contract: .ai/harness/task-contracts/rendering-incident.yaml
 
   shader_change:
     id: shader-change
@@ -121,7 +121,7 @@ routes:
       - motion vector or temporal shader work
     primary_skill: unity-rendering
     context_pack: .ai/context-packs/shader-change.yaml
-    task_contract: .ai/task-contracts/shader-change.yaml
+    task_contract: .ai/harness/task-contracts/shader-change.yaml
     knowledge_selection: required_when_domain_matches
 
   renderer_feature_change:
@@ -134,7 +134,7 @@ routes:
       - renderer resource integration
     primary_skill: unity-rendering
     context_pack: .ai/context-packs/renderer-feature-change.yaml
-    task_contract: .ai/task-contracts/renderer-feature-change.yaml
+    task_contract: .ai/harness/task-contracts/renderer-feature-change.yaml
     knowledge_selection: required_when_domain_matches
 
   performance_experiment:
@@ -148,7 +148,7 @@ routes:
       - Before After measurement
     primary_skill: unity-runtime-evidence
     context_pack: .ai/context-packs/performance.yaml
-    task_contract: .ai/task-contracts/performance-experiment.yaml
+    task_contract: .ai/harness/task-contracts/performance-experiment.yaml
 
   asset_data_change:
     id: asset-data-change
@@ -160,7 +160,7 @@ routes:
       - serialized asset change
     primary_skill: csharp-safe-patch
     context_pack: .ai/context-packs/asset-data-change.yaml
-    task_contract: .ai/task-contracts/asset-data-change.yaml
+    task_contract: .ai/harness/task-contracts/asset-data-change.yaml
 
   portable_feature:
     id: portable-feature
@@ -171,7 +171,7 @@ routes:
       - company project without source access
     primary_skill: unity-architecture-design
     context_pack: .ai/context-packs/portable-feature.yaml
-    task_contract: .ai/task-contracts/portable-feature.yaml
+    task_contract: .ai/harness/task-contracts/portable-feature.yaml
     forced_profile: generic_planning
 
   safe_import_integration:
@@ -182,7 +182,7 @@ routes:
       - local package security validation
     primary_skill: csharp-safe-patch
     context_pack: .ai/context-packs/asset-data-change.yaml
-    task_contract: .ai/task-contracts/safe-import-integration.yaml
+    task_contract: .ai/harness/task-contracts/safe-import-integration.yaml
     forced_profile: team_safe_import
 
   visual_direction:
@@ -195,7 +195,7 @@ routes:
       - visual quality review
     primary_skill: unity-visual-direction
     context_pack: .ai/context-packs/visual-direction.yaml
-    task_contract: .ai/task-contracts/visual-direction.yaml
+    task_contract: .ai/harness/task-contracts/visual-direction.yaml
     knowledge_selection: optional
 
 conflicts:
