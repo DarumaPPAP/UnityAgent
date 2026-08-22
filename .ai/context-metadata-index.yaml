@@ -26,7 +26,7 @@ contexts:
   - serialization
   related: []
   pack_path: .ai/context-packs/asset-data-change.yaml
-  source_sha256: 46a5c7dd03248cc5cc4c64faf65725969a214684af76abba4ca485e7f3deca43
+  source_sha256: 1bbc606f2efbd1d4ae0eddeb50f0704fe0238f405816f6a443fbcace33afcd92
 - id: csharp-local-fix
   title: CSharp Local Fix
   summary:
