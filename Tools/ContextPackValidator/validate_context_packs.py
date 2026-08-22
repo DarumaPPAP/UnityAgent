@@ -14,6 +14,8 @@ import yaml
 PACK_DIR = Path(".ai/context-packs")
 INDEX_PATH = Path(".ai/context-index.yaml")
 SCHEMA_PATH = Path(".ai/context-pack.schema.yaml")
+PROJECT_PROFILE_PATH = "Specs/ProjectProfile.md"
+PROJECT_FALLBACK_KEY = "project_fallback"
 REQUIRED_PACKS = {
     "architecture-design.yaml",
     "graphics-mcp.yaml",
@@ -125,6 +127,36 @@ def validate_metadata(root: Path, path: Path, document: dict[str, Any], context_
     return errors
 
 
+def validate_project_profile_fallback(path: Path, document: dict[str, Any], root: Path) -> list[str]:
+    errors: list[str] = []
+    relative = str(path.relative_to(root)).replace("\\", "/")
+    required = document.get("required", []) or []
+    if PROJECT_PROFILE_PATH in required:
+        errors.append(
+            f"{relative} must not require {PROJECT_PROFILE_PATH}; it is fallback-only context"
+        )
+
+    conditional = document.get("conditional", {}) or {}
+    profile_conditions: list[str] = []
+    if isinstance(conditional, dict):
+        for condition, references in conditional.items():
+            if isinstance(references, list) and PROJECT_PROFILE_PATH in references:
+                profile_conditions.append(str(condition))
+
+    for condition in profile_conditions:
+        if condition != PROJECT_FALLBACK_KEY:
+            errors.append(
+                f"{relative} may load {PROJECT_PROFILE_PATH} only from conditional.{PROJECT_FALLBACK_KEY}, not conditional.{condition}"
+            )
+
+    if profile_conditions:
+        rules = document.get("rules", {}) or {}
+        if rules.get("project_profile_is_fallback_only") is not True:
+            errors.append(f"{relative} must declare rules.project_profile_is_fallback_only: true")
+
+    return errors
+
+
 def validate(root: Path) -> list[str]:
     errors: list[str] = []
     index_path = root / INDEX_PATH
@@ -142,6 +174,11 @@ def validate(root: Path) -> list[str]:
         "select_exactly_one_primary_route: true",
         "load_all_skills: false",
         "load_all_references: false",
+        "detected_project_facts_override_project_profile: true",
+        "user_confirmed_project_facts_override_project_profile: true",
+        "project_profile_is_fallback_only: true",
+        "project_profile_must_not_be_required_context: true",
+        "project_profile_load_requires_missing_project_fact: true",
         "direct_source_read_required_before_mutation: true",
         "do_not_use_legacy_routing_document: true",
     ):
@@ -172,6 +209,7 @@ def validate(root: Path) -> list[str]:
         if not isinstance(primary_skill, str) or not (root / primary_skill).is_file():
             errors.append(f"{relative} has broken primary_skill: {primary_skill}")
         errors.extend(validate_metadata(root, pack_path, document, context_ids))
+        errors.extend(validate_project_profile_fallback(pack_path, document, root))
 
     for route_key, route in (index.get("routes", {}) or {}).items():
         for field in ("context_pack", "task_contract", "primary_skill"):
