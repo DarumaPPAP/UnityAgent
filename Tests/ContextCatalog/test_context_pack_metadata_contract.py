@@ -115,6 +115,19 @@ class ContextPackMetadataContractTests(unittest.TestCase):
         self.assertTrue(rules.get("project_profile_must_not_be_required_context"))
         self.assertTrue(rules.get("project_profile_load_requires_missing_project_fact"))
 
+    def test_routing_declares_typed_context_and_freshness_invariants(self) -> None:
+        index = yaml.safe_load((ROOT / ".ai/context-index.yaml").read_text(encoding="utf-8")) or {}
+        rules = index.get("routing_rules", {}) or {}
+        self.assertEqual(str(rules.get("typed_context_pack_version")), "3.0")
+        self.assertTrue(rules.get("scalar_context_entries_forbidden"))
+        self.assertTrue(rules.get("repository_reference_must_be_explicit"))
+        self.assertTrue(rules.get("external_reference_must_be_explicit"))
+        self.assertTrue(rules.get("context_include_does_not_change_primary_route"))
+        self.assertTrue(rules.get("route_handoff_changes_primary_route"))
+        self.assertTrue(rules.get("project_fact_provenance_required"))
+        self.assertTrue(rules.get("current_project_fact_requires_current_attempt_check"))
+        self.assertTrue(rules.get("retry_must_not_implicitly_reuse_project_facts"))
+
 
 if __name__ == "__main__":
     unittest.main()
