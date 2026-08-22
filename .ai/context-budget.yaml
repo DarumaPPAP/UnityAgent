@@ -6,6 +6,24 @@ purpose:
   - Separate measurable retrieval cost from model-specific token accounting.
   - Require explicit compression evidence instead of silently dropping Context.
 
+scope:
+  measures:
+    - selected_policy_and_context_artifacts
+    - selected_domain_skill_and_task_contract
+    - selected_project_facts
+    - selected_project_source_and_direct_dependencies
+    - selected_repository_and_external_references
+    - selected_knowledge_and_background_context
+  does_not_measure:
+    - system_prompt_overhead
+    - current_user_instruction_tokens
+    - tool_protocol_overhead
+    - model_hidden_reasoning_tokens
+    - provider_billing_tokens
+    - loop_total_cost
+  loop_and_model_execution_budget_owner: DarumaPPAP/Unity-Graph-Engineering
+  context_selection_budget_owner: DarumaPPAP/UnityAgent
+
 source_of_truth:
   canonical_contract: true
   generated_budget_reports_are_not_policy: true
