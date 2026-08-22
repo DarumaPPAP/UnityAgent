@@ -35,6 +35,17 @@ def write_yaml(path: Path, data: dict) -> None:
     path.write_text(dump_yaml(data), encoding="utf-8")
 
 
+def validate_previous_budget(previous: dict | None) -> None:
+    if previous is None:
+        return
+    budget = previous.get("budget")
+    if not isinstance(budget, dict):
+        raise ManifestError(["Retry requires a previous canonical Manifest with Context Budget report."])
+    errors = validate_budget_integrity(ROOT, previous, budget)
+    if errors:
+        raise ManifestError([f"Invalid previous Context Budget: {error}" for error in errors])
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--request", required=True, help="Manifest request YAML path")
@@ -47,6 +58,7 @@ def main() -> int:
         request_path = resolve_path(args.request)
         request = load_yaml(request_path)
         previous = load_yaml(resolve_path(args.previous)) if args.previous else None
+        validate_previous_budget(previous)
         manifest = build_manifest(ROOT, request, previous)
 
         budget = build_budget_report(ROOT, manifest, request)
