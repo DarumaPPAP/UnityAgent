@@ -1,4 +1,4 @@
-schema_version: "1.1"
+schema_version: "3.0"
 id: shader-change
 primary_skill: .agents/skills/unity-rendering/SKILL.md
 
@@ -28,28 +28,43 @@ use_when:
   - shader performance correction
 
 required:
-  - target_shader
-  - direct_includes
-  - material_or_pass_contract
-  - SkillReferences/RENDERING_STANDARDS.md
-  - SkillReferences/SHADER_PERFORMANCE_STANDARDS.md
-  - SkillReferences/ShaderPerformance/UNITY_URP_POLICY.md
+  - type: binding
+    name: target_shader
+  - type: binding
+    name: direct_includes
+  - type: binding
+    name: material_or_pass_contract
+  - type: repository_reference
+    path: SkillReferences/RENDERING_STANDARDS.md
+  - type: repository_reference
+    path: SkillReferences/SHADER_PERFORMANCE_STANDARDS.md
+  - type: repository_reference
+    path: SkillReferences/ShaderPerformance/UNITY_URP_POLICY.md
 
 conditional:
   project_fallback:
-    - Specs/ProjectProfile.md
+    - type: repository_reference
+      path: Specs/ProjectProfile.md
   read_only_audit:
-    - .agents/skills/shader-performance-auditor/SKILL.md
-    - SkillReferences/ShaderPerformance/SHADER_REVIEW_GATE.md
-    - SkillReferences/ShaderPerformance/RULE_CATALOG.md
+    - type: repository_reference
+      path: .agents/skills/shader-performance-auditor/SKILL.md
+    - type: repository_reference
+      path: SkillReferences/ShaderPerformance/SHADER_REVIEW_GATE.md
+    - type: repository_reference
+      path: SkillReferences/ShaderPerformance/RULE_CATALOG.md
   confirmed_refactor:
-    - .agents/skills/shader-performance-refactor/SKILL.md
-    - SkillReferences/ShaderPerformance/REFACTOR_POLICY.md
+    - type: repository_reference
+      path: .agents/skills/shader-performance-refactor/SKILL.md
+    - type: repository_reference
+      path: SkillReferences/ShaderPerformance/REFACTOR_POLICY.md
   variant_change:
-    - .agents/skills/unity-shader-variant-governor/SKILL.md
-    - SkillReferences/ShaderPerformance/VARIANT_POLICY.md
+    - type: repository_reference
+      path: .agents/skills/unity-shader-variant-governor/SKILL.md
+    - type: repository_reference
+      path: SkillReferences/ShaderPerformance/VARIANT_POLICY.md
   runtime_measurement:
-    - matching shader runtime evidence Skill
+    - type: binding
+      name: matching shader runtime evidence Skill
 
 excluded_by_default:
   - SkillReferences/BEAUTIFUL_DEFINITION_INTEGRATION.md
