@@ -21,11 +21,8 @@ ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUTPUT_ROOT = ROOT / "Artifacts" / "ContextManifests"
 sys.path.insert(0, str(ROOT / "Tools" / "ContextBudget"))
 
-from context_budget_runtime import (  # noqa: E402
-    BudgetError,
-    build_budget_report,
-    validate_budget_report,
-)
+from context_budget_runtime import BudgetError, build_budget_report  # noqa: E402
+from context_budget_validation import validate_budget_integrity  # noqa: E402
 
 
 def resolve_path(value: str) -> Path:
@@ -54,7 +51,7 @@ def main() -> int:
 
         budget = build_budget_report(ROOT, manifest, request)
         manifest["budget"] = budget
-        budget_errors = validate_budget_report(manifest, budget)
+        budget_errors = validate_budget_integrity(ROOT, manifest, budget)
         if budget_errors:
             raise ManifestError(budget_errors)
 
