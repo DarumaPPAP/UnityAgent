@@ -9,9 +9,12 @@ from typing import Any
 from context_budget_runtime import (
     BUDGET_CONTRACT_PATH,
     estimate_tokens,
+    expected_artifacts,
     load_yaml,
     validate_budget_report,
 )
+
+EXTRA_OBSERVATION_ROLES = {"background_reference", "prior_failure", "knowledge"}
 
 
 def validate_budget_integrity(
@@ -43,8 +46,13 @@ def validate_budget_integrity(
     if estimator.get("exact_model_tokenizer") is not False:
         errors.append("Context Budget report must not claim exact model tokenizer accounting")
     divisor = int(estimator_contract.get("utf8_bytes_per_estimated_token", 0) or 0)
+    if divisor <= 0:
+        return errors + ["Canonical Context Budget estimator divisor must be > 0"]
     if estimator.get("utf8_bytes_per_estimated_token") != divisor:
         errors.append("Context Budget estimator divisor does not match canonical contract")
+
+    expected_list = expected_artifacts(manifest)
+    expected_by_id = {str(item["source_id"]): item for item in expected_list}
 
     artifacts = report.get("artifacts", []) or []
     if not isinstance(artifacts, list):
@@ -59,6 +67,7 @@ def validate_budget_integrity(
     summary_allowed = set(compression_policy.get("semantic_summary_allowed_roles", []) or [])
 
     source_ids: set[str] = set()
+    artifact_by_id: dict[str, dict[str, Any]] = {}
     original_total = 0
     selected_total = 0
     estimated_total = 0
@@ -77,6 +86,16 @@ def validate_budget_integrity(
         elif source_id in source_ids:
             errors.append(f"Duplicate Budget artifact source_id: {source_id}")
         source_ids.add(source_id)
+        artifact_by_id[source_id] = item
+
+        expected = expected_by_id.get(source_id)
+        if expected is None and role not in EXTRA_OBSERVATION_ROLES:
+            errors.append(f"Unexpected Budget artifact not selected by Context: {source_id}")
+        elif expected is not None and role != str(expected.get("role", "")):
+            errors.append(
+                f"Budget artifact role mismatch: {source_id}={role}, expected={expected.get('role')}"
+            )
+
         if role not in allowed_roles:
             errors.append(f"Unsupported Budget artifact role: {source_id}={role}")
         if not revision:
@@ -91,6 +110,9 @@ def validate_budget_integrity(
         if not isinstance(selected, int) or selected < 0 or selected > original:
             errors.append(f"Invalid selected_utf8_bytes: {source_id}")
             continue
+        if expected is not None and expected.get("required") and selected == 0:
+            errors.append(f"Required Context artifact cannot be dropped: {source_id}")
+
         expected_estimated = estimate_tokens(selected, divisor)
         if estimated != expected_estimated:
             errors.append(
@@ -114,7 +136,8 @@ def validate_budget_integrity(
         if mode == "lossless_excerpt":
             if role not in excerpt_allowed:
                 errors.append(f"lossless_excerpt is not allowed for role {role}: {source_id}")
-            if not isinstance(compression.get("selected_ranges"), list) or not compression.get("selected_ranges"):
+            ranges = compression.get("selected_ranges")
+            if not isinstance(ranges, list) or not ranges:
                 errors.append(f"lossless_excerpt requires selected_ranges: {source_id}")
         if mode == "semantic_summary":
             if role not in summary_allowed:
@@ -126,13 +149,42 @@ def validate_budget_integrity(
         selected_total += selected
         estimated_total += expected_estimated
 
+    expected_missing = sorted(
+        source_id
+        for source_id, expected in expected_by_id.items()
+        if not expected.get("auto_measurable") and source_id not in source_ids
+    )
+    required_missing = sorted(
+        source_id
+        for source_id, expected in expected_by_id.items()
+        if expected.get("required") and source_id not in source_ids and not expected.get("auto_measurable")
+    )
+
     coverage = report.get("coverage", {}) or {}
     missing = coverage.get("missing_observations", []) or []
     if not isinstance(missing, list):
         errors.append("budget.coverage.missing_observations must be a list")
         missing = []
+    if sorted(str(item) for item in missing) != expected_missing:
+        errors.append("budget.coverage.missing_observations does not match Manifest-selected sources")
+    if coverage.get("expected_artifacts") != len(expected_list):
+        errors.append("budget.coverage.expected_artifacts does not match Manifest-selected source count")
     if coverage.get("measured_artifacts") != len(artifacts):
         errors.append("budget.coverage.measured_artifacts does not match artifact count")
+
+    if required_missing and report.get("decision") == "within_budget":
+        errors.append("within_budget cannot omit required Project or External Context observations")
+
+    manifest_context = manifest.get("context", {}) or {}
+    expected_external_fetches = len(manifest_context.get("external_references", []) or [])
+    expected_context_includes = len(manifest_context.get("context_includes", []) or [])
+    expected_expansion_hops = 0
+    context_pack_path = str((manifest_context.get("context_pack", {}) or {}).get("source_path", ""))
+    if context_pack_path:
+        context_pack = load_yaml(root / context_pack_path)
+        expected_expansion_hops = int(
+            (context_pack.get("limits", {}) or {}).get("context_expansion_hops", 0) or 0
+        )
 
     retrieval = report.get("retrieval", {}) or {}
     if retrieval.get("artifacts") != len(artifacts):
@@ -141,6 +193,12 @@ def validate_budget_integrity(
         errors.append("budget.retrieval.original_utf8_bytes does not match artifact sum")
     if retrieval.get("selected_utf8_bytes") != selected_total:
         errors.append("budget.retrieval.selected_utf8_bytes does not match artifact sum")
+    if retrieval.get("external_fetches") != expected_external_fetches:
+        errors.append("budget.retrieval.external_fetches does not match Manifest external references")
+    if retrieval.get("context_includes") != expected_context_includes:
+        errors.append("budget.retrieval.context_includes does not match Manifest context includes")
+    if retrieval.get("expansion_hops") != expected_expansion_hops:
+        errors.append("budget.retrieval.expansion_hops does not match selected Context Pack")
     if retrieval.get("limits") != expected_retrieval_limits:
         errors.append("budget.retrieval.limits does not match canonical profile")
 
@@ -168,9 +226,6 @@ def validate_budget_integrity(
     max_external = int(expected_retrieval_limits.get("max_external_fetches", 0) or 0)
     max_includes = int(expected_retrieval_limits.get("max_context_includes", 0) or 0)
     max_hops = int(expected_retrieval_limits.get("max_expansion_hops", 0) or 0)
-    external_fetches = int(retrieval.get("external_fetches", 0) or 0)
-    context_includes = int(retrieval.get("context_includes", 0) or 0)
-    expansion_hops = int(retrieval.get("expansion_hops", 0) or 0)
     hard_token_limit = int(expected_context_limits.get("hard_estimated_tokens", 0) or 0)
     soft_token_limit = int(expected_context_limits.get("soft_estimated_tokens", 0) or 0)
 
@@ -178,18 +233,18 @@ def validate_budget_integrity(
         hard_reasons.append("max_artifacts_exceeded")
     if selected_total > max_bytes:
         hard_reasons.append("max_selected_utf8_bytes_exceeded")
-    if external_fetches > max_external:
+    if expected_external_fetches > max_external:
         hard_reasons.append("max_external_fetches_exceeded")
-    if context_includes > max_includes:
+    if expected_context_includes > max_includes:
         hard_reasons.append("max_context_includes_exceeded")
-    if expansion_hops > max_hops:
+    if expected_expansion_hops > max_hops:
         hard_reasons.append("max_expansion_hops_exceeded")
     if estimated_total > hard_token_limit:
         hard_reasons.append("hard_estimated_tokens_exceeded")
 
     if hard_reasons:
         expected_decision = "blocked"
-    elif missing:
+    elif expected_missing:
         expected_decision = "unmeasured"
     elif estimated_total > soft_token_limit:
         expected_decision = "compression_required"
