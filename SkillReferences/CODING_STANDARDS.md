@@ -4,13 +4,22 @@
 
 Before review or implementation, resolve Unity version, render pipeline, target platform, Editor/Player, Mono/IL2CPP, Development/Release, Burst/Jobs/Entities, hot-path frequency, public API and serialization compatibility.
 
+Project Factは、対象Projectから直接検出した値、今回ユーザーが確認した値、Project固有Contextの順に優先する。`Specs/ProjectProfile.md`は必要Factが未解決の場合だけ使用するFallbackであり、検出済みFactを上書きしない。
+
 Local Behaviorでは、System級のArchitecture分析へ進む前にUnity Lifecycle、既存Component、既存Callbackだけで要求を満たせるかを確認する。
 
 ## Naming
 
 ### Namespace resolution
 
-Namespaceは実装前に、対象プロジェクトの既存コード、asmdefの`rootNamespace`、または`Specs/ProjectProfile.md`から確定する。
+Namespaceは実装前に、次の優先順位で確定する。
+
+1. 変更対象の既存コードで使用中のnamespace
+2. 対象Projectから検出したasmdefの`rootNamespace`と既存Assembly契約
+3. 今回ユーザーが確認したProject固有Fact
+4. 上記で必要なFactが未解決の場合だけ`Specs/ProjectProfile.md`
+
+`Specs/ProjectProfile.md`のテンプレート値や固定値を、検出済みProject Factより優先してはならない。
 
 - `RootNamespace`が設定済みの場合: `<RootNamespace>.<FeatureName>`
 - プロジェクトがRoot Namespaceを使用しない場合: `<FeatureName>`
