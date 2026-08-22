@@ -39,6 +39,7 @@ required:
 conditional:
   project_fallback:
     - Specs/ProjectProfile.md
+  project_specific_change: []
   editor_script:
     - SkillReferences/CODING_STANDARDS.md
     - target editor source and direct dependencies
