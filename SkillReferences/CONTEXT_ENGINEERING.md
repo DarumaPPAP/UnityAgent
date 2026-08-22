@@ -36,6 +36,21 @@ Variant変更、RenderGraph、Burst、Visual、Runtime Measurementなど、条�
 
 Taskと無関係なSupervisor、Visual、C# Catalog、Shader Catalogなど。必要性がEvidenceで判明した場合だけ別RouteまたはSecondary Skillとして追加する。
 
+## Project Fact precedence
+
+`Specs/ProjectProfile.md`はRequired Contextではなく、必要なProject Factが未解決の場合だけ使用するFallbackとする。
+
+Project Factは次の順で解決する。
+
+1. 対象Unity Projectから直接検出した事実
+2. 今回ユーザーが確認したProject Fact
+3. Project固有Context
+4. `Specs/ProjectProfile.md`によるFallback
+
+検出済みFactとProject Profileが競合した場合、Project Profileで上書きしない。Project Profileを読む場合は、どの未解決Factを補うために必要だったかを記録する。
+
+Context PackではProject Profileを`required`へ置かず、使用する場合は`conditional.project_fallback`へ限定する。
+
 ## Primary Skill
 
 各StateまたはPrompt TaskでPrimary Domain Skillは一つにする。Secondary SkillはPrimaryが所有しない専門判断だけを補う。
