@@ -1,4 +1,4 @@
-schema_version: "1.1"
+schema_version: "3.0"
 id: asset-data-change
 primary_skill: .agents/skills/csharp-safe-patch/SKILL.md
 
@@ -28,28 +28,42 @@ use_when:
   - team safe import staging integration
 
 required:
-  - .ai/user-policy.yaml
-  - target_assets
-  - expected_serialized_change
-  - reference_integrity_requirements
-  - authoritative_mutation_channel
-  - rollback_asset_or_revision
-  - .ai/harness/mutation-channels.yaml
+  - type: repository_reference
+    path: .ai/user-policy.yaml
+  - type: binding
+    name: target_assets
+  - type: binding
+    name: expected_serialized_change
+  - type: binding
+    name: reference_integrity_requirements
+  - type: binding
+    name: authoritative_mutation_channel
+  - type: binding
+    name: rollback_asset_or_revision
+  - type: repository_reference
+    path: .ai/harness/mutation-channels.yaml
 
 conditional:
   project_fallback:
-    - Specs/ProjectProfile.md
+    - type: repository_reference
+      path: Specs/ProjectProfile.md
   project_specific_change: []
   editor_script:
-    - SkillReferences/CODING_STANDARDS.md
-    - target editor source and direct dependencies
+    - type: repository_reference
+      path: SkillReferences/CODING_STANDARDS.md
+    - type: binding
+      name: target editor source and direct dependencies
   material_or_shader_contract:
-    - .ai/context-packs/shader-change.yaml
+    - type: context_include
+      context_id: shader-change
   renderer_data_or_pipeline_asset:
-    - .ai/context-packs/renderer-feature-change.yaml
+    - type: context_include
+      context_id: renderer-feature-change
   team_safe_import:
-    - .ai/execution-profiles.yaml
-    - .ai/harness/task-contracts/safe-import-integration.yaml
+    - type: repository_reference
+      path: .ai/execution-profiles.yaml
+    - type: repository_reference
+      path: .ai/harness/task-contracts/safe-import-integration.yaml
 
 excluded_by_default:
   - raw Unity YAML mutation
