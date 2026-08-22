@@ -40,6 +40,7 @@ VALIDATORS = (
     Path("Tools/GoldenEval/validate_gate_catalog.py"),
     Path("Tools/GoldenEval/validate_required_knowledge.py"),
     Path("Tools/GoldenEval/validate_golden_tasks.py"),
+    Path("Tools/GoldenEval/validate_typed_context_v3.py"),
 )
 
 
