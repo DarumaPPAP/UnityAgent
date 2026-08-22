@@ -1,5 +1,5 @@
 id: graphics.unity_graphics_mcp
-version: "1.2.0"
+version: "1.2.1"
 status: draft
 
 use_when:
@@ -45,7 +45,7 @@ implementation_contract:
   - visual acceptance requires reference grounded capture review and human approval
 
 naming_contract:
-  - resolve namespace from existing code asmdef rootNamespace or Specs/ProjectProfile.md
+  - resolve namespace from existing code and detected asmdef rootNamespace first then user confirmed project facts and use Specs/ProjectProfile.md only as unresolved fact fallback
   - when RootNamespace is NONE use UnityAgentMcp UnityGraphicsMcp or the approved single level Feature namespace
   - never emit Namespace RootNamespace CHANGE_ME or leading_or_trailing_dot namespaces
   - enum types use E_UPPER_SNAKE_CASE
