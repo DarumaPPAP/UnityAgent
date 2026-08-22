@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: "1.1"
 id: performance
 primary_skill: .agents/skills/unity-runtime-evidence/SKILL.md
 
@@ -33,9 +33,10 @@ required:
   - target_platform
   - quality_settings
   - baseline_capture_or_explicit_missing_baseline
-  - Specs/ProjectProfile.md
 
 conditional:
+  project_fallback:
+    - Specs/ProjectProfile.md
   csharp_cpu_or_gc:
     - matching CSharp audit Skill
     - SkillReferences/CODING_STANDARDS.md
@@ -59,6 +60,8 @@ rules:
   before_after_same_conditions: true
   quality_regression_check_required: true
   unmeasured_improvement_cannot_be_claimed: true
+  detected_project_facts_override_project_profile: true
+  project_profile_is_fallback_only: true
 
 limits:
   initial_file_reads: 6
