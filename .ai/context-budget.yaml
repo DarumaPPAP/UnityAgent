@@ -152,19 +152,25 @@ budget_decision:
     - unmeasured
   within_budget:
     - all_required_artifacts_measured
-    - retrieval_limits_satisfied
+    - hard_retrieval_limits_satisfied
     - estimated_tokens_at_or_below_soft_limit
   compression_required:
     - all_required_artifacts_measured
     - hard_limits_not_exceeded
-    - soft_context_limit_exceeded_or_soft_retrieval_pressure_detected
+    - soft_context_limit_exceeded
   blocked:
     - hard_context_limit_exceeded
     - hard_retrieval_limit_exceeded
-    - invalid_compression_on_protected_role
-    - required_artifact_dropped
   unmeasured:
     - required_project_or_external_observation_missing
+
+validation_failures:
+  reject_before_budget_decision:
+    - invalid_compression_on_protected_role
+    - required_artifact_dropped
+    - invalid_source_revision
+    - invalid_byte_measurement
+    - unexpected_selected_artifact
 
 execution_guards:
   mutation_requires_within_budget: true
