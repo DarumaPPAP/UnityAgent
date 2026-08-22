@@ -1,4 +1,6 @@
 schema_version: "3.1"
+extensions:
+  context_budget: "1.0"
 
 # Context Manifest is one task-attempt runtime trace.
 # Canonical Policy / Context / Harness YAML remains authoritative.
@@ -9,6 +11,8 @@ runtime:
   evidence_recorder: Tools/ContextManifest/record_manifest_evidence.py
   validator: Tools/ContextManifest/validate_context_manifest.py
   graph_projector: Tools/ContextManifest/project_execution_graph.py
+  budget_engine: Tools/ContextBudget/context_budget_runtime.py
+  budget_validator: Tools/ContextBudget/validate_context_budget.py
   default_output_root: Artifacts/ContextManifests
   generated_manifest_is_not_canonical_policy: true
   generated_graph_is_derived_view: true
@@ -169,6 +173,63 @@ tools:
     - node_id: required_when_emitted
       id: required
       reason: required
+
+budget:
+  contract: .ai/context-budget.yaml
+  profile: required_on_canonical_builder
+  estimator:
+    id: required_on_canonical_builder
+    exact_model_tokenizer: false
+    utf8_bytes_per_estimated_token: required_on_canonical_builder
+  coverage:
+    expected_artifacts: required_on_canonical_builder
+    measured_artifacts: required_on_canonical_builder
+    missing_observations: []
+  retrieval:
+    artifacts: required_on_canonical_builder
+    original_utf8_bytes: required_on_canonical_builder
+    selected_utf8_bytes: required_on_canonical_builder
+    external_fetches: required_on_canonical_builder
+    context_includes: required_on_canonical_builder
+    expansion_hops: required_on_canonical_builder
+    limits: required_on_canonical_builder
+  context:
+    estimated_tokens: required_on_canonical_builder
+    soft_estimated_tokens: required_on_canonical_builder
+    hard_estimated_tokens: required_on_canonical_builder
+  compression:
+    applied: required_on_canonical_builder
+    compressed_artifacts: required_on_canonical_builder
+    saved_utf8_bytes: required_on_canonical_builder
+    modes: []
+    candidates: []
+  artifacts:
+    - source_id: required
+      role: required
+      source_revision: required
+      original_utf8_bytes: required
+      selected_utf8_bytes: required
+      estimated_tokens: required
+      compression: required
+  decision:
+    allowed:
+      - within_budget
+      - compression_required
+      - blocked
+      - unmeasured
+  blocking_reasons: []
+
+budget_rules:
+  canonical_builder_must_attach_budget_report: true
+  estimated_tokens_are_not_exact_provider_tokens: true
+  local_repository_sources_may_be_auto_measured: true
+  project_and_external_sources_require_observation: true
+  mutation_requires_within_budget: true
+  compression_required_must_be_resolved_before_mutation: true
+  blocked_must_stop_before_mutation: true
+  unmeasured_must_stop_before_mutation: true
+  compression_must_not_rewrite_canonical_source: true
+  required_artifact_must_not_be_silently_dropped: true
 
 execution:
   evidence:
