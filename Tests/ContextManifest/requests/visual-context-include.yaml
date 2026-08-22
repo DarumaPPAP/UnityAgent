@@ -1,0 +1,39 @@
+schema_version: "1.0"
+manifest_id: golden-visual-context-include-a1
+
+task:
+  id: golden-visual-context-include
+  route: visual-direction
+  fingerprint:
+    intent: design
+    artifact: visual
+    scope: read_only
+    failure_mode: none
+    architecture_state: not_applicable
+    mutation_target: visual_plan
+    evidence_state: known
+    project_access: authorized
+
+bindings:
+  user_visual_goal_or_reference:
+    kind: scalar
+    values:
+      - approved_reference
+    reason: required_context
+  selected_definition:
+    kind: scalar
+    values:
+      - selected_definition
+    reason: required_context
+  matching_core_principles:
+    kind: scalar
+    values:
+      - composition
+      - lighting
+    reason: required_context
+
+project_facts: []
+knowledge: []
+tools: []
+conditions:
+  - shader_or_material_work
