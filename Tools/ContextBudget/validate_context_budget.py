@@ -48,6 +48,20 @@ def project_observations(manifest: dict, bytes_per_source: int = 8000) -> list[d
     return observations
 
 
+def background_observation(source_id: str, original: int, selected: int, mode: str) -> dict:
+    compression: dict = {"mode": mode}
+    if mode == "semantic_summary":
+        compression["summary_revision"] = f"fixture:{source_id}:summary"
+    return {
+        "source_id": source_id,
+        "role": "background_reference",
+        "source_revision": f"fixture:{source_id}:source",
+        "original_utf8_bytes": original,
+        "selected_utf8_bytes": selected,
+        "compression": compression,
+    }
+
+
 def run_self_test() -> list[str]:
     errors: list[str] = []
     try:
@@ -76,6 +90,7 @@ def run_self_test() -> list[str]:
         )
 
         unmeasured_request = copy.deepcopy(base_request)
+        unmeasured_request["retrieval_observations"] = []
         unmeasured = build_budget_report(ROOT, manifest, unmeasured_request)
         unmeasured_errors = validate_budget_report(manifest, unmeasured)
         expect(unmeasured["decision"] == "unmeasured", "Missing project observations must be unmeasured.", errors)
@@ -85,16 +100,20 @@ def run_self_test() -> list[str]:
             errors,
         )
 
+        base_bytes = int(report["retrieval"]["selected_utf8_bytes"])
+        divisor = int(report["estimator"]["utf8_bytes_per_estimated_token"])
+        soft_bytes = int(report["context"]["soft_estimated_tokens"]) * divisor
+        hard_bytes = min(
+            int(report["context"]["hard_estimated_tokens"]) * divisor,
+            int(report["retrieval"]["limits"]["max_selected_utf8_bytes"]),
+        )
+        pressure_bytes = max(1, soft_bytes - base_bytes + divisor * 1000)
+        if base_bytes + pressure_bytes >= hard_bytes:
+            pressure_bytes = max(1, hard_bytes - base_bytes - divisor)
+
         pressure_request = copy.deepcopy(measured_request)
         pressure_request["retrieval_observations"].append(
-            {
-                "source_id": "background:large-reference",
-                "role": "background_reference",
-                "source_revision": "fixture:background-v1",
-                "original_utf8_bytes": 40000,
-                "selected_utf8_bytes": 40000,
-                "compression": {"mode": "none"},
-            }
+            background_observation("background:large-reference", pressure_bytes, pressure_bytes, "none")
         )
         pressure = build_budget_report(ROOT, manifest, pressure_request)
         expect(
@@ -104,35 +123,29 @@ def run_self_test() -> list[str]:
         )
         expect(bool(pressure["compression"]["candidates"]), "Compression candidates must be reported.", errors)
 
+        compressed_selected = max(1, pressure_bytes // 5)
         compressed_request = copy.deepcopy(measured_request)
         compressed_request["retrieval_observations"].append(
-            {
-                "source_id": "background:large-reference",
-                "role": "background_reference",
-                "source_revision": "fixture:background-v1",
-                "original_utf8_bytes": 40000,
-                "selected_utf8_bytes": 8000,
-                "compression": {
-                    "mode": "semantic_summary",
-                    "summary_revision": "fixture:background-summary-v1",
-                },
-            }
+            background_observation(
+                "background:large-reference",
+                pressure_bytes,
+                compressed_selected,
+                "semantic_summary",
+            )
         )
         compressed = build_budget_report(ROOT, manifest, compressed_request)
         errors.extend(validate_budget_report(manifest, compressed))
         expect(compressed["decision"] == "within_budget", "Valid summary should restore budget.", errors)
-        expect(compressed["compression"]["saved_utf8_bytes"] == 32000, "Saved bytes must be recorded.", errors)
+        expect(
+            compressed["compression"]["saved_utf8_bytes"] == pressure_bytes - compressed_selected,
+            "Saved bytes must be recorded.",
+            errors,
+        )
 
+        hard_extra = max(1, hard_bytes - base_bytes + divisor * 1000)
         blocked_request = copy.deepcopy(measured_request)
         blocked_request["retrieval_observations"].append(
-            {
-                "source_id": "background:hard-overflow",
-                "role": "background_reference",
-                "source_revision": "fixture:hard-v1",
-                "original_utf8_bytes": 120000,
-                "selected_utf8_bytes": 120000,
-                "compression": {"mode": "none"},
-            }
+            background_observation("background:hard-overflow", hard_extra, hard_extra, "none")
         )
         blocked = build_budget_report(ROOT, manifest, blocked_request)
         expect(blocked["decision"] == "blocked", "Hard overflow must be blocked.", errors)
