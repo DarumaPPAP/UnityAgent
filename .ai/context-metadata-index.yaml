@@ -26,7 +26,7 @@ contexts:
   - serialization
   related: []
   pack_path: .ai/context-packs/asset-data-change.yaml
-  source_sha256: b97958053aca06951ecb43cbb44b395f4a3aee13a7c9f5a099a3ca0e71f35d97
+  source_sha256: 1bbc606f2efbd1d4ae0eddeb50f0704fe0238f405816f6a443fbcace33afcd92
 - id: csharp-local-fix
   title: CSharp Local Fix
   summary:
@@ -38,7 +38,7 @@ contexts:
   - local-fix
   related: []
   pack_path: .ai/context-packs/csharp-local-fix.yaml
-  source_sha256: 2e9e1043065f2fca6518afa0940375bd55873225045f10f19d855db4d09e7357
+  source_sha256: 538e4cff8f57bdb076d4c8d71665b2e79a911603f41ad9348eaff974de684e1c
 - id: graphics-mcp
   title: Graphics MCP
   summary:
@@ -50,7 +50,7 @@ contexts:
   - routing
   related: []
   pack_path: .ai/context-packs/graphics-mcp.yaml
-  source_sha256: 077ffdb3a8fc9b484c510606d2472cc4144e6f86a8d920a88fd3a52cc2c217ed
+  source_sha256: 065618ed4710eb258a5f398c7551fa2d3bbc5506e34975961f4726fb798a2d8b
 - id: performance
   title: Performance Evidence
   summary:
@@ -62,7 +62,7 @@ contexts:
   - performance
   related: []
   pack_path: .ai/context-packs/performance.yaml
-  source_sha256: e8d7fafc06a88c7cc996cf3b14e6b1fba28cac0db31edce7d06f84dcca4bb78f
+  source_sha256: 2a1410ab77a355424a4f91f2f7b30b72d72b752d6f75e5081ec8330d57e829bb
 - id: portable-feature
   title: Portable Feature
   summary:
@@ -86,7 +86,7 @@ contexts:
   - rendering
   related: []
   pack_path: .ai/context-packs/renderer-feature-change.yaml
-  source_sha256: 11beeea39f3c46dfb8bd0443c6148936229f2f132be074941f683870a8903a93
+  source_sha256: 4ff47cf6aa3eee17575b924d8fd1bc0ffa8deec1ec31bff561cb9480f5091857
 - id: rendering-incident
   title: Rendering Incident
   summary:
@@ -98,7 +98,7 @@ contexts:
   - rendering
   related: []
   pack_path: .ai/context-packs/rendering-incident.yaml
-  source_sha256: 774db91364875e0510adb3589d0e5277efa776920f32e41f45ddf0a727964b09
+  source_sha256: 0f9302faa9a5a517d2e3514e1d168be7916422a9b8944879aaf02b9bec4aa6c6
 - id: shader-change
   title: Shader Change
   summary:
@@ -110,7 +110,7 @@ contexts:
   - shader
   related: []
   pack_path: .ai/context-packs/shader-change.yaml
-  source_sha256: 2c757c059b04826339a02436ba29f9aa78d0fc696fb572754e3b8b652edcc836
+  source_sha256: c84f0cb44aca64415b8f66db0ba1882e92ebb9a4c78ec9be9bae7a90a2683819
 - id: visual-direction
   title: Visual Direction
   summary:

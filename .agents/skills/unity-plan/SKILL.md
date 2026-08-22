@@ -6,7 +6,7 @@ allowed-tools:
   - Write
   - Edit
 metadata:
-  version: "2.1.0"
+  version: "2.2.0"
   kind: operation
   entrypoint: false
   user_policy: .ai/user-policy.yaml
@@ -32,11 +32,13 @@ Primary Domain Routeは`.ai/context-index.yaml`で選択済みであることを
 
 1. ユーザーの今回の明示指示
 2. `.ai/user-policy.yaml`
-3. `Specs/ProjectProfile.md`
-4. 対象Featureの`spec.md`
-5. 関連する既存コードと規約
-6. 既存アーキテクチャ、Asset、Prefab、Scene、Shader契約
+3. 対象Featureの`spec.md`
+4. 関連する既存コード、既存アーキテクチャ、Asset、Prefab、Scene、Shader契約
+5. 対象Projectから検出したFactとユーザー確認済みProject Fact
+6. 必要Factが未解決の場合だけ`Specs/ProjectProfile.md`をFallbackとして読む
+7. 選択Context Packが要求する規約とReference
 
+`Specs/ProjectProfile.md`はFallbackであり、検出済みProject Factや今回ユーザーが確認したFactを上書きしない。
 古いPolicy文書を現在のUser Policyへ上書き統合しない。
 
 ## Workflow
@@ -163,6 +165,8 @@ UnityAgent自身へ製品固有Planを保存しない。
 ## Checklist
 
 - [ ] `.ai/user-policy.yaml`を適用した
+- [ ] 検出済みProject FactをProject Profileより優先した
+- [ ] Project Profileを使用した場合は未解決FactのFallbackとしてのみ使用した
 - [ ] 全主要判断がRequirement IDへ追跡できる
 - [ ] 責務と依存方向が明確
 - [ ] 状態とResourceの所有者・寿命が明確
@@ -175,6 +179,7 @@ UnityAgent自身へ製品固有Planを保存しない。
 ## Common mistakes
 
 - PlanへSpec外の便利機能を追加する。
+- Project Profileのテンプレート値を検出済みProject Factより優先する。
 - 小規模機能へController、Service、Profileを機械的に追加する。
 - Unity lifecycle objectへ計算、状態、I/Oを集中させる。
 - RenderGraph resourceのCreatorと使用Passだけを書き、寿命と破棄を省く。

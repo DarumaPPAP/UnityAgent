@@ -653,3 +653,48 @@ cases:
   graders:
   - type: deterministic
     id: invariant_signals
+- id: GOLDEN-CONTEXT-PROFILE-001
+  category: context
+  kind: regression
+  pair_id: project-profile-fallback
+  boundary: forbid
+  task:
+    summary: 対象Projectから必要なUnityとPipeline Factを検出済みのCSharp変更
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - evidence_scoped_claims
+    required_gates:
+    - static_review
+    required_signals:
+    - detected_project_fact_precedes_profile
+    forbidden_signals:
+    - project_profile_overrides_detected_fact
+    - unconditional_project_profile_load
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-CONTEXT-PROFILE-002
+  category: context
+  kind: regression
+  pair_id: project-profile-fallback
+  boundary: require
+  task:
+    summary: Projectへ接続できず必要なProject Factが未解決のPlanning Task
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - evidence_scoped_claims
+    required_gates:
+    - static_review
+    required_signals:
+    - project_profile_used_only_for_unresolved_fact
+    forbidden_signals:
+    - project_profile_is_globally_forbidden
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals

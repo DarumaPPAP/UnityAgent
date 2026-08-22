@@ -1,8 +1,10 @@
 # Project Profile
 
-プロジェクトごとに最初に編集してください。AIはこの内容をProject固有の補助情報として扱います。
+このProfileは、対象Unity Projectへ接続できない場合や必要なProject Factを直接確認できない場合に使用するFallbackです。常時読み込む正本ではありません。
 
-対象Unity Projectへ接続できる場合、Unity Version、Pipeline、Rendering Path、Build Target等の検出済み事実をこのProfileより優先します。このProfileの値はMyUnityMCP全体の固定対応条件ではありません。
+対象Unity Projectへ接続できる場合、Unity Version、Pipeline、Rendering Path、Build Target、namespace等の検出済み事実をこのProfileより優先します。今回ユーザーが確認したProject FactもこのProfileより優先します。このProfileの値はMyUnityMCP全体の固定対応条件ではありません。
+
+このProfileを編集する場合も、検出済みFactの代替ではなく「未解決Factを補うためのProject固有Fallback」として管理します。
 
 ## Identity
 
@@ -22,7 +24,7 @@ Namespace規則:
 
 ## Unity environment
 
-以下はこのProfileを使用するProjectの設定値です。MyUnityMCPのGlobal DefaultまたはSupport Contractとして使用しません。
+以下はこのProfileをFallbackとして使用するProjectの補助設定値です。MyUnityMCPのGlobal DefaultまたはSupport Contractとして使用しません。
 
 - UnityVersion: 6000.3
 - RenderPipeline: URP 17+
@@ -48,9 +50,12 @@ Namespace規則:
 Environment情報の優先順位:
 
 1. 対象Unity Projectから検出した事実
-2. 今回の依頼で明示された実装依存と制約
-3. このProject Profile
-4. UnityAgentの既定Preference
+2. 今回ユーザーが確認したProject Factと明示した実装依存・制約
+3. Project固有Context
+4. このProject Profile
+5. UnityAgentの既定Preference
+
+Project Profileを使用する場合は、どの未解決Factを補うために読んだかを明確にする。検出済みFactとProfileが競合した場合は検出済みFactを採用し、Profile側を自動的に正本へ昇格させない。
 
 Platform Build TargetとPerformance Targetを混同しない。Target Platformが未指定でも、Platform非依存の設計、実装、検証を継続する。
 

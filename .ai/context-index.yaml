@@ -1,4 +1,4 @@
-schema_version: "3.0"
+schema_version: "3.1"
 repository_role: unity_domain_knowledge
 execution_owner: DarumaPPAP/Unity-Graph-Engineering
 user_policy: .ai/user-policy.yaml
@@ -31,6 +31,11 @@ routing_rules:
   load_mcp_package_source_by_default: false
   project_context_required_for_planning: false
   capability_manifest_required_for_planning: false
+  detected_project_facts_override_project_profile: true
+  user_confirmed_project_facts_override_project_profile: true
+  project_profile_is_fallback_only: true
+  project_profile_must_not_be_required_context: true
+  project_profile_load_requires_missing_project_fact: true
   direct_source_read_required_before_mutation: true
   knowledge_graph_is_navigation_only: true
   human_html_is_conditional_reference: true

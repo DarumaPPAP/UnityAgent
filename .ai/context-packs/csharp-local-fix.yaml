@@ -1,4 +1,4 @@
-schema_version: "1.1"
+schema_version: "1.2"
 id: csharp-local-fix
 primary_skill: .agents/skills/csharp-safe-patch/SKILL.md
 
@@ -29,11 +29,12 @@ use_when:
 required:
   - target_source
   - direct_callers_or_interfaces
-  - Specs/ProjectProfile.md
   - SkillReferences/CODING_STANDARDS.md
   - SkillReferences/CODE_FORMATTING_STANDARDS.md
 
 conditional:
+  project_fallback:
+    - Specs/ProjectProfile.md
   architecture_change:
     - SkillReferences/ARCHITECTURE_STANDARDS.md
     - SkillReferences/ARCHITECTURE_DECISION_POLICY.md
@@ -54,6 +55,8 @@ rules:
   no_mechanical_line_break_after_assignment_operator: true
   no_unrelated_formatting_churn: true
   no_premature_generalization: true
+  detected_project_facts_override_project_profile: true
+  project_profile_is_fallback_only: true
 
 limits:
   initial_file_reads: 5

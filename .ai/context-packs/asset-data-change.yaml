@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: "1.1"
 id: asset-data-change
 primary_skill: .agents/skills/csharp-safe-patch/SKILL.md
 
@@ -37,8 +37,9 @@ required:
   - .ai/harness/mutation-channels.yaml
 
 conditional:
-  project_specific_change:
+  project_fallback:
     - Specs/ProjectProfile.md
+  project_specific_change: []
   editor_script:
     - SkillReferences/CODING_STANDARDS.md
     - target editor source and direct dependencies
@@ -65,6 +66,8 @@ rules:
   read_only_operation_must_not_dirty_assets: true
   project_settings_and_pipeline_asset_change_require_explicit_approval: true
   user_policy_has_priority_over_generic_asset_workflow: true
+  detected_project_facts_override_project_profile: true
+  project_profile_is_fallback_only: true
 
 limits:
   initial_file_reads: 6

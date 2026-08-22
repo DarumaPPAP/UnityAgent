@@ -6,7 +6,7 @@ allowed-tools:
   - Write
   - Edit
 metadata:
-  version: "2.1.0"
+  version: "2.2.0"
   kind: operation
   entrypoint: false
   user_policy: .ai/user-policy.yaml
@@ -32,10 +32,12 @@ Primary Domain Routeは`.ai/context-index.yaml`で選択済みであることを
 
 1. ユーザーの今回の明示指示
 2. `.ai/user-policy.yaml`
-3. `Specs/ProjectProfile.md`
-4. 関連する既存Spec、コード、ログ、参考資料
+3. 関連する既存Spec、コード、ログ、参考資料
+4. 対象Projectから検出したFactとユーザー確認済みProject Fact
 5. ユーザーが明示した対象、禁止事項、Target Platform
+6. 必要なProject Factが未解決の場合だけ`Specs/ProjectProfile.md`をFallbackとして読む
 
+`Specs/ProjectProfile.md`はFallbackであり、検出済みProject Factや今回ユーザーが確認したFactを上書きしない。
 古いPolicy文書を現在のUser Policyへ上書き統合しない。
 既に確定している情報を質問し直さない。判断できない内容は推測で確定せず、未決定事項へ残す。
 
@@ -62,6 +64,7 @@ Primary Domain Routeは`.ai/context-index.yaml`で選択済みであることを
 - Burst / Jobs / Entities
 - Scene、Camera、Renderer、Qualityなどの前提
 
+環境Factは対象Projectから検出した値と今回ユーザーが確認した値を優先し、不足する項目だけProject Profileで補う。
 Target PlatformはPlatform固有API、Build、互換性または性能主張に必要な場合だけ必須とする。
 
 ### Step 3 — Define compatibility contracts
@@ -136,6 +139,8 @@ Target PlatformはPlatform固有API、Build、互換性または性能主張に�
 ## Checklist
 
 - [ ] `.ai/user-policy.yaml`を適用した
+- [ ] 検出済みProject FactをProject Profileより優先した
+- [ ] Project Profileを使用した場合は未解決FactのFallbackとしてのみ使用した
 - [ ] 目的と期待結果が実装手段から分離されている
 - [ ] Unity環境が必要な粒度で確定している
 - [ ] FR / NFR / ACに安定IDがある
@@ -147,6 +152,7 @@ Target PlatformはPlatform固有API、Build、互換性または性能主張に�
 ## Common mistakes
 
 - ShaderやRendererFeatureの具体構造を先に固定し、目的を後付けする。
+- Project Profileのテンプレート値で検出済みProject Factを上書きする。
 - 「Switch対応」を書くだけで実機検証条件を定義しない。
 - 既存Prefab、Scene、Material、Save Data互換性を無視する。
 - 対象外を記録せず、Agentが親切心で追加実装できる状態にする。

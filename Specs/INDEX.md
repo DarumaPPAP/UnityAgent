@@ -5,7 +5,6 @@
 ## Project
 
 - [Project Profile](ProjectProfile.md)
-- [Project Constitution](ProjectConstitution.md)
 
 ## Features
 

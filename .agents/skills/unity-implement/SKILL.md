@@ -7,7 +7,7 @@ allowed-tools:
   - Edit
   - Bash
 metadata:
-  version: "2.1.0"
+  version: "2.2.0"
   kind: operation
   entrypoint: false
   user_policy: .ai/user-policy.yaml
@@ -35,11 +35,13 @@ Read-only監査には対応Audit Skillを使う。
 
 1. ユーザーが指定したTask ID、ファイル、禁止事項
 2. `.ai/user-policy.yaml`
-3. `Specs/ProjectProfile.md`
+3. 選択済みContext PackとTask Contract
 4. Feature `spec.md`、`plan.md`、`tasks.md`
-5. 対象コードと直接依存
-6. 適用されるCoding / Architecture / Rendering standards
+5. 対象コード、直接依存、対象Projectから検出したFact
+6. 必要なProject Factが未解決の場合だけ`Specs/ProjectProfile.md`をFallbackとして読む
+7. 適用されるCoding / Architecture / Rendering standards
 
+`Specs/ProjectProfile.md`はProject未接続または必要Factが取得できない場合のFallbackであり、検出済みProject Factや今回ユーザーが確認したFactを上書きしない。
 古いPolicy文書を現在のUser Policyへ上書き統合しない。
 全Referenceを無条件に読まない。対象変更に必要なものだけを読む。
 
@@ -77,11 +79,12 @@ Read-only監査には対応Audit Skillを使う。
 - Assembly Definition、Editor/Runtime境界
 - 既存コードのnamespace
 - asmdefの`name`、`rootNamespace`、Assembly参照
-- `Specs/ProjectProfile.md`の`RootNamespace`
+- 対象Projectから検出したUnity Version、Pipeline、Platform、Namespace等のFact
+- 必要Factが未解決の場合だけ`Specs/ProjectProfile.md`の対応項目
 - Shader Property、Keyword、Pass、LightMode、RenderState
 - Platform / IL2CPP / Burst / Jobs条件
 
-Namespaceは既存コード、asmdef、Project Profileから確定する。Root Namespaceが未設定または不明な場合、`Namespace`、`RootNamespace`、`CHANGE_ME`などを実名として補完しない。
+Namespaceは既存コード、asmdef、検出済みProject Fact、ユーザー確認済みFactから確定する。それでも未解決の場合だけProject ProfileをFallbackにする。Root Namespaceが未設定または不明な場合、`Namespace`、`RootNamespace`、`CHANGE_ME`などを実名として補完しない。
 
 既存コードの意図を確認せず置換しない。
 
@@ -172,7 +175,8 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - [ ] `.ai/user-policy.yaml`を適用した
 - [ ] Changed filesとNon-goalsを確認した
 - [ ] 必要な規約だけを読んだ
-- [ ] Namespaceとasmdef名を既存コードまたはProject Profileから確定した
+- [ ] Namespaceとasmdef名を既存コード、asmdef、検出済みFactから確定した
+- [ ] Project Profileを使用した場合は未解決FactのFallbackとしてのみ使用した
 - [ ] Namespace placeholderが残っていない
 - [ ] 最小の因果変更に限定した
 - [ ] 新規ファイルごとのSplit Reasonがある
@@ -185,6 +189,7 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 ## Common mistakes
 
 - `RootNamespace: CHANGE_ME`を見て`Namespace`や`CHANGE_ME`を実名として出力する。
+- 検出済みProject FactがあるのにProject Profileの固定値で上書きする。
 - Root Namespaceなしのプロジェクトへ`.FeatureName`のような無効namespaceを生成する。
 - asmdefの`name`だけ直し、`rootNamespace`やAssembly参照を更新しない。
 - 指定Taskを終えた勢いで後続Taskも実装する。
