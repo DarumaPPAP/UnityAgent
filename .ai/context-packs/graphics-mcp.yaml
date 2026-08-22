@@ -1,4 +1,4 @@
-schema_version: "1.4"
+schema_version: "3.0"
 id: graphics-mcp
 primary_skill: .agents/skills/unity-architecture-design/SKILL.md
 
@@ -30,31 +30,52 @@ use_when:
   - Built-in URP HDRP Custom SRP capability routing
 
 required:
-  - .ai/user-policy.yaml
-  - AGENTS.md
-  - SkillReferences/ARCHITECTURE_DECISION_POLICY.md
-  - .ai/harness/mcp-activation.yaml
-  - .ai/knowledge/graphics/unity-graphics-mcp.yaml
-  - DarumaPPAP/MyUnityMCP/AGENTS.md
-  - DarumaPPAP/MyUnityMCP/Specs/UnityAgentMCP/spec.md
+  - type: repository_reference
+    path: .ai/user-policy.yaml
+  - type: repository_reference
+    path: AGENTS.md
+  - type: repository_reference
+    path: SkillReferences/ARCHITECTURE_DECISION_POLICY.md
+  - type: repository_reference
+    path: .ai/harness/mcp-activation.yaml
+  - type: repository_reference
+    path: .ai/knowledge/graphics/unity-graphics-mcp.yaml
+  - type: external_reference
+    repository: DarumaPPAP/MyUnityMCP
+    path: AGENTS.md
+  - type: external_reference
+    repository: DarumaPPAP/MyUnityMCP
+    path: Specs/UnityAgentMCP/spec.md
 
 conditional:
   project_fallback:
-    - Specs/ProjectProfile.md
+    - type: repository_reference
+      path: Specs/ProjectProfile.md
   graphics_domain_contract_or_implementation:
-    - DarumaPPAP/MyUnityMCP/Specs/UnityGraphicsMCP/spec.md
-    - DarumaPPAP/MyUnityMCP/Specs/UnityGraphicsMCP/plan.md
-    - DarumaPPAP/MyUnityMCP/Specs/UnityGraphicsMCP/editor-tool-design.md
+    - type: external_reference
+      repository: DarumaPPAP/MyUnityMCP
+      path: Specs/UnityGraphicsMCP/spec.md
+    - type: external_reference
+      repository: DarumaPPAP/MyUnityMCP
+      path: Specs/UnityGraphicsMCP/plan.md
+    - type: external_reference
+      repository: DarumaPPAP/MyUnityMCP
+      path: Specs/UnityGraphicsMCP/editor-tool-design.md
   visual_goal_or_reference:
-    - .ai/context-packs/visual-direction.yaml
+    - type: context_include
+      context_id: visual-direction
   renderer_feature_or_render_graph_change:
-    - .ai/context-packs/renderer-feature-change.yaml
+    - type: context_include
+      context_id: renderer-feature-change
   shader_change:
-    - .ai/context-packs/shader-change.yaml
+    - type: context_include
+      context_id: shader-change
   performance_claim_or_platform_budget:
-    - .ai/context-packs/performance.yaml
+    - type: context_include
+      context_id: performance
   direct_scene_prefab_material_mutation:
-    - .ai/context-packs/asset-data-change.yaml
+    - type: context_include
+      context_id: asset-data-change
 
 excluded_by_default:
   - all Beautiful-Definition profiles
