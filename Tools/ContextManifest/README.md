@@ -1,14 +1,15 @@
 # Context Manifest Runtime
 
-Context Manifest Runtimeは、1回のUnityAgent Task Attemptで実際に選択されたTyped Context / Harness / Project Fact / Evidenceを記録するための実行トレースです。
+Context Manifest Runtimeは、1回のUnityAgent Task Attemptで実際に選択されたTyped Context / Budget / Harness / Project Fact / Evidenceを記録するための実行トレースです。
 
 ## Source of truth
 
 - Policy / Context / Harnessの正本は`.ai/`配下のCanonical YAMLです。
 - Context PackはTyped Context v3を使用します。
-- Context Manifest v3.1は正本を置き換えません。
+- Context Budgetの正本は`.ai/context-budget.yaml`です。
+- Context Manifest v3.1 + Context Budget extension v1.0は正本を置き換えません。
 - Execution GraphはContext Manifestから生成されるDerived Viewです。
-- Generated Manifest / GraphからCanonical PolicyやHarnessを逆更新しません。
+- Generated Manifest / Budget Report / GraphからCanonical PolicyやHarnessを逆更新しません。
 
 既定出力先は`.gitignore`対象の`Artifacts/ContextManifests/`です。
 
@@ -30,6 +31,14 @@ Typed Context Manifest Builder
   ├─ Required / Conditional Quality Gateを解決
   └─ unresolved bindingを明示
   ↓
+Context Budget Engine
+  ├─ Local Repository Contextを自動計測
+  ├─ Project / External Observationを検証
+  ├─ Retrieval Budgetを計算
+  ├─ estimated_tokensを計算
+  ├─ Compression結果を再計測
+  └─ within_budget / compression_required / unmeasured / blocked
+  ↓
 Worker / Tool execution
   ↓
 Evidence Recorder
@@ -38,6 +47,8 @@ passed / failed / unavailable
   ↓
 Execution Graph Projection
 ```
+
+Mutation TaskはContext Budgetが`within_budget`になるまでWorker executionへ進みません。
 
 ## Typed Context v3
 
@@ -60,6 +71,8 @@ python Tools/ContextManifest/build_context_manifest.py \
   --request Tests/ContextManifest/requests/csharp-local-fix.yaml
 ```
 
+Canonical BuilderはManifestへBudget Reportを付与し、Mutation Taskが`within_budget`でない場合は失敗します。
+
 Graphも同時に生成する場合:
 
 ```bash
@@ -70,7 +83,7 @@ python Tools/ContextManifest/build_context_manifest.py \
 
 ## Runtime request
 
-Builderへ渡すRequestはManifest全体ではなく、Task固有の確定情報だけを持ちます。
+Builderへ渡すRequestはManifest全体ではなく、Task固有の確定情報と、UnityAgent Repository外SourceのRetrieval Observationだけを持ちます。
 
 ```yaml
 task:
@@ -113,9 +126,112 @@ project_facts:
       status: current
       checked_at_attempt: 1
     reason: project_fact
+
+retrieval_observations:
+  - source_id: project:Assets/Settings/Debug/EnvironmentDebugWindow.cs
+    role: target_source
+    source_revision: sha256:target-source-revision
+    original_utf8_bytes: 12000
+    selected_utf8_bytes: 12000
+    compression:
+      mode: none
+
+  - source_id: project:Assets/Settings/Debug/CameraDebugWindow.cs
+    role: direct_dependency
+    source_revision: sha256:dependency-revision
+    original_utf8_bytes: 8000
+    selected_utf8_bytes: 4200
+    compression:
+      mode: lossless_excerpt
+      selected_ranges:
+        - L1-L110
 ```
 
 `Context Pack / Task Contract / Risk / Gate / Primary Skill`はRequestへ複製せず、Canonical YAMLからBuilderが解決します。
+
+UnityAgent Repository内のPolicy、Context Pack、Skill、Task Contract、Repository ReferenceはBudget Engineが実ファイルから自動計測します。
+
+Project SourceとExternal Referenceは実行環境依存のため、Request側でSource Revision付きObservationを渡します。Observationが無い場合は`0 byte`ではなく`unmeasured`です。
+
+## Context Budget
+
+Budget Contract:
+
+```text
+.ai/context-budget.yaml
+```
+
+Budget ReportはContext Manifestの`budget`へ入ります。
+
+```yaml
+budget:
+  contract: .ai/context-budget.yaml
+  profile: tight
+  estimator:
+    id: utf8-bytes-conservative-v1
+    exact_model_tokenizer: false
+  retrieval:
+    selected_utf8_bytes: 42000
+  context:
+    estimated_tokens: 14000
+    soft_estimated_tokens: 24000
+    hard_estimated_tokens: 32768
+  compression:
+    applied: false
+    saved_utf8_bytes: 0
+  decision: within_budget
+  blocking_reasons: []
+```
+
+`estimated_tokens`はModel Providerの正確なToken数ではありません。
+
+```text
+estimated_tokens = ceil(selected_utf8_bytes / 3)
+```
+
+Provider Tokenizerで正確な数を取得した場合は別Evidenceとして追加できますが、Tokenizer名なしで`exact`と呼びません。
+
+### Budget decision
+
+- `within_budget`: 必要Sourceが計測済みでSoft Limit以下
+- `compression_required`: Hard Limit内だがSoft Limit超過
+- `unmeasured`: 必須Project / External Observation不足
+- `blocked`: Hard Limit、Artifact数、External Fetch数、Expansion Hop等を超過
+
+Mutation Taskでは`within_budget`以外を許可しません。
+
+## Context Compression
+
+CompressionはCanonical Sourceを書き換えません。今回のSelected Contextだけを縮小します。
+
+### `lossless_excerpt`
+
+Source本文は変えず、必要Rangeだけ選択します。
+
+```yaml
+compression:
+  mode: lossless_excerpt
+  selected_ranges:
+    - L120-L260
+```
+
+Target Source、Direct Dependency、Required / Conditional Contextなどに使用できます。Source RevisionとRangeを必ず残します。
+
+### `semantic_summary`
+
+Knowledge / Background Reference / Previous Failure summaryだけに使用します。
+
+```yaml
+compression:
+  mode: semantic_summary
+  summary_revision: sha256:summary-result
+```
+
+User Policy、Context Pack、Primary Skill、Task Contract、Project FactへSemantic Summaryを適用しません。
+
+Soft Limit超過時はBudget Reportの`compression.candidates`を使って縮小候補を確認し、圧縮後に必ず再計測します。
+
+Hard Limitを満たせない場合、Required Contextを黙って削除せず`blocked`として停止します。
 
 ## Project Fact freshness
 
@@ -171,22 +287,23 @@ python Tools/ContextManifest/build_context_manifest.py \
 
 **Project Factは暗黙コピーしません。** 同一revisionのFactをRetryで`current`として使う場合も、Request側で明示的に再提示し、現在Attemptで再検証して`checked_at_attempt`を更新します。
 
+Budget Observationも前Attemptの値を暗黙に現在値扱いしません。Project Sourceが変わった場合は`source_revision`とbyte計測を更新します。
+
 ## Validation
 
-単体Manifest:
-
-```bash
-python Tools/ContextManifest/validate_context_manifest.py \
-  Artifacts/ContextManifests/camera-far-clip-fix-a1.yaml
-```
-
-Runtime自己回帰テスト:
+Context Manifest Runtime:
 
 ```bash
 python Tools/ContextManifest/validate_context_manifest.py
 ```
 
-UnityAgent全体のローカル検証:
+Context Budget Runtime:
+
+```bash
+python Tools/ContextBudget/validate_context_budget.py
+```
+
+UnityAgent全体:
 
 ```bash
 python Tools/validate_all.py
@@ -203,5 +320,7 @@ python Tools/ContextManifest/project_execution_graph.py \
 ```
 
 Graphでは`external_reference`をローカル`source`と分け、`context_include`は`includes_context`、`route_handoff`は`hands-off-to`として投影します。
+
+Context Budget ReportはExecution Traceの計測情報であり、GraphからCanonical Budget Contractを逆更新しません。
 
 Graphは`.ai/graph-contract.yaml`に従うExecution Viewです。Node/Edgeは表示・解析用であり、Canonical YAMLの編集入口ではありません。
