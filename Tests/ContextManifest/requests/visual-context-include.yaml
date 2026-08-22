@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: "1.1"
 manifest_id: golden-visual-context-include-a1
 
 task:
@@ -33,6 +33,23 @@ bindings:
     reason: required_context
 
 project_facts: []
+
+retrieval_observations:
+  - source_id: external:DarumaPPAP/Beautiful-Definition:AGENTS.md
+    role: external_reference
+    source_revision: fixture:beautiful-definition-agents-v1
+    original_utf8_bytes: 6000
+    selected_utf8_bytes: 6000
+    compression:
+      mode: none
+  - source_id: external:DarumaPPAP/Beautiful-Definition:Catalog/definitions.yaml
+    role: external_reference
+    source_revision: fixture:beautiful-definition-catalog-v1
+    original_utf8_bytes: 10000
+    selected_utf8_bytes: 10000
+    compression:
+      mode: none
+
 knowledge: []
 tools: []
 conditions:
