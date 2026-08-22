@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Context Manifest files or run the Phase 6 runtime self-test."""
+"""Validate typed Context Manifest files or run the v3.1 runtime self-test."""
 
 from __future__ import annotations
 
@@ -39,7 +39,7 @@ def run_self_test() -> list[str]:
 
     try:
         schema = load_yaml(SCHEMA_PATH)
-        expect(schema.get("schema_version") == "3.0", "Context Manifest schema must be v3.0.", errors)
+        expect(schema.get("schema_version") == "3.1", "Context Manifest schema must be v3.1.", errors)
         runtime = schema.get("runtime", {})
         for key in ("builder", "evidence_recorder", "validator", "graph_projector"):
             expect(bool(runtime.get(key)), f"Context Manifest runtime missing {key}.", errors)
@@ -71,6 +71,65 @@ def run_self_test() -> list[str]:
         expect(
             "unity_version_when_api_sensitive" in manifest_a1["execution"]["unresolved_bindings"],
             "Missing required input must remain an unresolved binding.",
+            errors,
+        )
+
+        required_repository_paths = {
+            item["source_path"]
+            for item in manifest_a1["context"]["required_context"]
+            if item.get("reference_type") == "repository_reference"
+        }
+        expect(
+            required_repository_paths
+            == {
+                "SkillReferences/CODING_STANDARDS.md",
+                "SkillReferences/CODE_FORMATTING_STANDARDS.md",
+            },
+            "Typed repository references were not selected from the CSharp Context Pack.",
+            errors,
+        )
+        expect(
+            all(
+                item.get("reference_type") == "repository_reference"
+                for item in manifest_a1["context"]["required_context"]
+            ),
+            "Required Context must not fall back to scalar/path heuristics.",
+            errors,
+        )
+
+        project_facts_a1 = manifest_a1["project_facts"]["loaded"]
+        expect(len(project_facts_a1) == 1, "Initial fixture must load one Project Fact.", errors)
+        if project_facts_a1:
+            fact = project_facts_a1[0]
+            expect(fact.get("source_kind") == "detected_project", "Project Fact source_kind mismatch.", errors)
+            expect(fact.get("revision") == "sha256:golden-project-version-v1", "Project Fact revision mismatch.", errors)
+            expect(fact.get("observed_at_attempt") == 1, "Project Fact observation attempt mismatch.", errors)
+            expect(
+                fact.get("freshness", {}).get("status") == "current"
+                and fact.get("freshness", {}).get("checked_at_attempt") == 1,
+                "Attempt 1 current Project Fact must be checked in attempt 1.",
+                errors,
+            )
+
+        conditional_request = copy.deepcopy(request_a1)
+        conditional_request["manifest_id"] = "golden-csharp-local-fix-conditional-a1"
+        conditional_request["conditions"] = ["architecture_change"]
+        conditional_manifest = build_manifest(ROOT, conditional_request)
+        conditional_paths = {
+            item["source_path"] for item in conditional_manifest["context"]["conditional_context"]
+        }
+        expect(
+            conditional_paths
+            == {
+                "SkillReferences/ARCHITECTURE_STANDARDS.md",
+                "SkillReferences/ARCHITECTURE_DECISION_POLICY.md",
+            },
+            "Typed conditional repository references were not selected correctly.",
+            errors,
+        )
+        expect(
+            all(item.get("condition") == "architecture_change" for item in conditional_manifest["context"]["conditional_context"]),
+            "Conditional Context must preserve the activating condition.",
             errors,
         )
 
@@ -136,6 +195,38 @@ def run_self_test() -> list[str]:
             "Retry manifest must carry previous failure summary.",
             errors,
         )
+        retry_facts = manifest_a2["project_facts"]["loaded"]
+        expect(len(retry_facts) == 1, "Retry fixture must explicitly supply its Project Fact.", errors)
+        if retry_facts:
+            retry_fact = retry_facts[0]
+            expect(
+                retry_fact.get("observed_at_attempt") == 1
+                and retry_fact.get("freshness", {}).get("checked_at_attempt") == 2,
+                "Retry may preserve observation history only when freshness is rechecked in attempt 2.",
+                errors,
+            )
+
+        invalid_retry_freshness = copy.deepcopy(manifest_a2)
+        invalid_retry_freshness["project_facts"]["loaded"][0]["freshness"]["checked_at_attempt"] = 1
+        invalid_errors = validate_manifest(ROOT, invalid_retry_freshness)
+        expect(
+            any("Current Project Fact must be checked in manifest attempt 2" in error for error in invalid_errors),
+            "Validator must reject a retry that implicitly reuses a previous current Project Fact.",
+            errors,
+        )
+
+        stale_retry_fact = copy.deepcopy(manifest_a2)
+        stale_retry_fact["project_facts"]["loaded"][0]["freshness"] = {
+            "status": "stale",
+            "checked_at_attempt": 1,
+        }
+        stale_errors = validate_manifest(ROOT, stale_retry_fact)
+        expect(
+            not any("Current Project Fact must be checked" in error for error in stale_errors),
+            "A stale Project Fact may retain an older check, but must not be represented as current.",
+            errors,
+        )
+
         graph_a2 = project_execution_graph(
             ROOT,
             manifest_a2,
