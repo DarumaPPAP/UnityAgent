@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Runtime primitives for UnityAgent Context Manifest generation and tracing."""
+"""Runtime primitives for UnityAgent typed Context Manifest generation and tracing."""
 
 from __future__ import annotations
 
@@ -10,20 +10,27 @@ from typing import Any
 import yaml
 
 INDEX_PATH = Path('.ai/context-index.yaml')
+PACK_DIR = Path('.ai/context-packs')
 GRAPH_CONTRACT_PATH = Path('.ai/graph-contract.yaml')
 USER_POLICY_PATH = Path('.ai/user-policy.yaml')
 QUALITY_GATES_PATH = Path('.ai/harness/quality-gates.yaml')
 RISK_LEVELS_PATH = Path('.ai/harness/risk-levels.yaml')
 MCP_ACTIVATION_PATH = Path('.ai/harness/mcp-activation.yaml')
 
-MANIFEST_SCHEMA_VERSION = '3.0'
+MANIFEST_SCHEMA_VERSION = '3.1'
 GRAPH_SCHEMA_VERSION = '1.0'
 EXECUTION_STATUSES = {'in_progress', 'passed', 'failed', 'complete_with_unavailable'}
 MUTATION_EFFECTS = {'allow', 'prohibit'}
 GATE_REQUIREMENTS = {'required', 'conditional'}
-PATH_SUFFIXES = (
-    '.md', '.yaml', '.yml', '.cs', '.shader', '.hlsl', '.compute', '.asmdef', '.json'
-)
+CONTEXT_TYPES = {
+    'binding',
+    'repository_reference',
+    'external_reference',
+    'context_include',
+    'route_handoff',
+}
+FACT_SOURCE_KINDS = {'detected_project', 'user_confirmed', 'project_profile'}
+FACT_FRESHNESS_STATUSES = {'current', 'stale', 'unknown'}
 
 
 class ManifestError(ValueError):
@@ -51,10 +58,6 @@ def stable_node_id(node_type: str, stable_id: str) -> str:
     return f'{node_type}:{stable_id}'
 
 
-def _is_path_reference(value: str) -> bool:
-    return '/' in value or value.endswith(PATH_SUFFIXES)
-
-
 def _route_map(index: dict[str, Any]) -> dict[str, dict[str, Any]]:
     routes = index.get('routes', {})
     if not isinstance(routes, dict):
@@ -64,6 +67,16 @@ def _route_map(index: dict[str, Any]) -> dict[str, dict[str, Any]]:
         for route in routes.values()
         if isinstance(route, dict) and route.get('id')
     }
+
+
+def _context_pack_map(root: Path) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for path in sorted((root / PACK_DIR).glob('*.yaml')):
+        document = load_yaml(path)
+        context_id = str(document.get('id', '')).strip()
+        if context_id:
+            result[context_id] = path.relative_to(root).as_posix()
+    return result
 
 
 def _fingerprint_errors(
@@ -123,12 +136,150 @@ def _binding(name: str, raw: Any) -> dict[str, Any]:
     }
 
 
-def _context_item(source_path: str, reason: str) -> dict[str, Any]:
-    return {
+def _repository_context_item(
+    source_path: str,
+    reason: str,
+    condition: str | None = None,
+) -> dict[str, Any]:
+    item: dict[str, Any] = {
         'node_id': stable_node_id('source', source_path),
+        'reference_type': 'repository_reference',
         'source_path': source_path,
         'reason': reason,
     }
+    if condition is not None:
+        item['condition'] = condition
+    return item
+
+
+def _external_context_item(
+    repository: str,
+    path: str,
+    requirement: str,
+    condition: str | None,
+) -> dict[str, Any]:
+    stable_id = f'{repository}:{path}'
+    item: dict[str, Any] = {
+        'node_id': stable_node_id('external_reference', stable_id),
+        'repository': repository,
+        'path': path,
+        'requirement': requirement,
+        'reason': 'external_reference',
+    }
+    if condition is not None:
+        item['condition'] = condition
+    return item
+
+
+def _context_include_item(
+    context_id: str,
+    source_path: str,
+    requirement: str,
+    condition: str | None,
+) -> dict[str, Any]:
+    item: dict[str, Any] = {
+        'node_id': stable_node_id('context_pack', context_id),
+        'context_id': context_id,
+        'source_path': source_path,
+        'requirement': requirement,
+        'reason': 'context_include',
+    }
+    if condition is not None:
+        item['condition'] = condition
+    return item
+
+
+def _route_handoff_item(
+    route_id: str,
+    requirement: str,
+    condition: str | None,
+) -> dict[str, Any]:
+    item: dict[str, Any] = {
+        'node_id': stable_node_id('route', route_id),
+        'route_id': route_id,
+        'requirement': requirement,
+        'reason': 'route_handoff',
+    }
+    if condition is not None:
+        item['condition'] = condition
+    return item
+
+
+def _typed_entry(raw: Any, location: str) -> dict[str, Any]:
+    if not isinstance(raw, dict):
+        raise ManifestError([f'{location} must use a typed Context Pack mapping.'])
+    item_type = str(raw.get('type', '')).strip()
+    if item_type not in CONTEXT_TYPES:
+        raise ManifestError([f'{location} has unsupported context type: {item_type}'])
+    return raw
+
+
+def _apply_context_entry(
+    *,
+    raw: Any,
+    location: str,
+    requirement: str,
+    condition: str | None,
+    binding_names: set[str],
+    unresolved: set[str],
+    required_context: list[dict[str, Any]],
+    conditional_context: list[dict[str, Any]],
+    external_references: list[dict[str, Any]],
+    context_includes: list[dict[str, Any]],
+    route_handoffs: list[dict[str, Any]],
+    context_paths: dict[str, str],
+    routes: dict[str, dict[str, Any]],
+) -> None:
+    item = _typed_entry(raw, location)
+    item_type = str(item['type'])
+
+    if item_type == 'binding':
+        name = str(item.get('name', '')).strip()
+        if not name:
+            raise ManifestError([f'{location} binding requires name.'])
+        if name not in binding_names:
+            unresolved.add(name)
+        return
+
+    if item_type == 'repository_reference':
+        source_path = str(item.get('path', '')).strip()
+        if not source_path:
+            raise ManifestError([f'{location} repository_reference requires path.'])
+        target = _repository_context_item(
+            source_path,
+            'required_context' if requirement == 'required' else 'conditional_context',
+            condition,
+        )
+        if requirement == 'required':
+            required_context.append(target)
+        else:
+            conditional_context.append(target)
+        return
+
+    if item_type == 'external_reference':
+        repository = str(item.get('repository', '')).strip()
+        path = str(item.get('path', '')).strip()
+        if not repository or not path:
+            raise ManifestError([f'{location} external_reference requires repository and path.'])
+        external_references.append(
+            _external_context_item(repository, path, requirement, condition)
+        )
+        return
+
+    if item_type == 'context_include':
+        context_id = str(item.get('context_id', '')).strip()
+        source_path = context_paths.get(context_id)
+        if not context_id or source_path is None:
+            raise ManifestError([f'{location} includes unknown context: {context_id}'])
+        context_includes.append(
+            _context_include_item(context_id, source_path, requirement, condition)
+        )
+        return
+
+    route_id = str(item.get('route_id', '')).strip()
+    if not route_id or route_id not in routes:
+        raise ManifestError([f'{location} hands off to unknown route: {route_id}'])
+    route_handoffs.append(_route_handoff_item(route_id, requirement, condition))
 
 
 def _mutation_rules(contract_id: str, contract: dict[str, Any]) -> list[dict[str, Any]]:
@@ -173,7 +324,7 @@ def _selected_paths(manifest: dict[str, Any]) -> set[str]:
             if isinstance(item, dict) and item.get('source_path'):
                 paths.add(str(item['source_path']))
     context = manifest.get('context', {})
-    for key in ('required_context', 'conditional_context', 'source_files'):
+    for key in ('required_context', 'conditional_context', 'source_files', 'context_includes'):
         for item in context.get(key, []) or []:
             if isinstance(item, dict) and item.get('source_path'):
                 paths.add(str(item['source_path']))
@@ -205,6 +356,52 @@ def derive_execution_status(manifest: dict[str, Any]) -> str:
     return 'passed'
 
 
+def _project_fact(raw: Any, attempt: int) -> dict[str, Any]:
+    if not isinstance(raw, dict):
+        raise ManifestError(['project_facts entries must be mappings.'])
+
+    required = (
+        'key',
+        'value',
+        'source_kind',
+        'source_path',
+        'revision',
+        'observed_at_attempt',
+        'freshness',
+    )
+    missing = [field for field in required if field not in raw]
+    if missing:
+        raise ManifestError([f'project_facts missing fields: {missing}'])
+
+    freshness = raw.get('freshness')
+    if not isinstance(freshness, dict):
+        raise ManifestError(['project_facts freshness must be a mapping.'])
+    if 'status' not in freshness or 'checked_at_attempt' not in freshness:
+        raise ManifestError(['project_facts freshness requires status and checked_at_attempt.'])
+
+    key = str(raw.get('key', '')).strip()
+    source_path = str(raw.get('source_path', '')).strip()
+    source_kind = str(raw.get('source_kind', '')).strip()
+    revision = str(raw.get('revision', '')).strip()
+    if not key or not source_path or not revision:
+        raise ManifestError(['project_facts require non-empty key, source_path and revision.'])
+
+    return {
+        'node_id': stable_node_id('project_fact', key),
+        'key': key,
+        'value': raw['value'],
+        'source_kind': source_kind,
+        'source_path': source_path,
+        'revision': revision,
+        'observed_at_attempt': raw['observed_at_attempt'],
+        'freshness': {
+            'status': freshness.get('status'),
+            'checked_at_attempt': freshness.get('checked_at_attempt'),
+        },
+        'reason': str(raw.get('reason', 'project_fact')),
+    }
+
+
 def build_manifest(
     root: Path,
     request: dict[str, Any],
@@ -212,6 +409,7 @@ def build_manifest(
 ) -> dict[str, Any]:
     index = load_yaml(root / INDEX_PATH)
     routes = _route_map(index)
+    context_paths = _context_pack_map(root)
     task = request.get('task', {})
     if not isinstance(task, dict):
         raise ManifestError(['request.task must be a mapping.'])
@@ -294,14 +492,27 @@ def build_manifest(
 
     required_context: list[dict[str, Any]] = []
     conditional_context: list[dict[str, Any]] = []
+    external_references: list[dict[str, Any]] = []
+    context_includes: list[dict[str, Any]] = []
+    route_handoffs: list[dict[str, Any]] = []
     unresolved = {str(value) for value in request.get('unresolved_bindings', []) or []}
 
-    for raw in context_pack.get('required', []) or []:
-        value = str(raw)
-        if _is_path_reference(value):
-            required_context.append(_context_item(value, 'required_context'))
-        elif value not in binding_names:
-            unresolved.add(value)
+    for index_no, raw in enumerate(context_pack.get('required', []) or []):
+        _apply_context_entry(
+            raw=raw,
+            location=f'{context_pack_path}.required[{index_no}]',
+            requirement='required',
+            condition=None,
+            binding_names=binding_names,
+            unresolved=unresolved,
+            required_context=required_context,
+            conditional_context=conditional_context,
+            external_references=external_references,
+            context_includes=context_includes,
+            route_handoffs=route_handoffs,
+            context_paths=context_paths,
+            routes=routes,
+        )
 
     conditional_map = context_pack.get('conditional', {}) or {}
     if not isinstance(conditional_map, dict):
@@ -310,35 +521,29 @@ def build_manifest(
         values = conditional_map.get(condition)
         if values is None:
             raise ManifestError([f'Unknown Context Pack condition for {route_id}: {condition}'])
-        for raw in values or []:
-            value = str(raw)
-            if _is_path_reference(value):
-                conditional_context.append(_context_item(value, 'conditional_context'))
-            elif value not in binding_names:
-                unresolved.add(value)
+        for index_no, raw in enumerate(values or []):
+            _apply_context_entry(
+                raw=raw,
+                location=f'{context_pack_path}.conditional.{condition}[{index_no}]',
+                requirement='conditional',
+                condition=condition,
+                binding_names=binding_names,
+                unresolved=unresolved,
+                required_context=required_context,
+                conditional_context=conditional_context,
+                external_references=external_references,
+                context_includes=context_includes,
+                route_handoffs=route_handoffs,
+                context_paths=context_paths,
+                routes=routes,
+            )
 
     for raw in contract.get('required_inputs', []) or []:
         value = str(raw)
         if value not in binding_names:
             unresolved.add(value)
 
-    project_facts: list[dict[str, Any]] = []
-    for raw in request.get('project_facts', []) or []:
-        if not isinstance(raw, dict):
-            raise ManifestError(['project_facts entries must be mappings.'])
-        key = str(raw.get('key', '')).strip()
-        source_path = str(raw.get('source_path', '')).strip()
-        if not key or not source_path or 'value' not in raw:
-            raise ManifestError(['project_facts require key, value and source_path.'])
-        project_facts.append(
-            {
-                'node_id': stable_node_id('project_fact', key),
-                'key': key,
-                'value': raw['value'],
-                'source_path': source_path,
-                'reason': str(raw.get('reason', 'project_fact')),
-            }
-        )
+    project_facts = [_project_fact(raw, attempt) for raw in request.get('project_facts', []) or []]
 
     knowledge: list[dict[str, Any]] = []
     for raw in request.get('knowledge', []) or []:
@@ -412,6 +617,9 @@ def build_manifest(
             'conditions_applied': conditions,
             'required_context': required_context,
             'conditional_context': conditional_context,
+            'external_references': external_references,
+            'context_includes': context_includes,
+            'route_handoffs': route_handoffs,
             'source_files': source_files,
             'excluded_context': excluded_context,
         },
@@ -470,11 +678,151 @@ def build_manifest(
     return manifest
 
 
+def _selection_keys(context: dict[str, Any]) -> dict[str, set[Any]]:
+    return {
+        'required_repository': {
+            str(item.get('source_path'))
+            for item in context.get('required_context', []) or []
+            if isinstance(item, dict) and item.get('source_path')
+        },
+        'conditional_repository': {
+            (str(item.get('condition')), str(item.get('source_path')))
+            for item in context.get('conditional_context', []) or []
+            if isinstance(item, dict) and item.get('source_path')
+        },
+        'external': {
+            (
+                str(item.get('requirement')),
+                str(item.get('condition', '')),
+                str(item.get('repository')),
+                str(item.get('path')),
+            )
+            for item in context.get('external_references', []) or []
+            if isinstance(item, dict)
+        },
+        'includes': {
+            (
+                str(item.get('requirement')),
+                str(item.get('condition', '')),
+                str(item.get('context_id')),
+            )
+            for item in context.get('context_includes', []) or []
+            if isinstance(item, dict)
+        },
+        'handoffs': {
+            (
+                str(item.get('requirement')),
+                str(item.get('condition', '')),
+                str(item.get('route_id')),
+            )
+            for item in context.get('route_handoffs', []) or []
+            if isinstance(item, dict)
+        },
+    }
+
+
+def _validate_selected_entry(
+    raw: Any,
+    *,
+    requirement: str,
+    condition: str | None,
+    binding_names: set[str],
+    unresolved: set[str],
+    selections: dict[str, set[Any]],
+    context_paths: dict[str, str],
+    routes: dict[str, dict[str, Any]],
+) -> list[str]:
+    errors: list[str] = []
+    if not isinstance(raw, dict):
+        return ['Context Pack scalar entry is invalid under Typed Context v3.']
+    item_type = str(raw.get('type', ''))
+    if item_type not in CONTEXT_TYPES:
+        return [f'Unsupported Context Pack type: {item_type}']
+
+    if item_type == 'binding':
+        name = str(raw.get('name', ''))
+        if name not in binding_names and name not in unresolved:
+            errors.append(f'Context Pack binding is neither resolved nor unresolved: {name}')
+    elif item_type == 'repository_reference':
+        path = str(raw.get('path', ''))
+        if requirement == 'required':
+            if path not in selections['required_repository']:
+                errors.append(f'Missing required repository Context: {path}')
+        elif (str(condition), path) not in selections['conditional_repository']:
+            errors.append(f'Missing conditional repository Context for {condition}: {path}')
+    elif item_type == 'external_reference':
+        key = (requirement, str(condition or ''), str(raw.get('repository', '')), str(raw.get('path', '')))
+        if key not in selections['external']:
+            errors.append(f'Missing external Context reference: {key}')
+    elif item_type == 'context_include':
+        context_id = str(raw.get('context_id', ''))
+        if context_id not in context_paths:
+            errors.append(f'Context Pack includes unknown context: {context_id}')
+        key = (requirement, str(condition or ''), context_id)
+        if key not in selections['includes']:
+            errors.append(f'Missing Context include: {key}')
+    else:
+        route_id = str(raw.get('route_id', ''))
+        if route_id not in routes:
+            errors.append(f'Context Pack hands off to unknown route: {route_id}')
+        key = (requirement, str(condition or ''), route_id)
+        if key not in selections['handoffs']:
+            errors.append(f'Missing route handoff: {key}')
+    return errors
+
+
+def _validate_project_facts(manifest: dict[str, Any], attempt: int) -> list[str]:
+    errors: list[str] = []
+    seen_keys: set[str] = set()
+    for item in manifest.get('project_facts', {}).get('loaded', []) or []:
+        if not isinstance(item, dict):
+            errors.append('project_facts entries must be mappings.')
+            continue
+        key = str(item.get('key', '')).strip()
+        if not key:
+            errors.append('Project Fact key is required.')
+        elif key in seen_keys:
+            errors.append(f'Duplicate Project Fact key: {key}')
+        seen_keys.add(key)
+
+        source_kind = str(item.get('source_kind', ''))
+        if source_kind not in FACT_SOURCE_KINDS:
+            errors.append(f'Unsupported Project Fact source_kind: {key}={source_kind}')
+        if not str(item.get('source_path', '')).strip():
+            errors.append(f'Project Fact source_path is required: {key}')
+        if not str(item.get('revision', '')).strip():
+            errors.append(f'Project Fact revision is required: {key}')
+
+        observed = item.get('observed_at_attempt')
+        if not isinstance(observed, int) or observed < 1 or observed > attempt:
+            errors.append(f'Project Fact observed_at_attempt is invalid: {key}={observed}')
+
+        freshness = item.get('freshness')
+        if not isinstance(freshness, dict):
+            errors.append(f'Project Fact freshness must be a mapping: {key}')
+            continue
+        status = freshness.get('status')
+        checked = freshness.get('checked_at_attempt')
+        if status not in FACT_FRESHNESS_STATUSES:
+            errors.append(f'Unsupported Project Fact freshness status: {key}={status}')
+        if not isinstance(checked, int) or checked < 1 or checked > attempt:
+            errors.append(f'Project Fact checked_at_attempt is invalid: {key}={checked}')
+        if isinstance(observed, int) and isinstance(checked, int) and checked < observed:
+            errors.append(f'Project Fact freshness check predates observation: {key}')
+        if status == 'current' and checked != attempt:
+            errors.append(
+                f'Current Project Fact must be checked in manifest attempt {attempt}: {key} checked_at_attempt={checked}'
+            )
+    return errors
+
+
 def validate_manifest(root: Path, manifest: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     index = load_yaml(root / INDEX_PATH)
     graph_contract = load_yaml(root / GRAPH_CONTRACT_PATH)
     quality_contract = load_yaml(root / QUALITY_GATES_PATH)
+    routes = _route_map(index)
+    context_paths = _context_pack_map(root)
 
     if manifest.get('schema_version') != MANIFEST_SCHEMA_VERSION:
         errors.append(f'Context Manifest schema_version must be {MANIFEST_SCHEMA_VERSION}.')
@@ -490,6 +838,7 @@ def validate_manifest(root: Path, manifest: dict[str, Any]) -> list[str]:
     attempt = meta.get('attempt')
     if not isinstance(attempt, int) or attempt < 1:
         errors.append('manifest.attempt must be an integer >= 1.')
+        attempt = 1
     elif attempt == 1:
         if meta.get('previous_manifest_id') or meta.get('previous_attempt') is not None:
             errors.append('Attempt 1 must not reference a previous manifest.')
@@ -507,7 +856,7 @@ def validate_manifest(root: Path, manifest: dict[str, Any]) -> list[str]:
     if not task_id:
         errors.append('task.id is required.')
 
-    route = _route_map(index).get(route_id)
+    route = routes.get(route_id)
     if route is None:
         return errors + [f'Manifest references unknown route: {route_id}']
     errors.extend(_fingerprint_errors(index, route, task.get('fingerprint', {})))
@@ -594,24 +943,21 @@ def validate_manifest(root: Path, manifest: dict[str, Any]) -> list[str]:
         str(value)
         for value in manifest.get('execution', {}).get('unresolved_bindings', []) or []
     }
-    required_paths = {
-        str(item.get('source_path'))
-        for item in context.get('required_context', []) or []
-        if isinstance(item, dict) and item.get('source_path')
-    }
-    conditional_paths = {
-        str(item.get('source_path'))
-        for item in context.get('conditional_context', []) or []
-        if isinstance(item, dict) and item.get('source_path')
-    }
+    selections = _selection_keys(context)
 
     for raw in pack.get('required', []) or []:
-        value = str(raw)
-        if _is_path_reference(value):
-            if value not in required_paths:
-                errors.append(f'Missing required Context Pack source: {value}')
-        elif value not in binding_names and value not in unresolved:
-            errors.append(f'Required Context Pack binding is neither resolved nor unresolved: {value}')
+        errors.extend(
+            _validate_selected_entry(
+                raw,
+                requirement='required',
+                condition=None,
+                binding_names=binding_names,
+                unresolved=unresolved,
+                selections=selections,
+                context_paths=context_paths,
+                routes=routes,
+            )
+        )
 
     conditional_map = pack.get('conditional', {}) or {}
     for condition in context.get('conditions_applied', []) or []:
@@ -619,19 +965,25 @@ def validate_manifest(root: Path, manifest: dict[str, Any]) -> list[str]:
             errors.append(f'Unknown applied Context Pack condition: {condition}')
             continue
         for raw in conditional_map.get(condition, []) or []:
-            value = str(raw)
-            if _is_path_reference(value):
-                if value not in conditional_paths:
-                    errors.append(
-                        f'Missing conditional Context Pack source for {condition}: {value}'
-                    )
-            elif value not in binding_names and value not in unresolved:
-                errors.append(f'Conditional binding is neither resolved nor unresolved: {value}')
+            errors.extend(
+                _validate_selected_entry(
+                    raw,
+                    requirement='conditional',
+                    condition=str(condition),
+                    binding_names=binding_names,
+                    unresolved=unresolved,
+                    selections=selections,
+                    context_paths=context_paths,
+                    routes=routes,
+                )
+            )
 
     for raw in contract.get('required_inputs', []) or []:
         value = str(raw)
         if value not in binding_names and value not in unresolved:
             errors.append(f'Task Contract input is neither resolved nor unresolved: {value}')
+
+    errors.extend(_validate_project_facts(manifest, attempt))
 
     selected_paths = _selected_paths(manifest)
     for item in context.get('excluded_context', []) or []:
@@ -647,6 +999,9 @@ def validate_manifest(root: Path, manifest: dict[str, Any]) -> list[str]:
         context.get('bindings', []),
         context.get('required_context', []),
         context.get('conditional_context', []),
+        context.get('external_references', []),
+        context.get('context_includes', []),
+        context.get('route_handoffs', []),
         context.get('source_files', []),
         context.get('excluded_context', []),
         manifest.get('knowledge', {}).get('loaded', []),
@@ -839,27 +1194,27 @@ def project_execution_graph(
     attempt_id = stable_node_id('attempt', str(meta['id']))
     task_id = stable_node_id('task', str(task['id']))
     fingerprint_id = stable_node_id('task_fingerprint', str(task['id']))
-    route_id = stable_node_id('route', str(task['route']))
+    route_node_id = stable_node_id('route', str(task['route']))
 
     add_node(attempt_id, 'attempt', f"Attempt {meta['attempt']}", manifest_source_path, 'runtime_evidence')
     add_node(task_id, 'task', str(task['id']), manifest_source_path, 'runtime_evidence')
     add_node(fingerprint_id, 'task_fingerprint', 'Task Fingerprint', manifest_source_path, 'runtime_evidence')
-    add_node(route_id, 'route', str(task['route']), INDEX_PATH.as_posix(), 'canonical_binding')
+    add_node(route_node_id, 'route', str(task['route']), INDEX_PATH.as_posix(), 'canonical_binding')
     add_edge(attempt_id, task_id, 'depends_on', 'runtime_evidence')
     add_edge(task_id, fingerprint_id, 'classifies_as', 'runtime_evidence')
-    add_edge(fingerprint_id, route_id, 'selects', 'canonical_binding')
+    add_edge(fingerprint_id, route_node_id, 'selects', 'canonical_binding')
 
     pack = context['context_pack']
     add_node(pack['node_id'], 'context_pack', str(task['route']), pack['source_path'], 'canonical_binding')
-    add_edge(route_id, pack['node_id'], 'selects', 'canonical_binding')
+    add_edge(route_node_id, pack['node_id'], 'selects', 'canonical_binding')
 
     skill = context['primary_skill']
     add_node(skill['node_id'], 'skill', skill['node_id'].split(':', 1)[-1], skill['source_path'], 'canonical_binding')
-    add_edge(route_id, skill['node_id'], 'uses_skill', 'canonical_binding')
+    add_edge(route_node_id, skill['node_id'], 'uses_skill', 'canonical_binding')
 
     contract = harness['task_contract']
     add_node(contract['node_id'], 'task_contract', contract['node_id'].split(':', 1)[-1], contract['source_path'], 'harness_contract')
-    add_edge(route_id, contract['node_id'], 'selects', 'harness_contract')
+    add_edge(route_node_id, contract['node_id'], 'selects', 'harness_contract')
 
     for item in manifest.get('policy', {}).get('loaded', []) or []:
         add_node(item['node_id'], 'policy', item['node_id'].split(':', 1)[-1], item['source_path'], item['reason'])
@@ -878,6 +1233,20 @@ def project_execution_graph(
         for item in context.get(key, []) or []:
             add_node(item['node_id'], 'source', item['source_path'], item['source_path'], item['reason'])
             add_edge(pack['node_id'], item['node_id'], edge_type, item['reason'])
+
+    for item in context.get('external_references', []) or []:
+        source_path = f"{item['repository']}/{item['path']}"
+        add_node(item['node_id'], 'external_reference', source_path, source_path, item['reason'])
+        edge_type = 'requires' if item['requirement'] == 'required' else 'conditionally_requires'
+        add_edge(pack['node_id'], item['node_id'], edge_type, item['reason'])
+
+    for item in context.get('context_includes', []) or []:
+        add_node(item['node_id'], 'context_pack', item['context_id'], item['source_path'], item['reason'])
+        add_edge(pack['node_id'], item['node_id'], 'includes_context', item['reason'])
+
+    for item in context.get('route_handoffs', []) or []:
+        add_node(item['node_id'], 'route', item['route_id'], INDEX_PATH.as_posix(), item['reason'])
+        add_edge(route_node_id, item['node_id'], 'hands-off-to', item['reason'])
 
     for item in manifest.get('knowledge', {}).get('loaded', []) or []:
         add_node(item['node_id'], 'knowledge', item['source_path'], item['source_path'], item['reason'])
