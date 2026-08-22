@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Context Pack execution contracts and exploration metadata."""
+"""Validate Context Pack v3 typed execution contracts and exploration metadata."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ INDEX_PATH = Path(".ai/context-index.yaml")
 SCHEMA_PATH = Path(".ai/context-pack.schema.yaml")
 PROJECT_PROFILE_PATH = "Specs/ProjectProfile.md"
 PROJECT_FALLBACK_KEY = "project_fallback"
+CONTEXT_PACK_SCHEMA_VERSION = "3.0"
 REQUIRED_PACKS = {
     "architecture-design.yaml",
     "graphics-mcp.yaml",
@@ -29,12 +30,32 @@ REQUIRED_PACKS = {
     "visual-direction.yaml",
 }
 LOCAL_PATH_PREFIXES = (".ai/", ".agents/", "SkillReferences/", "Specs/", "Tools/")
+TOP_LEVEL_LOCAL_FILES = {"AGENTS.md", "README.md"}
 RELATIONS = {"related-to", "depends-on", "hands-off-to", "conflicts-with", "refines"}
+CONTEXT_TYPES = {
+    "binding",
+    "repository_reference",
+    "external_reference",
+    "context_include",
+    "route_handoff",
+}
 ID_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+REPOSITORY_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 
 
 def load_yaml(root: Path, relative: Path | str) -> Any:
     return yaml.safe_load((root / relative).read_text(encoding="utf-8")) or {}
+
+
+def _repository_relative_path(root: Path, source_path: str) -> str | None:
+    if not (source_path.startswith(LOCAL_PATH_PREFIXES) or source_path in TOP_LEVEL_LOCAL_FILES):
+        return "repository_reference must use a repository-relative path"
+    target = (root / source_path).resolve()
+    if root.resolve() not in target.parents and target != root.resolve():
+        return "repository_reference escapes repository root"
+    if not target.is_file():
+        return f"repository_reference does not exist: {source_path}"
+    return None
 
 
 def resolve_source_ref(root: Path, source_ref: str) -> str | None:
@@ -91,7 +112,7 @@ def validate_metadata(root: Path, path: Path, document: dict[str, Any], context_
                 errors.append(f"{relative} metadata.{field} has invalid id: {item_id}")
             if item_id in ids:
                 errors.append(f"{relative} metadata.{field} has duplicate id: {item_id}")
-            ids.add(item_id)
+            ids.add(str(item_id))
             if not isinstance(item.get("label"), str) or not item.get("label", "").strip():
                 errors.append(f"{relative} metadata.{field}.{item_id} requires label")
             source_ref = item.get("source_ref")
@@ -127,21 +148,115 @@ def validate_metadata(root: Path, path: Path, document: dict[str, Any], context_
     return errors
 
 
+def validate_typed_item(
+    root: Path,
+    relative: str,
+    section: str,
+    item: Any,
+    context_ids: set[str],
+    route_ids: set[str],
+) -> list[str]:
+    errors: list[str] = []
+    if not isinstance(item, dict):
+        return [f"{relative} {section} entries must be typed mappings; scalar context is forbidden"]
+
+    item_type = item.get("type")
+    if item_type not in CONTEXT_TYPES:
+        return [f"{relative} {section} has unsupported context type: {item_type}"]
+
+    field_sets = {
+        "binding": ({"type", "name"}, {"path", "repository", "context_id", "route_id"}),
+        "repository_reference": ({"type", "path"}, {"name", "repository", "context_id", "route_id"}),
+        "external_reference": ({"type", "repository", "path"}, {"name", "context_id", "route_id"}),
+        "context_include": ({"type", "context_id"}, {"name", "repository", "route_id"}),
+        "route_handoff": ({"type", "route_id"}, {"name", "repository", "context_id"}),
+    }
+    required_fields, forbidden_fields = field_sets[str(item_type)]
+    for field in required_fields:
+        if field not in item or not str(item.get(field, "")).strip():
+            errors.append(f"{relative} {section} {item_type} requires {field}")
+    for field in forbidden_fields:
+        if field in item:
+            errors.append(f"{relative} {section} {item_type} must not declare {field}")
+
+    if item_type == "repository_reference" and item.get("path"):
+        problem = _repository_relative_path(root, str(item["path"]))
+        if problem:
+            errors.append(f"{relative} {section}: {problem}")
+    elif item_type == "external_reference":
+        repository = str(item.get("repository", ""))
+        if repository and not REPOSITORY_PATTERN.fullmatch(repository):
+            errors.append(f"{relative} {section} external repository must use owner/name: {repository}")
+        external_path = str(item.get("path", ""))
+        if external_path.startswith("/") or ".." in Path(external_path).parts:
+            errors.append(f"{relative} {section} external path must be repository-relative: {external_path}")
+    elif item_type == "context_include":
+        context_id = str(item.get("context_id", ""))
+        if context_id and context_id not in context_ids:
+            errors.append(f"{relative} {section} includes unknown context: {context_id}")
+    elif item_type == "route_handoff":
+        route_id = str(item.get("route_id", ""))
+        if route_id and route_id not in route_ids:
+            errors.append(f"{relative} {section} hands off to unknown route: {route_id}")
+    return errors
+
+
+def validate_typed_context(
+    root: Path,
+    path: Path,
+    document: dict[str, Any],
+    context_ids: set[str],
+    route_ids: set[str],
+) -> list[str]:
+    relative = str(path.relative_to(root)).replace("\\", "/")
+    errors: list[str] = []
+    if str(document.get("schema_version")) != CONTEXT_PACK_SCHEMA_VERSION:
+        errors.append(f"{relative} schema_version must be {CONTEXT_PACK_SCHEMA_VERSION}")
+
+    required = document.get("required", [])
+    if not isinstance(required, list):
+        errors.append(f"{relative} required must be a list")
+    else:
+        for index, item in enumerate(required):
+            errors.extend(validate_typed_item(root, relative, f"required[{index}]", item, context_ids, route_ids))
+
+    conditional = document.get("conditional", {})
+    if not isinstance(conditional, dict):
+        errors.append(f"{relative} conditional must be a mapping")
+    else:
+        for condition, items in conditional.items():
+            if not isinstance(items, list):
+                errors.append(f"{relative} conditional.{condition} must be a list")
+                continue
+            for index, item in enumerate(items):
+                errors.extend(
+                    validate_typed_item(
+                        root,
+                        relative,
+                        f"conditional.{condition}[{index}]",
+                        item,
+                        context_ids,
+                        route_ids,
+                    )
+                )
+    return errors
+
+
 def validate_project_profile_fallback(path: Path, document: dict[str, Any], root: Path) -> list[str]:
     errors: list[str] = []
     relative = str(path.relative_to(root)).replace("\\", "/")
     required = document.get("required", []) or []
-    if PROJECT_PROFILE_PATH in required:
-        errors.append(
-            f"{relative} must not require {PROJECT_PROFILE_PATH}; it is fallback-only context"
-        )
+    for item in required:
+        if isinstance(item, dict) and item.get("type") == "repository_reference" and item.get("path") == PROJECT_PROFILE_PATH:
+            errors.append(f"{relative} must not require {PROJECT_PROFILE_PATH}; it is fallback-only context")
 
     conditional = document.get("conditional", {}) or {}
     profile_conditions: list[str] = []
     if isinstance(conditional, dict):
         for condition, references in conditional.items():
-            if isinstance(references, list) and PROJECT_PROFILE_PATH in references:
-                profile_conditions.append(str(condition))
+            for item in references or []:
+                if isinstance(item, dict) and item.get("type") == "repository_reference" and item.get("path") == PROJECT_PROFILE_PATH:
+                    profile_conditions.append(str(condition))
 
     for condition in profile_conditions:
         if condition != PROJECT_FALLBACK_KEY:
@@ -153,7 +268,6 @@ def validate_project_profile_fallback(path: Path, document: dict[str, Any], root
         rules = document.get("rules", {}) or {}
         if rules.get("project_profile_is_fallback_only") is not True:
             errors.append(f"{relative} must declare rules.project_profile_is_fallback_only: true")
-
     return errors
 
 
@@ -197,6 +311,11 @@ def validate(root: Path) -> list[str]:
     context_ids = {str(document.get("id")) for document in documents.values() if document.get("id")}
     if len(context_ids) != len(documents):
         errors.append("Context Pack ids must be unique")
+    route_ids = {
+        str(route.get("id"))
+        for route in (index.get("routes", {}) or {}).values()
+        if isinstance(route, dict) and route.get("id")
+    }
 
     for pack_path, document in ((pack_dir / name, data) for name, data in documents.items()):
         relative = str(pack_path.relative_to(root)).replace("\\", "/")
@@ -209,6 +328,7 @@ def validate(root: Path) -> list[str]:
         if not isinstance(primary_skill, str) or not (root / primary_skill).is_file():
             errors.append(f"{relative} has broken primary_skill: {primary_skill}")
         errors.extend(validate_metadata(root, pack_path, document, context_ids))
+        errors.extend(validate_typed_context(root, pack_path, document, context_ids, route_ids))
         errors.extend(validate_project_profile_fallback(pack_path, document, root))
 
     for route_key, route in (index.get("routes", {}) or {}).items():
