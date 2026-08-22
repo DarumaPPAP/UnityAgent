@@ -6,7 +6,7 @@ allowed-tools:
   - Write
   - Edit
 metadata:
-  version: "2.1.0"
+  version: "2.2.0"
 ---
 
 # Unity Rendering
@@ -32,14 +32,17 @@ Unity 6 URP、RenderGraph、RendererFeature、Shader/HLSLの作業へ、描画�
 対象に応じて必要なものだけを読む。
 
 1. Feature Spec / Plan / Task
-2. `Specs/ProjectProfile.md`
-3. 美的成果を含む場合は承認済みVisual Intent Contractと`SkillReferences/BEAUTIFUL_DEFINITION_INTEGRATION.md`
-4. `SkillReferences/RENDERING_STANDARDS.md`
-5. `SkillReferences/SHADER_PERFORMANCE_STANDARDS.md`
-6. Shader変更時は`SkillReferences/ShaderPerformance/UNITY_URP_POLICY.md`
-7. 監査時は`SHADER_REVIEW_GATE.md`と`RULE_CATALOG.md`
-8. 修正時は`REFACTOR_POLICY.md`
-9. Variant変更時は`VARIANT_POLICY.md`
+2. 対象Renderer、Shader、RendererFeature、Project Settings等の直接Sourceと検出済みProject Fact
+3. 必要なProject Factが未解決の場合だけ`Specs/ProjectProfile.md`をFallbackとして読む
+4. 美的成果を含む場合は承認済みVisual Intent Contractと`SkillReferences/BEAUTIFUL_DEFINITION_INTEGRATION.md`
+5. `SkillReferences/RENDERING_STANDARDS.md`
+6. `SkillReferences/SHADER_PERFORMANCE_STANDARDS.md`
+7. Shader変更時は`SkillReferences/ShaderPerformance/UNITY_URP_POLICY.md`
+8. 監査時は`SHADER_REVIEW_GATE.md`と`RULE_CATALOG.md`
+9. 修正時は`REFACTOR_POLICY.md`
+10. Variant変更時は`VARIANT_POLICY.md`
+
+`Specs/ProjectProfile.md`はFallbackであり、対象Projectから検出したUnity/URP/Renderer/Platform Factや今回ユーザーが確認したFactを上書きしない。
 
 ## Delegates to
 
@@ -65,6 +68,7 @@ Unity 6 URP、RenderGraph、RendererFeature、Shader/HLSLの作業へ、描画�
 - Existing RenderFeature order
 - 美的成果を含む場合はSelected Definition IDとVisual Intent Contract
 
+これらは対象Projectの直接Sourceと検出済みFactを先に使い、不足する項目だけProject Profileで補う。
 APIとpackage versionを確認せず、別Versionの実装を移植しない。
 Visual Intentが必要なのに未定義の場合、Rendering側で勝手に「美しい」を補完せず`unity-visual-direction`へ戻す。
 
@@ -203,7 +207,8 @@ Depth、Motion Vector、History UV、Reprojection、Disocclusionを安易に低�
 
 ## Checklist
 
-- [ ] Unity / URP / Platform条件を確認した
+- [ ] Unity / URP / Platform条件を対象ProjectのFactから先に確認した
+- [ ] Project Profileを使用した場合は未解決FactのFallbackとしてのみ使用した
 - [ ] Visual taskではDefinition IDとVisual Intentを確認した
 - [ ] Passの入出力とInjection pointを定義した
 - [ ] Queue / Layer / ShaderTag / Sortingを確認した
@@ -216,6 +221,7 @@ Depth、Motion Vector、History UV、Reprojection、Disocclusionを安易に低�
 
 ## Common mistakes
 
+- Project Profileの固定値で検出済みRendererやPipeline Factを上書きする。
 - `RenderQueueRange.opaque`でTransparent対象を落とす。
 - Override Materialが元Shaderへ追加Passを足すと誤解する。
 - Outlineを無効化しても背面描画Pass自体が走り続ける状態を見逃す。
