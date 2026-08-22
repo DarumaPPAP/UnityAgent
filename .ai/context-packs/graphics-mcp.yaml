@@ -1,4 +1,4 @@
-schema_version: "1.3"
+schema_version: "1.4"
 id: graphics-mcp
 primary_skill: .agents/skills/unity-architecture-design/SKILL.md
 
@@ -32,7 +32,6 @@ use_when:
 required:
   - .ai/user-policy.yaml
   - AGENTS.md
-  - Specs/ProjectProfile.md
   - SkillReferences/ARCHITECTURE_DECISION_POLICY.md
   - .ai/harness/mcp-activation.yaml
   - .ai/knowledge/graphics/unity-graphics-mcp.yaml
@@ -40,6 +39,8 @@ required:
   - DarumaPPAP/MyUnityMCP/Specs/UnityAgentMCP/spec.md
 
 conditional:
+  project_fallback:
+    - Specs/ProjectProfile.md
   graphics_domain_contract_or_implementation:
     - DarumaPPAP/MyUnityMCP/Specs/UnityGraphicsMCP/spec.md
     - DarumaPPAP/MyUnityMCP/Specs/UnityGraphicsMCP/plan.md
@@ -79,6 +80,7 @@ rules:
   inspect_target_project_before_backend_selection: true
   fixed_unity_version_pipeline_path_or_platform_defaults_are_prohibited_in_mcp_contract: true
   detected_project_facts_override_profiles_and_preferences: true
+  project_profile_is_fallback_only: true
   explicit_requested_target_is_separate_from_detected_project_facts: true
   unverified_is_not_unsupported: true
   backend_not_implemented_must_be_reported_explicitly: true
