@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: "1.1"
 id: renderer-feature-change
 primary_skill: .agents/skills/unity-rendering/SKILL.md
 
@@ -37,6 +37,8 @@ required:
   - SkillReferences/RENDERING_STANDARDS.md
 
 conditional:
+  project_fallback:
+    - Specs/ProjectProfile.md
   shader_change:
     - .ai/context-packs/shader-change.yaml
   unknown_rendering_failure:
@@ -44,7 +46,6 @@ conditional:
   performance_claim:
     - .ai/context-packs/performance.yaml
   project_specific_change:
-    - Specs/ProjectProfile.md
     - target source and direct dependencies
 
 excluded_by_default:
@@ -60,6 +61,8 @@ rules:
   shader_contract_change_is_conditional_not_assumed: true
   project_setting_change_requires_explicit_approval: true
   user_policy_has_priority_over_generic_rendering_pattern: true
+  detected_project_facts_override_project_profile: true
+  project_profile_is_fallback_only: true
 
 limits:
   initial_file_reads: 7
