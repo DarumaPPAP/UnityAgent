@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Build one Context Manifest from a runtime request."""
+"""Build one budgeted Context Manifest from a runtime request."""
 
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 from context_manifest_runtime import (
@@ -18,6 +19,13 @@ from execution_graph_validator import validate_execution_graph
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUTPUT_ROOT = ROOT / "Artifacts" / "ContextManifests"
+sys.path.insert(0, str(ROOT / "Tools" / "ContextBudget"))
+
+from context_budget_runtime import (  # noqa: E402
+    BudgetError,
+    build_budget_report,
+    validate_budget_report,
+)
 
 
 def resolve_path(value: str) -> Path:
@@ -44,6 +52,12 @@ def main() -> int:
         previous = load_yaml(resolve_path(args.previous)) if args.previous else None
         manifest = build_manifest(ROOT, request, previous)
 
+        budget = build_budget_report(ROOT, manifest, request)
+        manifest["budget"] = budget
+        budget_errors = validate_budget_report(manifest, budget)
+        if budget_errors:
+            raise ManifestError(budget_errors)
+
         if args.output:
             output_path = resolve_path(args.output)
         else:
@@ -63,9 +77,19 @@ def main() -> int:
             write_yaml(graph_path, graph)
 
         print(f"Context Manifest built: {output_path}")
+        print(
+            "Context Budget: "
+            f"{budget['decision']} "
+            f"({budget['context']['estimated_tokens']} estimated tokens, profile={budget['profile']})"
+        )
         if args.graph_output:
             print(f"Execution Graph built: {graph_path}")
         return 0
+    except BudgetError as exc:
+        print("Context Budget build failed:")
+        for error in exc.errors:
+            print(f"- {error}")
+        return 1
     except ManifestError as exc:
         print("Context Manifest build failed:")
         for error in exc.errors:
