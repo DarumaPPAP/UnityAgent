@@ -1,4 +1,4 @@
-schema_version: "1.1"
+schema_version: "1.2"
 manifest_id: golden-csharp-local-fix-a2
 
 task:
@@ -46,6 +46,30 @@ project_facts:
       status: current
       checked_at_attempt: 2
     reason: project_fact
+
+retrieval_observations:
+  - source_id: project:Assets/Settings/Debug/EnvironmentDebugWindow.cs
+    role: target_source
+    source_revision: fixture:environment-debug-window-v2
+    original_utf8_bytes: 12400
+    selected_utf8_bytes: 12400
+    compression:
+      mode: none
+  - source_id: project:Assets/Settings/Debug/CameraDebugWindow.cs
+    role: direct_dependency
+    source_revision: fixture:camera-debug-window-v1
+    original_utf8_bytes: 8000
+    selected_utf8_bytes: 8000
+    compression:
+      mode: none
+  - source_id: project:Assets/Settings/Debug/CameraFarClipTracker.cs
+    role: direct_dependency
+    source_revision: fixture:camera-far-clip-tracker-v1
+    original_utf8_bytes: 7000
+    selected_utf8_bytes: 7000
+    compression:
+      mode: none
+
 knowledge: []
 tools: []
 conditions: []
