@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: "1.1"
 id: shader-change
 primary_skill: .agents/skills/unity-rendering/SKILL.md
 
@@ -31,12 +31,13 @@ required:
   - target_shader
   - direct_includes
   - material_or_pass_contract
-  - Specs/ProjectProfile.md
   - SkillReferences/RENDERING_STANDARDS.md
   - SkillReferences/SHADER_PERFORMANCE_STANDARDS.md
   - SkillReferences/ShaderPerformance/UNITY_URP_POLICY.md
 
 conditional:
+  project_fallback:
+    - Specs/ProjectProfile.md
   read_only_audit:
     - .agents/skills/shader-performance-auditor/SKILL.md
     - SkillReferences/ShaderPerformance/SHADER_REVIEW_GATE.md
@@ -62,6 +63,8 @@ rules:
   direct_source_read_required: true
   pattern_does_not_prove_gpu_cost: true
   editor_does_not_prove_target_platform: true
+  detected_project_facts_override_project_profile: true
+  project_profile_is_fallback_only: true
 
 limits:
   initial_file_reads: 6
