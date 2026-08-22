@@ -18,6 +18,7 @@ from context_budget_runtime import (  # noqa: E402
     load_yaml,
     validate_budget_report,
 )
+from context_budget_validation import validate_budget_integrity  # noqa: E402
 from context_manifest_runtime import build_manifest  # noqa: E402
 
 REQUEST = ROOT / "Tests" / "ContextManifest" / "requests" / "csharp-local-fix.yaml"
@@ -81,7 +82,7 @@ def run_self_test() -> list[str]:
         measured_request = copy.deepcopy(base_request)
         measured_request["retrieval_observations"] = project_observations(manifest)
         report = build_budget_report(ROOT, manifest, measured_request)
-        errors.extend(validate_budget_report(manifest, report))
+        errors.extend(validate_budget_integrity(ROOT, manifest, report))
         expect(report["decision"] == "within_budget", "Measured local fix should fit tight budget.", errors)
         expect(
             report["estimator"].get("exact_model_tokenizer") is False,
@@ -92,7 +93,7 @@ def run_self_test() -> list[str]:
         unmeasured_request = copy.deepcopy(base_request)
         unmeasured_request["retrieval_observations"] = []
         unmeasured = build_budget_report(ROOT, manifest, unmeasured_request)
-        unmeasured_errors = validate_budget_report(manifest, unmeasured)
+        unmeasured_errors = validate_budget_integrity(ROOT, manifest, unmeasured)
         expect(unmeasured["decision"] == "unmeasured", "Missing project observations must be unmeasured.", errors)
         expect(
             any("Mutation requires Context Budget" in error for error in unmeasured_errors),
@@ -122,6 +123,12 @@ def run_self_test() -> list[str]:
             errors,
         )
         expect(bool(pressure["compression"]["candidates"]), "Compression candidates must be reported.", errors)
+        pressure_errors = validate_budget_integrity(ROOT, manifest, pressure)
+        expect(
+            any("Mutation requires Context Budget" in error for error in pressure_errors),
+            "Mutation must be blocked while compression is required.",
+            errors,
+        )
 
         compressed_selected = max(1, pressure_bytes // 5)
         compressed_request = copy.deepcopy(measured_request)
@@ -134,11 +141,31 @@ def run_self_test() -> list[str]:
             )
         )
         compressed = build_budget_report(ROOT, manifest, compressed_request)
-        errors.extend(validate_budget_report(manifest, compressed))
+        errors.extend(validate_budget_integrity(ROOT, manifest, compressed))
         expect(compressed["decision"] == "within_budget", "Valid summary should restore budget.", errors)
         expect(
             compressed["compression"]["saved_utf8_bytes"] == pressure_bytes - compressed_selected,
             "Saved bytes must be recorded.",
+            errors,
+        )
+
+        tampered = copy.deepcopy(compressed)
+        tampered["context"]["estimated_tokens"] = 1
+        tampered["decision"] = "within_budget"
+        tampered_errors = validate_budget_integrity(ROOT, manifest, tampered)
+        expect(
+            any("estimated_tokens does not match artifact sum" in error for error in tampered_errors),
+            "Persisted estimated-token tampering must be rejected.",
+            errors,
+        )
+
+        tampered_missing = copy.deepcopy(unmeasured)
+        tampered_missing["coverage"]["missing_observations"] = []
+        tampered_missing["decision"] = "within_budget"
+        tampered_missing_errors = validate_budget_integrity(ROOT, manifest, tampered_missing)
+        expect(
+            any("missing_observations does not match" in error for error in tampered_missing_errors),
+            "Persisted missing-observation tampering must be rejected.",
             errors,
         )
 
