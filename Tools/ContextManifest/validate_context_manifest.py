@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import sys
 from pathlib import Path
 
 from context_manifest_runtime import (
@@ -22,6 +23,9 @@ ROOT = Path(__file__).resolve().parents[2]
 SCHEMA_PATH = ROOT / ".ai" / "context-manifest.schema.yaml"
 REQUEST_A1 = ROOT / "Tests" / "ContextManifest" / "requests" / "csharp-local-fix.yaml"
 REQUEST_A2 = ROOT / "Tests" / "ContextManifest" / "requests" / "csharp-local-fix-retry.yaml"
+sys.path.insert(0, str(ROOT / "Tools" / "ContextBudget"))
+
+from context_budget_runtime import validate_budget_report  # noqa: E402
 
 
 def resolve_path(value: str) -> Path:
@@ -41,7 +45,14 @@ def run_self_test() -> list[str]:
         schema = load_yaml(SCHEMA_PATH)
         expect(schema.get("schema_version") == "3.1", "Context Manifest schema must be v3.1.", errors)
         runtime = schema.get("runtime", {})
-        for key in ("builder", "evidence_recorder", "validator", "graph_projector"):
+        for key in (
+            "builder",
+            "evidence_recorder",
+            "validator",
+            "graph_projector",
+            "budget_engine",
+            "budget_validator",
+        ):
             expect(bool(runtime.get(key)), f"Context Manifest runtime missing {key}.", errors)
 
         request_a1 = load_yaml(REQUEST_A1)
@@ -331,6 +342,15 @@ def validate_files(paths: list[Path]) -> list[str]:
             manifest = load_yaml(path)
             file_errors = validate_manifest(ROOT, manifest)
             errors.extend(f"{path}: {error}" for error in file_errors)
+
+            budget = manifest.get("budget")
+            if not isinstance(budget, dict):
+                errors.append(f"{path}: canonical Context Manifest file requires budget report")
+            else:
+                budget_errors = validate_budget_report(manifest, budget)
+                errors.extend(f"{path}: {error}" for error in budget_errors)
+                if budget.get("contract") != ".ai/context-budget.yaml":
+                    errors.append(f"{path}: budget.contract must reference .ai/context-budget.yaml")
         except ManifestError as exc:
             errors.extend(f"{path}: {error}" for error in exc.errors)
     return errors
