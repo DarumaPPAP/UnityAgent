@@ -30,12 +30,13 @@
 5. 選択RouteのContext Pack、Task Contract、Primary Domain Skillを一つずつ読む。
 6. Primary Knowledgeは必要な場合だけ最大一つ選び、Conditional Knowledge / Operationは条件成立時だけ追加する。
 7. Mutation前に対象Sourceと必要な直接依存を読む。
-8. MCP能力が必要な場合だけ`.ai/harness/mcp-activation.yaml`から必要Tool Groupを段階的に公開する。
-9. `.ai/harness/`のMutation ContractとRequired Quality Gateで結果を検証する。
-10. Evidenceを`passed` / `failed` / `unavailable`で返し、未検証範囲を成功扱いしない。
-11. Primary Routeを選んでDomain Taskを実行する場合は`.ai/context-manifest.schema.yaml`に従うContext Manifestを標準Traceとして生成し、`.ai/graph-contract.yaml`へExecution Graphとして投影可能なstable ID、typed edge、provenanceを保持する。Primary Route不要の単純read-only説明だけは省略できる。
-12. User Policy、Routing、Context Pack、Task Contract、Quality Gate、Eval Contractを変更する場合は`.ai/eval/golden-eval-contract.yaml`と`Tests/GoldenTasks/`の関連Regressionを確認し、以前Acceptedだった挙動を壊していないか検証する。
-13. Loop / Graph / Retry / Budget / Checkpoint / Human Gateは`DarumaPPAP/Unity-Graph-Engineering`へ委譲する。
+8. `.ai/context-budget.yaml`に従ってRetrieved Contextを計測し、必要なら許可されたSourceだけを圧縮して再計測する。Mutationでは`within_budget`になるまで進めない。
+9. MCP能力が必要な場合だけ`.ai/harness/mcp-activation.yaml`から必要Tool Groupを段階的に公開する。
+10. `.ai/harness/`のMutation ContractとRequired Quality Gateで結果を検証する。
+11. Evidenceを`passed` / `failed` / `unavailable`で返し、未検証範囲を成功扱いしない。
+12. Primary Routeを選んでDomain Taskを実行する場合は`.ai/context-manifest.schema.yaml`に従うContext Manifestを標準Traceとして生成し、Context Budget Report、stable ID、typed edge、provenanceを保持する。Primary Route不要の単純read-only説明だけは省略できる。
+13. User Policy、Routing、Context Pack、Context Budget、Task Contract、Quality Gate、Eval Contractを変更する場合は`.ai/eval/golden-eval-contract.yaml`と`Tests/GoldenTasks/`の関連Regressionを確認し、以前Acceptedだった挙動を壊していないか検証する。
+14. Loop / Graph / Retry / Model・Execution Budget / Checkpoint / Human Gateは`DarumaPPAP/Unity-Graph-Engineering`へ委譲する。
 
 ## 3. Canonical map
 
@@ -44,7 +45,8 @@
 | User Policy | `.ai/user-policy.yaml` | ユーザー固有の正しさ、Preference、禁止事項 |
 | Execution Profile | `.ai/execution-profiles.yaml` | Generic / Personal / Team Safeの実行境界 |
 | Domain Routing | `.ai/context-index.yaml` | Task Fingerprint、Primary Route、Pack、Contract、Skill選択 |
-| Context Trace | `.ai/context-manifest.schema.yaml` | Primary Route実行ごとのContext、Attempt、Evidence追跡 |
+| Context Budget | `.ai/context-budget.yaml` | Retrieval Budget、Context推定量、Compression許可範囲、Mutation前Budget Gate |
+| Context Trace | `.ai/context-manifest.schema.yaml` | Primary Route実行ごとのContext、Budget、Attempt、Evidence追跡 |
 | Graph Projection | `.ai/graph-contract.yaml` | Definition / Execution / Regression GraphのNode、Edge、Provenance、Visualization契約 |
 | Golden Regression | `.ai/eval/` + `Tests/GoldenTasks/` | Accepted Behavior、Boundary Pair、Grader、Failure Taxonomy、Regression契約 |
 | Context Packs | `.ai/context-packs/` | TaskごとのRequired / Conditional / Excluded Context |
@@ -58,8 +60,8 @@
 
 ## 4. Repository ownership
 
-- `DarumaPPAP/UnityAgent`: User Policy、Context、Unity Harness Contract、Domain Skill、Validator、Golden Eval、Context Manifest Runtime、Graph Projection Contract。
-- `DarumaPPAP/Unity-Graph-Engineering`: Execution Mode、Loop / Graph、Retry、State、Budget、Checkpoint、Human Gate、Model比較実行。
+- `DarumaPPAP/UnityAgent`: User Policy、Context、Context Budget / Retrieval / Compression Contract、Unity Harness Contract、Domain Skill、Validator、Golden Eval、Context Manifest Runtime、Graph Projection Contract。
+- `DarumaPPAP/Unity-Graph-Engineering`: Execution Mode、Loop / Graph、Retry、State、Model・Execution Budget、Checkpoint、Human Gate、Model比較実行。
 - `DarumaPPAP/MyUnityMCP`: UnityAgentMCP、Creator Workflow、Domain MCP、Capability、Catalog、Manifest、Tool Schema、Package実装。
 - `DarumaPPAP/UnityAIGC-Archive`: 生成した製品コード、製品仕様、導入資料。
 - `DarumaPPAP/Beautiful-Definition`: Visual Intent、Beauty Definition、Human feedback。
@@ -78,6 +80,13 @@ UnityAgent内へ通常の製品コードやMCP Package実装を複製しませ�
 - 人間向け長文Referenceは設計理由、比較、実験、Visual Decisionが必要な場合だけ読む。
 - Context不足は未解決Bindingとして残し、無関係なContext追加で埋めない。
 - Context ManifestへCanonical YAML全体や前Attempt全体を複製せず、今回選択したContextと前Attempt Failure要約だけを記録する。
+- Retrieval Budgetは実測可能なArtifact数とUTF-8 byteを基準にし、estimated tokenを正確なModel Token数として報告しない。
+- Local Repository Sourceは実ファイルから自動計測できる。Project SourceとExternal SourceはSource Revision付きObservationを必要とする。
+- User Policy、Context Pack、Primary Skill、Task Contract、Project FactをLossy Compressionしない。
+- Target Source、Direct Dependency、Required / Conditional ContextはSource Revisionと選択Rangeを保持したLossless Excerptだけを許可する。
+- Semantic SummaryはKnowledge、Background Reference、Previous Failureなど非Authoritative Contextへ限定する。
+- Required ContextをBudget都合で無言削除しない。Hard Limitを満たせない場合は`blocked`として停止する。
+- Mutation TaskはContext Budgetが`within_budget`でなければ開始しない。
 
 ## 6. Harness guards
 
@@ -117,6 +126,7 @@ UnityAgent内へ通常の製品コードやMCP Package実装を複製しませ�
 - Architecture / File split / ECS: `unity-architecture-design`、`SkillReferences/ARCHITECTURE_DECISION_POLICY.md`、`SkillReferences/ARCHITECTURE_STANDARDS.md`
 - Rendering / Shader: `unity-rendering`と選択Rendering Context Pack / Knowledge Contract
 - Runtime Evidence / Performance: `unity-runtime-evidence`とPerformance Task Contract / Quality Gate
+- Context Budget / Compression: `.ai/context-budget.yaml`、`Tools/ContextBudget/`
 - Production / Learning Comment: `.ai/user-policy.yaml#comment_system`と対応Comment Skill
 - Visual Direction: `unity-visual-direction`と必要なBeautiful-Definition Reference
 - Golden Regression: `.ai/eval/golden-eval-contract.yaml`、`Tests/GoldenTasks/`、`Tools/GoldenEval/`
@@ -135,6 +145,10 @@ Domain実行結果はExecution Ownerへ最低限次を返します。
 - context_manifest_id
 - attempt
 - confirmed_context
+- context_budget_status
+- estimated_context_tokens
+- retrieval_bytes
+- compression_summary
 - mutation_constraints
 - required_validation
 - evidence_status
@@ -147,10 +161,11 @@ Domain実行結果はExecution Ownerへ最低限次を返します。
 - `AGENTS.md`へ詳細なCoding / Architecture / Rendering / Shader / Visual規約本文を戻さない。
 - Rule変更はCanonical Sourceを変更し、必要なValidator / Eval / Regression Caseを更新する。
 - Route選択を`triggers`やTechnology Keyword中心へ戻さない。
-- Primary Route実行でContext Manifest Traceを理由なく省略しない。
+- Primary Route実行でContext Manifest TraceやContext Budget Traceを理由なく省略しない。
 - Accepted Behaviorを変更する場合、Golden Taskを黙って削除・緩和せずユーザー指示またはPolicy変更理由を必要とする。
 - Boundary Pairの片側だけを削除して絶対禁止Rule化しない。
 - Graph ProjectionをCanonical Policyの正本へ昇格させない。
 - stable node ID、typed edge、provenanceを将来の可視化都合だけで削除しない。
 - 削除済みのLegacy Supervisor / Skill Routing Adapterを復活させない。
+- Context BudgetをModel Billing / Loop Budgetの正本へ拡張しない。Context選択量の責務に限定する。
 - Context / Harness / Loop / Graphの責務境界を逆流させない。

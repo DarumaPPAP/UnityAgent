@@ -1,10 +1,11 @@
-schema_version: "3.2"
+schema_version: "3.3"
 repository_role: unity_domain_knowledge
 execution_owner: DarumaPPAP/Unity-Graph-Engineering
 user_policy: .ai/user-policy.yaml
 execution_profiles: .ai/execution-profiles.yaml
 context_pack_contract: .ai/context-pack.schema.yaml
 context_manifest_schema: .ai/context-manifest.schema.yaml
+context_budget: .ai/context-budget.yaml
 task_contract_schema: .ai/harness/task-contracts/task-contract.schema.yaml
 knowledge_index: .ai/knowledge/index.yaml
 quality_gates: .ai/harness/quality-gates.yaml
@@ -47,6 +48,12 @@ routing_rules:
   project_fact_provenance_required: true
   current_project_fact_requires_current_attempt_check: true
   retry_must_not_implicitly_reuse_project_facts: true
+  context_budget_contract_version: "1.0"
+  context_budget_required_before_mutation: true
+  estimated_context_tokens_are_not_exact_provider_tokens: true
+  project_and_external_budget_observation_required: true
+  authoritative_context_lossy_compression_forbidden: true
+  hard_context_budget_overflow_stops_mutation: true
   direct_source_read_required_before_mutation: true
   knowledge_graph_is_navigation_only: true
   human_html_is_conditional_reference: true

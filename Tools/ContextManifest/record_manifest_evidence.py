@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Record one Quality Gate result into an existing Context Manifest."""
+"""Record one Quality Gate result into an existing budgeted Context Manifest."""
 
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 from context_manifest_runtime import (
@@ -18,6 +19,9 @@ from execution_graph_validator import validate_execution_graph
 
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "Tools" / "ContextBudget"))
+
+from context_budget_validation import validate_budget_integrity  # noqa: E402
 
 
 def resolve_path(value: str) -> Path:
@@ -47,6 +51,13 @@ def main() -> int:
     try:
         manifest_path = resolve_path(args.manifest)
         manifest = load_yaml(manifest_path)
+        budget = manifest.get("budget")
+        if not isinstance(budget, dict):
+            raise ManifestError(["Evidence update requires a canonical Manifest with Context Budget report."])
+        budget_errors = validate_budget_integrity(ROOT, manifest, budget)
+        if budget_errors:
+            raise ManifestError([f"Invalid Context Budget: {error}" for error in budget_errors])
+
         updated = apply_gate_evidence(
             ROOT,
             manifest,
@@ -59,6 +70,7 @@ def main() -> int:
             failure_reason=args.failure_reason,
         )
         errors = validate_manifest(ROOT, updated)
+        errors.extend(validate_budget_integrity(ROOT, updated, budget))
         if errors:
             raise ManifestError(errors)
 
