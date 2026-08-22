@@ -36,9 +36,11 @@ VALIDATORS = (
     Path("Tools/LoopIntegration/validate_loop_integration.py"),
     Path("Tools/GraphObservatory/validate_context_explorer.py"),
     Path("Tools/ContextManifest/validate_context_manifest.py"),
+    Path("Tools/ContextManifest/validate_typed_context_runtime.py"),
     Path("Tools/GoldenEval/validate_gate_catalog.py"),
     Path("Tools/GoldenEval/validate_required_knowledge.py"),
     Path("Tools/GoldenEval/validate_golden_tasks.py"),
+    Path("Tools/GoldenEval/validate_typed_context_v3.py"),
 )
 
 

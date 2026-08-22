@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: "3.0"
 id: visual-direction
 primary_skill: .agents/skills/unity-visual-direction/SKILL.md
 
@@ -28,21 +28,33 @@ use_when:
   - human visual review
 
 required:
-  - user_visual_goal_or_reference
-  - SkillReferences/BEAUTIFUL_DEFINITION_INTEGRATION.md
-  - DarumaPPAP/Beautiful-Definition/AGENTS.md
-  - DarumaPPAP/Beautiful-Definition/Catalog/definitions.yaml
-  - selected_definition
-  - matching_core_principles
+  - type: binding
+    name: user_visual_goal_or_reference
+  - type: repository_reference
+    path: SkillReferences/BEAUTIFUL_DEFINITION_INTEGRATION.md
+  - type: external_reference
+    repository: DarumaPPAP/Beautiful-Definition
+    path: AGENTS.md
+  - type: external_reference
+    repository: DarumaPPAP/Beautiful-Definition
+    path: Catalog/definitions.yaml
+  - type: binding
+    name: selected_definition
+  - type: binding
+    name: matching_core_principles
 
 conditional:
   technical_rendering_work:
-    - .agents/skills/unity-rendering/SKILL.md
-    - SkillReferences/RENDERING_STANDARDS.md
+    - type: repository_reference
+      path: .agents/skills/unity-rendering/SKILL.md
+    - type: repository_reference
+      path: SkillReferences/RENDERING_STANDARDS.md
   shader_or_material_work:
-    - .ai/context-packs/shader-change.yaml
+    - type: context_include
+      context_id: shader-change
   performance_constraint:
-    - .ai/context-packs/performance.yaml
+    - type: context_include
+      context_id: performance
 
 excluded_by_default:
   - unselected_visual_definitions

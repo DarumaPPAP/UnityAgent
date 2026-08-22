@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: "1.1"
 manifest_id: golden-csharp-local-fix-a1
 
 task:
@@ -34,7 +34,17 @@ bindings:
 unresolved_bindings:
   - unity_version_when_api_sensitive
 
-project_facts: []
+project_facts:
+  - key: unity.version
+    value: 6000.3.0f1
+    source_kind: detected_project
+    source_path: ProjectSettings/ProjectVersion.txt
+    revision: sha256:golden-project-version-v1
+    observed_at_attempt: 1
+    freshness:
+      status: current
+      checked_at_attempt: 1
+    reason: project_fact
 knowledge: []
 tools: []
 conditions: []

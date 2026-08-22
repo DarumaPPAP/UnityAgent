@@ -1,4 +1,4 @@
-schema_version: "1.1"
+schema_version: "3.0"
 id: performance
 primary_skill: .agents/skills/unity-runtime-evidence/SKILL.md
 
@@ -28,27 +28,41 @@ use_when:
   - build size or load performance
 
 required:
-  - measurable_metric
-  - reproduction_scene_or_workload
-  - target_platform
-  - quality_settings
-  - baseline_capture_or_explicit_missing_baseline
+  - type: binding
+    name: measurable_metric
+  - type: binding
+    name: reproduction_scene_or_workload
+  - type: binding
+    name: target_platform
+  - type: binding
+    name: quality_settings
+  - type: binding
+    name: baseline_capture_or_explicit_missing_baseline
 
 conditional:
   project_fallback:
-    - Specs/ProjectProfile.md
+    - type: repository_reference
+      path: Specs/ProjectProfile.md
   csharp_cpu_or_gc:
-    - matching CSharp audit Skill
-    - SkillReferences/CODING_STANDARDS.md
+    - type: binding
+      name: matching CSharp audit Skill
+    - type: repository_reference
+      path: SkillReferences/CODING_STANDARDS.md
   shader_gpu:
-    - SkillReferences/SHADER_PERFORMANCE_STANDARDS.md
-    - matching shader audit and runtime evidence Skill
+    - type: repository_reference
+      path: SkillReferences/SHADER_PERFORMANCE_STANDARDS.md
+    - type: binding
+      name: matching shader audit and runtime evidence Skill
   rendering_pipeline:
-    - SkillReferences/RENDERING_STANDARDS.md
-    - .agents/skills/unity-rendering/SKILL.md
+    - type: repository_reference
+      path: SkillReferences/RENDERING_STANDARDS.md
+    - type: repository_reference
+      path: .agents/skills/unity-rendering/SKILL.md
   variant_or_build_size:
-    - .agents/skills/unity-shader-variant-governor/SKILL.md
-    - matching Variant Policy
+    - type: repository_reference
+      path: .agents/skills/unity-shader-variant-governor/SKILL.md
+    - type: binding
+      name: matching Variant Policy
 
 excluded_by_default:
   - SkillReferences/BEAUTIFUL_DEFINITION_INTEGRATION.md

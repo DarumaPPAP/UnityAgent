@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate UnityAgent graph-readiness contracts for Definition and Execution views."""
+"""Validate UnityAgent graph-readiness contracts for typed Definition and Execution views."""
 
 from __future__ import annotations
 
@@ -19,6 +19,8 @@ REQUIRED_NODE_TYPES = {
     "policy",
     "project_fact",
     "context_pack",
+    "context",
+    "external_reference",
     "knowledge",
     "source",
     "task_contract",
@@ -42,6 +44,7 @@ REQUIRED_EDGE_TYPES = {
     "uses_skill",
     "uses_knowledge",
     "reads_source",
+    "includes_context",
     "allows_mutation",
     "prohibits_mutation",
     "requires_gate",
@@ -52,6 +55,7 @@ REQUIRED_EDGE_TYPES = {
     "escalates_to",
     "retries_as",
     "evaluated_by",
+    "hands-off-to",
 }
 
 REQUIRED_PROVENANCE_REASONS = {
@@ -61,6 +65,9 @@ REQUIRED_PROVENANCE_REASONS = {
     "required_context",
     "conditional_context",
     "excluded_context",
+    "external_reference",
+    "context_include",
+    "route_handoff",
     "user_policy",
     "project_fact",
     "harness_contract",
@@ -151,6 +158,12 @@ def validate(root: Path) -> list[str]:
     if execution_projection.get("generated_artifact_is_not_source_of_truth") is not True:
         errors.append("Generated Execution Graph must remain non-canonical.")
 
+    anti_regression = graph.get("anti_regression", {})
+    if anti_regression.get("context_include_must_not_be_rendered_as_route_handoff") is not True:
+        errors.append("Graph must keep context_include distinct from route_handoff.")
+    if anti_regression.get("route_handoff_must_not_be_rendered_as_context_include") is not True:
+        errors.append("Graph must keep route_handoff distinct from context_include.")
+
     runtime = manifest.get("runtime", {})
     for key, expected in (
         ("builder", "Tools/ContextManifest/build_context_manifest.py"),
@@ -191,6 +204,16 @@ def validate(root: Path) -> list[str]:
         errors.append("Retry decision ownership must remain in Unity-Graph-Engineering.")
     if retry_rules.get("previous_failure_is_summary_not_context_copy") is not True:
         errors.append("Retry must carry a failure summary instead of copying full previous Context.")
+    if retry_rules.get("previous_project_facts_are_not_implicitly_copied") is not True:
+        errors.append("Retry must not implicitly copy previous Project Facts.")
+    if retry_rules.get("current_project_fact_must_be_checked_in_current_attempt") is not True:
+        errors.append("Current Project Facts must be checked in the current attempt.")
+
+    project_fact_rules = manifest.get("project_fact_rules", {})
+    if project_fact_rules.get("current_requires_checked_at_attempt_equal_manifest_attempt") is not True:
+        errors.append("Project Fact freshness must bind current status to the current attempt.")
+    if project_fact_rules.get("retry_requires_explicit_reobservation_or_revalidation") is not True:
+        errors.append("Retry must require explicit Project Fact revalidation.")
 
     return errors
 

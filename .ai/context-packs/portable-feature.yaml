@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: "3.0"
 id: portable-feature
 primary_skill: .agents/skills/unity-architecture-design/SKILL.md
 
@@ -28,27 +28,41 @@ use_when:
   - reusable Unity feature with unresolved project bindings
 
 required:
-  - .ai/user-policy.yaml
-  - portable_goal
-  - portable_domain
-  - supported_unity_and_pipeline_range
-  - prohibited_project_assumptions
-  - unresolved_project_bindings
-  - integration_contract
+  - type: repository_reference
+    path: .ai/user-policy.yaml
+  - type: binding
+    name: portable_goal
+  - type: binding
+    name: portable_domain
+  - type: binding
+    name: supported_unity_and_pipeline_range
+  - type: binding
+    name: prohibited_project_assumptions
+  - type: binding
+    name: unresolved_project_bindings
+  - type: binding
+    name: integration_contract
 
 conditional:
   csharp_feature:
-    - SkillReferences/CODING_STANDARDS.md
-    - SkillReferences/ARCHITECTURE_DECISION_POLICY.md
+    - type: repository_reference
+      path: SkillReferences/CODING_STANDARDS.md
+    - type: repository_reference
+      path: SkillReferences/ARCHITECTURE_DECISION_POLICY.md
   rendering_feature:
-    - .ai/context-packs/renderer-feature-change.yaml
+    - type: context_include
+      context_id: renderer-feature-change
   shader_feature:
-    - .ai/context-packs/shader-change.yaml
+    - type: context_include
+      context_id: shader-change
   asset_authoring:
-    - .ai/context-packs/asset-data-change.yaml
+    - type: context_include
+      context_id: asset-data-change
   team_safe_import:
-    - .ai/execution-profiles.yaml
-    - .ai/harness/task-contracts/safe-import-integration.yaml
+    - type: repository_reference
+      path: .ai/execution-profiles.yaml
+    - type: repository_reference
+      path: .ai/harness/task-contracts/safe-import-integration.yaml
 
 excluded_by_default:
   - assumed project paths scene names renderer data layers and shader tags

@@ -1,4 +1,4 @@
-schema_version: "1.2"
+schema_version: "3.0"
 id: architecture-design
 primary_skill: .agents/skills/unity-architecture-design/SKILL.md
 
@@ -31,48 +31,79 @@ use_when:
   - excessive file split or architecture refactoring review
 
 required:
-  - .ai/user-policy.yaml
-  - goal
-  - scope_classification
-  - prohibited_changes
-  - SkillReferences/ARCHITECTURE_DECISION_POLICY.md
-  - SkillReferences/ARCHITECTURE_STANDARDS.md
-  - SkillReferences/CODING_STANDARDS.md
+  - type: repository_reference
+    path: .ai/user-policy.yaml
+  - type: binding
+    name: goal
+  - type: binding
+    name: scope_classification
+  - type: binding
+    name: prohibited_changes
+  - type: repository_reference
+    path: SkillReferences/ARCHITECTURE_DECISION_POLICY.md
+  - type: repository_reference
+    path: SkillReferences/ARCHITECTURE_STANDARDS.md
+  - type: repository_reference
+    path: SkillReferences/CODING_STANDARDS.md
 
 conditional:
   csharp_output:
-    - SkillReferences/CODE_FORMATTING_STANDARDS.md
+    - type: repository_reference
+      path: SkillReferences/CODE_FORMATTING_STANDARDS.md
   local_behavior:
-    - attachment_target
-    - lifecycle_or_callback
-    - state_or_resource
-    - side_effect_or_restore
+    - type: binding
+      name: attachment_target
+    - type: binding
+      name: lifecycle_or_callback
+    - type: binding
+      name: state_or_resource
+    - type: binding
+      name: side_effect_or_restore
   feature_or_larger:
-    - current_or_expected_scale
-    - ownership_and_lifetime
-    - change_axes
+    - type: binding
+      name: current_or_expected_scale
+    - type: binding
+      name: ownership_and_lifetime
+    - type: binding
+      name: change_axes
   platform_specific_api_build_compatibility_or_performance_claim:
-    - target_platform
+    - type: binding
+      name: target_platform
   performance_sensitive_goal:
-    - performance_constraints
-    - measurable_workload
+    - type: binding
+      name: performance_constraints
+    - type: binding
+      name: measurable_workload
   existing_project:
-    - target source and direct dependencies
-    - asmdef and rootNamespace
-    - public and serialized contracts
+    - type: binding
+      name: target source and direct dependencies
+    - type: binding
+      name: asmdef and rootNamespace
+    - type: binding
+      name: public and serialized contracts
   ecs_jobs_burst:
-    - Entities package version
-    - Burst and Jobs availability
-    - managed reference boundary
-    - GameObject bridge requirements
-    - measurable workload
+    - type: binding
+      name: Entities package version
+    - type: binding
+      name: Burst and Jobs availability
+    - type: binding
+      name: managed reference boundary
+    - type: binding
+      name: GameObject bridge requirements
+    - type: binding
+      name: measurable workload
   ui_presentation:
-    - UI framework
-    - binding complexity
-    - presentation testability
+    - type: binding
+      name: UI framework
+    - type: binding
+      name: binding complexity
+    - type: binding
+      name: presentation testability
   rendering:
-    - SkillReferences/RENDERING_STANDARDS.md
-    - .agents/skills/unity-rendering/SKILL.md
+    - type: repository_reference
+      path: SkillReferences/RENDERING_STANDARDS.md
+    - type: repository_reference
+      path: .agents/skills/unity-rendering/SKILL.md
 
 excluded_by_default:
   - unrelated domain catalogs

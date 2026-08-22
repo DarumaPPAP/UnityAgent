@@ -1,0 +1,87 @@
+schema_version: "1.0"
+cases:
+  - id: GOLDEN-CONTEXT-FACT-001
+    category: context
+    kind: regression
+    pair_id: project-fact-freshness
+    boundary: forbid
+    task:
+      summary: Retryで前Attemptのcurrent Project Factを再検証なしにそのまま使用する
+    expectation:
+      route: csharp-local-fix
+      required_policies: []
+      required_gates:
+        - static_review
+      required_signals:
+        - previous_current_fact_revalidation_required
+      forbidden_signals:
+        - previous_current_fact_implicitly_reused
+      required_knowledge: []
+      outcome: passed
+    graders:
+      - type: deterministic
+        id: project_fact_freshness
+
+  - id: GOLDEN-CONTEXT-FACT-002
+    category: context
+    kind: regression
+    pair_id: project-fact-freshness
+    boundary: require
+    task:
+      summary: Retryで同じrevisionのProject Factを現Attemptで再検証してcurrentとして使用する
+    expectation:
+      route: csharp-local-fix
+      required_policies: []
+      required_gates:
+        - static_review
+      required_signals:
+        - current_fact_checked_at_current_attempt
+      forbidden_signals:
+        - reobservation_history_is_erased
+      required_knowledge: []
+      outcome: passed
+    graders:
+      - type: deterministic
+        id: project_fact_freshness
+
+  - id: GOLDEN-CONTEXT-EDGE-001
+    category: context
+    kind: regression
+    pair_id: context-include-vs-handoff
+    boundary: forbid
+    task:
+      summary: Visual RouteへShader Contextを追加するだけのTaskでPrimary Routeまで変更する
+    expectation:
+      route: visual-direction
+      required_policies: []
+      required_gates: []
+      required_signals:
+        - context_include_preserves_primary_route
+      forbidden_signals:
+        - context_include_becomes_route_handoff
+      required_knowledge: []
+      outcome: passed
+    graders:
+      - type: deterministic
+        id: typed_context_edge
+
+  - id: GOLDEN-CONTEXT-EDGE-002
+    category: context
+    kind: regression
+    pair_id: context-include-vs-handoff
+    boundary: require
+    task:
+      summary: Primary責務そのものを別Domain Routeへ移す必要が確定したTask
+    expectation:
+      route: rendering-incident
+      required_policies: []
+      required_gates: []
+      required_signals:
+        - route_handoff_changes_primary_ownership
+      forbidden_signals:
+        - ownership_transfer_encoded_as_context_include
+      required_knowledge: []
+      outcome: passed
+    graders:
+      - type: deterministic
+        id: typed_context_edge

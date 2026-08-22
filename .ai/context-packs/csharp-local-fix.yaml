@@ -1,4 +1,4 @@
-schema_version: "1.2"
+schema_version: "3.0"
 id: csharp-local-fix
 primary_skill: .agents/skills/csharp-safe-patch/SKILL.md
 
@@ -27,22 +27,32 @@ use_when:
   - one behavior change with deterministic validation
 
 required:
-  - target_source
-  - direct_callers_or_interfaces
-  - SkillReferences/CODING_STANDARDS.md
-  - SkillReferences/CODE_FORMATTING_STANDARDS.md
+  - type: binding
+    name: target_source
+  - type: binding
+    name: direct_callers_or_interfaces
+  - type: repository_reference
+    path: SkillReferences/CODING_STANDARDS.md
+  - type: repository_reference
+    path: SkillReferences/CODE_FORMATTING_STANDARDS.md
 
 conditional:
   project_fallback:
-    - Specs/ProjectProfile.md
+    - type: repository_reference
+      path: Specs/ProjectProfile.md
   architecture_change:
-    - SkillReferences/ARCHITECTURE_STANDARDS.md
-    - SkillReferences/ARCHITECTURE_DECISION_POLICY.md
+    - type: repository_reference
+      path: SkillReferences/ARCHITECTURE_STANDARDS.md
+    - type: repository_reference
+      path: SkillReferences/ARCHITECTURE_DECISION_POLICY.md
   antipattern_finding:
-    - SkillReferences/CSHARP_ANTIPATTERN_RULES.md
-    - SkillReferences/CSHARP_ANTIPATTERN_POLICY.md
+    - type: repository_reference
+      path: SkillReferences/CSHARP_ANTIPATTERN_RULES.md
+    - type: repository_reference
+      path: SkillReferences/CSHARP_ANTIPATTERN_POLICY.md
   burst_jobs_entities:
-    - matching Burst Jobs Entities reference
+    - type: binding
+      name: matching Burst Jobs Entities reference
 
 excluded_by_default:
   - SkillReferences/RENDERING_STANDARDS.md

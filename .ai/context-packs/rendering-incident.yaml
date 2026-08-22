@@ -1,4 +1,4 @@
-schema_version: "1.1"
+schema_version: "3.0"
 id: rendering-incident
 primary_skill: .agents/skills/unity-incident-investigation/SKILL.md
 
@@ -28,24 +28,35 @@ use_when:
   - visual regression caused by rendering behavior
 
 required:
-  - symptom_and_exact_error
-  - reproduction_conditions
-  - affected_rendering_sources
-  - renderer_feature_order
-  - SkillReferences/RENDERING_STANDARDS.md
+  - type: binding
+    name: symptom_and_exact_error
+  - type: binding
+    name: reproduction_conditions
+  - type: binding
+    name: affected_rendering_sources
+  - type: binding
+    name: renderer_feature_order
+  - type: repository_reference
+    path: SkillReferences/RENDERING_STANDARDS.md
 
 conditional:
   project_fallback:
-    - Specs/ProjectProfile.md
+    - type: repository_reference
+      path: Specs/ProjectProfile.md
   render_graph:
-    - .agents/skills/unity-rendering/SKILL.md
+    - type: repository_reference
+      path: .agents/skills/unity-rendering/SKILL.md
   shader_compile_or_variant:
-    - SkillReferences/SHADER_PERFORMANCE_STANDARDS.md
-    - SkillReferences/ShaderPerformance/UNITY_URP_POLICY.md
+    - type: repository_reference
+      path: SkillReferences/SHADER_PERFORMANCE_STANDARDS.md
+    - type: repository_reference
+      path: SkillReferences/ShaderPerformance/UNITY_URP_POLICY.md
   strict_variant:
-    - matching Variant Policy and governor Skill
+    - type: binding
+      name: matching Variant Policy and governor Skill
   player_only:
-    - build and platform evidence
+    - type: binding
+      name: build and platform evidence
 
 excluded_by_default:
   - SkillReferences/BEAUTIFUL_DEFINITION_INTEGRATION.md

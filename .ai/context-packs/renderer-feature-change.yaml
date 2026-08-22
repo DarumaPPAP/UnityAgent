@@ -1,4 +1,4 @@
-schema_version: "1.1"
+schema_version: "3.0"
 id: renderer-feature-change
 primary_skill: .agents/skills/unity-rendering/SKILL.md
 
@@ -28,25 +28,37 @@ use_when:
   - renderer resource integration
 
 required:
-  - .ai/user-policy.yaml
-  - target_renderer_feature_or_pass
-  - direct_pass_dependencies
-  - injection_point
-  - render_queue_layer_shader_tag_and_sorting_contract
-  - resource_reads_writes_and_lifetime
-  - SkillReferences/RENDERING_STANDARDS.md
+  - type: repository_reference
+    path: .ai/user-policy.yaml
+  - type: binding
+    name: target_renderer_feature_or_pass
+  - type: binding
+    name: direct_pass_dependencies
+  - type: binding
+    name: injection_point
+  - type: binding
+    name: render_queue_layer_shader_tag_and_sorting_contract
+  - type: binding
+    name: resource_reads_writes_and_lifetime
+  - type: repository_reference
+    path: SkillReferences/RENDERING_STANDARDS.md
 
 conditional:
   project_fallback:
-    - Specs/ProjectProfile.md
+    - type: repository_reference
+      path: Specs/ProjectProfile.md
   shader_change:
-    - .ai/context-packs/shader-change.yaml
+    - type: context_include
+      context_id: shader-change
   unknown_rendering_failure:
-    - .ai/context-packs/rendering-incident.yaml
+    - type: context_include
+      context_id: rendering-incident
   performance_claim:
-    - .ai/context-packs/performance.yaml
+    - type: context_include
+      context_id: performance
   project_specific_change:
-    - target source and direct dependencies
+    - type: binding
+      name: target source and direct dependencies
 
 excluded_by_default:
   - unrelated shader rule catalogs

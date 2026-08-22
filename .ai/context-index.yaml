@@ -1,8 +1,10 @@
-schema_version: "3.1"
+schema_version: "3.2"
 repository_role: unity_domain_knowledge
 execution_owner: DarumaPPAP/Unity-Graph-Engineering
 user_policy: .ai/user-policy.yaml
 execution_profiles: .ai/execution-profiles.yaml
+context_pack_contract: .ai/context-pack.schema.yaml
+context_manifest_schema: .ai/context-manifest.schema.yaml
 task_contract_schema: .ai/harness/task-contracts/task-contract.schema.yaml
 knowledge_index: .ai/knowledge/index.yaml
 quality_gates: .ai/harness/quality-gates.yaml
@@ -29,6 +31,12 @@ routing_rules:
   load_all_mcp_manifests: false
   load_all_mcp_tool_schemas: false
   load_mcp_package_source_by_default: false
+  typed_context_pack_version: "3.0"
+  scalar_context_entries_forbidden: true
+  repository_reference_must_be_explicit: true
+  external_reference_must_be_explicit: true
+  context_include_does_not_change_primary_route: true
+  route_handoff_changes_primary_route: true
   project_context_required_for_planning: false
   capability_manifest_required_for_planning: false
   detected_project_facts_override_project_profile: true
@@ -36,6 +44,9 @@ routing_rules:
   project_profile_is_fallback_only: true
   project_profile_must_not_be_required_context: true
   project_profile_load_requires_missing_project_fact: true
+  project_fact_provenance_required: true
+  current_project_fact_requires_current_attempt_check: true
+  retry_must_not_implicitly_reuse_project_facts: true
   direct_source_read_required_before_mutation: true
   knowledge_graph_is_navigation_only: true
   human_html_is_conditional_reference: true

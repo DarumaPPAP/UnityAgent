@@ -1,4 +1,4 @@
-schema_version: "3.0"
+schema_version: "3.1"
 
 # Context Manifest is one task-attempt runtime trace.
 # Canonical Policy / Context / Harness YAML remains authoritative.
@@ -28,6 +28,8 @@ retry_rules:
   retry_previous_attempt_equals_current_minus_one: true
   retry_must_keep_same_task_id: true
   previous_failure_is_summary_not_context_copy: true
+  previous_project_facts_are_not_implicitly_copied: true
+  current_project_fact_must_be_checked_in_current_attempt: true
   retry_decision_owner: DarumaPPAP/Unity-Graph-Engineering
 
 task:
@@ -54,7 +56,21 @@ project_facts:
     - node_id: required_when_emitted
       key: required
       value: required
+      source_kind:
+        allowed:
+          - detected_project
+          - user_confirmed
+          - project_profile
       source_path: required
+      revision: required
+      observed_at_attempt: required
+      freshness:
+        status:
+          allowed:
+            - current
+            - stale
+            - unknown
+        checked_at_attempt: required
       reason: required
 
 context:
@@ -72,11 +88,37 @@ context:
   conditions_applied: []
   required_context:
     - node_id: required_when_emitted
+      reference_type: repository_reference
       source_path: required
       reason: required
   conditional_context:
     - node_id: required_when_emitted
+      reference_type: repository_reference
       source_path: required
+      condition: required
+      reason: required
+  external_references:
+    - node_id: required_when_emitted
+      repository: required
+      path: required
+      requirement:
+        allowed: [required, conditional]
+      condition: optional
+      reason: required
+  context_includes:
+    - node_id: required_when_emitted
+      context_id: required
+      source_path: required
+      requirement:
+        allowed: [required, conditional]
+      condition: optional
+      reason: required
+  route_handoffs:
+    - node_id: required_when_emitted
+      route_id: required
+      requirement:
+        allowed: [required, conditional]
+      condition: optional
       reason: required
   source_files:
     - node_id: required_when_emitted
@@ -155,6 +197,13 @@ execution:
       - passed
       - failed
       - complete_with_unavailable
+
+project_fact_rules:
+  current_requires_checked_at_attempt_equal_manifest_attempt: true
+  checked_at_attempt_must_not_precede_observed_at_attempt: true
+  observed_at_attempt_must_not_exceed_manifest_attempt: true
+  stale_or_unknown_must_not_be_presented_as_current: true
+  retry_requires_explicit_reobservation_or_revalidation: true
 
 status_rules:
   required_gate_failed: failed
