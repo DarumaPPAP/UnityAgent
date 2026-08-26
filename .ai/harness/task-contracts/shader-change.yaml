@@ -1,6 +1,8 @@
 id: shader-change
 default_execution_profile: personal_full_control
 risk_level: R2
+mutation_channels:
+  - shader
 
 required_inputs:
   - shader_or_include_targets
