@@ -24,20 +24,43 @@ on:
       - "Tests/**"
       - ".github/workflows/validate-agent-contracts.yml"
 
+permissions:
+  contents: read
+
 jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout UnityAgent
         uses: actions/checkout@v4
+
+      - name: Checkout pinned UnityAgent Core
+        uses: actions/checkout@v4
+        with:
+          repository: DarumaPPAP/UnityAgent-Core
+          ref: 85934f9c63524fd27a7e262de0ac908c0591473c
+          path: .unityagent-core
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
 
-      - name: Install YAML parser
-        run: python -m pip install --disable-pip-version-check pyyaml
+      - name: Install validation dependencies
+        run: |
+          python -m pip install --disable-pip-version-check pyyaml
+          python -m pip install --disable-pip-version-check -e ./.unityagent-core
 
-      - name: Validate UnityAgent locally-equivalent contracts
+      - name: Validate UnityAgent contracts
         run: python Tools/validate_all.py
+
+      - name: Validate task mutation channels with UnityAgent Core
+        run: |
+          unityagent-core validate-contracts \
+            --contracts-dir .ai/harness/task-contracts \
+            --channels .ai/harness/mutation-channels.yaml
+
+      - name: Run UnityAgent unit tests
+        run: python -m unittest discover -s Tests -p "test_*.py" -v
