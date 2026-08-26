@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from unityagent_core.contracts import REQUEST_BOUND, resolve_mutation_channels
+from unityagent_core.harness import build_permission_projection
 
 
 def read_yaml(root: Path, relative: str) -> dict[str, Any]:
@@ -18,23 +20,6 @@ def route_for_contract(root: Path, contract_path: str) -> tuple[str, dict[str, A
         if route.get("task_contract") == contract_path:
             return str(route.get("id", route_key)), route
     raise ValueError(f"No route binds task contract: {contract_path}")
-
-
-def infer_channels(contract_id: str) -> list[str]:
-    mapping = {
-        "csharp": ["csharp"],
-        "shader": ["shader"],
-        "renderer": ["render_pipeline_asset"],
-        "asset": ["scene", "prefab", "material", "project_settings"],
-        "graphics": ["my_unity_mcp_tooling"],
-        "portable": ["package"],
-        "safe-import": ["package"],
-    }
-    channels: set[str] = set()
-    for token, values in mapping.items():
-        if token in contract_id:
-            channels.update(values)
-    return sorted(channels)
 
 
 def build_effective_harness(
@@ -50,7 +35,7 @@ def build_effective_harness(
     profile_id = execution_profile or contract.get("default_execution_profile")
     if profile_id not in profiles:
         raise ValueError(f"Unknown execution profile: {profile_id}")
-    profile = profiles[profile_id]
+
     risk_id = str(contract.get("risk_level", "R0"))
     risks = read_yaml(root, ".ai/harness/risk-levels.yaml").get("levels", {})
     if risk_id not in risks:
@@ -58,27 +43,26 @@ def build_effective_harness(
 
     allowed = list(contract.get("allowed_mutations", []) or [])
     prohibited = list(contract.get("prohibited_mutations", []) or [])
-    unresolved = list(request.get("unresolved_bindings", []) or [])
     explicit_approvals = set(request.get("explicit_approvals", []) or [])
-    direct_mutation_allowed = profile_id == "personal_full_control" and risk_id != "R0"
-    if unresolved:
-        direct_mutation_allowed = False
-    if risk_id == "R0":
-        effective_allowed: list[str] = []
-        mutate_permission = "blocked"
-    elif not direct_mutation_allowed:
-        effective_allowed = []
-        mutate_permission = "approval-dependent"
-    else:
-        effective_allowed = [item for item in allowed if item in explicit_approvals or not explicit_approvals]
-        mutate_permission = "allowed" if effective_allowed else "approval-dependent"
+    candidate_allowed = [item for item in allowed if item in explicit_approvals or not explicit_approvals]
 
     quality_catalog = read_yaml(root, ".ai/harness/quality-gates.yaml").get("gates", {})
     channel_catalog = read_yaml(root, ".ai/harness/mutation-channels.yaml").get("channels", {})
-    mutation_channels = infer_channels(str(contract.get("id", "")))
-    unknown_channels = sorted(set(mutation_channels) - set(channel_catalog))
-    if unknown_channels:
-        raise ValueError(f"Unknown mutation channels: {unknown_channels}")
+    mutation_channels = resolve_mutation_channels(contract, request, channel_catalog)
+
+    direct_mutation_authorized = profile_id == "personal_full_control" and risk_id != "R0"
+    if contract.get("mutation_channel_binding") == REQUEST_BOUND and not mutation_channels:
+        direct_mutation_authorized = False
+
+    permission_projection = build_permission_projection(
+        risk_level=risk_id,
+        approval_policy=risks[risk_id].get("human_approval"),
+        mutation_channels=mutation_channels,
+        allowed_mutations=candidate_allowed,
+        direct_mutation_authorized=direct_mutation_authorized,
+        request=request,
+    )
+
     required_gates = list(contract.get("required_quality_gates", []) or [])
     conditional_gates = list(contract.get("conditional_quality_gates", []) or [])
     quality_gates = {
@@ -91,9 +75,8 @@ def build_effective_harness(
             for gate in conditional_gates
         ],
     }
-    human_gates = []
-    if risks[risk_id].get("human_approval") not in {"not_required", None}:
-        human_gates.append({"id": "human_approval", "status": "required"})
+
+    human_gates = list(permission_projection.get("human_gates", []) or [])
     if "visual" in contract.get("id", ""):
         human_gates.append({"id": "visual_review", "status": "required"})
 
@@ -102,8 +85,8 @@ def build_effective_harness(
         "execution_profile": profile_id,
         "route_id": route_id,
         "risk_level": risk_id,
-        "permission": {"read": "allowed", "plan": "allowed", "mutate": mutate_permission},
-        "allowed_mutations": effective_allowed,
+        "permission": permission_projection["permission"],
+        "allowed_mutations": permission_projection["allowed_mutations"],
         "prohibited_mutations": sorted(set(prohibited)),
         "mutation_channels": mutation_channels,
         "tool_groups": {
@@ -111,9 +94,10 @@ def build_effective_harness(
             "blocked": list(request.get("blocked_tool_groups", []) or []),
         },
         "quality_gates": quality_gates,
+        "human_approval": permission_projection.get("human_approval", {}),
         "human_gates": human_gates,
         "stop_conditions": list(contract.get("stop_conditions", []) or []),
-        "unresolved_bindings": unresolved,
+        "unresolved_bindings": list(request.get("unresolved_bindings", []) or []),
         "provenance": [
             {"source_path": contract_path, "reason": "harness_contract"},
             {"source_path": ".ai/execution-profiles.yaml", "reason": "execution_profile"},
@@ -121,6 +105,7 @@ def build_effective_harness(
             {"source_path": ".ai/harness/quality-gates.yaml", "reason": "quality_gate"},
             {"source_path": ".ai/harness/mutation-channels.yaml", "reason": "mutation_channel"},
             {"source_path": ".ai/harness/mcp-activation.yaml", "reason": "tool_access"},
+            {"source_path": "DarumaPPAP/UnityAgent-Core", "reason": "harness_semantic_core"},
         ],
     }
 
@@ -129,12 +114,22 @@ def validate_effective_harness(document: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     allowed = set(document.get("allowed_mutations", []) or [])
     prohibited = set(document.get("prohibited_mutations", []) or [])
+    mutate_permission = document.get("permission", {}).get("mutate")
+
     if allowed & prohibited:
         errors.append("Mutation cannot be both allowed and prohibited")
-    if document.get("risk_level") == "R0" and document.get("permission", {}).get("mutate") != "blocked":
+    if document.get("risk_level") == "R0" and mutate_permission != "blocked":
         errors.append("R0 must block mutation")
     if document.get("unresolved_bindings") and document.get("allowed_mutations"):
         errors.append("Unresolved bindings must clear allowed mutations")
+    if allowed and not document.get("mutation_channels"):
+        errors.append("Allowed mutations require resolved mutation channels")
+
+    approval = document.get("human_approval", {}) or {}
+    if approval.get("required") and not approval.get("granted"):
+        if mutate_permission == "allowed" or allowed:
+            errors.append("Unsatisfied required human approval must block direct mutation")
+
     for group in ("required", "conditional"):
         for gate in document.get("quality_gates", {}).get(group, []) or []:
             if gate.get("status") == "failed":
