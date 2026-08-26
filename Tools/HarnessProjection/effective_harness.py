@@ -3,11 +3,25 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 import yaml
-from unityagent_core.contracts import REQUEST_BOUND, resolve_mutation_channels
-from unityagent_core.harness import build_permission_projection
+
+REQUEST_BOUND = "request"
+APPROVAL_POLICIES = {
+    "not_required",
+    "conditional",
+    "before_destructive_or_contract_change",
+    "required_for_project_asset_or_settings_change",
+    "always_required",
+}
+PROJECT_ASSET_OR_SETTINGS_CHANNELS = {
+    "scene",
+    "prefab",
+    "material",
+    "project_settings",
+    "render_pipeline_asset",
+}
 
 
 def read_yaml(root: Path, relative: str) -> dict[str, Any]:
@@ -22,6 +36,135 @@ def route_for_contract(root: Path, contract_path: str) -> tuple[str, dict[str, A
     raise ValueError(f"No route binds task contract: {contract_path}")
 
 
+def validate_task_contract_channels(
+    contract: dict[str, Any],
+    known_channels: Iterable[str],
+) -> list[str]:
+    errors: list[str] = []
+    known = set(known_channels)
+    allowed_mutations = list(contract.get("allowed_mutations", []) or [])
+    declared_channels = list(contract.get("mutation_channels", []) or [])
+    binding = contract.get("mutation_channel_binding")
+
+    if declared_channels and binding:
+        errors.append("Use mutation_channels or mutation_channel_binding, not both")
+    if allowed_mutations and not declared_channels and binding != REQUEST_BOUND:
+        errors.append(
+            "Contracts with allowed mutations must declare mutation_channels "
+            "or mutation_channel_binding: request"
+        )
+    unknown = sorted(set(declared_channels) - known)
+    if unknown:
+        errors.append(f"Unknown mutation channels: {unknown}")
+    if binding not in {None, REQUEST_BOUND}:
+        errors.append(f"Unknown mutation_channel_binding: {binding}")
+
+    return errors
+
+
+def resolve_mutation_channels(
+    contract: dict[str, Any],
+    request: dict[str, Any],
+    known_channels: Iterable[str],
+) -> list[str]:
+    known = set(known_channels)
+    errors = validate_task_contract_channels(contract, known)
+    if errors:
+        raise ValueError("; ".join(errors))
+
+    if contract.get("mutation_channel_binding") == REQUEST_BOUND:
+        channels = list(request.get("mutation_channels", []) or [])
+    else:
+        channels = list(contract.get("mutation_channels", []) or [])
+
+    unknown = sorted(set(channels) - known)
+    if unknown:
+        raise ValueError(f"Unknown mutation channels: {unknown}")
+
+    return sorted(set(channels))
+
+
+def resolve_human_approval(
+    approval_policy: str | None,
+    mutation_channels: Iterable[str],
+    request: dict[str, Any],
+) -> dict[str, Any]:
+    policy = approval_policy or "not_required"
+    if policy not in APPROVAL_POLICIES:
+        raise ValueError(f"Unknown human approval policy: {policy}")
+
+    channels = set(mutation_channels)
+    if policy == "not_required":
+        required = False
+        reason = "policy_not_required"
+    elif policy == "conditional":
+        required = bool(request.get("requires_human_approval", False))
+        reason = "request_condition" if required else "condition_not_triggered"
+    elif policy == "before_destructive_or_contract_change":
+        destructive = bool(request.get("destructive_change", False))
+        contract_change = bool(request.get("contract_change", False))
+        required = destructive or contract_change
+        reason = "destructive_or_contract_change" if required else "condition_not_triggered"
+    elif policy == "required_for_project_asset_or_settings_change":
+        explicit_project_change = bool(request.get("project_asset_or_settings_change", False))
+        channel_project_change = bool(channels & PROJECT_ASSET_OR_SETTINGS_CHANNELS)
+        required = explicit_project_change or channel_project_change
+        reason = "project_asset_or_settings_change" if required else "condition_not_triggered"
+    else:
+        required = True
+        reason = "always_required"
+
+    granted = bool(request.get("human_approval_granted", False))
+    return {
+        "policy": policy,
+        "required": required,
+        "granted": granted,
+        "satisfied": not required or granted,
+        "reason": reason,
+    }
+
+
+def build_permission_projection(
+    *,
+    risk_level: str,
+    approval_policy: str | None,
+    mutation_channels: Iterable[str],
+    allowed_mutations: Iterable[str],
+    direct_mutation_authorized: bool,
+    request: dict[str, Any],
+) -> dict[str, Any]:
+    allowed = list(allowed_mutations)
+    unresolved = list(request.get("unresolved_bindings", []) or [])
+    approval = resolve_human_approval(approval_policy, mutation_channels, request)
+
+    if risk_level == "R0":
+        mutate = "blocked"
+        effective_allowed: list[str] = []
+    elif unresolved or not direct_mutation_authorized or not approval["satisfied"]:
+        mutate = "approval-dependent"
+        effective_allowed = []
+    else:
+        effective_allowed = allowed
+        mutate = "allowed" if effective_allowed else "approval-dependent"
+
+    human_gates = []
+    if approval["required"]:
+        human_gates.append(
+            {
+                "id": "human_approval",
+                "status": "passed" if approval["granted"] else "required",
+                "reason": approval["reason"],
+            }
+        )
+
+    return {
+        "permission": {"read": "allowed", "plan": "allowed", "mutate": mutate},
+        "allowed_mutations": effective_allowed,
+        "human_approval": approval,
+        "human_gates": human_gates,
+    }
+
+
 def build_effective_harness(
     root: Path,
     contract_path: str,
@@ -30,7 +173,7 @@ def build_effective_harness(
 ) -> dict[str, Any]:
     request = request or {}
     contract = read_yaml(root, contract_path)
-    route_id, route = route_for_contract(root, contract_path)
+    route_id, _ = route_for_contract(root, contract_path)
     profiles = read_yaml(root, ".ai/execution-profiles.yaml").get("profiles", {})
     profile_id = execution_profile or contract.get("default_execution_profile")
     if profile_id not in profiles:
@@ -94,7 +237,7 @@ def build_effective_harness(
             "blocked": list(request.get("blocked_tool_groups", []) or []),
         },
         "quality_gates": quality_gates,
-        "human_approval": permission_projection.get("human_approval", {}),
+        "human_approval": permission_projection["human_approval"],
         "human_gates": human_gates,
         "stop_conditions": list(contract.get("stop_conditions", []) or []),
         "unresolved_bindings": list(request.get("unresolved_bindings", []) or []),
@@ -105,7 +248,7 @@ def build_effective_harness(
             {"source_path": ".ai/harness/quality-gates.yaml", "reason": "quality_gate"},
             {"source_path": ".ai/harness/mutation-channels.yaml", "reason": "mutation_channel"},
             {"source_path": ".ai/harness/mcp-activation.yaml", "reason": "tool_access"},
-            {"source_path": "DarumaPPAP/UnityAgent-Core", "reason": "harness_semantic_core"},
+            {"source_path": "Tools/HarnessProjection/effective_harness.py", "reason": "harness_semantics"},
         ],
     }
 
