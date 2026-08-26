@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: "1.1"
 kind: unity_task_contract
 
 required_fields:
@@ -29,6 +29,11 @@ field_rules:
       - R2
       - R3
       - R4
+  mutation_channels:
+    min_items: 1
+  mutation_channel_binding:
+    allowed:
+      - request
   required_inputs:
     min_items: 1
   allowed_mutations:
@@ -45,6 +50,13 @@ field_rules:
       - changed_artifacts
       - validation
       - unresolved
+
+mutation_channel_rules:
+  allowed_mutations_require_explicit_channels_or_request_binding: true
+  mutation_channels_and_binding_are_mutually_exclusive: true
+  task_contract_id_must_not_infer_mutation_channel: true
+  request_bound_channel_may_remain_unresolved_during_planning: true
+  direct_mutation_requires_resolved_known_channel: true
 
 execution_rules:
   select_exactly_one_primary_contract: true

@@ -1,6 +1,7 @@
 id: architecture-design
 default_execution_profile: generic_planning
 risk_level: R1
+mutation_channel_binding: request
 
 required_inputs:
   - goal

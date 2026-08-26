@@ -1,6 +1,8 @@
 id: csharp-local-fix
 default_execution_profile: personal_full_control
 risk_level: R1
+mutation_channels:
+  - csharp
 
 required_inputs:
   - goal_or_confirmed_error

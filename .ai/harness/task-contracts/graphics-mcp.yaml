@@ -1,6 +1,7 @@
 id: graphics-mcp
 default_execution_profile: generic_planning
 risk_level: R3
+mutation_channel_binding: request
 
 required_inputs:
   - graphics_mcp_goal
