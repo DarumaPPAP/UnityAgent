@@ -1,6 +1,9 @@
 id: renderer-feature-change
 default_execution_profile: personal_full_control
 risk_level: R3
+mutation_channels:
+  - csharp
+  - shader
 
 required_inputs:
   - unity_and_urp_version
