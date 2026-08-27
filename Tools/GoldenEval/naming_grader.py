@@ -66,6 +66,8 @@ ROLE_TOKENS = {
     "Window",
 }
 
+SUBJECT_CAPABLE_ROLE_TOKENS = {"History", "Settings", "Snapshot", "State"}
+
 VAGUE_TOKENS = {
     "Helper",
     "Util",
@@ -228,10 +230,11 @@ def _generic_type_findings(type_decl: dict) -> list[dict]:
 
     trailing_roles = 0
     for token in reversed(tokens):
-        if token in ROLE_TOKENS:
-            trailing_roles += 1
-        else:
+        if token not in ROLE_TOKENS:
             break
+        if trailing_roles >= 1 and token in SUBJECT_CAPABLE_ROLE_TOKENS:
+            break
+        trailing_roles += 1
     if trailing_roles >= 2:
         findings.append(
             _finding(
