@@ -1,6 +1,7 @@
 schema_version: "3.1"
 extensions:
   context_budget: "1.0"
+  production_smoke_hardening: "1.0"
 
 # Context Manifest is one task-attempt runtime trace.
 # Canonical Policy / Context / Harness YAML remains authoritative.
@@ -51,9 +52,18 @@ task:
 
 policy:
   loaded:
-    - node_id: required_when_emitted
+    # For Actual Behavior / Production Smoke, id is the canonical policy CLAUSE id.
+    # A document-level id such as "user-policy" must not satisfy a clause requirement.
+    - id: required_when_emitted_for_actual_behavior
+      node_id: optional_legacy_runtime_id
+      document_id: optional
       source_path: required
       reason: required
+  provenance_rules:
+    actual_behavior_id_is_canonical_clause_id: true
+    source_fragment_must_match_clause_id_when_present: true
+    document_id_must_not_replace_clause_id: true
+    self_report_without_authoritative_source_is_invalid: true
 
 project_facts:
   loaded:
@@ -161,12 +171,16 @@ harness:
         allowed:
           - required
           - conditional
+          - informational
+          - not_applicable
+      activated: optional
       status:
         optional: true
         allowed:
           - passed
           - failed
           - unavailable
+          - not_applicable
 
 tools:
   activated:
@@ -252,6 +266,7 @@ execution:
     failure_reason: optional
     evidence_ids: []
   failure_reason: optional
+  failure_class: optional
   status:
     allowed:
       - in_progress
@@ -268,8 +283,12 @@ project_fact_rules:
 
 status_rules:
   required_gate_failed: failed
+  required_gate_unavailable: complete_with_unavailable
   all_required_gates_passed: passed
-  all_required_gates_terminal_with_any_unavailable: complete_with_unavailable
+  activated_conditional_gate_failed: failed
+  activated_conditional_gate_unavailable: complete_with_unavailable
+  informational_unavailable_does_not_change_overall_status: true
+  not_applicable_does_not_change_overall_status: true
   otherwise: in_progress
   unavailable_requires_reason: true
   unavailable_requires_remaining_validation: true
