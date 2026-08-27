@@ -50,7 +50,8 @@ node_modules/
 dist/
 out/
 
-# Generated reports
+# Generated reports and evaluation evidence
+# Artifacts/ includes GoldenEval, ContextManifests and BehaviorEval evidence bundles.
 Artifacts/
 Generated/
 GeneratedReports/
