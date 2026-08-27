@@ -24,6 +24,8 @@ unityagent_fields:
 executor_fields:
   profile: required
   mode: required
+  execution_class: optional
+  agent_id: optional
   provider: required
   model: required
   model_revision: required
@@ -65,6 +67,8 @@ rules:
   execution_owner_repository_must_be_DarumaPPAP_Unity_Graph_Engineering: true
   unityagent_repository_must_be_DarumaPPAP_UnityAgent: true
   smoke_agent_attempt_must_equal_one: true
+  production_smoke_requires_execution_class_production: true
+  production_smoke_requires_real_agent_provider_and_model_identity: true
   infrastructure_attempts_must_be_recorded: true
   provider_or_model_revision_must_not_be_guessed: true
   unavailable_provider_or_model_revision_uses_literal_unavailable: true

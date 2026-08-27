@@ -30,6 +30,12 @@ workspace_fields:
     required: true
     allowed:
       - sandbox
+  allowed_paths:
+    required: false
+    item: repository_relative_path
+  prohibited_paths:
+    required: false
+    item: repository_relative_path
 
 evidence_fields:
   require: []
@@ -39,8 +45,11 @@ rules:
   golden_expectation_is_not_part_of_request: true
   request_task_is_copied_from_golden_task_only: true
   smoke_max_agent_attempts_must_equal_one: true
+  production_smoke_max_agent_attempts_must_equal_one: true
   mutation_mode_must_be_sandbox: true
   fixture_must_be_repository_relative: true
+  mutation_scope_paths_must_be_repository_relative: true
+  mutation_scope_must_be_transferred_to_execution_owner: true
   result_root_must_be_under_Artifacts_BehaviorEval: true
   provider_credentials_are_forbidden: true
   provider_selection_policy_is_not_owned_by_request: true

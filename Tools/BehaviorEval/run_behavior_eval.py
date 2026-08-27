@@ -78,6 +78,20 @@ def _create_fresh_run_root(run_root: Path) -> None:
     run_root.mkdir(parents=True, exist_ok=False)
 
 
+def _scope_paths(suite_case: dict, key: str) -> list[str]:
+    raw = suite_case.get(key, []) or []
+    if not isinstance(raw, list):
+        raise BehaviorRunError(f"{key} must be a list.")
+    values: list[str] = []
+    for item in raw:
+        value = str(item or "").strip().replace("\\", "/")
+        path = Path(value)
+        if not value or path.is_absolute() or ".." in path.parts:
+            raise BehaviorRunError(f"{key} entries must be non-empty repository-relative paths without traversal: {item}")
+        values.append(value)
+    return values
+
+
 def build_request(
     run_id: str,
     unityagent_revision: str,
@@ -87,6 +101,17 @@ def build_request(
     *,
     suite_id: str,
 ) -> dict:
+    workspace = {
+        "fixture": str(suite_case.get("workspace_fixture") or ""),
+        "mutation_mode": str(suite_case.get("mutation_mode") or ""),
+    }
+    allowed_paths = _scope_paths(suite_case, "allowed_paths")
+    prohibited_paths = _scope_paths(suite_case, "prohibited_paths")
+    if allowed_paths:
+        workspace["allowed_paths"] = allowed_paths
+    if prohibited_paths:
+        workspace["prohibited_paths"] = prohibited_paths
+
     request = {
         "schema_version": "1.0",
         "run_id": run_id,
@@ -99,10 +124,7 @@ def build_request(
             "work_kind": str(suite_case.get("work_kind") or ""),
             "max_agent_attempts": int(suite_case.get("max_agent_attempts") or 1),
         },
-        "workspace": {
-            "fixture": str(suite_case.get("workspace_fixture") or ""),
-            "mutation_mode": str(suite_case.get("mutation_mode") or ""),
-        },
+        "workspace": workspace,
         "evidence": suite_case.get("evidence", {}) or {},
         "result_root": _relative_to_root(case_dir),
         "suite": suite_id,
@@ -135,7 +157,7 @@ def validate_request(request: dict, *, suite_id: str) -> None:
     attempts = int(execution.get("max_agent_attempts", 0))
     if attempts < 1:
         raise BehaviorRunError("max_agent_attempts must be at least 1.")
-    if suite_id == "smoke" and attempts != 1:
+    if suite_id in {"smoke", "production_smoke"} and attempts != 1:
         raise BehaviorRunError("Smoke Actual Behavior Eval must use exactly one Agent attempt.")
 
     workspace = request.get("workspace", {}) or {}
@@ -152,6 +174,18 @@ def validate_request(request: dict, *, suite_id: str) -> None:
         raise BehaviorRunError(f"Behavior fixture is outside the Fixture root: {fixture}") from exc
     if not fixture_path.exists():
         raise BehaviorRunError(f"Behavior fixture does not exist: {fixture}")
+
+    for key in ("allowed_paths", "prohibited_paths"):
+        raw = workspace.get(key, []) or []
+        if not isinstance(raw, list):
+            raise BehaviorRunError(f"workspace.{key} must be a list.")
+        for item in raw:
+            value = str(item or "").strip()
+            path = Path(value)
+            if not value or path.is_absolute() or ".." in path.parts:
+                raise BehaviorRunError(
+                    f"workspace.{key} entries must be non-empty repository-relative paths without traversal: {item}"
+                )
 
     result_root = Path(str(request.get("result_root") or ""))
     if result_root.is_absolute() or ".." in result_root.parts:
