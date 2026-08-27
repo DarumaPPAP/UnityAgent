@@ -698,3 +698,285 @@ cases:
   graders:
   - type: deterministic
     id: invariant_signals
+- id: GOLDEN-DESIGN-KISS-001
+  category: architecture
+  kind: regression
+  pair_id: kiss-property-proliferation
+  boundary: forbid
+  task:
+    summary: 既存CameraDebuggerへFar Clip監視を追加する局所変更
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    - minimum_cohesive_solution_first
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    required_signals:
+    - existing_owner_considered_first
+    forbidden_signals:
+    - property_level_type_proliferation
+    - unnecessary_watcher
+    - unnecessary_controller
+    - unnecessary_service
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-DESIGN-KISS-002
+  category: architecture
+  kind: regression
+  pair_id: kiss-property-proliferation
+  boundary: require
+  task:
+    summary: CameraDebuggerの既存責務に自然に含まれるFar Clip監視
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    - minimum_cohesive_solution_first
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    required_signals:
+    - simplest_cohesive_existing_owner_selected
+    forbidden_signals:
+    - new_type_without_split_reason
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-DESIGN-YAGNI-001
+  category: architecture
+  kind: regression
+  pair_id: yagni-single-implementation-interface
+  boundary: forbid
+  task:
+    summary: 現在1種類しかないCameraDebuggerを実装する
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    - no_premature_generalization
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    required_signals:
+    - speculative_interface_rejected
+    forbidden_signals:
+    - single_implementation_interface
+    - speculative_abstract_base
+    - default_implementation_layer
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-DESIGN-YAGNI-002
+  category: architecture
+  kind: regression
+  pair_id: yagni-single-implementation-interface
+  boundary: require
+  task:
+    summary: Variation Axisが存在しない単一CameraDebugger実装
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    - no_premature_generalization
+    required_gates:
+    - architecture_fit
+    required_signals:
+    - single_concrete_type_preserved
+    forbidden_signals:
+    - future_variation_used_as_abstraction_reason
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-DESIGN-SRP-001
+  category: architecture
+  kind: regression
+  pair_id: srp-cohesive-camera-state
+  boundary: forbid
+  task:
+    summary: Far Clip Near Clip FOV Depth Culling MaskをCamera runtime stateとして追跡する
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    required_signals:
+    - cohesive_responsibility_reviewed
+    forbidden_signals:
+    - property_level_tracker_types
+    - srp_interpreted_as_one_property_per_class
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-DESIGN-SRP-002
+  category: architecture
+  kind: regression
+  pair_id: srp-cohesive-camera-state
+  boundary: require
+  task:
+    summary: 同じCamera Runtime State Tracking責務に属する複数Property
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    required_signals:
+    - cohesive_camera_state_tracker_selected
+    forbidden_signals:
+    - mechanical_type_fragmentation
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-DESIGN-DRY-FALSE-001
+  category: architecture
+  kind: regression
+  pair_id: dry-false-duplication
+  boundary: forbid
+  task:
+    summary: HealthとVolumeがそれぞれMathf Clampを使う
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    required_gates:
+    - architecture_fit
+    required_signals:
+    - syntax_similarity_is_not_dry_trigger
+    forbidden_signals:
+    - generic_clamp_helper
+    - abstraction_from_syntax_similarity_only
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-DESIGN-DRY-FALSE-002
+  category: architecture
+  kind: regression
+  pair_id: dry-false-duplication
+  boundary: require
+  task:
+    summary: 異なるDomain RuleとしてHealth ClampとVolume Clampを保持する
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    required_gates:
+    - architecture_fit
+    required_signals:
+    - independent_domain_rules_preserved
+    forbidden_signals:
+    - forced_dry_abstraction
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-DESIGN-DRY-PROVEN-001
+  category: architecture
+  kind: regression
+  pair_id: dry-proven-knowledge
+  boundary: forbid
+  task:
+    summary: Switch向け同一Shadow Distance Ruleが複数Featureに重複している
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    required_gates:
+    - architecture_fit
+    required_signals:
+    - proven_knowledge_duplication_identified
+    forbidden_signals:
+    - same_policy_rule_duplicated_across_features
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-DESIGN-DRY-PROVEN-002
+  category: architecture
+  kind: regression
+  pair_id: dry-proven-knowledge
+  boundary: require
+  task:
+    summary: 同じKnowledgeとChange Reasonであることが確認済みのSwitch Shadow Distance Rule
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    required_gates:
+    - architecture_fit
+    required_signals:
+    - confirmed_shared_policy_abstraction_considered
+    forbidden_signals:
+    - syntax_similarity_only_reason
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-DESIGN-OCP-001
+  category: architecture
+  kind: regression
+  pair_id: ocp-confirmed-variation
+  boundary: forbid
+  task:
+    summary: Backendが1つしか存在せず切替Requirementもない機能
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    - no_premature_generalization
+    required_gates:
+    - architecture_fit
+    required_signals:
+    - ocp_waits_for_confirmed_variation
+    forbidden_signals:
+    - speculative_backend_interface
+    - future_backend_extension_point
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-DESIGN-OCP-002
+  category: architecture
+  kind: regression
+  pair_id: ocp-confirmed-variation
+  boundary: require
+  task:
+    summary: 実際に2 Backendを切り替えるRequirementが存在する機能
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    required_gates:
+    - architecture_fit
+    required_signals:
+    - confirmed_variation_axis_has_contract_boundary
+    forbidden_signals:
+    - variation_axis_ignored
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
