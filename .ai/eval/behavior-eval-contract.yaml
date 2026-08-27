@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: "1.1"
 status: authoritative
 purpose: actual_UnityAgent_behavior_is_evaluated_from_execution_evidence_against_existing_golden_expectations
 
@@ -15,6 +15,8 @@ rules:
   infrastructure_retry_must_be_recorded: true
   unavailable_is_not_passed: true
   broken_eval_is_not_model_failure: true
+  runtime_failure_is_not_agent_behavior_regression: true
+  timeout_route_policy_and_harness_are_not_observed: true
   generated_results_are_not_canonical_policy: true
   mutation_requires_sandbox: true
   main_workspace_mutation_forbidden: true
@@ -23,6 +25,9 @@ rules:
   retry_policy_owned_by_execution_owner: true
   full_suite_on_every_pr_forbidden: true
   exact_generated_response_match_forbidden: true
+  golden_expected_route_must_not_be_sent_to_production_agent: true
+  production_prompt_is_separate_from_golden_expectation: true
+  observed_evidence_is_trusted_input_not_expected_answer: true
 
 production_path:
   execution_owner: DarumaPPAP/Unity-Graph-Engineering
@@ -33,6 +38,7 @@ production_path:
   executor_shell_mode: false
 
 evidence_priority:
+  - trusted_observed_evidence
   - generated_artifact_or_diff
   - context_manifest
   - quality_gate_evidence
@@ -51,24 +57,31 @@ evidence_bundle:
     - diff.patch
     - artifact-index.yaml
     - grader-result.json
+    - metrics.json
+    - codex-events.jsonl
+    - codex-stderr.txt
     - generated
   raw_artifacts_are_canonical_policy: false
 
 request_contract:
   schema: Tests/BehaviorEval/behavior-eval-request.schema.yaml
-  version: "1.0"
+  version: "1.1"
   golden_expectation_must_not_be_sent_to_executor: true
+  production_task_contracts: Tests/BehaviorEval/production-smoke-contracts.yaml
 
 envelope_contract:
   schema: Tests/BehaviorEval/execution-envelope.schema.yaml
-  version: "1.0"
+  version: "1.1"
   unknown_provider_or_model_revision_must_be_reported_unavailable: true
+  runtime_failure_requires_failure_class: true
 
 suite_contract:
   source: Tests/BehaviorEval/suites.yaml
   golden_task_source: Tests/GoldenTasks/cases.yaml
   golden_task_remains_accepted_behavior_source_of_truth: true
   suite_contains_execution_conditions_only: true
+  production_smoke_case_count: 4
+  production_smoke_single_case_execution_supported: true
 
 candidate_result:
   schema: Tests/GoldenTasks/candidate-result.schema.yaml
@@ -76,6 +89,7 @@ candidate_result:
   normalizer: Tools/BehaviorEval/normalize_result.py
   critical_signals_must_be_evidence_derived: true
   agent_written_candidate_result_is_not_accepted_as_actual_behavior_evidence: true
+  observation_state_required_for_actual_behavior_v1_1: true
 
 graders:
   priority:
@@ -85,6 +99,7 @@ graders:
   deterministic_failure_cannot_be_overridden_by_model_grader: true
   signal_extractor: Tools/BehaviorEval/derive_signals.py
   golden_runner: Tools/GoldenEval/run_golden_evals.py
+  unobserved_runtime_failure_skips_route_policy_signal_and_gate_grading: true
 
 run_statuses:
   - passed
@@ -99,8 +114,8 @@ exit_codes:
   broken_eval: 30
 
 failure_taxonomy:
-  reuse_existing: true
-  allowed:
+  agent_behavior:
+    - agent_behavior_regression
     - routing_miss
     - context_miss
     - policy_violation
@@ -108,8 +123,18 @@ failure_taxonomy:
     - mutation_violation
     - evidence_overclaim
     - model_failure
+  evaluator_or_runtime:
+    - evaluator_contract_failure
+    - runtime_timeout
+    - runtime_protocol_failure
+    - unavailable_required_evidence
+    - task_fixture_invalid
     - broken_eval
     - unavailable_evidence
+  timeout_secondary_failures_are_forbidden:
+    - routing_miss
+    - policy_violation
+    - harness_violation
 
 flakiness:
   smoke_agent_attempts: 1
@@ -134,7 +159,7 @@ v1_case_types:
   - bounded_csharp_patch
 
 ci_rollout:
-  current_phase: record_only
+  current_phase: manual_phase_1_1_hardening
   static_contract_ci_remains_separate: true
   manual_workflow: .github/workflows/actual-behavior-eval.yml
   pull_request_blocking: false
@@ -143,8 +168,9 @@ ci_rollout:
 
 metrics:
   - actual_behavior_pass_rate
+  - agent_quality_denominator
   - actual_first_pass_rate
-  - critical_invariant_pass_rate
+  - agent_behavior_regression_rate
   - route_accuracy
   - context_accuracy
   - policy_violation_rate
@@ -153,6 +179,11 @@ metrics:
   - naming_regression_rate
   - architecture_regression_rate
   - artifact_evidence_coverage
+  - runtime_timeout_rate
+  - runtime_protocol_failure_rate
+  - evaluator_contract_failure_rate
+  - task_fixture_invalid_rate
+  - unavailable_required_evidence_rate
   - inconclusive_rate
   - broken_eval_rate
   - execution_duration
