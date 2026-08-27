@@ -15,6 +15,8 @@ from naming_grader import ArtifactEvidenceError, grade_generated_artifacts
 ROOT = Path(__file__).resolve().parents[2]
 CASES_PATH = ROOT / "Tests" / "GoldenTasks" / "cases.yaml"
 DEFAULT_OUTPUT = ROOT / "Artifacts" / "GoldenEval" / "summary.json"
+GOLDEN_ARTIFACT_ROOT = ROOT / "Artifacts" / "GoldenEval"
+BEHAVIOR_ARTIFACT_ROOT = ROOT / "Artifacts" / "BehaviorEval"
 KNOWN_FAILURE_TYPES = {
     "routing_miss",
     "context_miss",
@@ -35,14 +37,54 @@ def load_yaml(path: Path) -> dict:
     return data
 
 
+def _is_actual_behavior(result: dict) -> bool:
+    return str((result.get("execution", {}) or {}).get("mode") or "") == "actual_behavior"
+
+
+def _naming_artifact_root(result: dict) -> Path:
+    return BEHAVIOR_ARTIFACT_ROOT if _is_actual_behavior(result) else GOLDEN_ARTIFACT_ROOT
+
+
 def infer_naming_failures(case: dict, result: dict) -> tuple[list[str], list[dict]]:
     if case.get("category") != "naming":
         return [], []
 
     naming_expectation = (case.get("expectation", {}) or {}).get("naming", {}) or {}
     artifacts = result.get("generated_artifacts", []) or []
+    signals = set(result.get("signals", []) or [])
+
+    # Actual Behavior no-new-Type cases are proven from the mutation/source extractor.
+    # A modified existing source file is not a newly generated Type artifact, so an empty
+    # generated_artifacts list is valid when deterministic evidence proves no Type creation.
+    if _is_actual_behavior(result) and naming_expectation.get("require_no_new_type") and not artifacts:
+        if "new_type_created" in signals:
+            structure = ((result.get("execution", {}) or {}).get("structure", {}) or {})
+            names = list(structure.get("new_type_names", []) or [])
+            findings = [
+                {
+                    "code": "NAME005_UNEXPECTED_NEW_TYPE",
+                    "identifier": name,
+                    "severity": "error",
+                    "message": "Actual Behavior evidence shows an unexpected new Type.",
+                }
+                for name in names
+            ] or [
+                {
+                    "code": "NAME005_UNEXPECTED_NEW_TYPE",
+                    "identifier": "",
+                    "severity": "error",
+                    "message": "Actual Behavior evidence shows an unexpected new Type.",
+                }
+            ]
+            return ["policy_violation"], findings
+        return [], []
+
     try:
-        grade = grade_generated_artifacts(artifacts, naming_expectation)
+        grade = grade_generated_artifacts(
+            artifacts,
+            naming_expectation,
+            allowed_root=_naming_artifact_root(result),
+        )
     except (ArtifactEvidenceError, OSError, UnicodeError) as exc:
         return ["broken_eval"], [
             {
@@ -96,16 +138,22 @@ def infer_failures(case: dict, result: dict) -> tuple[list[str], list[dict]]:
     naming_failures, naming_findings = infer_naming_failures(case, result)
     failures.extend(naming_failures)
 
+    declared_failure_types: set[str] = set()
     for failure_type in result.get("failure_types", []) or []:
         if failure_type in KNOWN_FAILURE_TYPES:
             failures.append(str(failure_type))
+            declared_failure_types.add(str(failure_type))
         else:
             failures.append("broken_eval")
+            declared_failure_types.add("broken_eval")
 
-    if result.get("outcome") == "unavailable":
+    outcome = result.get("outcome")
+    if outcome == "unavailable":
         failures.append("unavailable_evidence")
-    elif result.get("outcome") != expectation.get("outcome", "passed"):
-        failures.append("model_failure")
+    elif outcome != expectation.get("outcome", "passed"):
+        # Protocol failures remain broken_eval and are not relabeled as model failures.
+        if "broken_eval" not in declared_failure_types and "unavailable_evidence" not in declared_failure_types:
+            failures.append("model_failure")
 
     return sorted(set(failures)), naming_findings
 
@@ -129,9 +177,18 @@ def main() -> int:
     failure_counts: Counter[str] = Counter()
     attempts = 0
     first_pass = 0
+    actual_behavior_count = 0
+    actual_behavior_coverage: list[float] = []
 
     for result in results:
         task_id = str(result.get("task_id", ""))
+        execution = result.get("execution", {}) or {}
+        if _is_actual_behavior(result):
+            actual_behavior_count += 1
+            coverage = execution.get("evidence_coverage", {}) or {}
+            if "rate" in coverage:
+                actual_behavior_coverage.append(float(coverage.get("rate", 0.0)))
+
         case = cases.get(task_id)
         if case is None:
             graded.append(
@@ -140,10 +197,12 @@ def main() -> int:
                     "status": "broken_eval",
                     "failures": ["broken_eval"],
                     "naming_findings": [],
+                    "execution": execution,
                 }
             )
             failure_counts["broken_eval"] += 1
             continue
+
         failures, naming_findings = infer_failures(case, result)
         status = "passed" if not failures else "failed"
         attempt_count = max(1, int(result.get("attempt_count", 1)))
@@ -157,6 +216,7 @@ def main() -> int:
                 "status": status,
                 "failures": failures,
                 "naming_findings": naming_findings,
+                "execution": execution,
             }
         )
 
@@ -173,9 +233,14 @@ def main() -> int:
         "routing_miss_rate": rate(failure_counts, "routing_miss", total),
         "context_miss_rate": rate(failure_counts, "context_miss", total),
         "mutation_violation_rate": rate(failure_counts, "mutation_violation", total),
+        "evidence_overclaim_rate": rate(failure_counts, "evidence_overclaim", total),
         "gate_failure_rate": rate(failure_counts, "harness_violation", total),
         "unavailable_rate": (unavailable / total) if total else 0.0,
         "retry_count": max(0, attempts - total),
+        "actual_behavior_count": actual_behavior_count,
+        "actual_behavior_evidence_coverage": (
+            sum(actual_behavior_coverage) / len(actual_behavior_coverage) if actual_behavior_coverage else 0.0
+        ),
         "failure_counts": dict(sorted(failure_counts.items())),
         "results": graded,
     }
