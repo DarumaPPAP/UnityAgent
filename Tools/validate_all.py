@@ -15,6 +15,7 @@ GRAPH_SCHEMA = Path("Tools/GraphObservatory/schema/graph.schema.json")
 
 YAML_ROOTS = (
     Path(".ai"),
+    Path("Tests/BehaviorEval"),
     Path("Tests/ContractValidator"),
     Path("Tests/ContextRouting"),
     Path("Tests/ContextManifest"),
@@ -44,6 +45,7 @@ VALIDATORS = (
     Path("Tools/GoldenEval/validate_naming_grader.py"),
     Path("Tools/GoldenEval/validate_typed_context_v3.py"),
     Path("Tools/GoldenEval/validate_context_budget_v1.py"),
+    Path("Tools/BehaviorEval/validate_behavior_eval.py"),
 )
 
 
