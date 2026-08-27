@@ -52,6 +52,10 @@ prohibited_mutations:
   - speculative_interface
   - speculative_scriptable_object
   - speculative_dependency_injection_container
+  - property_level_type_proliferation_without_responsibility_boundary
+  - abstraction_from_syntax_similarity_only
+  - solid_as_mechanical_layering_rule
+  - naming_driving_architecture_before_responsibility_is_resolved
   - polling_when_unity_lifecycle_or_existing_callback_is_sufficient
   - unrelated_refactor
   - project_setting_change_without_approval
@@ -82,10 +86,16 @@ completion:
   - local_behavior_uses_fast_path_when_sufficient
   - unity_lifecycle_is_checked_before_polling
   - requirement_surface_is_preserved
+  - simplest_cohesive_solution_was_considered_first
+  - speculative_structure_was_removed
   - unnecessary_state_and_generalization_are_removed
+  - abstractions_are_backed_by_confirmed_need
+  - proven_knowledge_duplication_is_required_for_dry_abstraction
+  - solid_was_not_used_as_a_mechanical_layering_rule
   - selected_architecture_is_explained
   - every_planned_file_has_a_split_reason
   - unnecessary_abstractions_are_removed
+  - naming_is_deferred_until_type_responsibility_is_resolved
   - user_policy_is_preserved
   - naming_convention_is_preserved
   - reevaluation_conditions_are_defined_when_needed
