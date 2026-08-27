@@ -133,6 +133,7 @@ suites:
     blocking_candidate: false
     production_execution_required: true
     max_agent_attempts: 1
+    task_contract_source: Tests/BehaviorEval/production-smoke-contracts.yaml
     cases:
       - golden_task_id: GOLDEN-ARCH-001
         focus: [architecture]
@@ -176,7 +177,7 @@ suites:
         focus: [evidence]
         execution_profile: personal_full_control
         execution_mode: prompt
-        work_kind: implementation
+        work_kind: verification
         workspace_fixture: Tests/BehaviorEval/Fixtures/CompileOnly
         mutation_mode: sandbox
         evidence:
