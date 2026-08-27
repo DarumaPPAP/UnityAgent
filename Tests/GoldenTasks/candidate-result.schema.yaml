@@ -1,4 +1,4 @@
-schema_version: "1.1"
+schema_version: "1.2"
 kind: unityagent_golden_candidate_result_schema
 
 result_fields:
@@ -14,6 +14,19 @@ result_fields:
   outcome: required
   attempt_count: optional
   manifest_path: optional
+  generated_artifacts: []
+
+generated_artifact_fields:
+  path: required
+  language: required
+  kind: required
+
+rules:
+  generated_artifact_must_be_inside_golden_artifact_root: true
+  path_traversal_is_forbidden: true
+  missing_generated_artifact_is_broken_eval: true
+  unsupported_language_is_not_naming_evidence: true
+  candidate_declared_identifier_names_are_not_artifact_evidence: true
 
 failure_types_allowed:
   - routing_miss
