@@ -15,6 +15,9 @@ CONTRACT_PATH = ROOT / ".ai" / "eval" / "golden-eval-contract.yaml"
 POLICY_PATH = ROOT / ".ai" / "user-policy.yaml"
 INDEX_PATH = ROOT / ".ai" / "context-index.yaml"
 GRAPH_PATH = ROOT / ".ai" / "graph-contract.yaml"
+NAMING_GATE = "namespace_and_type_naming_review"
+NAMING_POLICY = "semantic_type_naming"
+NAMING_GRADER = "type_naming"
 
 
 def load_yaml(path: Path) -> dict:
@@ -22,6 +25,90 @@ def load_yaml(path: Path) -> dict:
     if not isinstance(data, dict):
         raise ValueError(f"Expected mapping: {path}")
     return data
+
+
+def _as_string_set(value: object, case_id: str, field: str, errors: list[str]) -> set[str]:
+    if value is None:
+        return set()
+    if not isinstance(value, list):
+        errors.append(f"{case_id}: {field} must be a list.")
+        return set()
+    result: set[str] = set()
+    for item in value:
+        if not isinstance(item, str) or not item.strip():
+            errors.append(f"{case_id}: {field} contains a non-string or empty value.")
+            continue
+        result.add(item)
+    return result
+
+
+def validate_naming_expectation(
+    case_id: str,
+    expectation: dict,
+    graders: list,
+    route_contract: dict | None,
+    errors: list[str],
+) -> None:
+    naming = expectation.get("naming")
+    if not isinstance(naming, dict):
+        errors.append(f"{case_id}: naming category requires expectation.naming mapping.")
+        return
+
+    required_type_names = _as_string_set(
+        naming.get("required_type_names", []), case_id, "expectation.naming.required_type_names", errors
+    )
+    forbidden_type_names = _as_string_set(
+        naming.get("forbidden_type_names", []), case_id, "expectation.naming.forbidden_type_names", errors
+    )
+    required_identifiers = _as_string_set(
+        naming.get("required_identifiers", []), case_id, "expectation.naming.required_identifiers", errors
+    )
+    forbidden_identifiers = _as_string_set(
+        naming.get("forbidden_identifiers", []), case_id, "expectation.naming.forbidden_identifiers", errors
+    )
+
+    type_overlap = required_type_names & forbidden_type_names
+    if type_overlap:
+        errors.append(f"{case_id}: naming Type names cannot be both required and forbidden: {sorted(type_overlap)}")
+    identifier_overlap = required_identifiers & forbidden_identifiers
+    if identifier_overlap:
+        errors.append(
+            f"{case_id}: naming identifiers cannot be both required and forbidden: {sorted(identifier_overlap)}"
+        )
+
+    require_no_new_type = naming.get("require_no_new_type", False)
+    if not isinstance(require_no_new_type, bool):
+        errors.append(f"{case_id}: expectation.naming.require_no_new_type must be boolean.")
+    elif require_no_new_type and required_type_names:
+        errors.append(f"{case_id}: require_no_new_type conflicts with required_type_names.")
+
+    require_naming_gate = naming.get("require_naming_gate", True)
+    if not isinstance(require_naming_gate, bool):
+        errors.append(f"{case_id}: expectation.naming.require_naming_gate must be boolean.")
+        require_naming_gate = True
+
+    required_policies = set(expectation.get("required_policies", []) or [])
+    if NAMING_POLICY not in required_policies:
+        errors.append(f"{case_id}: naming case must require user policy {NAMING_POLICY}.")
+
+    required_gates = set(expectation.get("required_gates", []) or [])
+    if require_naming_gate and NAMING_GATE not in required_gates:
+        errors.append(f"{case_id}: naming case must require gate {NAMING_GATE}.")
+
+    if route_contract is not None:
+        route_gates = set(route_contract.get("required_quality_gates", []) or []) | set(
+            route_contract.get("conditional_quality_gates", []) or []
+        )
+        if NAMING_GATE not in route_gates:
+            errors.append(f"{case_id}: route Task Contract does not declare {NAMING_GATE}.")
+
+    if not any(
+        isinstance(grader, dict)
+        and grader.get("type") == "deterministic"
+        and grader.get("id") == NAMING_GRADER
+        for grader in graders or []
+    ):
+        errors.append(f"{case_id}: naming case requires deterministic grader id {NAMING_GRADER}.")
 
 
 def main() -> int:
@@ -141,6 +228,9 @@ def main() -> int:
             errors.append(f"{case_id}: regression expectation outcome must be passed.")
         if not any(isinstance(grader, dict) and grader.get("type") == "deterministic" for grader in graders or []):
             errors.append(f"{case_id}: at least one deterministic grader is required.")
+
+        if category == "naming":
+            validate_naming_expectation(case_id, expectation, graders, route_contract, errors)
 
     minimum_pairs = int(contract.get("initial_suite", {}).get("minimum_boundary_pairs", 8))
     valid_pairs = 0
