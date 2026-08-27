@@ -42,6 +42,8 @@ protected_categories:
   - user_prohibited_changes
 
 core_user_policies:
+  engineering_principles:
+    rule: 設計はKISSとYAGNIを先に適用し、現在の要求を満たす最小の凝集した解を選ぶ。DRYは実在する同一KnowledgeとChange Reasonの重複に対してのみ適用し、SOLIDは確認された責務・Variation・Boundary・Dependencyに応じて必要な原則だけ使用する。命名はTypeと責務の確定後に行う
   single_purpose_change:
     rule: 変更理由を一つに限定し、便利機能の寄せ集めへ拡張しない
   ownership_and_lifetime:
