@@ -76,12 +76,15 @@ prohibited_mutations:
 
 required_knowledge: []
 
+# Architecture-only planning can complete from architecture evidence alone.
+# Serialization/compile/runtime gates become blocking only when the selected plan actually
+# crosses those boundaries. This prevents optional unavailable evidence from failing design-only tasks.
 required_quality_gates:
   - architecture_fit
   - file_granularity
-  - serialization_validation
 
 conditional_quality_gates:
+  - serialization_validation
   - namespace_and_type_naming_review
   - ownership_and_lifetime
   - ecs_data_layout

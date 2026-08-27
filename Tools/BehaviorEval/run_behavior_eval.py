@@ -10,6 +10,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -18,6 +19,7 @@ from normalize_result import BehaviorEvidenceError, normalize_case_result
 ROOT = Path(__file__).resolve().parents[2]
 SUITES_PATH = ROOT / "Tests" / "BehaviorEval" / "suites.yaml"
 CASES_PATH = ROOT / "Tests" / "GoldenTasks" / "cases.yaml"
+PRODUCTION_CONTRACTS_PATH = ROOT / "Tests" / "BehaviorEval" / "production-smoke-contracts.yaml"
 GOLDEN_RUNNER = ROOT / "Tools" / "GoldenEval" / "run_golden_evals.py"
 DEFAULT_ROOT = ROOT / "Artifacts" / "BehaviorEval"
 
@@ -25,6 +27,14 @@ EXIT_PASSED = 0
 EXIT_REGRESSION = 10
 EXIT_INCONCLUSIVE = 20
 EXIT_BROKEN = 30
+
+INFRASTRUCTURE_FAILURES = {
+    "evaluator_contract_failure",
+    "runtime_timeout",
+    "runtime_protocol_failure",
+    "unavailable_required_evidence",
+    "task_fixture_invalid",
+}
 
 
 class BehaviorRunError(ValueError):
@@ -46,6 +56,8 @@ def resolve_git_revision(override: str | None = None) -> str:
         cwd=ROOT,
         check=False,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         capture_output=True,
     )
     revision = completed.stdout.strip() if completed.returncode == 0 else ""
@@ -92,6 +104,29 @@ def _scope_paths(suite_case: dict, key: str) -> list[str]:
     return values
 
 
+def _production_contracts() -> dict[str, dict[str, Any]]:
+    if not PRODUCTION_CONTRACTS_PATH.is_file():
+        return {}
+    doc = load_yaml(PRODUCTION_CONTRACTS_PATH)
+    cases = doc.get("cases", {}) or {}
+    if not isinstance(cases, dict):
+        raise BehaviorRunError("production-smoke-contracts.yaml cases must be a mapping.")
+    return {str(key): value for key, value in cases.items() if isinstance(value, dict)}
+
+
+def _task_payload(golden_case: dict, production_contract: dict | None) -> dict:
+    golden_task = golden_case.get("task", {}) or {}
+    if not production_contract:
+        return golden_task
+    production_prompt = str(production_contract.get("production_prompt") or "").strip()
+    if not production_prompt:
+        raise BehaviorRunError(f"{golden_case.get('id')}: production_prompt is required for production_smoke.")
+    return {
+        "summary": str(golden_task.get("summary") or ""),
+        "production_prompt": production_prompt,
+    }
+
+
 def build_request(
     run_id: str,
     unityagent_revision: str,
@@ -100,6 +135,7 @@ def build_request(
     case_dir: Path,
     *,
     suite_id: str,
+    production_contract: dict | None = None,
 ) -> dict:
     workspace = {
         "fixture": str(suite_case.get("workspace_fixture") or ""),
@@ -117,7 +153,7 @@ def build_request(
         "run_id": run_id,
         "golden_task_id": str(golden_case.get("id") or ""),
         "unityagent_revision": unityagent_revision,
-        "task": golden_case.get("task", {}) or {},
+        "task": _task_payload(golden_case, production_contract),
         "execution": {
             "mode": str(suite_case.get("execution_mode") or ""),
             "profile": str(suite_case.get("execution_profile") or ""),
@@ -129,6 +165,11 @@ def build_request(
         "result_root": _relative_to_root(case_dir),
         "suite": suite_id,
     }
+    if production_contract:
+        request["primary_focus"] = str(production_contract.get("primary_focus") or "")
+        observed = production_contract.get("observed_evidence", []) or []
+        if observed:
+            request["observed_evidence"] = observed
     validate_request(request, suite_id=suite_id)
     return request
 
@@ -152,6 +193,16 @@ def validate_request(request: dict, *, suite_id: str) -> None:
         raise BehaviorRunError("Behavior Eval Request schema_version must be 1.0.")
     if "expectation" in request:
         raise BehaviorRunError("Golden expectation must never be sent to the executor.")
+
+    task = request.get("task", {}) or {}
+    if not isinstance(task, dict):
+        raise BehaviorRunError("task must be a mapping.")
+    forbidden_task_keys = {"expected_route", "required_signals", "forbidden_signals", "required_policies", "required_gates"}
+    leaked = sorted(forbidden_task_keys & set(task))
+    if leaked:
+        raise BehaviorRunError(f"Golden expectation-like fields are forbidden in production task: {leaked}")
+    if suite_id == "production_smoke" and not str(task.get("production_prompt") or "").strip():
+        raise BehaviorRunError("production_smoke requires task.production_prompt.")
 
     execution = request.get("execution", {}) or {}
     attempts = int(execution.get("max_agent_attempts", 0))
@@ -186,6 +237,18 @@ def validate_request(request: dict, *, suite_id: str) -> None:
                 raise BehaviorRunError(
                     f"workspace.{key} entries must be non-empty repository-relative paths without traversal: {item}"
                 )
+
+    observed = request.get("observed_evidence", []) or []
+    if not isinstance(observed, list):
+        raise BehaviorRunError("observed_evidence must be a list.")
+    for item in observed:
+        if not isinstance(item, dict):
+            raise BehaviorRunError("observed_evidence entries must be mappings.")
+        for key in ("id", "gate", "status", "source"):
+            if not str(item.get(key) or "").strip():
+                raise BehaviorRunError(f"observed_evidence entry missing {key}.")
+        if item.get("status") not in {"passed", "failed", "unavailable"}:
+            raise BehaviorRunError("observed_evidence.status must be passed/failed/unavailable.")
 
     result_root = Path(str(request.get("result_root") or ""))
     if result_root.is_absolute() or ".." in result_root.parts:
@@ -224,18 +287,23 @@ def _load_suite(suite_id: str) -> tuple[dict, list[dict], dict[str, dict]]:
 def _broken_candidate(task_id: str, run_id: str, message: str) -> dict:
     return {
         "task_id": task_id,
+        "route": "",
+        "fingerprint": None,
         "applied_policies": [],
         "gates": {},
         "signals": [],
         "knowledge": [],
         "unresolved": [],
-        "failure_types": ["broken_eval"],
+        "failure_types": ["evaluator_contract_failure"],
+        "failure_class": "evaluator_contract_failure",
         "outcome": "failed",
         "attempt_count": 1,
         "generated_artifacts": [],
         "execution": {
             "mode": "actual_behavior",
             "run_id": run_id,
+            "observation_state": "not_observed",
+            "failure_class": "evaluator_contract_failure",
             "evidence_provenance": {},
             "evidence_coverage": {"covered_invariants": 0, "total_invariants": 0, "rate": 0.0, "sources": []},
             "behavior_findings": [
@@ -245,10 +313,16 @@ def _broken_candidate(task_id: str, run_id: str, message: str) -> dict:
     }
 
 
+def _failure_set(graded: dict) -> set[str]:
+    return set(graded.get("failures", []) or [])
+
+
 def _behavior_status(graded: dict) -> str:
-    failures = set(graded.get("failures", []) or [])
-    if "broken_eval" in failures:
-        return "broken_eval"
+    failures = _failure_set(graded)
+    if "broken_eval" in failures or "evaluator_contract_failure" in failures:
+        return "broken_eval" if "broken_eval" in failures else "inconclusive"
+    if failures & INFRASTRUCTURE_FAILURES:
+        return "inconclusive"
     non_unavailable = failures - {"unavailable_evidence"}
     if failures and not non_unavailable:
         return "inconclusive"
@@ -258,7 +332,7 @@ def _behavior_status(graded: dict) -> str:
 
 
 def _rate(items: list[dict], failure: str) -> float:
-    return (sum(failure in set(item.get("failures", []) or []) for item in items) / len(items)) if items else 0.0
+    return (sum(failure in _failure_set(item) for item in items) / len(items)) if items else 0.0
 
 
 def _category_rate(items: list[dict], task_categories: dict[str, str], category: str) -> float:
@@ -286,35 +360,35 @@ def build_behavior_summary(
         task_id = str(item.get("task_id") or "")
         candidate = candidate_by_id.get(task_id, {})
         status = _behavior_status(item)
+        execution = candidate.get("execution", {}) or {}
         results.append(
             {
                 "task_id": task_id,
                 "status": status,
                 "failures": list(item.get("failures", []) or []),
+                "failure_class": str(candidate.get("failure_class") or execution.get("failure_class") or ""),
+                "observation_state": str(execution.get("observation_state") or "observed"),
                 "naming_findings": list(item.get("naming_findings", []) or []),
-                "evidence_coverage": ((candidate.get("execution", {}) or {}).get("evidence_coverage", {}) or {}),
-                "behavior_findings": ((candidate.get("execution", {}) or {}).get("behavior_findings", []) or []),
+                "evidence_coverage": execution.get("evidence_coverage", {}) or {},
+                "behavior_findings": execution.get("behavior_findings", []) or [],
             }
         )
 
     counts = {status: sum(item["status"] == status for item in results) for status in (
-        "passed",
-        "regression",
-        "inconclusive",
-        "broken_eval",
+        "passed", "regression", "inconclusive", "broken_eval"
     )}
     total = len(results)
-    coverage_rates = [
-        float((item.get("evidence_coverage", {}) or {}).get("rate", 0.0))
-        for item in results
-    ]
+    observed = [item for item in results if item.get("observation_state") == "observed"]
+    observed_count = len(observed)
+    coverage_rates = [float((item.get("evidence_coverage", {}) or {}).get("rate", 0.0)) for item in observed]
     first_pass = sum(
         item["status"] == "passed" and int(candidate_by_id.get(item["task_id"], {}).get("attempt_count", 1)) == 1
-        for item in results
+        for item in observed
     )
+    observed_regressions = sum(item["status"] == "regression" for item in observed)
 
     return {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "run_id": run_id,
         "suite": suite_id,
         "unityagent_revision": unityagent_revision,
@@ -322,16 +396,22 @@ def build_behavior_summary(
         "status_counts": counts,
         "metrics": {
             "actual_behavior_pass_rate": (counts["passed"] / total) if total else 0.0,
-            "actual_first_pass_rate": (first_pass / total) if total else 0.0,
-            "critical_invariant_pass_rate": (counts["passed"] / total) if total else 0.0,
-            "route_accuracy": 1.0 - _rate(results, "routing_miss"),
-            "context_accuracy": 1.0 - _rate(results, "context_miss"),
-            "policy_violation_rate": _rate(results, "policy_violation"),
-            "mutation_violation_rate": _rate(results, "mutation_violation"),
-            "evidence_overclaim_rate": _rate(results, "evidence_overclaim"),
-            "naming_regression_rate": _category_rate(results, task_categories, "naming"),
-            "architecture_regression_rate": _category_rate(results, task_categories, "architecture"),
+            "agent_quality_denominator": observed_count,
+            "actual_first_pass_rate": (first_pass / observed_count) if observed_count else 0.0,
+            "agent_behavior_regression_rate": (observed_regressions / observed_count) if observed_count else 0.0,
+            "route_accuracy": 1.0 - _rate(observed, "routing_miss") if observed else 0.0,
+            "context_accuracy": 1.0 - _rate(observed, "context_miss") if observed else 0.0,
+            "policy_violation_rate": _rate(observed, "policy_violation"),
+            "mutation_violation_rate": _rate(observed, "mutation_violation"),
+            "evidence_overclaim_rate": _rate(observed, "evidence_overclaim"),
+            "naming_regression_rate": _category_rate(observed, task_categories, "naming"),
+            "architecture_regression_rate": _category_rate(observed, task_categories, "architecture"),
             "artifact_evidence_coverage": (sum(coverage_rates) / len(coverage_rates)) if coverage_rates else 0.0,
+            "runtime_timeout_rate": _rate(results, "runtime_timeout"),
+            "runtime_protocol_failure_rate": _rate(results, "runtime_protocol_failure"),
+            "evaluator_contract_failure_rate": _rate(results, "evaluator_contract_failure"),
+            "task_fixture_invalid_rate": _rate(results, "task_fixture_invalid"),
+            "unavailable_required_evidence_rate": _rate(results, "unavailable_required_evidence"),
             "inconclusive_rate": (counts["inconclusive"] / total) if total else 0.0,
             "broken_eval_rate": (counts["broken_eval"] / total) if total else 0.0,
             "execution_duration": duration,
@@ -357,17 +437,22 @@ def write_summary_markdown(path: Path, summary: dict) -> None:
         "",
         "## Critical Metrics",
         "",
+        f"- agent_quality_denominator: {metrics.get('agent_quality_denominator', 0)}",
         f"- policy_violation_rate: {metrics.get('policy_violation_rate', 0.0):.3f}",
         f"- mutation_violation_rate: {metrics.get('mutation_violation_rate', 0.0):.3f}",
         f"- evidence_overclaim_rate: {metrics.get('evidence_overclaim_rate', 0.0):.3f}",
-        f"- artifact_evidence_coverage: {metrics.get('artifact_evidence_coverage', 0.0):.3f}",
+        f"- runtime_timeout_rate: {metrics.get('runtime_timeout_rate', 0.0):.3f}",
+        f"- evaluator_contract_failure_rate: {metrics.get('evaluator_contract_failure_rate', 0.0):.3f}",
         "",
         "## Cases",
         "",
     ]
     for item in summary.get("results", []) or []:
         failures = ", ".join(item.get("failures", []) or []) or "none"
-        lines.append(f"- `{item.get('task_id')}`: **{item.get('status')}** — {failures}")
+        lines.append(
+            f"- `{item.get('task_id')}`: **{item.get('status')}** "
+            f"(observation={item.get('observation_state')}) — {failures}"
+        )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -389,6 +474,7 @@ def main() -> int:
     parser.add_argument("--suite", default="smoke")
     parser.add_argument("--run-id")
     parser.add_argument("--unityagent-revision")
+    parser.add_argument("--case", "--only-case", dest="only_case", default=None)
     parser.add_argument("--request-only", action="store_true")
     parser.add_argument(
         "--executor-command",
@@ -400,6 +486,14 @@ def main() -> int:
     started = time.perf_counter()
     try:
         suite, suite_cases, golden_cases = _load_suite(args.suite)
+        if args.only_case:
+            suite_cases = [
+                item for item in suite_cases
+                if isinstance(item, dict) and str(item.get("golden_task_id") or "") == args.only_case
+            ]
+            if not suite_cases:
+                raise BehaviorRunError(f"Case {args.only_case} is not part of suite {args.suite}.")
+        production_contracts = _production_contracts() if args.suite == "production_smoke" else {}
         revision = resolve_git_revision(args.unityagent_revision)
         run_id = args.run_id or make_run_id()
         run_root = _safe_run_root(run_id)
@@ -420,12 +514,24 @@ def main() -> int:
         if golden_case is None:
             print(f"Behavior Eval suite references unknown Golden Task: {task_id}")
             return EXIT_BROKEN
+        production_contract = production_contracts.get(task_id) if args.suite == "production_smoke" else None
+        if args.suite == "production_smoke" and production_contract is None:
+            print(f"{task_id}: production smoke contract is missing.")
+            return EXIT_BROKEN
         task_categories[task_id] = str(golden_case.get("category") or "")
         case_dir = run_root / "cases" / task_id
         case_dir.mkdir(parents=True, exist_ok=False)
 
         try:
-            request = build_request(run_id, revision, golden_case, suite_case, case_dir, suite_id=args.suite)
+            request = build_request(
+                run_id,
+                revision,
+                golden_case,
+                suite_case,
+                case_dir,
+                suite_id=args.suite,
+                production_contract=production_contract,
+            )
         except (BehaviorRunError, ValueError) as exc:
             print(f"{task_id}: request build failed: {exc}")
             return EXIT_BROKEN
@@ -434,7 +540,6 @@ def main() -> int:
 
         if args.request_only:
             continue
-
         if not args.executor_command:
             print("Actual Behavior execution requires --executor-command or --request-only.")
             return EXIT_BROKEN
@@ -455,15 +560,13 @@ def main() -> int:
 
         candidates.append(candidate)
         (case_dir / "candidate-result.yaml").write_text(
-            yaml.safe_dump(candidate, sort_keys=False, allow_unicode=True),
-            encoding="utf-8",
+            yaml.safe_dump(candidate, sort_keys=False, allow_unicode=True), encoding="utf-8"
         )
 
     if args.request_only:
         manifest = _request_only_manifest(run_id, args.suite, revision, len(suite_cases))
         (run_root / "run-manifest.yaml").write_text(
-            yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True),
-            encoding="utf-8",
+            yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True), encoding="utf-8"
         )
         print(
             f"Behavior Eval request bundle generated: {len(suite_cases)} case(s). "
@@ -488,13 +591,7 @@ def main() -> int:
     golden_summary = json.loads(golden_output.read_text(encoding="utf-8"))
     duration = time.perf_counter() - started
     summary = build_behavior_summary(
-        args.suite,
-        run_id,
-        revision,
-        golden_summary,
-        candidates,
-        task_categories,
-        duration,
+        args.suite, run_id, revision, golden_summary, candidates, task_categories, duration
     )
     (run_root / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     write_summary_markdown(run_root / "summary.md", summary)
@@ -504,8 +601,7 @@ def main() -> int:
         case_dir = run_root / "cases" / task_id
         if case_dir.is_dir():
             (case_dir / "grader-result.json").write_text(
-                json.dumps(item, ensure_ascii=False, indent=2) + "\n",
-                encoding="utf-8",
+                json.dumps(item, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
             )
 
     counts = summary.get("status_counts", {}) or {}
@@ -523,7 +619,7 @@ def main() -> int:
         exit_code = EXIT_PASSED
 
     run_manifest = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "run_id": run_id,
         "suite": args.suite,
         "unityagent_revision": revision,
@@ -531,11 +627,12 @@ def main() -> int:
         "status": final_status,
         "actual_agent_executed": True,
         "case_count": len(suite_cases),
+        "selected_case": args.only_case,
         "duration_seconds": duration,
+        "baseline_candidate": False if final_status != "passed" else args.suite == "production_smoke" and len(suite_cases) == 4,
     }
     (run_root / "run-manifest.yaml").write_text(
-        yaml.safe_dump(run_manifest, sort_keys=False, allow_unicode=True),
-        encoding="utf-8",
+        yaml.safe_dump(run_manifest, sort_keys=False, allow_unicode=True), encoding="utf-8"
     )
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     return exit_code

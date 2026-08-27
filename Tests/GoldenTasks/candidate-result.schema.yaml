@@ -11,6 +11,7 @@ result_fields:
   knowledge: []
   unresolved: []
   failure_types: []
+  failure_class: optional
   outcome: required
   attempt_count: optional
   manifest_path: optional
@@ -28,12 +29,19 @@ execution_fields:
     allowed:
       - actual_behavior
   run_id: optional
+  observation_state:
+    optional: true
+    allowed:
+      - observed
+      - not_observed
+  failure_class: optional
   execution_fingerprint: optional
   evidence_provenance: optional
   evidence_coverage: optional
   behavior_findings: optional
   structure: optional
   execution_owner: optional
+  runtime: optional
 
 rules:
   default_generated_artifact_root: Artifacts/GoldenEval
@@ -46,6 +54,7 @@ rules:
   actual_behavior_candidate_must_be_evidence_derived: true
   agent_self_report_is_not_actual_behavior_provenance: true
   execution_provenance_is_backward_compatible_optional: true
+  not_observed_runtime_failure_must_not_be_graded_as_route_policy_or_harness_failure: true
 
 failure_types_allowed:
   - routing_miss
@@ -55,8 +64,14 @@ failure_types_allowed:
   - mutation_violation
   - evidence_overclaim
   - model_failure
+  - agent_behavior_regression
   - broken_eval
   - unavailable_evidence
+  - evaluator_contract_failure
+  - runtime_timeout
+  - runtime_protocol_failure
+  - unavailable_required_evidence
+  - task_fixture_invalid
 
 outcome_allowed:
   - passed
