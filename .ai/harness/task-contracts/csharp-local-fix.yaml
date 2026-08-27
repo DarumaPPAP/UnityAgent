@@ -9,6 +9,16 @@ required_inputs:
   - target_source
   - unity_version_when_api_sensitive
 
+conditional_inputs:
+  semantic_type_naming:
+    required_when:
+      - new_type_is_required_by_confirmed_fix
+      - explicit_type_rename_is_requested
+    inputs:
+      - type_responsibility
+      - namespace_context
+      - compatibility_constraints
+
 allowed_mutations:
   - target_csharp_file
   - directly_required_dependency_when_proven
@@ -17,6 +27,7 @@ prohibited_mutations:
   - unrelated_refactor
   - new_controller_or_manager
   - public_or_serialized_contract_change_without_request
+  - naming_only_existing_api_rename
   - scene_prefab_or_project_settings_change
 
 required_knowledge: []
@@ -24,12 +35,15 @@ required_quality_gates:
   - static_review
   - compile
 conditional_quality_gates:
+  - namespace_and_type_naming_review
   - editmode
   - playmode
 
 completion:
   - requested_behavior_or_confirmed_error_is_addressed
   - changed_scope_is_bounded
+  - semantic_type_naming_is_reviewed_only_when_new_or_renamed_type_exists
+  - existing_api_names_are_preserved_unless_rename_is_requested
   - compile_is_passed_or_reported_unavailable
 
 stop_conditions:
