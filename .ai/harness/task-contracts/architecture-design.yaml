@@ -34,6 +34,14 @@ conditional_inputs:
     required_when:
       - performance_budget_is_part_of_goal
       - ecs_jobs_burst_adoption_is_being_evaluated
+  semantic_type_naming:
+    required_when:
+      - new_type_is_planned
+      - type_rename_is_proposed
+    inputs:
+      - type_responsibility
+      - namespace_context
+      - compatibility_constraints
 
 allowed_mutations:
   - architecture_specification
@@ -56,6 +64,9 @@ prohibited_mutations:
   - abstraction_from_syntax_similarity_only
   - solid_as_mechanical_layering_rule
   - naming_driving_architecture_before_responsibility_is_resolved
+  - invented_abbreviation_for_length_reduction
+  - role_suffix_stacking_without_distinct_responsibility
+  - naming_only_existing_public_or_serialized_type_rename
   - polling_when_unity_lifecycle_or_existing_callback_is_sufficient
   - unrelated_refactor
   - project_setting_change_without_approval
@@ -71,6 +82,7 @@ required_quality_gates:
   - serialization_validation
 
 conditional_quality_gates:
+  - namespace_and_type_naming_review
   - ownership_and_lifetime
   - ecs_data_layout
   - static_review
@@ -96,6 +108,8 @@ completion:
   - every_planned_file_has_a_split_reason
   - unnecessary_abstractions_are_removed
   - naming_is_deferred_until_type_responsibility_is_resolved
+  - planned_new_or_renamed_types_follow_semantic_naming_contract_when_applicable
+  - existing_public_and_serialized_names_are_preserved_unless_rename_is_requested
   - user_policy_is_preserved
   - naming_convention_is_preserved
   - reevaluation_conditions_are_defined_when_needed
