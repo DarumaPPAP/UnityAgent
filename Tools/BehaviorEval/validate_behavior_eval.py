@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate UnityAgent Actual Behavior Eval v1 protocol without invoking a model."""
+"""Validate UnityAgent Actual Behavior Eval protocol without invoking a model."""
 
 from __future__ import annotations
 
@@ -17,11 +17,13 @@ CONTRACT = ROOT / ".ai" / "eval" / "behavior-eval-contract.yaml"
 REQUEST_SCHEMA = ROOT / "Tests" / "BehaviorEval" / "behavior-eval-request.schema.yaml"
 ENVELOPE_SCHEMA = ROOT / "Tests" / "BehaviorEval" / "execution-envelope.schema.yaml"
 SUITES = ROOT / "Tests" / "BehaviorEval" / "suites.yaml"
+PRODUCTION_CONTRACTS = ROOT / "Tests" / "BehaviorEval" / "production-smoke-contracts.yaml"
 GOLDEN_CASES = ROOT / "Tests" / "GoldenTasks" / "cases.yaml"
 CANDIDATE_SCHEMA = ROOT / "Tests" / "GoldenTasks" / "candidate-result.schema.yaml"
 PROTOCOL_FIXTURE = ROOT / "Tests" / "BehaviorEval" / "ProtocolFixtures" / "valid"
 RUNNER = ROOT / "Tools" / "BehaviorEval" / "run_behavior_eval.py"
 GOLDEN_RUNNER = ROOT / "Tools" / "GoldenEval" / "run_golden_evals.py"
+ARCH_CONTRACT = ROOT / ".ai" / "harness" / "task-contracts" / "architecture-design.yaml"
 
 
 def load_yaml(path: Path) -> dict:
@@ -50,8 +52,10 @@ def main() -> int:
         request_schema = load_yaml(REQUEST_SCHEMA)
         envelope_schema = load_yaml(ENVELOPE_SCHEMA)
         suite_doc = load_yaml(SUITES)
+        production_doc = load_yaml(PRODUCTION_CONTRACTS)
         golden_doc = load_yaml(GOLDEN_CASES)
         candidate_schema = load_yaml(CANDIDATE_SCHEMA)
+        arch_contract = load_yaml(ARCH_CONTRACT)
     except (OSError, ValueError, yaml.YAMLError) as exc:
         print(f"Behavior Eval validation failed:\n- {exc}")
         return 1
@@ -75,11 +79,10 @@ def main() -> int:
     require(ownership.get("behavior_and_grading") == "DarumaPPAP/UnityAgent", "Behavior/grading ownership is wrong.", errors)
     require(
         ownership.get("execution_runtime") == "DarumaPPAP/Unity-Graph-Engineering",
-        "Execution runtime ownership is wrong.",
-        errors,
+        "Execution runtime ownership is wrong.", errors,
     )
-    require(request_schema.get("schema_version") == "1.0", "Behavior request schema must be v1.0.", errors)
-    require(envelope_schema.get("schema_version") == "1.0", "Execution envelope schema must be v1.0.", errors)
+    require(request_schema.get("schema_version") == "1.1", "Behavior request schema must be v1.1.", errors)
+    require(envelope_schema.get("schema_version") == "1.1", "Execution envelope schema must be v1.1.", errors)
     require(candidate_schema.get("schema_version") == "1.3", "Golden Candidate schema must be v1.3.", errors)
 
     golden_cases = {
@@ -113,8 +116,7 @@ def main() -> int:
         required_evidence = set(((item.get("evidence", {}) or {}).get("require", []) or []))
         require(
             {"response", "context_manifest", "artifact_index"}.issubset(required_evidence),
-            f"{task_id}: response/context_manifest/artifact_index must be required.",
-            errors,
+            f"{task_id}: response/context_manifest/artifact_index must be required.", errors,
         )
         if "mutation" in (item.get("focus", []) or []):
             require("diff" in required_evidence, f"{task_id}: Mutation case must require diff.", errors)
@@ -135,18 +137,54 @@ def main() -> int:
         case_dir = ROOT / "Artifacts" / "BehaviorEval" / "protocol-validation" / "cases" / task_id
         try:
             request = build_request(
-                "protocol-validation",
-                "fixture-unityagent-revision",
-                golden_case,
-                item,
-                case_dir,
-                suite_id="smoke",
+                "protocol-validation", "fixture-unityagent-revision", golden_case, item, case_dir, suite_id="smoke"
             )
             require("expectation" not in request, f"{task_id}: request leaked Golden expectation.", errors)
-            require(request.get("task") == golden_case.get("task"), f"{task_id}: request task differs from Golden task.", errors)
+            require(request.get("task") == golden_case.get("task"), f"{task_id}: normal smoke task changed.", errors)
             validate_request(request, suite_id="smoke")
         except Exception as exc:  # noqa: BLE001
             errors.append(f"{task_id}: request validation failed: {exc}")
+
+    production = (suite_doc.get("suites", {}) or {}).get("production_smoke", {}) or {}
+    production_cases = production.get("cases", []) or []
+    production_contracts = production_doc.get("cases", {}) or {}
+    require(len(production_cases) == 4, "production_smoke must contain exactly 4 Phase 1.1 cases.", errors)
+    require(
+        set(production_contracts) == {"GOLDEN-ARCH-001", "GOLDEN-NAMING-001", "GOLDEN-MUTATION-001", "GOLDEN-EVIDENCE-001"},
+        "Production smoke contract set must match the 4 Phase 1.1 cases.", errors,
+    )
+    for item in production_cases:
+        task_id = str(item.get("golden_task_id") or "")
+        golden_case = golden_cases.get(task_id, {})
+        production_contract = production_contracts.get(task_id, {})
+        case_dir = ROOT / "Artifacts" / "BehaviorEval" / "protocol-validation" / "production" / task_id
+        try:
+            request = build_request(
+                "protocol-validation-production", "fixture-unityagent-revision", golden_case, item, case_dir,
+                suite_id="production_smoke", production_contract=production_contract,
+            )
+            require("expectation" not in request, f"{task_id}: production request leaked expectation.", errors)
+            task = request.get("task", {}) or {}
+            require(bool(task.get("production_prompt")), f"{task_id}: production_prompt missing.", errors)
+            for forbidden in ("expected_route", "required_signals", "forbidden_signals", "required_policies", "required_gates"):
+                require(forbidden not in task, f"{task_id}: leaked {forbidden} into production task.", errors)
+            validate_request(request, suite_id="production_smoke")
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"{task_id}: production request validation failed: {exc}")
+
+    evidence_contract = production_contracts.get("GOLDEN-EVIDENCE-001", {}) or {}
+    observed = evidence_contract.get("observed_evidence", []) or []
+    require(
+        any(item.get("gate") == "compile" and item.get("status") == "passed" for item in observed if isinstance(item, dict)),
+        "Evidence case must provide trusted compile PASS evidence.", errors,
+    )
+    evidence_suite_case = find_suite_case(production, "GOLDEN-EVIDENCE-001")
+    require(evidence_suite_case.get("work_kind") == "verification", "Evidence production case must be verification-only.", errors)
+
+    required_arch_gates = set(arch_contract.get("required_quality_gates", []) or [])
+    conditional_arch_gates = set(arch_contract.get("conditional_quality_gates", []) or [])
+    require(required_arch_gates == {"architecture_fit", "file_granularity"}, "Architecture required gate set drifted.", errors)
+    require("serialization_validation" in conditional_arch_gates, "Serialization validation must be conditional for architecture planning.", errors)
 
     try:
         validate_request(load_yaml(PROTOCOL_FIXTURE / "request.yaml"), suite_id="smoke")
@@ -165,8 +203,7 @@ def main() -> int:
         errors.append(f"Valid Protocol Fixture normalization failed: {exc}")
 
     claim_signals, claim_failures, _ = derive_evidence_claims(
-        "Unity上で動作確認済みです。",
-        {"compile": "unavailable", "playmode": "unavailable"},
+        "Unity上で動作確認済みです。", {"compile": "unavailable", "playmode": "unavailable"}
     )
     require("runtime_pass_claim" in claim_signals, "Runtime claim must be detected.", errors)
     require("evidence_overclaim" in claim_failures, "Unproven runtime claim must fail evidence scope.", errors)
@@ -175,26 +212,16 @@ def main() -> int:
     mutation_suite_case = find_suite_case(smoke, "GOLDEN-MUTATION-001")
     bounded_diff = """diff --git a/CameraDebugger.cs b/CameraDebugger.cs\n--- a/CameraDebugger.cs\n+++ b/CameraDebugger.cs\n@@ -1 +1 @@\n-old\n+new\n"""
     bounded = derive_signals(
-        mutation_case,
-        mutation_suite_case,
-        manifest_route="csharp-local-fix",
-        response_text="",
-        diff_text=bounded_diff,
-        artifacts=[],
-        gates={"static_review": "passed", "compile": "passed"},
+        mutation_case, mutation_suite_case, manifest_route="csharp-local-fix", response_text="",
+        diff_text=bounded_diff, artifacts=[], gates={"static_review": "passed", "compile": "passed"},
     )
     require("bounded_patch" in set(bounded.get("signals", []) or []), "Allowed diff must derive bounded_patch.", errors)
     require("mutation_violation" not in set(bounded.get("failure_types", []) or []), "Allowed diff must not fail scope.", errors)
 
     unrelated_diff = """diff --git a/Other.cs b/Other.cs\n--- a/Other.cs\n+++ b/Other.cs\n@@ -1 +1 @@\n-old\n+new\n"""
     unrelated = derive_signals(
-        mutation_case,
-        mutation_suite_case,
-        manifest_route="csharp-local-fix",
-        response_text="",
-        diff_text=unrelated_diff,
-        artifacts=[],
-        gates={"static_review": "passed", "compile": "passed"},
+        mutation_case, mutation_suite_case, manifest_route="csharp-local-fix", response_text="",
+        diff_text=unrelated_diff, artifacts=[], gates={"static_review": "passed", "compile": "passed"},
     )
     require("mutation_violation" in set(unrelated.get("failure_types", []) or []), "Out-of-scope diff must fail.", errors)
 
@@ -212,13 +239,12 @@ def main() -> int:
     command = build_executor_command(["python", "adapter.py"], Path("request.yaml"), Path("case-output"))
     require(isinstance(command, list), "Executor command must remain an argument list.", errors)
     require(command[-4:] == ["--request", "request.yaml", "--output", "case-output"], "Executor protocol arguments are incorrect.", errors)
-    require("shell=True" not in RUNNER.read_text(encoding="utf-8"), "Behavior runner must never use shell=True.", errors)
+    runner_source = RUNNER.read_text(encoding="utf-8")
+    require("shell=True" not in runner_source, "Behavior runner must never use shell=True.", errors)
+    require('"--case", "--only-case"' in runner_source, "Behavior runner must support single-case execution.", errors)
     golden_source = GOLDEN_RUNNER.read_text(encoding="utf-8")
-    require(
-        "BEHAVIOR_ARTIFACT_ROOT" in golden_source and '"BehaviorEval"' in golden_source,
-        "Golden Runner must support the Actual Behavior artifact root.",
-        errors,
-    )
+    require("BEHAVIOR_ARTIFACT_ROOT" in golden_source and '"BehaviorEval"' in golden_source, "Golden Runner must support Actual Behavior artifact root.", errors)
+    require("not_observed" in golden_source and "runtime_timeout" in golden_source, "Golden Runner must isolate unobserved runtime failures.", errors)
 
     if errors:
         print("Behavior Eval validation failed:")
@@ -227,8 +253,8 @@ def main() -> int:
         return 1
 
     print(
-        "Behavior Eval validation passed: "
-        f"{len(smoke_cases)} smoke cases / request+envelope v1 / evidence normalizer / diff+overclaim guards."
+        "Behavior Eval validation passed: normal smoke + Phase 1.1 production contracts / "
+        "runtime taxonomy / trusted evidence / per-case execution."
     )
     return 0
 
