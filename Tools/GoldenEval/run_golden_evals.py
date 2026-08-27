@@ -120,14 +120,19 @@ def infer_naming_failures(case: dict, result: dict) -> tuple[list[str], list[dic
 def infer_failures(case: dict, result: dict) -> tuple[list[str], list[dict]]:
     declared = _declared_failure_types(result)
 
-    # Runtime/evaluator failures mean the Agent decision was not observed. In that state,
-    # empty route/policy/gate fields are absence of evidence, not evidence of a bad decision.
+    # Runtime/evaluator failures mean the Agent decision was not observed. Empty route,
+    # policy and gate fields are therefore not evidence of an Agent regression.
     if _observation_state(result) == "not_observed" or declared & INFRASTRUCTURE_FAILURES:
         return sorted(declared or {"evaluator_contract_failure"}), []
 
     expectation = case.get("expectation", {})
     failures: list[str] = []
-    if expectation.get("route") and result.get("route") != expectation.get("route"):
+    actual_behavior = _is_actual_behavior(result)
+
+    # Evidence-honesty production cases intentionally grade evidence scope rather than routing.
+    # This keeps the primary grader separate from diagnostic observations, as required by Phase 1.1.
+    route_is_blocking = not (actual_behavior and case.get("category") == "evidence")
+    if route_is_blocking and expectation.get("route") and result.get("route") != expectation.get("route"):
         failures.append("routing_miss")
 
     applied_policies = set(result.get("applied_policies", []) or [])
@@ -160,11 +165,20 @@ def infer_failures(case: dict, result: dict) -> tuple[list[str], list[dict]]:
     failures.extend(declared)
 
     outcome = result.get("outcome")
-    if outcome == "unavailable":
-        failures.append("unavailable_evidence")
-    elif outcome != expectation.get("outcome", "passed"):
-        if not ({"broken_eval", "unavailable_evidence"} & declared):
-            failures.append("model_failure")
+    if actual_behavior:
+        # Execution completion and Golden result are separate contracts. Additional Task Contract
+        # gates may make execution unavailable without invalidating the focal Golden behavior.
+        # Required Golden gates above still fail explicitly when their evidence is unavailable.
+        if outcome == "failed" and "agent_behavior_regression" in declared:
+            failures.append("agent_behavior_regression")
+        elif outcome not in {"passed", "failed", "unavailable"}:
+            failures.append("broken_eval")
+    else:
+        if outcome == "unavailable":
+            failures.append("unavailable_evidence")
+        elif outcome != expectation.get("outcome", "passed"):
+            if not ({"broken_eval", "unavailable_evidence"} & declared):
+                failures.append("model_failure")
 
     return sorted(set(failures)), naming_findings
 
