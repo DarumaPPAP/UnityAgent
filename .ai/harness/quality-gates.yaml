@@ -17,6 +17,10 @@ gates:
     proves:
       - selected_architecture_matches_confirmed_problem_and_constraints
       - simpler_candidates_were_considered
+      - simplest_cohesive_candidate_was_considered_first
+      - speculative_structure_is_not_required_by_the_selected_design
+      - abstractions_are_backed_by_confirmed_duplication_variation_or_boundary
+      - solid_principles_are_applied_conditionally_not_mechanically
       - rejected_alternatives_have_reasons
       - reevaluation_conditions_are_declared
     does_not_prove:
@@ -27,7 +31,9 @@ gates:
   file_granularity:
     proves:
       - every_new_file_has_a_split_reason
+      - each_new_primary_type_has_a_real_responsibility_or_boundary_reason
       - feature_local_types_were_considered_for_co_location
+      - property_level_type_proliferation_was_reviewed
       - speculative_abstractions_are_not_required_by_the_plan
     does_not_prove:
       - long_term_maintainability
@@ -231,7 +237,9 @@ gates:
   namespace_and_type_naming_review:
     proves:
       - generated_or_planned_names_follow_selected_naming_contract
+      - naming_is_reviewed_after_type_responsibility_and_structure_are_resolved
     does_not_prove:
+      - architecture_fit
       - runtime_behavior
 
   mcp_catalog_and_manifest_consistency:
