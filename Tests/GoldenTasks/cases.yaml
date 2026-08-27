@@ -980,3 +980,388 @@ cases:
   graders:
   - type: deterministic
     id: invariant_signals
+- id: GOLDEN-NAMING-001
+  category: naming
+  kind: regression
+  pair_id: naming-existing-owner
+  boundary: forbid
+  task:
+    summary: 既存CameraDebuggerへFar Clip変更検出を追加し既存責務内で完結する
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    - semantic_type_naming
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    - namespace_and_type_naming_review
+    required_signals: []
+    forbidden_signals: []
+    required_knowledge: []
+    naming:
+      required_type_names: []
+      forbidden_type_names:
+      - MainCameraFarClippingPlaneRuntimeValueChangeNotificationController
+      - CameraFarClipWatcher
+      required_identifiers: []
+      forbidden_identifiers: []
+      require_no_new_type: true
+      require_naming_gate: true
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: type_naming
+- id: GOLDEN-NAMING-002
+  category: naming
+  kind: regression
+  pair_id: naming-existing-owner
+  boundary: require
+  task:
+    summary: 独立したCamera runtime state tracking責務とSplit Reasonが確認された新規Type
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    - semantic_type_naming
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    - namespace_and_type_naming_review
+    required_signals: []
+    forbidden_signals: []
+    required_knowledge: []
+    naming:
+      required_type_names:
+      - CameraStateTracker
+      forbidden_type_names:
+      - CameraFarClipWatcher
+      required_identifiers: []
+      forbidden_identifiers: []
+      require_no_new_type: false
+      require_naming_gate: true
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: type_naming
+- id: GOLDEN-NAMING-003
+  category: naming
+  kind: regression
+  pair_id: naming-over-abbreviation
+  boundary: forbid
+  task:
+    summary: Camera debugging責務の新規Typeで短縮のためだけに略語を発明しない
+  expectation:
+    route: architecture-design
+    required_policies:
+    - semantic_type_naming
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    - namespace_and_type_naming_review
+    required_signals: []
+    forbidden_signals: []
+    required_knowledge: []
+    naming:
+      required_type_names:
+      - CameraDebugger
+      forbidden_type_names:
+      - CamDbg
+      required_identifiers: []
+      forbidden_identifiers: []
+      require_no_new_type: false
+      require_naming_gate: true
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: type_naming
+- id: GOLDEN-NAMING-004
+  category: naming
+  kind: regression
+  pair_id: naming-over-abbreviation
+  boundary: require
+  task:
+    summary: Camera debugging責務をReadableなType名で表す
+  expectation:
+    route: architecture-design
+    required_policies:
+    - semantic_type_naming
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    - namespace_and_type_naming_review
+    required_signals: []
+    forbidden_signals: []
+    required_knowledge: []
+    naming:
+      required_type_names:
+      - CameraDebugger
+      forbidden_type_names:
+      - CamDbg
+      required_identifiers: []
+      forbidden_identifiers: []
+      require_no_new_type: false
+      require_naming_gate: true
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: type_naming
+- id: GOLDEN-NAMING-005
+  category: naming
+  kind: regression
+  pair_id: naming-role-stacking
+  boundary: forbid
+  task:
+    summary: Camera debugging責務へManager Controller等のRole suffixを積み重ねない
+  expectation:
+    route: architecture-design
+    required_policies:
+    - semantic_type_naming
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    - namespace_and_type_naming_review
+    required_signals: []
+    forbidden_signals: []
+    required_knowledge: []
+    naming:
+      required_type_names:
+      - CameraDebugger
+      forbidden_type_names:
+      - CameraDebugManagerController
+      required_identifiers: []
+      forbidden_identifiers: []
+      require_no_new_type: false
+      require_naming_gate: true
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: type_naming
+- id: GOLDEN-NAMING-006
+  category: naming
+  kind: regression
+  pair_id: naming-role-stacking
+  boundary: require
+  task:
+    summary: Camera debuggingの主要Roleを一つに収束させる
+  expectation:
+    route: architecture-design
+    required_policies:
+    - semantic_type_naming
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    - namespace_and_type_naming_review
+    required_signals: []
+    forbidden_signals: []
+    required_knowledge: []
+    naming:
+      required_type_names:
+      - CameraDebugger
+      forbidden_type_names:
+      - CameraDebugManagerController
+      required_identifiers: []
+      forbidden_identifiers: []
+      require_no_new_type: false
+      require_naming_gate: true
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: type_naming
+- id: GOLDEN-NAMING-007
+  category: naming
+  kind: regression
+  pair_id: naming-namespace-redundancy
+  boundary: forbid
+  task:
+    summary: CameraDebugging namespace内でNamespace名をType名へ重複させない
+  expectation:
+    route: architecture-design
+    required_policies:
+    - semantic_type_naming
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    - namespace_and_type_naming_review
+    required_signals: []
+    forbidden_signals: []
+    required_knowledge: []
+    naming:
+      required_type_names:
+      - CameraStateTracker
+      forbidden_type_names:
+      - CameraDebuggingCameraStateTracker
+      required_identifiers:
+      - CameraDebugging
+      forbidden_identifiers: []
+      require_no_new_type: false
+      require_naming_gate: true
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: type_naming
+- id: GOLDEN-NAMING-008
+  category: naming
+  kind: regression
+  pair_id: naming-namespace-redundancy
+  boundary: require
+  task:
+    summary: CameraDebugging namespaceのContextを利用しつつSubjectを失わないType名
+  expectation:
+    route: architecture-design
+    required_policies:
+    - semantic_type_naming
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    - namespace_and_type_naming_review
+    required_signals: []
+    forbidden_signals: []
+    required_knowledge: []
+    naming:
+      required_type_names:
+      - CameraStateTracker
+      forbidden_type_names:
+      - CameraDebuggingCameraStateTracker
+      required_identifiers:
+      - CameraDebugging
+      forbidden_identifiers: []
+      require_no_new_type: false
+      require_naming_gate: true
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: type_naming
+- id: GOLDEN-NAMING-009
+  category: naming
+  kind: regression
+  pair_id: naming-property-proliferation
+  boundary: forbid
+  task:
+    summary: Far Clip Near Clip FOVが同じCamera runtime state tracking責務に属する
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    - semantic_type_naming
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    - namespace_and_type_naming_review
+    required_signals: []
+    forbidden_signals: []
+    required_knowledge: []
+    naming:
+      required_type_names:
+      - CameraStateTracker
+      forbidden_type_names:
+      - CameraFarClipTracker
+      - CameraNearClipTracker
+      - CameraFovTracker
+      required_identifiers: []
+      forbidden_identifiers: []
+      require_no_new_type: false
+      require_naming_gate: true
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: type_naming
+- id: GOLDEN-NAMING-010
+  category: naming
+  kind: regression
+  pair_id: naming-property-proliferation
+  boundary: require
+  task:
+    summary: 凝集したCamera runtime state tracking責務を一つのTypeで表す
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    - semantic_type_naming
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    - namespace_and_type_naming_review
+    required_signals: []
+    forbidden_signals: []
+    required_knowledge: []
+    naming:
+      required_type_names:
+      - CameraStateTracker
+      forbidden_type_names:
+      - CameraFarClipTracker
+      - CameraNearClipTracker
+      - CameraFovTracker
+      required_identifiers: []
+      forbidden_identifiers: []
+      require_no_new_type: false
+      require_naming_gate: true
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: type_naming
+- id: GOLDEN-NAMING-011
+  category: naming
+  kind: regression
+  pair_id: naming-existing-api-preservation
+  boundary: forbid
+  task:
+    summary: 既存Public Type LegacyCameraDebugControllerをNaming改善だけでRenameしないLocal変更
+  expectation:
+    route: architecture-design
+    required_policies:
+    - preserve_existing_structure
+    - semantic_type_naming
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    - namespace_and_type_naming_review
+    required_signals: []
+    forbidden_signals: []
+    required_knowledge: []
+    naming:
+      required_type_names:
+      - LegacyCameraDebugController
+      forbidden_type_names:
+      - CameraDebugger
+      required_identifiers: []
+      forbidden_identifiers: []
+      require_no_new_type: false
+      require_naming_gate: true
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: type_naming
+- id: GOLDEN-NAMING-012
+  category: naming
+  kind: regression
+  pair_id: naming-existing-api-preservation
+  boundary: require
+  task:
+    summary: 既存Public Typeを維持しつつ確認済み独立責務だけCameraStateTrackerとして新設する
+  expectation:
+    route: architecture-design
+    required_policies:
+    - preserve_existing_structure
+    - semantic_type_naming
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    - namespace_and_type_naming_review
+    required_signals: []
+    forbidden_signals: []
+    required_knowledge: []
+    naming:
+      required_type_names:
+      - LegacyCameraDebugController
+      - CameraStateTracker
+      forbidden_type_names:
+      - LegacyCameraDebugControllerManager
+      required_identifiers: []
+      forbidden_identifiers: []
+      require_no_new_type: false
+      require_naming_gate: true
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: type_naming
