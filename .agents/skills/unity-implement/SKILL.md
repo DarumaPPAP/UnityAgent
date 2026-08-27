@@ -7,7 +7,7 @@ allowed-tools:
   - Edit
   - Bash
 metadata:
-  version: "2.3.0"
+  version: "2.4.0"
   kind: operation
   entrypoint: false
   user_policy: .ai/user-policy.yaml
@@ -40,6 +40,7 @@ Read-only監査には対応Audit Skillを使う。
 5. 対象コード、直接依存、対象Projectから検出したFact
 6. 必要なProject Factが未解決の場合だけ`Specs/ProjectProfile.md`をFallbackとして読む
 7. `SkillReferences/ENGINEERING_DESIGN_PRINCIPLES.md`と適用されるCoding / Architecture / Rendering standards
+8. `SkillReferences/TYPE_NAMING_STANDARDS.md` when a new Type or explicit Type rename is part of the Task
 
 `Specs/ProjectProfile.md`はProject未接続または必要Factが取得できない場合のFallbackであり、検出済みProject Factや今回ユーザーが確認したFactを上書きしない。
 古いPolicy文書を現在のUser Policyへ上書き統合しない。
@@ -125,6 +126,19 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - コメントは`.ai/user-policy.yaml`のコメント体系に従い、日本語で意図、制約、所有権、寿命、危険箇所を必要な密度で書く。
 - Type / Responsibility / File Structureを確定してから命名を評価する。長いType名を短縮するためだけに追加Typeを作らない。
 
+新規Typeまたは明示Renameがある場合のみSemantic Type Naming Reviewを行う。
+
+- Readabilityを短さより優先する。
+- Type名が責務を正確に表す。
+- Namespace / Context redundancyを避ける。
+- UnityAgentが新しい略語を発明しない。
+- Role suffix stackingを避ける。
+- `Manager` / `Controller` / `Service` / `System`は実在責務がある場合だけ使用する。
+- LengthはReview TriggerでありHard Limitではない。
+- Existing Public / Serialized APIをNaming改善だけでRenameしない。
+
+既存Typeを触るだけのLocal FixではNaming Reviewを無理に発火させない。
+
 ### Step 5 — Self-review the diff
 
 確認項目:
@@ -146,6 +160,9 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - DRYがSyntax similarityだけを根拠にしていない
 - SOLIDが機械的Layering Ruleとして使われていない
 - NamingがArchitecture判断を逆方向に支配していない
+- 新規/明示Rename TypeがSemantic Type Naming Contractを満たす
+- Context redundancy / invented abbreviation / role suffix stackingがない
+- Existing APIをNaming理由だけで変更していない
 - コメントがProductionまたはLearning Profileに一致している
 
 ### Step 6 — Validate at the strongest available level
@@ -174,6 +191,7 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - 新規ファイルのSplit Reason
 - 保持または変更した互換性契約
 - Engineering Principles Review when structure was added
+- Semantic Type Naming Review when new or renamed Types were involved
 - Spec / Planとの差異
 - 実施した検証と結果
 - 未検証事項
@@ -190,6 +208,7 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - Unityコンパイル、Player、実機、性能を未実施のまま成功扱いしない。
 - 一般的Best PracticeでUser Policyを上書きしない。
 - SOLIDを理由に仕様外のLayer / Interface / Typeを追加しない。
+- Naming Contractを理由に既存Public / Serialized Typeを勝手にRenameしない。
 
 ## Checklist
 
@@ -205,6 +224,7 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - [ ] 最小の因果変更に限定した
 - [ ] 新規ファイルごとのSplit Reasonがある
 - [ ] DRY / SOLID由来の抽象化に確認済みの根拠がある
+- [ ] 新規/明示Rename TypeだけSemantic Namingを確認した
 - [ ] public/serialized/Shader契約を確認した
 - [ ] Diffを自己レビューした
 - [ ] コメントProfileを確認した
@@ -222,7 +242,9 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - SRPを理由にPropertyごとのTypeを作る。
 - 将来用にInterface / Base / Default implementationを先に作る。
 - 見た目が似たCodeをGeneric Helperへ早期共通化する。
-- 既存Serialized fieldを改名し、Prefab/Scene互換性を壊す。
+- 長いType名を意味不明な略語へ短縮する。
+- Manager / Controller / Serviceをsuffixとして積み重ねる。
+- 既存Serialized fieldやPublic TypeをNaming改善だけで改名し、互換性を壊す。
 - RendererFeature修正で無関係なShader Passを追加する。
 - Editorでコンパイルしていないのに「動作確認済み」と書く。
 - 性能に良さそうなコード変更を、実測済み最適化として報告する。
