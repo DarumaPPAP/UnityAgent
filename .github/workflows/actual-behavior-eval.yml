@@ -1,0 +1,50 @@
+name: Actual Behavior Eval
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  protocol:
+    name: Record-only protocol validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install YAML parser
+        run: python -m pip install --disable-pip-version-check pyyaml
+
+      - name: Validate Actual Behavior protocol
+        run: python Tools/BehaviorEval/validate_behavior_eval.py
+
+      - name: Build smoke execution requests
+        run: >-
+          python Tools/BehaviorEval/run_behavior_eval.py
+          --suite smoke
+          --request-only
+          --run-id protocol-${{ github.run_id }}
+          --unityagent-revision ${{ github.sha }}
+
+      - name: Explain execution boundary
+        run: |
+          echo "## Actual Behavior Eval" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "This Phase A workflow validates the UnityAgent protocol and emits smoke requests only." >> "$GITHUB_STEP_SUMMARY"
+          echo "No model or Agent execution occurs in this public repository workflow." >> "$GITHUB_STEP_SUMMARY"
+          echo "Production execution is owned by DarumaPPAP/Unity-Graph-Engineering." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload request bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: actual-behavior-protocol-${{ github.run_id }}
+          path: Artifacts/BehaviorEval/protocol-${{ github.run_id }}
+          if-no-files-found: error
+          retention-days: 7
