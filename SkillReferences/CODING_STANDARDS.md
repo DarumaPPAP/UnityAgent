@@ -12,6 +12,8 @@ Local Behaviorでは、System級のArchitecture分析へ進む前にUnity Lifecy
 
 命名はType / Responsibility / File Structureが確定した後に適用する。新規TypeやLayerの必要性をNaming都合から逆算しない。
 
+Semantic Type NamingのCanonical Sourceは`SkillReferences/TYPE_NAMING_STANDARDS.md`とする。新規Type、Architecture Proposal上のPlanned Type、明示的RenameではこのContractを適用する。既存Typeを触るだけのLocal FixへNaming Reviewを無条件に発火させない。
+
 ### Namespace resolution
 
 Namespaceは実装前に、次の優先順位で確定する。
@@ -48,7 +50,22 @@ Root Namespaceが未設定または不明な場合、プレースホルダーを
 - const: `SCREAMING_SNAKE_CASE`
 - custom struct: prefer `readonly struct` when semantics allow
 
-Formatting改善を理由にこれらの命名規則を変更しない。
+Formatting改善またはSemantic Naming導入を理由にこれらのcase conventionを変更しない。
+
+### Semantic type review
+
+新規Typeまたは明示Renameでは次を確認する。
+
+- Type NecessityがArchitectureで先に確認されている。
+- Readabilityを短さより優先している。
+- Type名が責務を正確に表す。
+- Namespace / Contextの重複を避けている。
+- UnityAgentが新しい略語を発明していない。
+- Role suffix stackingがない。
+- Property単位Type proliferationではない。
+- `Manager` / `Controller` / `Service` / `System`に実在責務がある。
+- 文字数だけをHard Failまたは意味を壊す短縮理由にしていない。
+- Existing Public / Serialized APIをNaming改善だけで変更していない。
 
 ## Formatting
 
