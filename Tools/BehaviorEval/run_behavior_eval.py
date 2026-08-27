@@ -70,6 +70,14 @@ def _safe_run_root(run_id: str) -> Path:
     return root
 
 
+def _create_fresh_run_root(run_root: Path) -> None:
+    if run_root.exists():
+        raise BehaviorRunError(
+            f"Behavior Eval run output is immutable and already exists: {_relative_to_root(run_root)}"
+        )
+    run_root.mkdir(parents=True, exist_ok=False)
+
+
 def build_request(
     run_id: str,
     unityagent_revision: str,
@@ -361,7 +369,7 @@ def main() -> int:
         revision = resolve_git_revision(args.unityagent_revision)
         run_id = args.run_id or make_run_id()
         run_root = _safe_run_root(run_id)
-        run_root.mkdir(parents=True, exist_ok=True)
+        _create_fresh_run_root(run_root)
     except (OSError, yaml.YAMLError, BehaviorRunError, ValueError) as exc:
         print(f"Behavior Eval setup failed: {exc}")
         return EXIT_BROKEN
@@ -380,7 +388,7 @@ def main() -> int:
             return EXIT_BROKEN
         task_categories[task_id] = str(golden_case.get("category") or "")
         case_dir = run_root / "cases" / task_id
-        case_dir.mkdir(parents=True, exist_ok=True)
+        case_dir.mkdir(parents=True, exist_ok=False)
 
         try:
             request = build_request(run_id, revision, golden_case, suite_case, case_dir, suite_id=args.suite)
