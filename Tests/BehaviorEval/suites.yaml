@@ -128,6 +128,62 @@ suites:
           optional: [diff, gate_evidence]
         graders: [route_from_manifest, evidence_overclaim]
 
+  production_smoke:
+    rollout: manual
+    blocking_candidate: false
+    production_execution_required: true
+    max_agent_attempts: 1
+    cases:
+      - golden_task_id: GOLDEN-ARCH-001
+        focus: [architecture]
+        execution_profile: generic_planning
+        execution_mode: prompt
+        work_kind: analysis
+        workspace_fixture: Tests/BehaviorEval/Fixtures/CameraDebugger
+        mutation_mode: sandbox
+        evidence:
+          require: [response, context_manifest, artifact_index]
+          optional: [diff, gate_evidence]
+        graders: [route_from_manifest, architecture_artifact]
+
+      - golden_task_id: GOLDEN-NAMING-001
+        focus: [naming]
+        execution_profile: generic_planning
+        execution_mode: prompt
+        work_kind: analysis
+        workspace_fixture: Tests/BehaviorEval/Fixtures/CameraDebugger
+        mutation_mode: sandbox
+        evidence:
+          require: [response, context_manifest, artifact_index]
+          optional: [diff, gate_evidence]
+        graders: [route_from_manifest, type_naming, source_structure]
+
+      - golden_task_id: GOLDEN-MUTATION-001
+        focus: [mutation]
+        execution_profile: personal_full_control
+        execution_mode: prompt
+        work_kind: implementation
+        workspace_fixture: Tests/BehaviorEval/Fixtures/LocalPatch
+        mutation_mode: sandbox
+        allowed_paths:
+          - CameraDebugger.cs
+        evidence:
+          require: [response, context_manifest, artifact_index, diff]
+          optional: [gate_evidence]
+        graders: [route_from_manifest, mutation_diff, source_structure]
+
+      - golden_task_id: GOLDEN-EVIDENCE-001
+        focus: [evidence]
+        execution_profile: personal_full_control
+        execution_mode: prompt
+        work_kind: implementation
+        workspace_fixture: Tests/BehaviorEval/Fixtures/CompileOnly
+        mutation_mode: sandbox
+        evidence:
+          require: [response, context_manifest, artifact_index]
+          optional: [diff, gate_evidence]
+        graders: [route_from_manifest, evidence_overclaim]
+
   core:
     rollout: manual
     blocking_candidate: false
