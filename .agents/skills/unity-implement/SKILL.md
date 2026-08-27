@@ -7,7 +7,7 @@ allowed-tools:
   - Edit
   - Bash
 metadata:
-  version: "2.2.0"
+  version: "2.3.0"
   kind: operation
   entrypoint: false
   user_policy: .ai/user-policy.yaml
@@ -39,7 +39,7 @@ Read-only監査には対応Audit Skillを使う。
 4. Feature `spec.md`、`plan.md`、`tasks.md`
 5. 対象コード、直接依存、対象Projectから検出したFact
 6. 必要なProject Factが未解決の場合だけ`Specs/ProjectProfile.md`をFallbackとして読む
-7. 適用されるCoding / Architecture / Rendering standards
+7. `SkillReferences/ENGINEERING_DESIGN_PRINCIPLES.md`と適用されるCoding / Architecture / Rendering standards
 
 `Specs/ProjectProfile.md`はProject未接続または必要Factが取得できない場合のFallbackであり、検出済みProject Factや今回ユーザーが確認したFactを上書きしない。
 古いPolicy文書を現在のUser Policyへ上書き統合しない。
@@ -91,11 +91,23 @@ Namespaceは既存コード、asmdef、検出済みProject Fact、ユーザー�
 ### Step 3 — Select the smallest causal change
 
 - 根因またはTask要件へ直接対応する。
-- `Single Cohesive Script First`を適用し、新規クラスより既存責務への局所変更を先に検討する。
+- Existing Ownerで解決できるかを最初に確認する。
+- KISSとして`Single Cohesive Script First` / Simplest Cohesive Solutionを適用し、新規クラスより既存責務への局所変更を先に検討する。
+- YAGNIとして現在要求に不要なStructureを追加しない。
 - 新規C#ファイルには具体的なSplit Reasonを要求する。
 - Controller、Manager、Profile、Fallback、Cache、Debug UIを仕様外で追加しない。
 - static状態やSingletonへ所有権を逃がさない。
 - 別問題を発見しても現在のPatchへ混ぜない。
+
+新規Type / Interface / Fileを追加する場合、次を確認する。
+
+- Existing Ownerへ含められない実在理由がある。
+- KISSを満たし、より単純で凝集した候補を先に検討した。
+- YAGNI違反のSpeculative Structureではない。
+- Type / Fileに実在するResponsibility / Owner / Lifetime / Boundary / Split Reasonがある。
+- DRY共通化ならProven Knowledge Duplicationと同一Change Reasonが確認済みである。
+- SOLID由来の抽象化なら実在するVariation / Boundary / Dependency理由がある。
+- SRPをPropertyまたはMethod単位のType分割として使用していない。
 
 Shader変更はRule ID、Confirmed Finding、または明示されたユーザー目標を根拠にする。
 
@@ -111,6 +123,7 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - `Namespace`、`RootNamespace`、`<RootNamespace>`、`CHANGE_ME`をC# namespace、asmdef名、`rootNamespace`、Assembly参照へ出力しない。
 - 先頭または末尾が`.`のnamespaceを生成しない。
 - コメントは`.ai/user-policy.yaml`のコメント体系に従い、日本語で意図、制約、所有権、寿命、危険箇所を必要な密度で書く。
+- Type / Responsibility / File Structureを確定してから命名を評価する。長いType名を短縮するためだけに追加Typeを作らない。
 
 ### Step 5 — Self-review the diff
 
@@ -126,6 +139,13 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - Shader state、Queue、Pass、Keyword
 - Debug codeと一時ログの残存
 - 新規ファイルごとのSplit Reason
+- speculative abstractionがない
+- Property単位Type proliferationがない
+- 1実装Interfaceを理由なく追加していない
+- Pattern名だけを理由にClassを追加していない
+- DRYがSyntax similarityだけを根拠にしていない
+- SOLIDが機械的Layering Ruleとして使われていない
+- NamingがArchitecture判断を逆方向に支配していない
 - コメントがProductionまたはLearning Profileに一致している
 
 ### Step 6 — Validate at the strongest available level
@@ -153,6 +173,7 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - 使用したnamespaceとAssembly名
 - 新規ファイルのSplit Reason
 - 保持または変更した互換性契約
+- Engineering Principles Review when structure was added
 - Spec / Planとの差異
 - 実施した検証と結果
 - 未検証事項
@@ -168,6 +189,7 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - 未確定のRoot Namespaceをプレースホルダーで埋めない。
 - Unityコンパイル、Player、実機、性能を未実施のまま成功扱いしない。
 - 一般的Best PracticeでUser Policyを上書きしない。
+- SOLIDを理由に仕様外のLayer / Interface / Typeを追加しない。
 
 ## Checklist
 
@@ -175,11 +197,14 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - [ ] `.ai/user-policy.yaml`を適用した
 - [ ] Changed filesとNon-goalsを確認した
 - [ ] 必要な規約だけを読んだ
+- [ ] Existing OwnerとSimplest Cohesive Solutionを先に確認した
+- [ ] Speculative Structureを追加していない
 - [ ] Namespaceとasmdef名を既存コード、asmdef、検出済みFactから確定した
 - [ ] Project Profileを使用した場合は未解決FactのFallbackとしてのみ使用した
 - [ ] Namespace placeholderが残っていない
 - [ ] 最小の因果変更に限定した
 - [ ] 新規ファイルごとのSplit Reasonがある
+- [ ] DRY / SOLID由来の抽象化に確認済みの根拠がある
 - [ ] public/serialized/Shader契約を確認した
 - [ ] Diffを自己レビューした
 - [ ] コメントProfileを確認した
@@ -194,6 +219,9 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - asmdefの`name`だけ直し、`rootNamespace`やAssembly参照を更新しない。
 - 指定Taskを終えた勢いで後続Taskも実装する。
 - 小さな修正のために新しいControllerやManagerを作る。
+- SRPを理由にPropertyごとのTypeを作る。
+- 将来用にInterface / Base / Default implementationを先に作る。
+- 見た目が似たCodeをGeneric Helperへ早期共通化する。
 - 既存Serialized fieldを改名し、Prefab/Scene互換性を壊す。
 - RendererFeature修正で無関係なShader Passを追加する。
 - Editorでコンパイルしていないのに「動作確認済み」と書く。
