@@ -1,0 +1,5 @@
+# Empty Feature Behavior Eval Fixture
+
+新規Typeが本当に必要なCaseだけで使用する最小Sandbox Fixture。
+
+Production側のProject構造やNamespaceを推測する材料は置かない。Golden Taskの要求とProduction Execution Pathで解決されたContextだけを使用する。

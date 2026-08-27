@@ -1,0 +1,19 @@
+schema_version: "1.0"
+run_id: behavior-fixture-valid
+golden_task_id: GOLDEN-NAMING-003
+unityagent_revision: fixture-unityagent-revision
+task:
+  summary: Camera debugging責務の新規Typeで短縮のためだけに略語を発明しない
+execution:
+  mode: prompt
+  profile: generic_planning
+  work_kind: analysis
+  max_agent_attempts: 1
+workspace:
+  fixture: Tests/BehaviorEval/Fixtures/EmptyFeature
+  mutation_mode: sandbox
+evidence:
+  require: [response, context_manifest, artifact_index]
+  optional: [diff, gate_evidence]
+result_root: Artifacts/BehaviorEval/behavior-fixture-valid/cases/GOLDEN-NAMING-003
+suite: smoke

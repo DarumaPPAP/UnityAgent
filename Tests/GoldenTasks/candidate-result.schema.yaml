@@ -1,4 +1,4 @@
-schema_version: "1.2"
+schema_version: "1.3"
 kind: unityagent_golden_candidate_result_schema
 
 result_fields:
@@ -15,18 +15,37 @@ result_fields:
   attempt_count: optional
   manifest_path: optional
   generated_artifacts: []
+  execution: optional
 
 generated_artifact_fields:
   path: required
   language: required
   kind: required
 
+execution_fields:
+  mode:
+    optional: true
+    allowed:
+      - actual_behavior
+  run_id: optional
+  execution_fingerprint: optional
+  evidence_provenance: optional
+  evidence_coverage: optional
+  behavior_findings: optional
+  structure: optional
+  execution_owner: optional
+
 rules:
-  generated_artifact_must_be_inside_golden_artifact_root: true
+  default_generated_artifact_root: Artifacts/GoldenEval
+  actual_behavior_generated_artifact_root: Artifacts/BehaviorEval
+  generated_artifact_root_is_selected_by_execution_mode: true
   path_traversal_is_forbidden: true
   missing_generated_artifact_is_broken_eval: true
   unsupported_language_is_not_naming_evidence: true
   candidate_declared_identifier_names_are_not_artifact_evidence: true
+  actual_behavior_candidate_must_be_evidence_derived: true
+  agent_self_report_is_not_actual_behavior_provenance: true
+  execution_provenance_is_backward_compatible_optional: true
 
 failure_types_allowed:
   - routing_miss

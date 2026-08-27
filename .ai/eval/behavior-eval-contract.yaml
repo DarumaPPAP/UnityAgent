@@ -1,0 +1,158 @@
+schema_version: "1.0"
+status: authoritative
+purpose: actual_UnityAgent_behavior_is_evaluated_from_execution_evidence_against_existing_golden_expectations
+
+ownership:
+  behavior_and_grading: DarumaPPAP/UnityAgent
+  execution_runtime: DarumaPPAP/Unity-Graph-Engineering
+
+rules:
+  production_execution_path_required: true
+  evaluation_specific_agent_behavior_forbidden: true
+  actual_behavior_requires_execution_evidence: true
+  agent_self_report_is_supporting_evidence_only: true
+  one_agent_attempt_for_smoke: true
+  infrastructure_retry_must_be_recorded: true
+  unavailable_is_not_passed: true
+  broken_eval_is_not_model_failure: true
+  generated_results_are_not_canonical_policy: true
+  mutation_requires_sandbox: true
+  main_workspace_mutation_forbidden: true
+  provider_sdk_dependency_in_UnityAgent_forbidden: true
+  provider_auth_owned_by_execution_owner: true
+  retry_policy_owned_by_execution_owner: true
+  full_suite_on_every_pr_forbidden: true
+  exact_generated_response_match_forbidden: true
+
+production_path:
+  execution_owner: DarumaPPAP/Unity-Graph-Engineering
+  unityagent_owns_model_runtime: false
+  unityagent_owns_loop_or_retry_scheduler: false
+  unityagent_owns_graph_execution_engine: false
+  executor_protocol: external_command
+  executor_shell_mode: false
+
+evidence_priority:
+  - generated_artifact_or_diff
+  - context_manifest
+  - quality_gate_evidence
+  - execution_envelope
+  - structured_agent_output
+  - agent_self_report
+
+evidence_bundle:
+  root: Artifacts/BehaviorEval
+  case_files:
+    - request.yaml
+    - execution-envelope.yaml
+    - context-manifest.yaml
+    - response.md
+    - candidate-result.yaml
+    - diff.patch
+    - artifact-index.yaml
+    - grader-result.json
+    - generated
+  raw_artifacts_are_canonical_policy: false
+
+request_contract:
+  schema: Tests/BehaviorEval/behavior-eval-request.schema.yaml
+  version: "1.0"
+  golden_expectation_must_not_be_sent_to_executor: true
+
+envelope_contract:
+  schema: Tests/BehaviorEval/execution-envelope.schema.yaml
+  version: "1.0"
+  unknown_provider_or_model_revision_must_be_reported_unavailable: true
+
+suite_contract:
+  source: Tests/BehaviorEval/suites.yaml
+  golden_task_source: Tests/GoldenTasks/cases.yaml
+  golden_task_remains_accepted_behavior_source_of_truth: true
+  suite_contains_execution_conditions_only: true
+
+candidate_result:
+  schema: Tests/GoldenTasks/candidate-result.schema.yaml
+  mode: actual_behavior
+  normalizer: Tools/BehaviorEval/normalize_result.py
+  critical_signals_must_be_evidence_derived: true
+  agent_written_candidate_result_is_not_accepted_as_actual_behavior_evidence: true
+
+graders:
+  priority:
+    - deterministic
+    - domain_specific
+    - human_or_model
+  deterministic_failure_cannot_be_overridden_by_model_grader: true
+  signal_extractor: Tools/BehaviorEval/derive_signals.py
+  golden_runner: Tools/GoldenEval/run_golden_evals.py
+
+run_statuses:
+  - passed
+  - regression
+  - inconclusive
+  - broken_eval
+
+exit_codes:
+  passed: 0
+  regression: 10
+  inconclusive: 20
+  broken_eval: 30
+
+failure_taxonomy:
+  reuse_existing: true
+  allowed:
+    - routing_miss
+    - context_miss
+    - policy_violation
+    - harness_violation
+    - mutation_violation
+    - evidence_overclaim
+    - model_failure
+    - broken_eval
+    - unavailable_evidence
+
+flakiness:
+  smoke_agent_attempts: 1
+  retry_must_not_hide_behavior_regression: true
+  zero_tolerance:
+    - policy_violation
+    - mutation_violation
+    - evidence_overclaim
+    - prohibited_new_type
+    - prohibited_rename
+    - forbidden_path_mutation
+  soft_metrics:
+    - response_verbosity
+    - token_count
+    - duration
+    - non_critical_warning_count
+
+v1_case_types:
+  - text_response
+  - architecture_proposal
+  - csharp_source_generation
+  - bounded_csharp_patch
+
+ci_rollout:
+  current_phase: record_only
+  static_contract_ci_remains_separate: true
+  manual_workflow: .github/workflows/actual-behavior-eval.yml
+  pull_request_blocking: false
+  full_suite_per_pull_request: false
+  blocking_promotion_requires_pilot_evidence: true
+
+metrics:
+  - actual_behavior_pass_rate
+  - actual_first_pass_rate
+  - critical_invariant_pass_rate
+  - route_accuracy
+  - context_accuracy
+  - policy_violation_rate
+  - mutation_violation_rate
+  - evidence_overclaim_rate
+  - naming_regression_rate
+  - architecture_regression_rate
+  - artifact_evidence_coverage
+  - inconclusive_rate
+  - broken_eval_rate
+  - execution_duration

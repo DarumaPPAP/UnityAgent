@@ -27,7 +27,8 @@
 7. `.ai/harness/`のMutation Contract、Risk、Required Quality Gateで検証し、Evidenceを`passed` / `failed` / `unavailable`で返す。未検証範囲を成功扱いしない。
 8. Primary Routeを使うDomain Taskでは`.ai/context-manifest.schema.yaml`に従うContext Manifestを生成し、Budget Report、stable ID、typed edge、provenanceを保持する。単純read-only説明だけは省略可能。
 9. User Policy、Routing、Context Pack、Context Budget、Task Contract、Quality Gate、Eval Contract変更時は`.ai/eval/`と`Tests/GoldenTasks/`のRegressionを確認する。
-10. Loop / Graph / Retry / Model・Execution Budget / Checkpoint / Human Gateは`DarumaPPAP/Unity-Graph-Engineering`へ委譲する。
+10. Actual Behavior Evalを実行する場合は`.ai/eval/behavior-eval-contract.yaml`と`Tests/BehaviorEval/suites.yaml`を使い、UnityAgentはRequest / Evidence Normalization / Deterministic Grading / Regression判定だけを所有する。実Agent実行は`DarumaPPAP/Unity-Graph-Engineering`のProduction Execution Pathへ委譲する。
+11. Loop / Graph / Retry / Model・Execution Budget / Checkpoint / Human Gateは`DarumaPPAP/Unity-Graph-Engineering`へ委譲する。
 
 ## 3. Canonical map
 
@@ -38,6 +39,7 @@
 | Context | `.ai/context-packs/` + `.ai/context-budget.yaml` | Required / Conditional / Excluded Context、Budget、Compression |
 | Trace / Graph | `.ai/context-manifest.schema.yaml` + `.ai/graph-contract.yaml` | Attempt、Evidence、Definition / Execution / Regression Graph |
 | Golden Regression | `.ai/eval/` + `Tests/GoldenTasks/` | Accepted Behavior、Boundary Pair、Grader、Failure Taxonomy |
+| Actual Behavior Eval | `.ai/eval/behavior-eval-contract.yaml` + `Tests/BehaviorEval/` + `Tools/BehaviorEval/` | Production Execution Evidenceの要求、正規化、実挙動Regression判定 |
 | Knowledge | `.ai/knowledge/` | AI実装用の圧縮Knowledge Contract |
 | Harness | `.ai/harness/` | Task Contract、Mutation、Risk、Quality Gate、MCP Activation |
 | Domain Skills | `.agents/skills/` | Unity固有の実装・調査・監査手順 |
@@ -48,15 +50,15 @@
 
 ## 4. Repository ownership
 
-- `DarumaPPAP/UnityAgent`: User Policy、Context、Context Budget、Unity Harness、Domain Skill、Validator、Golden Eval、Context Manifest Runtime、Graph Projection Contract。
-- `DarumaPPAP/Unity-Graph-Engineering`: Execution Mode、Loop / Graph、Retry、State、Model・Execution Budget、Checkpoint、Human Gate。
+- `DarumaPPAP/UnityAgent`: User Policy、Context、Context Budget、Unity Harness、Domain Skill、Validator、Golden Eval、Actual Behavior Eval Contract / Suite / Normalizer / Grader、Context Manifest Runtime、Graph Projection Contract。
+- `DarumaPPAP/Unity-Graph-Engineering`: Execution Mode、Production Agent Execution、Loop / Graph、Retry、State、Model・Execution Budget、Quota、Checkpoint、Human Gate、Execution Evidence transport。
 - `DarumaPPAP/MyUnityMCP`: UnityAgentMCP、Creator Workflow、Capability、Catalog、Manifest、Tool Schema、Package実装。
 - `DarumaPPAP/UnityAIGC-Archive`: 製品コード、製品仕様、導入資料。
 - `DarumaPPAP/Beautiful-Definition`: Visual Intent、Beauty Definition、Human feedback。
 - `DarumaPPAP/Unity-Knowledge-Products`: 人間向け詳細解説、比較、実験、Decision。
 - Google Drive: PDF、PowerPoint、画像、動画、Profiler / GPU Capture等の原資料。
 
-UnityAgent内へ通常の製品コードやMCP Package実装を複製しません。
+UnityAgent内へ通常の製品コード、MCP Package実装、Model Runtime、Eval専用Execution Engineを複製しません。
 
 ## 5. Context / Harness guards
 
@@ -78,6 +80,7 @@ UnityAgent内へ通常の製品コードやMCP Package実装を複製しませ�
 - Golden TaskはAccepted Behaviorと判断境界を保持するRegression Asset。完成Sourceの文字列完全一致を既定Graderにしない。
 - Deterministic Graderを優先し、`require` / `forbid`のBoundary Pairを維持する。`unavailable`をPASSにせず、Agent失敗と`broken_eval`を区別する。
 - Generated Eval ResultとRegression Graphは`Artifacts/GoldenEval/`へ置き、Canonical Policyへ昇格させない。
+- Actual BehaviorのRequest / Envelope / Response / Diff / Generated Artifact / Reportは`Artifacts/BehaviorEval/`へ置く。Agent Self-reportを主要Evidenceにせず、Raw Behavior ArtifactをCanonical Policyへ昇格させない。
 
 ## 7. Domain detail entrypoints
 
@@ -89,6 +92,7 @@ UnityAgent内へ通常の製品コードやMCP Package実装を複製しませ�
 - Comments: `.ai/user-policy.yaml#comment_system` + 対応Comment Skill
 - Visual Direction: `unity-visual-direction` + 必要なBeautiful-Definition Reference
 - Golden Regression: `.ai/eval/golden-eval-contract.yaml`、`Tests/GoldenTasks/`、`Tools/GoldenEval/`
+- Actual Behavior Eval: `.ai/eval/behavior-eval-contract.yaml`、`Tests/BehaviorEval/`、`Tools/BehaviorEval/`
 
 ## 8. Completion handoff
 
@@ -102,3 +106,4 @@ Execution Ownerへ、適用Policy / Profile / Task Fingerprint / Route / Context
 - Accepted BehaviorやBoundary Pairを黙って削除・緩和しない。
 - Graph ProjectionをCanonical Policyへ昇格させず、stable node ID、typed edge、provenanceを維持する。
 - 削除済みLegacy Adapterを復活させず、Context BudgetをModel Billing / Loop Budgetの正本へ拡張しない。
+- Actual Behavior EvalのためにEval専用Agent Route、Model Runtime、Retry Loop、Execution EngineをUnityAgentへ追加しない。

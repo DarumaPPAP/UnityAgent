@@ -11,6 +11,7 @@ on:
       - "Tools/**"
       - "Tests/**"
       - ".github/workflows/validate-agent-contracts.yml"
+      - ".github/workflows/actual-behavior-eval.yml"
   push:
     branches:
       - main
@@ -23,6 +24,7 @@ on:
       - "Tools/**"
       - "Tests/**"
       - ".github/workflows/validate-agent-contracts.yml"
+      - ".github/workflows/actual-behavior-eval.yml"
 
 jobs:
   validate:
