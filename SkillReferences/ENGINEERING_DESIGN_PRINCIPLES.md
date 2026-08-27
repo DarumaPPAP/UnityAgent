@@ -4,7 +4,7 @@
 
 UnityAgentが新規実装またはArchitecture判断を行う際、命名やPattern名から設計を開始せず、現在の要求を満たす最も単純で凝集した構造から判断するためのCanonical Referenceである。
 
-この文書はKISS / YAGNI / DRY / SOLIDの適用順と意味を定義する。詳細なUnity構造選定は`ARCHITECTURE_DECISION_POLICY.md`、実装規約は`CODING_STANDARDS.md`へ委譲する。
+この文書はKISS / YAGNI / DRY / SOLIDの適用順と意味を定義する。詳細なUnity構造選定は`ARCHITECTURE_DECISION_POLICY.md`、実装規約は`CODING_STANDARDS.md`、Architecture確定後のSemantic Type Namingは`TYPE_NAMING_STANDARDS.md`へ委譲する。
 
 ## 2. Principle Priority
 
@@ -44,7 +44,7 @@ DRY / Conditional SOLID
 ↓
 Type / File Structure
 ↓
-Naming
+Type Naming Contract
 ```
 
 Goalは、現在の要求を満たす最も単純で凝集した構造を最初に選び、実在する重複・変更軸・境界が確認された場合だけ抽象化し、その設計結果に対して名前を付けることである。
@@ -208,7 +208,7 @@ flowchart TD
     M -->|No| O["追加抽象化しない"]
     N --> P["Type / File Structure確定"]
     O --> P
-    P --> Q["Naming"]
+    P --> Q["Type Naming Contract"]
 ```
 
 ## 9. Abstraction Triggers
@@ -249,9 +249,12 @@ flowchart TD
 3. Property単位で過剰分割していないか。
 4. 複数責務を名前へ詰め込んでいないか。
 5. Speculative abstractionではないか。
-6. Role suffixが設計不足を隠していないか。
+6. Context / Namespace重複がないか。
+7. Role suffixが設計不足を隠していないか。
 
-Type / Responsibility / File Structureが確定した後にNaming Contractまたは現行命名規則を適用する。
+Type / Responsibility / File Structureが確定した後、新規Type、Planned Type、明示Renameへ`SkillReferences/TYPE_NAMING_STANDARDS.md`を適用する。
+
+Naming ContractはArchitecture correctnessを代替しない。Naming Reviewで構造上の疑いが見つかった場合はArchitecture判断へ戻り、Type NecessityとResponsibilityを再確認する。
 
 ## 12. Checklist
 
@@ -265,6 +268,7 @@ Type / Responsibility / File Structureが確定した後にNaming Contractまた
 - [ ] SOLIDを機械的Layering Ruleとして使用していない。
 - [ ] 新規Type / Fileに実在する責務またはBoundary理由がある。
 - [ ] NamingをArchitecture確定後に適用した。
+- [ ] 新規/明示Rename TypeはSemantic Type Naming Contractを満たす。
 
 ## 13. Common Mistakes
 
@@ -277,6 +281,7 @@ Type / Responsibility / File Structureが確定した後にNaming Contractまた
 - ISPでInterfaceを細分化してから必要性を考える。
 - DIPでLocal BehaviorへDIを導入する。
 - Naming Ruleで設計不足を隠す。
+- 長い名前を意味不明な略語へ機械的に短縮する。
 
 ## 14. Final Rule
 
