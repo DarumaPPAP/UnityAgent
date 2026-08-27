@@ -237,10 +237,17 @@ gates:
   namespace_and_type_naming_review:
     proves:
       - generated_or_planned_names_follow_selected_naming_contract
-      - naming_is_reviewed_after_type_responsibility_and_structure_are_resolved
+      - type_naming_occurs_after_responsibility_and_structure_are_resolved
+      - contextual_redundancy_was_reviewed
+      - unexplained_abbreviation_was_reviewed
+      - role_suffix_stacking_was_reviewed
+      - namespace_repetition_was_reviewed
+      - excessive_length_triggered_responsibility_review
+      - existing_public_or_serialized_names_were_preserved_unless_rename_was_requested
     does_not_prove:
-      - architecture_fit
       - runtime_behavior
+      - architecture_correctness_by_itself
+      - semantic_correctness_of_domain_terms_without_context
 
   mcp_catalog_and_manifest_consistency:
     proves:
