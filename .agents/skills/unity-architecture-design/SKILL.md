@@ -7,12 +7,14 @@ allowed-tools:
   - Edit
   - Bash
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # Unity Architecture Design
 
-Unityの設計をPattern名から決めず、最初に問題規模を判定する。Local BehaviorはUnity Lifecycleと既存APIで解決できるかを優先し、重いArchitecture分析は必要な規模にだけ適用する。
+Unityの設計をPattern名から決めず、最初に問題規模とExisting Ownerを判定する。Local BehaviorはUnity Lifecycleと既存APIで解決できるかを優先し、重いArchitecture分析は必要な規模にだけ適用する。
+
+設計判断は`ENGINEERING_DESIGN_PRINCIPLES.md`の順序に従い、KISS / YAGNIを先に適用する。SOLIDは実在する責務・Variation・Boundary・Dependencyがある場合だけ選択的に使用する。
 
 ## When to use
 
@@ -30,18 +32,19 @@ Unityの設計をPattern名から決めず、最初に問題規模を判定す�
 
 ## Required references
 
-1. `SkillReferences/ARCHITECTURE_DECISION_POLICY.md`
-2. `SkillReferences/ARCHITECTURE_STANDARDS.md`
-3. `SkillReferences/CODING_STANDARDS.md`
-4. `SkillReferences/CODE_FORMATTING_STANDARDS.md` when C# output is produced
-5. 対象Sourceと直接依存
-6. ECS、Rendering、UI等の条件付きReference
+1. `SkillReferences/ENGINEERING_DESIGN_PRINCIPLES.md`
+2. `SkillReferences/ARCHITECTURE_DECISION_POLICY.md`
+3. `SkillReferences/ARCHITECTURE_STANDARDS.md`
+4. `SkillReferences/CODING_STANDARDS.md`
+5. `SkillReferences/CODE_FORMATTING_STANDARDS.md` when C# output is produced
+6. 対象Sourceと直接依存
+7. ECS、Rendering、UI等の条件付きReference
 
 全Pattern、全Skill、全Referenceを一括で読まない。
 
 ## Workflow
 
-### Step 1 — Scopeを分類する
+### Step 1 — ScopeとExisting Ownerを分類する
 
 次から最も近いものを一つ選ぶ。
 
@@ -52,6 +55,8 @@ Unityの設計をPattern名から決めず、最初に問題規模を判定す�
 - Data-parallel Simulation
 
 ファイル数や行数ではなく、所有範囲、変更範囲、実行モデルで判断する。
+
+同時に、要求が既存Type / Component / Assetの責務へ自然に含められるか確認する。既存Ownerで解決できる場合、新規Typeを既定候補にしない。
 
 ### Step 2 — Local Behavior Fast Path
 
@@ -84,10 +89,13 @@ Local Behaviorの出力は次へ縮小する。
 - Side Effect / Restore
 - Validation
 
-### Step 3 — Minimum Cohesive Solutionを評価する
+4原則を導入したことでLocal Behaviorの分析量を増やしてはならない。
+
+### Step 3 — KISS: Simplest Cohesive Solutionを評価する
 
 Fast Pathで完結しない場合も、最初に次で成立するか検討する。
 
+- 既存Ownerへの局所変更
 - 1 MonoBehaviour
 - 1 Plain C# Type
 - 1 ECS Feature File
@@ -95,7 +103,31 @@ Fast Pathで完結しない場合も、最初に次で成立するか検討す�
 
 成立する場合は、Pattern適用のためだけに層を増やさない。
 
-### Step 4 — OwnershipとLifetimeを固定する
+### Step 4 — YAGNI Review
+
+候補Structureから、現在要求ではなく将来予測だけで追加された要素を除外する。
+
+特に次を確認する。
+
+- Interface / Abstract Base
+- Manager / Controller / Service
+- Registry / Factory / Strategy
+- Profile / ScriptableObject
+- Event Bus / Cache / Watcher
+- Generic Target / Platform abstraction
+- Dependency Injection layer
+
+「将来必要になるかもしれない」は維持理由にならない。
+
+### Step 5 — Cohesion / SRPを確認する
+
+SRPをPropertyまたはMethod単位の分割規則として扱わない。
+
+- 同じ責務またはChange Reasonへ属する状態と処理は凝集させる。
+- 新規Typeには独立したResponsibility、Owner、Lifetime、Boundaryのいずれかを要求する。
+- Property-level Type Proliferationを行わない。
+
+### Step 6 — OwnershipとLifetimeを固定する
 
 Feature / System以上、またはResource寿命が実際に問題になる場合に確認する。
 
@@ -111,7 +143,7 @@ Feature / System以上、またはResource寿命が実際に問題になる場�
 
 未解決項目はBindingとして記録し、名前やPathを推測しない。
 
-### Step 5 — Change Axisを特定する
+### Step 7 — Change AxisとProven Duplicationを特定する
 
 実際に独立して変化するものだけを列挙する。
 
@@ -126,7 +158,20 @@ Feature / System以上、またはResource寿命が実際に問題になる場�
 
 「将来変わるかもしれない」はVariation Axisにしない。
 
-### Step 6 — 必要な場合だけ2～4候補を比較する
+DRYは、見た目が似たCodeではなく、同じKnowledge / Rule / Change Reasonが実際に重複している場合だけ検討する。
+
+### Step 8 — Conditional SOLIDを適用する
+
+必要な原則だけを使う。
+
+- OCP: 実在するVariation Axisがある場合。
+- LSP: Inheritance / Interfaceを採用した後の置換可能性検証。
+- ISP: Interfaceの必要性が確定した後のConsumer依存分離。
+- DIP: Project Infrastructure、外部SDK、Backend、I/O等の実在Boundaryがある場合。
+
+SOLIDをPattern完成やClass増加の理由にしない。
+
+### Step 9 — 必要な場合だけ2～4候補を比較する
 
 Local Behavior Fast Pathで完結した場合は候補比較を行わない。
 
@@ -147,7 +192,7 @@ Feature / System以上で構造選定が必要な場合のみ、問題に適合�
 
 各候補について利点、欠点、Runtime Cost、Authoring Cost、Migration Costを簡潔に示す。
 
-### Step 7 — ECS Opportunity Check
+### Step 10 — ECS Opportunity Check
 
 データ並列処理では、次の成立数を確認する。
 
@@ -163,7 +208,7 @@ Feature / System以上で構造選定が必要な場合のみ、問題に適合�
 3項目以上ならECSまたはJobs/Burst案を候補から除外しない。
 本番採用時はGameObject Baseline、Jobs/Burst、ECSの比較Evidenceを要求する。
 
-### Step 8 — File Planを作る
+### Step 11 — File Planを作る
 
 新規ファイルが複数必要な場合、各ファイルへ次を記載する。
 
@@ -178,7 +223,13 @@ Feature / System以上で構造選定が必要な場合のみ、問題に適合�
 
 同一ファイルへ保持する型と、意図的に作らない型も記載する。
 
-### Step 9 — Quality Gate
+### Step 12 — Namingを最後に適用する
+
+Type / Responsibility / File Structureが正当化された後にNamingを適用する。
+
+長いType名が出た場合は、短縮より先にType自体の必要性、過剰分割、複数責務、Speculative abstractionを再確認する。
+
+### Step 13 — Quality Gate
 
 - Architecture Fit
 - File Granularity
@@ -187,7 +238,7 @@ Feature / System以上で構造選定が必要な場合のみ、問題に適合�
 - ECS Data Layout when applicable
 - Performance Capture when Production performance adoption
 
-### Step 10 — Decisionを返す
+### Step 14 — Decisionを返す
 
 Local BehaviorではFast Pathの縮小出力を返す。
 Feature / System以上では必要に応じて次を返す。
@@ -202,6 +253,7 @@ Feature / System以上では必要に応じて次を返す。
 
 ## Non-negotiable rules
 
+- KISS → YAGNI → Cohesion / SRP → Proven DRY → Conditional SOLIDの順で判断する。
 - Minimum Cohesive Solution Firstを既定とする。
 - Local BehaviorへSystem級Architecture分析を機械的に適用しない。
 - Unity Lifecycleまたは既存Callbackで成立する場合、`Update` / Pollingを先に選ばない。
@@ -213,10 +265,14 @@ Feature / System以上では必要に応じて次を返す。
 - 単純転送Controller、Manager、Service、UseCaseを作らない。
 - 1実装しかないInterfaceを慣習だけで作らない。
 - 局所SerializeFieldで足りる設定をScriptableObjectへ逃がさない。
+- DRYをSyntax similarityだけで適用しない。
+- SRPをProperty単位Type分割として扱わない。
+- SOLIDを機械的Layering Ruleとして使わない。
 - ECS Component、Tag、Aspect、Jobを1型1ファイルへ機械的に分割しない。
 - MVPまたはMVVMをProject全体へ強制しない。
 - 行数だけでファイルを自動分割しない。
 - 性能改善を計測なしで確定しない。
+- NamingをArchitecture判断より先に確定しない。
 
 ## Output contract
 
@@ -234,16 +290,17 @@ Feature / System以上では必要に応じて次を返す。
 1. Goal
 2. Scope
 3. Confirmed Context
-4. Ownership and Lifetime
-5. Change Axes
-6. Candidate Architectures when needed
-7. Selected Architecture
-8. Rejected Alternatives when compared
-9. File Plan
-10. Types Kept in the Same File
-11. Intentionally Not Created Types
-12. Dependency Direction
-13. Data and Execution Flow
-14. Serialization Contracts
-15. Validation Plan
-16. Re-evaluation Conditions
+4. Engineering Principles Review
+5. Ownership and Lifetime
+6. Change Axes / Proven Duplication
+7. Candidate Architectures when needed
+8. Selected Architecture
+9. Rejected Alternatives when compared
+10. File Plan
+11. Types Kept in the Same File
+12. Intentionally Not Created Types
+13. Dependency Direction
+14. Data and Execution Flow
+15. Serialization Contracts
+16. Validation Plan
+17. Re-evaluation Conditions

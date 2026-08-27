@@ -10,6 +10,8 @@ Local Behaviorでは、System級のArchitecture分析へ進む前にUnity Lifecy
 
 ## Naming
 
+命名はType / Responsibility / File Structureが確定した後に適用する。新規TypeやLayerの必要性をNaming都合から逆算しない。
+
 ### Namespace resolution
 
 Namespaceは実装前に、次の優先順位で確定する。
@@ -66,8 +68,14 @@ _defaultAntiAliasing = _cameraData.antialiasing;
 
 ## Design
 
+新規Type / Interface / Layer / Fileを追加する前に`SkillReferences/ENGINEERING_DESIGN_PRINCIPLES.md`を適用する。
+
+- KISS → YAGNI → Cohesion / SRP → Proven DRY → Conditional SOLIDの順で判断する。
 - Prefer explicit ownership and lifetime, but do not invent ownership state that the requested local behavior does not need.
 - Use Minimum Cohesive Solution First for local behavior and small features.
+- DRYは見た目の重複ではなく、同一Knowledge / Change Reasonの実在する重複にのみ適用する。
+- SRPをProperty単位のClass分割として扱わない。
+- OCP / LSP / ISP / DIPは実在するVariation、Inheritance / Interface、Boundary、Dependency理由がある場合だけ適用する。
 - Architecture Patternは問題適合性が確認された場合だけ使用する。
 - ユーザーが指定したGameObject、Component、Asset、対象範囲をRequirement Surfaceとして保持し、再利用性だけを理由に任意Target化しない。
 - Unity Lifecycleまたは既存Callbackで解決できる場合、独自Event、Coroutine、Timer、`Update` Pollingより先に採用する。

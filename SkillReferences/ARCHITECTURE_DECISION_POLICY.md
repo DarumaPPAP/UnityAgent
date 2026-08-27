@@ -6,9 +6,37 @@ Unityの設計をMVP、Clean Architecture、Controller、ScriptableObject、ECS�
 
 このPolicyは、過剰なC#ファイル分割と不要な抽象化を防ぎながら、問題規模に応じて思考量そのものを切り替えるための判断契約である。
 
+設計原則のCanonical Sourceは`SkillReferences/ENGINEERING_DESIGN_PRINCIPLES.md`とする。
+
+## Engineering Principles Gate
+
+Architecture候補やPatternを比較する前に、次の順序で判断する。
+
+```text
+Requirement / Existing Owner
+↓
+KISS — Simplest Cohesive Solution
+↓
+YAGNI — No Speculative Structure
+↓
+Cohesion / SRP
+↓
+Proven Knowledge Duplication
+↓
+Conditional SOLID
+```
+
+- KISSとYAGNIをSOLIDより先に適用する。
+- DRYはSyntax similarityではなく、実在する同一Knowledge / Change Reasonの重複に対してのみ適用する。
+- SRPはProperty単位のType分割を要求しない。
+- OCP / LSP / ISP / DIPは、実在するVariation、Inheritance / Interface、Boundary、Dependency理由がある場合だけ評価する。
+- Type / File Structureを確定した後にNamingを行う。Naming GateがArchitecture判断を逆方向に支配してはならない。
+
 ## 2. Default: Minimum Cohesive Solution First
 
 小規模な機能は、ファイル数を減らすことではなく、ユーザー要求を満たす最小の凝集した解決から開始する。
+
+これは`ENGINEERING_DESIGN_PRINCIPLES.md`におけるKISSのUnity実装規則であり、YAGNIと組み合わせてSpeculative Structureを抑止する。
 
 ```text
 Local Behavior
