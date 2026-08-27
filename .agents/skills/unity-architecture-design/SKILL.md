@@ -7,7 +7,7 @@ allowed-tools:
   - Edit
   - Bash
 metadata:
-  version: "1.2.0"
+  version: "1.3.0"
 ---
 
 # Unity Architecture Design
@@ -36,9 +36,10 @@ Unityの設計をPattern名から決めず、最初に問題規模とExisting Ow
 2. `SkillReferences/ARCHITECTURE_DECISION_POLICY.md`
 3. `SkillReferences/ARCHITECTURE_STANDARDS.md`
 4. `SkillReferences/CODING_STANDARDS.md`
-5. `SkillReferences/CODE_FORMATTING_STANDARDS.md` when C# output is produced
-6. 対象Sourceと直接依存
-7. ECS、Rendering、UI等の条件付きReference
+5. `SkillReferences/TYPE_NAMING_STANDARDS.md` when new or renamed Types are planned
+6. `SkillReferences/CODE_FORMATTING_STANDARDS.md` when C# output is produced
+7. 対象Sourceと直接依存
+8. ECS、Rendering、UI等の条件付きReference
 
 全Pattern、全Skill、全Referenceを一括で読まない。
 
@@ -223,20 +224,35 @@ Feature / System以上で構造選定が必要な場合のみ、問題に適合�
 
 同一ファイルへ保持する型と、意図的に作らない型も記載する。
 
-### Step 12 — Namingを最後に適用する
+### Step 12 — Semantic Type Namingを最後に適用する
 
-Type / Responsibility / File Structureが正当化された後にNamingを適用する。
+新規Typeまたは明示Renameがある場合のみ`TYPE_NAMING_STANDARDS.md`を適用する。
 
-長いType名が出た場合は、短縮より先にType自体の必要性、過剰分割、複数責務、Speculative abstractionを再確認する。
+Type / Responsibility / File Structureが正当化された後に、次を確認する。
+
+- planned Typeが本当に必要か。
+- Existing Ownerへ統合できないか。
+- Property-level Type proliferationではないか。
+- Type名が責務を正確に説明しているか。
+- Readabilityを短さより優先しているか。
+- Role suffix stackingがないか。
+- Namespace / Context redundancyがないか。
+- UnityAgentが新しい略語を発明していないか。
+- Existing Public / Serialized APIをNaming改善だけでRenameしていないか。
+
+長いType名が出た場合は、機械的な短縮より先にType Necessity、過剰分割、複数責務、Context重複、Speculative abstractionを再確認する。長さ単独をHard Failにしない。
 
 ### Step 13 — Quality Gate
 
 - Architecture Fit
 - File Granularity
+- Namespace and Type Naming Review when new or renamed Types are planned
 - Ownership and Lifetime when applicable
 - Serialization Validation
 - ECS Data Layout when applicable
 - Performance Capture when Production performance adoption
+
+Naming Gate単独でArchitecture correctnessを証明しない。Architecture Fit / File Granularityを先に満たす。
 
 ### Step 14 — Decisionを返す
 
@@ -273,6 +289,7 @@ Feature / System以上では必要に応じて次を返す。
 - 行数だけでファイルを自動分割しない。
 - 性能改善を計測なしで確定しない。
 - NamingをArchitecture判断より先に確定しない。
+- Semantic Namingを既存Typeの無関係なLocal Fixへ強制しない。
 
 ## Output contract
 
@@ -299,8 +316,9 @@ Feature / System以上では必要に応じて次を返す。
 10. File Plan
 11. Types Kept in the Same File
 12. Intentionally Not Created Types
-13. Dependency Direction
-14. Data and Execution Flow
-15. Serialization Contracts
-16. Validation Plan
-17. Re-evaluation Conditions
+13. Semantic Type Naming Review when applicable
+14. Dependency Direction
+15. Data and Execution Flow
+16. Serialization Contracts
+17. Validation Plan
+18. Re-evaluation Conditions

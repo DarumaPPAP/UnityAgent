@@ -10,6 +10,8 @@ from pathlib import Path
 
 import yaml
 
+from naming_grader import ArtifactEvidenceError, grade_generated_artifacts
+
 ROOT = Path(__file__).resolve().parents[2]
 CASES_PATH = ROOT / "Tests" / "GoldenTasks" / "cases.yaml"
 DEFAULT_OUTPUT = ROOT / "Artifacts" / "GoldenEval" / "summary.json"
@@ -33,7 +35,34 @@ def load_yaml(path: Path) -> dict:
     return data
 
 
-def infer_failures(case: dict, result: dict) -> list[str]:
+def infer_naming_failures(case: dict, result: dict) -> tuple[list[str], list[dict]]:
+    if case.get("category") != "naming":
+        return [], []
+
+    naming_expectation = (case.get("expectation", {}) or {}).get("naming", {}) or {}
+    artifacts = result.get("generated_artifacts", []) or []
+    try:
+        grade = grade_generated_artifacts(artifacts, naming_expectation)
+    except (ArtifactEvidenceError, OSError, UnicodeError) as exc:
+        return ["broken_eval"], [
+            {
+                "code": "NAMING_ARTIFACT_EVIDENCE_ERROR",
+                "identifier": "",
+                "severity": "error",
+                "message": str(exc),
+            }
+        ]
+
+    failures: list[str] = []
+    for finding in grade.get("errors", []) or []:
+        if finding.get("code") == "NAME004_REQUIRED_IDENTIFIER_MISSING":
+            failures.append("model_failure")
+        else:
+            failures.append("policy_violation")
+    return sorted(set(failures)), list(grade.get("findings", []) or [])
+
+
+def infer_failures(case: dict, result: dict) -> tuple[list[str], list[dict]]:
     expectation = case.get("expectation", {})
     failures: list[str] = []
     if expectation.get("route") and result.get("route") != expectation.get("route"):
@@ -64,6 +93,9 @@ def infer_failures(case: dict, result: dict) -> list[str]:
         if knowledge not in loaded_knowledge and f"knowledge:{knowledge}" not in unresolved:
             failures.append("context_miss")
 
+    naming_failures, naming_findings = infer_naming_failures(case, result)
+    failures.extend(naming_failures)
+
     for failure_type in result.get("failure_types", []) or []:
         if failure_type in KNOWN_FAILURE_TYPES:
             failures.append(str(failure_type))
@@ -75,7 +107,7 @@ def infer_failures(case: dict, result: dict) -> list[str]:
     elif result.get("outcome") != expectation.get("outcome", "passed"):
         failures.append("model_failure")
 
-    return sorted(set(failures))
+    return sorted(set(failures)), naming_findings
 
 
 def rate(failure_counts: Counter[str], failure_type: str, total: int) -> float:
@@ -102,17 +134,31 @@ def main() -> int:
         task_id = str(result.get("task_id", ""))
         case = cases.get(task_id)
         if case is None:
-            graded.append({"task_id": task_id, "status": "broken_eval", "failures": ["broken_eval"]})
+            graded.append(
+                {
+                    "task_id": task_id,
+                    "status": "broken_eval",
+                    "failures": ["broken_eval"],
+                    "naming_findings": [],
+                }
+            )
             failure_counts["broken_eval"] += 1
             continue
-        failures = infer_failures(case, result)
+        failures, naming_findings = infer_failures(case, result)
         status = "passed" if not failures else "failed"
         attempt_count = max(1, int(result.get("attempt_count", 1)))
         attempts += attempt_count
         if status == "passed" and attempt_count == 1:
             first_pass += 1
         failure_counts.update(failures)
-        graded.append({"task_id": task_id, "status": status, "failures": failures})
+        graded.append(
+            {
+                "task_id": task_id,
+                "status": status,
+                "failures": failures,
+                "naming_findings": naming_findings,
+            }
+        )
 
     total = len(graded)
     passed = sum(item["status"] == "passed" for item in graded)
