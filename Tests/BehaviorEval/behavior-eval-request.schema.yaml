@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: "1.1"
 kind: unityagent_behavior_eval_request_schema
 
 required_fields:
@@ -11,6 +11,12 @@ required_fields:
   - workspace
   - evidence
   - result_root
+
+task_fields:
+  summary: optional
+  production_prompt:
+    required_for: [production_smoke]
+    type: string
 
 execution_fields:
   mode:
@@ -41,9 +47,24 @@ evidence_fields:
   require: []
   optional: []
 
+observed_evidence_fields:
+  required: false
+  item:
+    id: required
+    gate: required
+    status:
+      allowed: [passed, failed, unavailable]
+    source: required
+    scope: optional
+    statement: optional
+
 rules:
   golden_expectation_is_not_part_of_request: true
-  request_task_is_copied_from_golden_task_only: true
+  production_prompt_is_user_facing_task_not_expected_answer: true
+  expected_route_is_forbidden_in_production_prompt_contract: true
+  required_signals_are_forbidden_in_production_prompt_contract: true
+  forbidden_signals_are_forbidden_in_production_prompt_contract: true
+  observed_evidence_is_trusted_input_evidence_not_golden_expectation: true
   smoke_max_agent_attempts_must_equal_one: true
   production_smoke_max_agent_attempts_must_equal_one: true
   mutation_mode_must_be_sandbox: true
