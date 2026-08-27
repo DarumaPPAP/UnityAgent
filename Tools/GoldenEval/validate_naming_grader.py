@@ -3,9 +3,10 @@
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
-from naming_grader import grade_csharp_source, resolve_artifact_path
+from naming_grader import GOLDEN_ARTIFACT_ROOT, grade_csharp_source, resolve_artifact_path
 from run_golden_evals import infer_naming_failures
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -86,6 +87,31 @@ def main() -> int:
         "category": "naming",
         "expectation": {"naming": {"required_type_names": ["CameraDebugger"]}},
     }
+
+    temp_root = GOLDEN_ARTIFACT_ROOT / "_naming_validator_temp"
+    temp_artifact = temp_root / "GOLDEN-NAMING-FIXTURE" / "CameraDebugger.cs"
+    try:
+        temp_artifact.parent.mkdir(parents=True, exist_ok=True)
+        temp_artifact.write_text(read_fixture("GoodCameraDebugger.cs"), encoding="utf-8")
+        success_result = {
+            "generated_artifacts": [
+                {
+                    "path": str(temp_artifact.relative_to(ROOT)),
+                    "language": "csharp",
+                    "kind": "generated_source",
+                }
+            ]
+        }
+        success_failures, success_findings = infer_naming_failures(naming_case, success_result)
+        require(success_failures == [], "Valid generated artifact must pass runner naming grading.", errors)
+        require(
+            not any(item.get("severity") == "error" for item in success_findings),
+            "Valid generated artifact must not produce hard naming findings.",
+            errors,
+        )
+    finally:
+        shutil.rmtree(temp_root, ignore_errors=True)
+
     missing_result = {
         "generated_artifacts": [
             {
