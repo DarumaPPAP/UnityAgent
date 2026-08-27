@@ -1,0 +1,141 @@
+schema_version: "1.0"
+
+suites:
+  smoke:
+    rollout: record_only
+    blocking_candidate: false
+    max_agent_attempts: 1
+    cases:
+      - golden_task_id: GOLDEN-LIFECYCLE-001
+        focus: [routing]
+        execution_profile: personal_full_control
+        execution_mode: prompt
+        work_kind: implementation
+        workspace_fixture: Tests/BehaviorEval/Fixtures/CameraDebugger
+        mutation_mode: sandbox
+        evidence:
+          require: [response, context_manifest, artifact_index]
+          optional: [diff, gate_evidence]
+        graders: [route_from_manifest, source_structure, evidence_overclaim]
+
+      - golden_task_id: GOLDEN-ARCH-001
+        focus: [routing, architecture]
+        execution_profile: generic_planning
+        execution_mode: prompt
+        work_kind: analysis
+        workspace_fixture: Tests/BehaviorEval/Fixtures/CameraDebugger
+        mutation_mode: sandbox
+        evidence:
+          require: [response, context_manifest, artifact_index]
+          optional: [diff, gate_evidence]
+        graders: [route_from_manifest, architecture_artifact]
+
+      - golden_task_id: GOLDEN-DESIGN-KISS-001
+        focus: [architecture]
+        execution_profile: generic_planning
+        execution_mode: prompt
+        work_kind: analysis
+        workspace_fixture: Tests/BehaviorEval/Fixtures/CameraDebugger
+        mutation_mode: sandbox
+        evidence:
+          require: [response, context_manifest, artifact_index]
+          optional: [diff, gate_evidence]
+        graders: [route_from_manifest, architecture_artifact]
+
+      - golden_task_id: GOLDEN-DESIGN-YAGNI-001
+        focus: [architecture]
+        execution_profile: generic_planning
+        execution_mode: prompt
+        work_kind: analysis
+        workspace_fixture: Tests/BehaviorEval/Fixtures/CameraDebugger
+        mutation_mode: sandbox
+        evidence:
+          require: [response, context_manifest, artifact_index]
+          optional: [diff, gate_evidence]
+        graders: [route_from_manifest, architecture_artifact]
+
+      - golden_task_id: GOLDEN-DESIGN-SRP-001
+        focus: [architecture]
+        execution_profile: generic_planning
+        execution_mode: prompt
+        work_kind: analysis
+        workspace_fixture: Tests/BehaviorEval/Fixtures/CameraDebugger
+        mutation_mode: sandbox
+        evidence:
+          require: [response, context_manifest, artifact_index]
+          optional: [diff, gate_evidence]
+        graders: [route_from_manifest, architecture_artifact]
+
+      - golden_task_id: GOLDEN-NAMING-001
+        focus: [naming]
+        execution_profile: generic_planning
+        execution_mode: prompt
+        work_kind: analysis
+        workspace_fixture: Tests/BehaviorEval/Fixtures/CameraDebugger
+        mutation_mode: sandbox
+        evidence:
+          require: [response, context_manifest, artifact_index]
+          optional: [diff, gate_evidence]
+        graders: [route_from_manifest, type_naming, source_structure]
+
+      - golden_task_id: GOLDEN-NAMING-003
+        focus: [naming]
+        execution_profile: generic_planning
+        execution_mode: prompt
+        work_kind: analysis
+        workspace_fixture: Tests/BehaviorEval/Fixtures/EmptyFeature
+        mutation_mode: sandbox
+        evidence:
+          require: [response, context_manifest, artifact_index]
+          optional: [diff, gate_evidence]
+        graders: [route_from_manifest, type_naming]
+
+      - golden_task_id: GOLDEN-NAMING-005
+        focus: [naming]
+        execution_profile: generic_planning
+        execution_mode: prompt
+        work_kind: analysis
+        workspace_fixture: Tests/BehaviorEval/Fixtures/EmptyFeature
+        mutation_mode: sandbox
+        evidence:
+          require: [response, context_manifest, artifact_index]
+          optional: [diff, gate_evidence]
+        graders: [route_from_manifest, type_naming]
+
+      - golden_task_id: GOLDEN-MUTATION-001
+        focus: [mutation]
+        execution_profile: personal_full_control
+        execution_mode: prompt
+        work_kind: implementation
+        workspace_fixture: Tests/BehaviorEval/Fixtures/LocalPatch
+        mutation_mode: sandbox
+        allowed_paths:
+          - CameraDebugger.cs
+        evidence:
+          require: [response, context_manifest, artifact_index, diff]
+          optional: [gate_evidence]
+        graders: [route_from_manifest, mutation_diff, source_structure]
+
+      - golden_task_id: GOLDEN-EVIDENCE-001
+        focus: [evidence]
+        execution_profile: personal_full_control
+        execution_mode: prompt
+        work_kind: implementation
+        workspace_fixture: Tests/BehaviorEval/Fixtures/CompileOnly
+        mutation_mode: sandbox
+        evidence:
+          require: [response, context_manifest, artifact_index]
+          optional: [diff, gate_evidence]
+        graders: [route_from_manifest, evidence_overclaim]
+
+  core:
+    rollout: manual
+    blocking_candidate: false
+    max_agent_attempts: 1
+    cases: []
+
+  full:
+    rollout: manual_or_scheduled
+    blocking_candidate: false
+    max_agent_attempts: 1
+    cases: []
