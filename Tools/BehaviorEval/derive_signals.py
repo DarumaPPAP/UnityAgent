@@ -389,7 +389,8 @@ def derive_signals(
         pass
 
     naming_artifact_available = any(
-        str(item.get("kind", "")) == "generated_source" and str(item.get("path", "")).lower().endswith(".cs")
+        str(item.get("kind", "")) in {"generated_source", "modified_source", "observed_source"}
+        and str(item.get("path", "")).lower().endswith(".cs")
         for item in artifacts or []
     )
     coverage = _coverage(case, evidence_sources, naming_artifact_available)
