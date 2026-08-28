@@ -1,0 +1,23 @@
+schema_version: "1.0"
+kind: context_compression_policy
+source: Context/Budget/context-budget.yaml
+protected_roles:
+  - user_policy
+  - context_pack
+  - primary_skill
+  - task_contract
+  - project_fact
+allowed_modes:
+  protected_roles:
+    - none
+  source_context:
+    - none
+    - lossless_excerpt
+  non_authoritative_context:
+    - none
+    - lossless_excerpt
+    - semantic_summary
+rules:
+  canonical_source_is_never_rewritten_by_compression: true
+  required_context_must_not_be_silently_dropped: true
+  unresolved_binding_is_preferred_to_guessing: true

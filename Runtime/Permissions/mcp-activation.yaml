@@ -1,0 +1,33 @@
+schema_version: "1.0"
+kind: runtime_mcp_tool_exposure
+authority: Runtime
+policy_refs:
+  - Policy/Security/permissions.yaml
+  - Policy/Security/tool-trust.yaml
+tool_exposure:
+  level_2:
+    condition: operation_requires_tools
+    expose:
+      - selected_tool_group_only
+  level_3:
+    condition: approved_plan_and_explicit_mutation_permission
+    expose:
+      - mutate
+  level_4:
+    condition: separate_explicit_bake_permission
+    expose:
+      - bake
+  level_5:
+    condition: editor_connection_and_evidence_requirement
+    expose:
+      - capture
+standard_tool_group_order:
+  - inspect
+  - plan
+  - mutate
+  - bake
+  - capture
+rules:
+  runtime_enforces_exposure: true
+  runtime_must_not_redefine_user_or_organization_policy: true
+  silent_fallback: prohibited

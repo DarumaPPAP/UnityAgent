@@ -1,0 +1,20 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:policy:policy-set
+title: PolicySet
+type: object
+additionalProperties: false
+required: [schema_version, policy_set_id, policy_revision, sources]
+properties:
+  schema_version: {const: "1.0"}
+  policy_set_id: {type: string, minLength: 1}
+  policy_revision: {type: string, pattern: "^sha256:[0-9a-f]{64}$"}
+  sources:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      additionalProperties: false
+      required: [path, revision]
+      properties:
+        path: {type: string, minLength: 1}
+        revision: {type: string, pattern: "^sha256:[0-9a-f]{64}$"}

@@ -1,0 +1,54 @@
+schema_version: "1.0"
+selection:
+  select_one_primary_knowledge: true
+  load_related_only_when_condition_matches: true
+  read_human_html_by_default: false
+  read_human_html_when:
+    - design_rationale_required
+    - competing_approaches_must_be_compared
+    - experiment_results_required
+    - visual_reference_required
+    - decision_history_required
+
+knowledge:
+  graphics.unity_graphics_mcp:
+    path: .ai/knowledge/graphics/unity-graphics-mcp.yaml
+    status: draft
+    related:
+      conditional:
+        - rendering.temporal_anti_aliasing
+        - rendering.motion_vectors
+        - rendering.transparent_rendering
+        - rendering.shader_variants
+
+  rendering.temporal_anti_aliasing:
+    path: .ai/knowledge/rendering/temporal-anti-aliasing.yaml
+    status: reviewed
+    related:
+      required:
+        - rendering.motion_vectors
+      conditional:
+        - rendering.transparent_rendering
+        - rendering.outline_rendering
+        - rendering.ui_composition
+        - rendering.shader_variants
+
+  rendering.motion_vectors:
+    path: .ai/knowledge/rendering/motion-vectors.yaml
+    status: draft
+
+  rendering.transparent_rendering:
+    path: .ai/knowledge/rendering/transparent-rendering.yaml
+    status: draft
+
+  rendering.outline_rendering:
+    path: .ai/knowledge/rendering/outline-rendering.yaml
+    status: draft
+
+  rendering.ui_composition:
+    path: .ai/knowledge/rendering/ui-composition.yaml
+    status: draft
+
+  rendering.shader_variants:
+    path: .ai/knowledge/rendering/shader-variants.yaml
+    status: draft

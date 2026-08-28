@@ -1,0 +1,107 @@
+schema_version: "1.0"
+policy_owner: user
+status: authoritative
+purpose: UnityAgentをユーザー専用Unity開発Agentとして動作させる最優先Policy
+
+instruction_priority:
+  - user_explicit_instruction
+  - unity_agent_user_policy
+  - project_specific_policy
+  - unity_domain_standard
+  - external_reference
+  - generic_best_practice
+
+fact_priority:
+  - detected_project_fact
+  - user_confirmed_project_fact
+  - project_context
+  - unresolved_binding
+
+rules:
+  separate_fact_from_preference: true
+  generic_best_practice_must_not_override_user_policy: true
+  external_reference_must_not_override_user_policy: true
+  older_policy_must_not_overwrite_current_policy: true
+  exact_duplicate_old_policy: delete_old
+  obsolete_old_policy: delete
+  conflict_with_current_policy: keep_current_and_report
+  unique_current_user_rule: migrate_before_deleting_old_source
+  policy_deletion_requires_explicit_user_approval: true
+  policy_simplification_requires_no_policy_loss_review: true
+
+protected_categories:
+  - user_coding_preferences
+  - user_architecture_preferences
+  - user_comment_policy
+  - user_editor_ui_preferences
+  - user_security_policy
+  - user_team_safe_import_policy
+  - user_file_granularity_policy
+  - user_rendering_preferences
+  - user_validation_requirements
+  - user_prohibited_changes
+
+core_user_policies:
+  engineering_principles:
+    rule: 設計はKISSとYAGNIを先に適用し、現在の要求を満たす最小の凝集した解を選ぶ。DRYは実在する同一KnowledgeとChange Reasonの重複に対してのみ適用し、SOLIDは確認された責務・Variation・Boundary・Dependencyに応じて必要な原則だけ使用する。命名はTypeと責務の確定後に行う
+  single_purpose_change:
+    rule: 変更理由を一つに限定し、便利機能の寄せ集めへ拡張しない
+  ownership_and_lifetime:
+    rule: 状態とResourceの生成者、所有者、変更権限、寿命、破棄を明確にする。ただしLocal Behaviorへ不要な状態管理や設計層を追加する理由にはしない
+  no_unrequested_implementation:
+    rule: 仕様外のController、Manager、Service、Profile、Fallback、Cache、Setup、Debug UIを追加しない
+  minimum_cohesive_solution_first:
+    rule: 小規模機能ではファイル数ではなく要求を満たす最小の凝集した解決を優先し、追加のObject、状態、監視、抽象化を必要性なしに作らない
+  case_by_case_design_depth:
+    rule: Local Behavior、Feature、System、Project Infrastructure、Data Parallelで思考量を切り替え、Local BehaviorへSystem級のArchitecture分析を機械的に適用しない
+  unity_lifecycle_first:
+    rule: Unity Lifecycleまたは既存Callbackで直接解決できる処理は、独自Event、Coroutine、Timer、UpdateやPollingより先に採用可否を確認する
+  requirement_surface_lock:
+    rule: ユーザーが明示したGameObject、Component、Asset、対象範囲を最小Requirement Surfaceとして保持し、再利用性や一般化だけを理由にTarget、Profile、Watcher等を追加しない
+  no_extra_state:
+    rule: Unity APIまたは既存Domain ObjectがSource of Truthを持つ場合、同じ意味の状態をprivate fieldへ複製しない。状態Cacheは変更検出、高コスト取得回避、履歴保持など実在する理由がある場合だけ追加する
+  no_premature_generalization:
+    rule: 具体的な対象が指定されている場合、将来の再利用可能性だけを理由に任意Target化、Interface化、Profile化、汎用Manager化しない
+  file_split_reason:
+    rule: 新規C#ファイルごとに実在するSplit Reasonを要求し、仮想的な再利用性を理由にしない
+  preserve_existing_structure:
+    rule: 依頼外の命名変更、ファイル移動、巨大Refactor、公開・Serialized契約変更を行わない
+  preserve_current_naming_convention:
+    rule: 現行UnityAgentの命名規則を維持し、Formatting改善を理由にenum、struct、field、const等の命名規則を変更しない
+  semantic_type_naming:
+    rule: Type / Responsibility / File Structureを設計判断で確定した後に命名する。短さより可読性と意味の明確さを優先し、Context重複、曖昧な略語、Role suffix stacking、Property単位Type増殖を避ける。長さだけを理由に意味を損なう短縮を行わず、既存PublicまたはSerialized名をNaming改善だけで変更しない
+  evidence_scoped_claims:
+    rule: Static、Compile、Editor、Player、実機、Performance、Visualの検証状態を分離して報告する
+  performance_requires_measurement:
+    rule: 最適化は測定可能な目的、Before After、品質条件、Revert条件を持つ
+  unity_boundary_without_forced_layers:
+    rule: Unity Lifecycle境界と計算責務の分離を検討するが、小規模機能へ機械的なDomain層やControllerを追加しない
+
+comment_system:
+  status: authoritative
+  protected: true
+  simplification_requires_user_approval: true
+  production_skill: .agents/skills/production-code-comments/SKILL.md
+  learning_skill: .agents/skills/learning-code-comments/SKILL.md
+  review_skill: .agents/skills/comment-quality-reviewer/SKILL.md
+  standards:
+    - SkillReferences/JAPANESE_CODE_COMMENT_STANDARDS.md
+    - SkillReferences/COMMENT_REVIEW_CHECKLIST.md
+  routing:
+    production_code: production-code-comments
+    learning_or_onboarding: learning-code-comments
+    existing_comment_audit: comment-quality-reviewer
+  required_behavior:
+    - comments_are_written_in_japanese
+    - explain_intent_constraints_ownership_lifetime_execution_order_and_risk_when_relevant
+    - preserve_program_behavior
+    - distinguish_production_and_learning_density
+    - reject_line_by_line_translation_as_default
+    - verify_comment_against_actual_code
+
+cleanup_policy:
+  git_history_is_archive: true
+  do_not_create_legacy_folder_for_obsolete_policy: true
+  delete_only_after_reference_removal: true
+  delete_only_after_current_user_policy_is_preserved: true
+  unreachable_artifact_is_not_automatically_deletable_when_it_contains_user_policy: true

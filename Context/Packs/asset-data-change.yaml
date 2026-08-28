@@ -1,0 +1,98 @@
+schema_version: "3.0"
+id: asset-data-change
+primary_skill: .agents/skills/csharp-safe-patch/SKILL.md
+
+metadata:
+  type: context
+  title: Asset Data Change
+  summary:
+    - Plan bounded serialized Unity asset changes through authoritative editor channels.
+  purpose:
+    - Preserve serialized references while keeping asset mutation explicit and reversible.
+  decisions:
+    - id: serialized-asset-channel
+      label: Serialized asset rules remain authoritative
+      source_ref: .ai/context-packs/asset-data-change.yaml#rules
+  forbidden:
+    - id: raw-unity-yaml-mutation
+      label: Raw Scene, Prefab, or Material YAML mutation is forbidden
+      source_ref: .ai/harness/task-contracts/asset-data-change.yaml#prohibited_mutations
+  related: []
+  priority: high
+  tags: [asset, serialization, editor]
+
+use_when:
+  - Scene Prefab Material or ScriptableObject asset change
+  - serialized Unity asset migration
+  - Editor API based asset mutation
+  - team safe import staging integration
+
+required:
+  - type: repository_reference
+    path: .ai/user-policy.yaml
+  - type: binding
+    name: target_assets
+  - type: binding
+    name: expected_serialized_change
+  - type: binding
+    name: reference_integrity_requirements
+  - type: binding
+    name: authoritative_mutation_channel
+  - type: binding
+    name: rollback_asset_or_revision
+  - type: repository_reference
+    path: .ai/harness/mutation-channels.yaml
+
+conditional:
+  project_fallback:
+    - type: repository_reference
+      path: Specs/ProjectProfile.md
+  project_specific_change: []
+  editor_script:
+    - type: repository_reference
+      path: SkillReferences/CODING_STANDARDS.md
+    - type: binding
+      name: target editor source and direct dependencies
+  material_or_shader_contract:
+    - type: context_include
+      context_id: shader-change
+  renderer_data_or_pipeline_asset:
+    - type: context_include
+      context_id: renderer-feature-change
+  team_safe_import:
+    - type: repository_reference
+      path: .ai/execution-profiles.yaml
+    - type: repository_reference
+      path: .ai/harness/task-contracts/safe-import-integration.yaml
+
+excluded_by_default:
+  - raw Unity YAML mutation
+  - unrelated runtime source
+  - automatic save and implicit dirtying
+  - project scanner or source export in team safe import
+  - legacy Supervisor routing documents
+
+rules:
+  raw_yaml_mutation: false
+  serialized_reference_preservation: true
+  automatic_save: false
+  explicit_asset_scope_required: true
+  read_only_operation_must_not_dirty_assets: true
+  project_settings_and_pipeline_asset_change_require_explicit_approval: true
+  user_policy_has_priority_over_generic_asset_workflow: true
+  detected_project_facts_override_project_profile: true
+  project_profile_is_fallback_only: true
+
+limits:
+  initial_file_reads: 6
+  context_expansion_hops: 1
+
+output:
+  - target_asset_scope
+  - mutation_channel
+  - serialized_contract
+  - reference_integrity_validation
+  - changed_assets
+  - required_validation
+  - unresolved_bindings
+  - rollback

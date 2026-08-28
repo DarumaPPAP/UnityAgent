@@ -1,0 +1,120 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:context:materialized-context-view
+title: MaterializedContextView
+type: object
+additionalProperties: false
+required:
+  - schema_version
+  - context_id
+  - run_id
+  - route_id
+  - prompt_spec_ref
+  - selected_refs
+  - resolved_bindings
+  - unresolved_bindings
+  - active_conditions
+  - budget_report
+  - context_fingerprint
+  - definition_fingerprint
+properties:
+  schema_version: {const: "1.0"}
+  context_id: {type: string, minLength: 1}
+  run_id: {type: string, minLength: 1}
+  route_id: {type: string, minLength: 1}
+  prompt_spec_ref: {type: [string, "null"]}
+  selected_refs:
+    type: object
+    additionalProperties: false
+    required:
+      - policy
+      - prompt_spec
+      - context_pack
+      - primary_skill
+      - task_contract
+      - required_context
+      - conditional_context
+      - context_includes
+      - external_references
+      - knowledge
+      - memory_projections
+      - tool_schema_refs
+    properties:
+      policy:
+        type: array
+        minItems: 1
+        items: {$ref: "#/$defs/ref"}
+      prompt_spec:
+        anyOf:
+          - {$ref: "#/$defs/ref"}
+          - {type: "null"}
+      context_pack: {$ref: "#/$defs/ref"}
+      primary_skill: {$ref: "#/$defs/ref"}
+      task_contract: {$ref: "#/$defs/ref"}
+      required_context:
+        type: array
+        items: {$ref: "#/$defs/ref"}
+      conditional_context:
+        type: array
+        items: {$ref: "#/$defs/ref"}
+      context_includes:
+        type: array
+        items: {$ref: "#/$defs/ref"}
+      external_references:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [repository, path, requirement, condition]
+          properties:
+            repository: {type: string, minLength: 1}
+            path: {type: string, minLength: 1}
+            requirement: {enum: [required, conditional]}
+            condition: {type: [string, "null"]}
+      knowledge:
+        type: array
+        items: {$ref: "#/$defs/ref"}
+      memory_projections:
+        type: array
+        items: {type: string, minLength: 1}
+      tool_schema_refs:
+        type: array
+        items: {type: string, minLength: 1}
+  resolved_bindings:
+    type: object
+  unresolved_bindings:
+    type: array
+    uniqueItems: true
+    items: {type: string, minLength: 1}
+  active_conditions:
+    type: array
+    uniqueItems: true
+    items: {type: string, minLength: 1}
+  budget_report:
+    type: object
+    additionalProperties: false
+    required: [profile, estimator, selected_artifacts, selected_utf8_bytes, estimated_tokens, missing_observations, decision]
+    properties:
+      profile: {type: string, minLength: 1}
+      estimator: {const: utf8-bytes-conservative-v1}
+      selected_artifacts: {type: integer, minimum: 0}
+      selected_utf8_bytes: {type: integer, minimum: 0}
+      estimated_tokens: {type: integer, minimum: 0}
+      missing_observations:
+        type: array
+        items: {type: string, minLength: 1}
+      decision: {enum: [within_budget, compression_required, blocked, unmeasured]}
+  context_fingerprint:
+    $ref: urn:unityagent:context:context-fingerprint
+  definition_fingerprint:
+    $ref: urn:unityagent:persistence:definition-fingerprint
+$defs:
+  ref:
+    type: object
+    additionalProperties: false
+    required: [logical_ref, resolved_path, revision, selected_utf8_bytes, role]
+    properties:
+      logical_ref: {type: string, minLength: 1}
+      resolved_path: {type: string, minLength: 1}
+      revision: {type: string, pattern: "^sha256:[0-9a-f]{64}$"}
+      selected_utf8_bytes: {type: integer, minimum: 0}
+      role: {type: string, minLength: 1}

@@ -1,0 +1,91 @@
+schema_version: "3.0"
+id: renderer-feature-change
+primary_skill: .agents/skills/unity-rendering/SKILL.md
+
+metadata:
+  type: context
+  title: Renderer Feature Change
+  summary:
+    - Design a bounded RendererFeature or RenderGraph pass change.
+  purpose:
+    - Preserve injection, filtering, resource lifetime, and compatibility contracts.
+  decisions:
+    - id: renderer-pass-contract
+      label: Existing pass and resource contracts remain authoritative
+      source_ref: .ai/context-packs/renderer-feature-change.yaml#rules
+  forbidden:
+    - id: unapproved-renderer-setting-change
+      label: Unapproved renderer and project setting changes are forbidden
+      source_ref: .ai/harness/task-contracts/renderer-feature-change.yaml#prohibited_mutations
+  related: []
+  priority: high
+  tags: [rendering, renderer-feature, rendergraph]
+
+use_when:
+  - RendererFeature or ScriptableRenderPass change
+  - RenderGraph pass structure change
+  - injection point or rendering filter change
+  - renderer resource integration
+
+required:
+  - type: repository_reference
+    path: .ai/user-policy.yaml
+  - type: binding
+    name: target_renderer_feature_or_pass
+  - type: binding
+    name: direct_pass_dependencies
+  - type: binding
+    name: injection_point
+  - type: binding
+    name: render_queue_layer_shader_tag_and_sorting_contract
+  - type: binding
+    name: resource_reads_writes_and_lifetime
+  - type: repository_reference
+    path: SkillReferences/RENDERING_STANDARDS.md
+
+conditional:
+  project_fallback:
+    - type: repository_reference
+      path: Specs/ProjectProfile.md
+  shader_change:
+    - type: context_include
+      context_id: shader-change
+  unknown_rendering_failure:
+    - type: context_include
+      context_id: rendering-incident
+  performance_claim:
+    - type: context_include
+      context_id: performance
+  project_specific_change:
+    - type: binding
+      name: target source and direct dependencies
+
+excluded_by_default:
+  - unrelated shader rule catalogs
+  - visual definitions without a visual goal
+  - package source when only a bounded RendererFeature is changed
+  - legacy Supervisor routing documents
+
+rules:
+  inspect_existing_pass_before_adding_new_pass: true
+  injection_filtering_and_resource_contract_required: true
+  render_graph_and_compatibility_api_must_not_be_mixed_without_explicit_design: true
+  shader_contract_change_is_conditional_not_assumed: true
+  project_setting_change_requires_explicit_approval: true
+  user_policy_has_priority_over_generic_rendering_pattern: true
+  detected_project_facts_override_project_profile: true
+  project_profile_is_fallback_only: true
+
+limits:
+  initial_file_reads: 7
+  context_expansion_hops: 1
+
+output:
+  - confirmed_pass_contract
+  - injection_and_filtering_contract
+  - resource_lifetime_and_access
+  - changed_files
+  - compatibility_constraints
+  - required_validation
+  - unresolved_bindings
+  - revert_condition

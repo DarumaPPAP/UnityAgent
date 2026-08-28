@@ -1,0 +1,88 @@
+schema_version: '1.0'
+kind: phase2_read_only_compatibility_map
+writes_allowed: false
+delete_phase: 8
+path_rewrites:
+  .ai/user-policy.yaml: Policy/User/user-policy.yaml
+  .ai/context-budget.yaml: Context/Budget/context-budget.yaml
+  .ai/context-pack.schema.yaml: Context/Contracts/context-pack.schema.yaml
+  .ai/context-manifest.schema.yaml: Context/Manifest/context-manifest.schema.yaml
+  .ai/context-packs/: Context/Packs/
+  .ai/knowledge/: Context/Retrieval/Knowledge/
+  .ai/harness/risk-levels.yaml: Policy/Risk/risk-levels.yaml
+  .ai/harness/mcp-activation.yaml: Context/Selection/mcp-selection.yaml
+read_only_entries:
+  migration-source/user-policy:
+    path: .ai/user-policy.yaml
+    target_phase: 2
+  migration-source/risk-levels:
+    path: .ai/harness/risk-levels.yaml
+    target_phase: 2
+  migration-source/mcp-activation:
+    path: .ai/harness/mcp-activation.yaml
+    target_phase: 2
+  migration-source/routing-index:
+    path: .ai/context-index.yaml
+    target_phase: 2
+  migration-source/context-packs:
+    path: .ai/context-packs
+    target_phase: 2
+  migration-source/knowledge:
+    path: .ai/knowledge
+    target_phase: 2
+  migration-source/knowledge-graph-pilot:
+    path: .ai/knowledge-graph-pilot.yaml
+    target_phase: 2
+  execution-profiles:
+    path: .ai/execution-profiles.yaml
+    target_phase: 3
+  task-contract-schema:
+    path: .ai/harness/task-contracts/task-contract.schema.yaml
+    target_phase: 3
+  task-contracts/architecture-design:
+    path: .ai/harness/task-contracts/architecture-design.yaml
+    target_phase: 3
+  task-contracts/graphics-mcp:
+    path: .ai/harness/task-contracts/graphics-mcp.yaml
+    target_phase: 3
+  task-contracts/csharp-local-fix:
+    path: .ai/harness/task-contracts/csharp-local-fix.yaml
+    target_phase: 3
+  task-contracts/rendering-incident:
+    path: .ai/harness/task-contracts/rendering-incident.yaml
+    target_phase: 3
+  task-contracts/shader-change:
+    path: .ai/harness/task-contracts/shader-change.yaml
+    target_phase: 3
+  task-contracts/renderer-feature-change:
+    path: .ai/harness/task-contracts/renderer-feature-change.yaml
+    target_phase: 3
+  task-contracts/performance-experiment:
+    path: .ai/harness/task-contracts/performance-experiment.yaml
+    target_phase: 3
+  task-contracts/asset-data-change:
+    path: .ai/harness/task-contracts/asset-data-change.yaml
+    target_phase: 3
+  task-contracts/portable-feature:
+    path: .ai/harness/task-contracts/portable-feature.yaml
+    target_phase: 3
+  task-contracts/safe-import-integration:
+    path: .ai/harness/task-contracts/safe-import-integration.yaml
+    target_phase: 3
+  task-contracts/visual-direction:
+    path: .ai/harness/task-contracts/visual-direction.yaml
+    target_phase: 3
+  quality-gates:
+    path: .ai/harness/quality-gates.yaml
+    target_phase: 3
+  mutation-channels:
+    path: .ai/harness/mutation-channels.yaml
+    target_phase: 3
+  graph-contract:
+    path: .ai/graph-contract.yaml
+    target_phase: 4
+rules:
+  compatibility_is_read_only: true
+  no_new_legacy_authority: true
+  unresolved_compatibility_key_fails_closed: true
+  direct_legacy_write_is_forbidden: true

@@ -1,0 +1,18 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:context:memory-projection
+title: MemoryProjection
+type: object
+additionalProperties: false
+required: [schema_version, projection_id, memory_id, source_evidence_refs, projection_ref, selected_at]
+properties:
+  schema_version: {const: "1.0"}
+  projection_id: {type: string, minLength: 1}
+  memory_id: {type: string, minLength: 1}
+  source_evidence_refs:
+    type: array
+    minItems: 1
+    items: {type: string, minLength: 1}
+  projection_ref: {type: string, minLength: 1}
+  selected_at: {type: string, minLength: 1}
+  durable_memory_store:
+    not: {}

@@ -1,0 +1,139 @@
+id: graphics.unity_graphics_mcp
+version: "1.2.1"
+status: draft
+
+use_when:
+  - UnityAgentMCP
+  - UnityGraphicsMCP
+  - visual director tooling
+  - graphics scene inspection and controlled mutation
+  - reference driven lighting camera and look development
+  - Built-in URP HDRP Custom SRP capability resolution
+
+required_inputs:
+  - requested_operation_scope
+  - detected_project_context_when_accessible
+  - explicit_requested_targets_when_applicable
+  - project_profile_fallback_when_project_is_unavailable
+  - visual_goal_or_reference_when_applicable
+  - existing_scene_and_asset_ownership_when_accessible
+  - prohibited_changes
+
+implementation_contract:
+  - UnityAgent stores preferences routing and compressed domain contracts
+  - MyUnityMCP stores UnityAgentMCP Creator Domain MCP Capability Module specifications manifests schemas workflows package source and tests
+  - generated Scene Prefab Material Timeline VolumeProfile and other project assets remain owned by the target Unity project
+  - UnityAgent selects exactly one primary Creator or Domain MCP
+  - at most two conditional Domain MCP modules are added when their conditions are satisfied
+  - normal MCP use reads the catalog selected manifests and selected tool schemas but not package source
+  - tool groups are exposed progressively as inspect plan mutate bake and capture
+  - target Unity project is inspected before backend selection when accessible
+  - detected project facts requested targets project profiles and UnityAgent preferences remain separate
+  - detected project facts have priority over profile and preference defaults
+  - Unity version pipeline rendering path RenderGraph and platform are not fixed global MCP defaults
+  - mutation requires an approved plan explicit permission revision check diff and undo contract
+  - bake requires separate explicit permission and must use dependency invalidation instead of unconditional full bake
+  - visual intent is pipeline independent and pipeline native settings are backend specific
+  - pipeline rendering path and platform are separate resolution axes
+  - project capabilities are inspected before selecting Lightmap LightProbe ProbeVolume Reflection Decal Volume or custom rendering backends
+  - read only inspection does not dirty scenes assets materials timelines or profiles
+  - project settings renderer data render pipeline assets and bake operations require explicit approval
+  - proposed numeric settings include range reason dependencies confidence pipeline impact platform impact and verification level
+  - unsupported unverified unavailable project_configuration_required and backend_not_implemented are distinct
+  - backend implementation is selected from detected project context and actual available implementation
+  - verification environments are evidence entries and not global support declarations
+  - visual acceptance requires reference grounded capture review and human approval
+
+naming_contract:
+  - resolve namespace from existing code and detected asmdef rootNamespace first then user confirmed project facts and use Specs/ProjectProfile.md only as unresolved fact fallback
+  - when RootNamespace is NONE use UnityAgentMcp UnityGraphicsMcp or the approved single level Feature namespace
+  - never emit Namespace RootNamespace CHANGE_ME or leading_or_trailing_dot namespaces
+  - enum types use E_UPPER_SNAKE_CASE
+  - struct types use S_UPPER_SNAKE_CASE only when a struct is justified
+  - private fields use _camelCase
+  - constants use SCREAMING_SNAKE_CASE
+
+architecture_contract:
+  - UnityAgentMCP is a thin control plane and does not implement graphics operations
+  - Creator owns the completion workflow Domain MCP owns technical decisions and Capability Module owns bounded Unity API operations
+  - logical modules do not require separate MCP servers processes ports packages or assemblies
+  - start with project environment inspection and the smallest cohesive editor implementation for the detected environment
+  - do not create Controller Manager Service Profile Adapter Interface or asmdef only to complete a pattern
+  - an interface is allowed only when multiple real pipeline implementations coexist or an external package boundary requires it
+  - new files require owner lifetime consumers responsibility and split reason
+  - Runtime and Editor are separated only when runtime data or markers are actually required
+  - pipeline package dependencies must not leak into pipeline independent environment inspection and control contracts
+
+visual_scope:
+  - composition and set dressing
+  - material and shader presentation
+  - direct lights and shadows
+  - lightmap and LightingDataAsset state
+  - LightProbe and LightProbeProxyVolume
+  - pipeline supported probe volume systems
+  - environment and reflection probes
+  - decals particles and VFX backends
+  - Timeline Cinemachine and camera language during the initial integrated milestone
+  - Volume post process and custom rendering stages
+  - capture evaluation and platform budget
+
+prohibited:
+  - store MCP implementation or MCP specifications in UnityAgent or UnityAIGC-Archive
+  - load every Creator Domain MCP manifest tool schema or package source
+  - expose mutation or bake tools before their approval gates
+  - fix Unity version pipeline rendering path RenderGraph or platform as a global MCP requirement
+  - treat ProjectProfile values as detected Unity project facts
+  - treat unverified as unsupported
+  - silently select another pipeline backend when the detected backend is unavailable
+  - use namespace Namespace.UnityGraphicsMcp
+  - use enum names such as E_RenderPipelineKind
+  - create shared nullable settings containing every Built-in URP HDRP and Custom SRP option
+  - treat Bloom Fog Light count feature count compile success or capture generation as beauty evidence
+  - mutate Scene Prefab Material VolumeProfile Timeline RendererData or PipelineAsset without approved scope
+  - trigger full lighting bake because one dependency might be stale
+  - silently substitute APV Planar Reflection Decal or post process backends
+  - claim Player or target device correctness from Editor inspection
+
+required_evidence:
+  - specification_traceability
+  - architecture_policy_review
+  - naming_review
+  - static_contract_review
+  - mcp_catalog_manifest_consistency
+  - environment_resolution_contract_review
+
+conditional_evidence:
+  implementation_present:
+    - package_structure_validation
+    - unity_compile
+    - editmode
+    - compatibility_matrix_entry
+  render_graph_or_renderer_feature_present:
+    - render_graph_validation
+  visual_output_claim:
+    - editor_capture
+    - human_beauty_review
+  player_claim:
+    - player_capture
+  target_platform_claim:
+    - target_device_capture
+  performance_claim:
+    - before_after_gpu_measurement
+
+stop_conditions:
+  - namespace_is_unresolved_for_code_generation
+  - active_pipeline_or_version_is_unknown_and_native_api_choice_depends_on_it
+  - selected_creator_or_domain_manifest_cannot_be_resolved
+  - selected_backend_is_not_implemented_for_required_operation
+  - mutation_requires_project_settings_or_asset_approval_that_has_not_been_given
+  - requested_visual_acceptance_has_no_reference_or_human_review_path
+
+human_reference:
+  repository: DarumaPPAP/MyUnityMCP
+  control_plane_specification: Specs/UnityAgentMCP/spec.md
+  graphics_feature: UnityGraphicsMCP
+  graphics_specification: Specs/UnityGraphicsMCP/spec.md
+  graphics_plan: Specs/UnityGraphicsMCP/plan.md
+  graphics_editor_tool_design: Specs/UnityGraphicsMCP/editor-tool-design.md
+  graphics_tasks: Specs/UnityGraphicsMCP/tasks.md
+  compatibility_matrix: Tests/Compatibility/verification-matrix.yaml

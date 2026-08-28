@@ -1,0 +1,93 @@
+schema_version: "3.0"
+id: csharp-local-fix
+primary_skill: .agents/skills/csharp-safe-patch/SKILL.md
+
+metadata:
+  type: context
+  title: CSharp Local Fix
+  summary:
+    - Apply a bounded CSharp correction with deterministic validation.
+  purpose:
+    - Keep a local source fix compatible with existing structure and naming.
+  decisions:
+    - id: bounded-csharp-change
+      label: Bounded CSharp rules remain authoritative
+      source_ref: .ai/context-packs/csharp-local-fix.yaml#rules
+    - id: single-purpose-change-policy
+      label: One local fix keeps one change reason
+      source_ref: .ai/user-policy.yaml#core_user_policies.single_purpose_change
+    - id: preserve-existing-structure-policy
+      label: Existing structure and contracts remain preserved
+      source_ref: .ai/user-policy.yaml#core_user_policies.preserve_existing_structure
+  forbidden:
+    - id: unrelated-source-churn
+      label: Unrelated refactoring and formatting churn are forbidden
+      source_ref: .ai/harness/task-contracts/csharp-local-fix.yaml#prohibited_mutations
+  related: []
+  priority: normal
+  tags: [csharp, local-fix, compile]
+
+use_when:
+  - bounded C# correction
+  - known compile failure
+  - one behavior change with deterministic validation
+
+required:
+  - type: binding
+    name: target_source
+  - type: repository_reference
+    path: SkillReferences/CODING_STANDARDS.md
+  - type: repository_reference
+    path: SkillReferences/CODE_FORMATTING_STANDARDS.md
+
+conditional:
+  direct_dependencies:
+    - type: binding
+      name: direct_callers_or_interfaces
+  unity_version_sensitive_fix:
+    - type: binding
+      name: unity_version
+  project_fallback:
+    - type: repository_reference
+      path: Specs/ProjectProfile.md
+  architecture_change:
+    - type: repository_reference
+      path: SkillReferences/ARCHITECTURE_STANDARDS.md
+    - type: repository_reference
+      path: SkillReferences/ARCHITECTURE_DECISION_POLICY.md
+  antipattern_finding:
+    - type: repository_reference
+      path: SkillReferences/CSHARP_ANTIPATTERN_RULES.md
+    - type: repository_reference
+      path: SkillReferences/CSHARP_ANTIPATTERN_POLICY.md
+  burst_jobs_entities:
+    - type: binding
+      name: matching Burst Jobs Entities reference
+
+excluded_by_default:
+  - SkillReferences/RENDERING_STANDARDS.md
+  - SkillReferences/SHADER_PERFORMANCE_STANDARDS.md
+  - SkillReferences/BEAUTIFUL_DEFINITION_INTEGRATION.md
+
+rules:
+  single_purpose_change: true
+  preserve_existing_structure: true
+  confirmed_local_compile_error_can_use_source_fast_path: true
+  preserve_current_naming_convention: true
+  short_assignment_stays_on_one_line: true
+  no_mechanical_line_break_after_assignment_operator: true
+  no_unrelated_formatting_churn: true
+  no_premature_generalization: true
+  detected_project_facts_override_project_profile: true
+  project_profile_is_fallback_only: true
+
+limits:
+  initial_file_reads: 5
+  context_expansion_hops: 1
+
+output:
+  - confirmed_namespace
+  - compatibility_constraints
+  - bounded_patch_requirements
+  - deterministic_validation
+  - unverified_conditions
