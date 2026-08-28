@@ -13,6 +13,12 @@ metadata:
     - id: bounded-csharp-change
       label: Bounded CSharp rules remain authoritative
       source_ref: .ai/context-packs/csharp-local-fix.yaml#rules
+    - id: single-purpose-change-policy
+      label: One local fix keeps one change reason
+      source_ref: .ai/user-policy.yaml#core_user_policies.single_purpose_change
+    - id: preserve-existing-structure-policy
+      label: Existing structure and contracts remain preserved
+      source_ref: .ai/user-policy.yaml#core_user_policies.preserve_existing_structure
   forbidden:
     - id: unrelated-source-churn
       label: Unrelated refactoring and formatting churn are forbidden
@@ -29,14 +35,18 @@ use_when:
 required:
   - type: binding
     name: target_source
-  - type: binding
-    name: direct_callers_or_interfaces
   - type: repository_reference
     path: SkillReferences/CODING_STANDARDS.md
   - type: repository_reference
     path: SkillReferences/CODE_FORMATTING_STANDARDS.md
 
 conditional:
+  direct_dependencies:
+    - type: binding
+      name: direct_callers_or_interfaces
+  unity_version_sensitive_fix:
+    - type: binding
+      name: unity_version
   project_fallback:
     - type: repository_reference
       path: Specs/ProjectProfile.md
@@ -60,6 +70,9 @@ excluded_by_default:
   - SkillReferences/BEAUTIFUL_DEFINITION_INTEGRATION.md
 
 rules:
+  single_purpose_change: true
+  preserve_existing_structure: true
+  confirmed_local_compile_error_can_use_source_fast_path: true
   preserve_current_naming_convention: true
   short_assignment_stays_on_one_line: true
   no_mechanical_line_break_after_assignment_operator: true

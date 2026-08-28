@@ -48,6 +48,7 @@ VALIDATORS = (
     Path("Tools/BehaviorEval/validate_behavior_eval.py"),
     Path("Tools/BehaviorEval/validate_policy_provenance.py"),
     Path("Tools/BehaviorEval/validate_naming_production_contract.py"),
+    Path("Tools/BehaviorEval/validate_mutation_production_contract.py"),
     Path("Tools/BehaviorEval/validate_production_smoke.py"),
     Path("Tools/BehaviorEval/validate_run_integrity.py"),
 )

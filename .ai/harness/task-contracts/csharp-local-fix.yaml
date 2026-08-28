@@ -7,9 +7,28 @@ mutation_channels:
 required_inputs:
   - goal_or_confirmed_error
   - target_source
-  - unity_version_when_api_sensitive
+
+required_policy_clauses:
+  - id: single_purpose_change
+    source_path: .ai/user-policy.yaml#core_user_policies.single_purpose_change
+    reason: A bounded C# fix must keep one change reason and must not expand into unrelated cleanup or convenience work.
+  - id: preserve_existing_structure
+    source_path: .ai/user-policy.yaml#core_user_policies.preserve_existing_structure
+    reason: A local C# fix must preserve existing names, file structure, and public or serialized contracts unless the request explicitly authorizes a broader change.
 
 conditional_inputs:
+  unity_version:
+    required_when:
+      - fix_depends_on_unity_api_version
+      - compile_error_is_caused_by_version_specific_unity_api
+    inputs:
+      - unity_version
+  direct_dependencies:
+    required_when:
+      - fix_requires_signature_or_contract_change
+      - root_cause_crosses_target_source_boundary
+    inputs:
+      - direct_callers_or_interfaces
   semantic_type_naming:
     required_when:
       - new_type_is_required_by_confirmed_fix
@@ -42,6 +61,8 @@ conditional_quality_gates:
 completion:
   - requested_behavior_or_confirmed_error_is_addressed
   - changed_scope_is_bounded
+  - single_purpose_change_policy_is_applied_and_recorded
+  - preserve_existing_structure_policy_is_applied_and_recorded
   - semantic_type_naming_is_reviewed_only_when_new_or_renamed_type_exists
   - existing_api_names_are_preserved_unless_rename_is_requested
   - compile_is_passed_or_reported_unavailable
