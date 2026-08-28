@@ -33,8 +33,6 @@ use_when:
   - one behavior change with deterministic validation
 
 required:
-  - type: repository_reference
-    path: .ai/user-policy.yaml
   - type: binding
     name: target_source
   - type: repository_reference
