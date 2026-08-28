@@ -155,10 +155,11 @@ def validate_bounded_patch_signal(errors: list[str]) -> None:
     )
     require(after != before, "Mutation fixture simulation must produce one patch.", errors)
 
-    diff = """diff --git a/CameraDebugger.cs b/CameraDebugger.cs
---- a/CameraDebugger.cs
+    # Match the real Graph bridge output: difflib.unified_diff emits ---/+++ headers
+    # without a leading `diff --git` line.
+    diff = """--- a/CameraDebugger.cs
 +++ b/CameraDebugger.cs
-@@ -4,5 +4,5 @@ public sealed class CameraDebugger
+@@ -4,5 +4,5 @@
  {
      private float _farClipValue = 1000f;
  
@@ -181,13 +182,14 @@ def validate_bounded_patch_signal(errors: list[str]) -> None:
         gates={"static_review": "passed", "compile": "passed"},
     )
     signals = set(derived.get("signals", []) or [])
-    require("bounded_patch" in signals, "A one-file allowed mutation must derive bounded_patch.", errors)
+    require("bounded_patch" in signals,
+            "A plain unified one-file allowed mutation must derive bounded_patch.", errors)
     for forbidden in ("unrelated_refactor", "unrelated_rename", "public_contract_change"):
         require(forbidden not in signals, f"Bounded patch must not derive forbidden signal: {forbidden}", errors)
 
     structure = derived.get("structure", {}) or {}
     require(structure.get("changed_paths") == ["CameraDebugger.cs"],
-            "Mutation structure must report exactly CameraDebugger.cs as changed.", errors)
+            "Plain unified diff structure must report exactly CameraDebugger.cs as changed.", errors)
     require(structure.get("new_type_names") == [],
             "Bounded local patch must not appear as a new Type.", errors)
 
@@ -216,7 +218,7 @@ def main() -> int:
 
     print(
         "Mutation Production contract validation passed: the fixture has one unambiguous source-proven compile fix, "
-        "canonical policy provenance, no Golden leak, and 5/5 deterministic patch evidence."
+        "canonical policy provenance, Graph-compatible unified diff parsing, no Golden leak, and 5/5 deterministic patch evidence."
     )
     return 0
 
