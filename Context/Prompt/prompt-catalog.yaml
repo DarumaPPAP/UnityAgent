@@ -1,0 +1,22 @@
+schema_version: "1.0"
+kind: prompt_specification_catalog
+authority: Context
+review:
+  golden_expectation_leak_reviewed: true
+  golden_expected_answer_content_found: false
+templates:
+  full-shader-audit:
+    path: Context/Prompt/Templates/00_full_shader_audit.md
+    source_revision: fc433c64ba29031d6aaf2b9d69f94a39f388deb3
+  optimize-from-audit:
+    path: Context/Prompt/Templates/01_optimize_from_audit.md
+    source_revision: 92351cc6b02872ffc070f13432e8531ecea48730
+  variant-audit:
+    path: Context/Prompt/Templates/02_variant_audit.md
+    source_revision: 8f7d14c8e062dd61d682b4911b8fe31aaacf1216
+  runtime-evidence:
+    path: Context/Prompt/Templates/03_runtime_evidence.md
+    source_revision: 0b01b7b542fed6ebae596a3dadc3a91ce497eeb0
+rules:
+  prompt_specification_is_versioned_input: true
+  eval_golden_content_must_not_be_injected: true

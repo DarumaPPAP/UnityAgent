@@ -1,0 +1,24 @@
+schema_version: "1.0"
+kind: evidence_policy
+authority: Policy
+legacy_gate_catalog: compatibility://quality-gates
+result_statuses:
+  - passed
+  - failed
+  - unavailable
+rules:
+  unavailable_is_not_failure: true
+  unavailable_is_not_success: true
+  unavailable_requires_reason: true
+  unavailable_requires_remaining_validation: true
+  evidence_scope_must_not_be_overclaimed: true
+  agent_self_report_is_not_primary_evidence: true
+  compile_success_does_not_prove_runtime: true
+  editor_success_does_not_prove_player: true
+  player_success_does_not_prove_target_device: true
+  performance_claim_requires_measurement: true
+ownership:
+  policy_defines_evidence_requirements: true
+  runtime_captures_current_run_evidence: true
+  persistence_owns_durable_evidence_records: true
+  eval_consumes_evidence_without_reinterpreting_canonical_facts: true

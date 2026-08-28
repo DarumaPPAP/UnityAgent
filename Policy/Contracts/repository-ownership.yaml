@@ -1,0 +1,15 @@
+schema_version: "1.0"
+kind: repository_ownership_policy
+authority: Policy
+source_provenance:
+  legacy_source: compatibility://migration-source/mcp-activation
+repositories:
+  policy: DarumaPPAP/UnityAgent
+  mcp: DarumaPPAP/MyUnityMCP
+ownership:
+  user_preferences_and_unity_domain_contracts: DarumaPPAP/UnityAgent
+  mcp_specs_workflows_manifests_schemas_packages_and_tests: DarumaPPAP/MyUnityMCP
+  generated_unity_assets: target_unity_project
+rules:
+  repository_ownership_is_governance_not_tool_exposure: true
+  external_package_implementation_is_not_duplicated_into_unityagent: true

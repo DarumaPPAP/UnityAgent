@@ -1,0 +1,83 @@
+schema_version: "3.0"
+id: rendering-incident
+primary_skill: .agents/skills/unity-incident-investigation/SKILL.md
+
+metadata:
+  type: context
+  title: Rendering Incident
+  summary:
+    - Investigate unknown rendering, platform, RenderGraph, or visual regressions.
+  purpose:
+    - Confirm the smallest rendering cause before allowing a mutation.
+  decisions:
+    - id: cause-before-mutation
+      label: Rendering mutation requires a confirmed cause
+      source_ref: .ai/context-packs/rendering-incident.yaml#rules
+  forbidden:
+    - id: premature-rendering-mutation
+      label: Mutation before confirmed cause is forbidden
+      source_ref: .ai/harness/task-contracts/rendering-incident.yaml#prohibited_mutations
+  related: []
+  priority: critical
+  tags: [rendering, incident, investigation]
+
+use_when:
+  - rendering root cause is unknown
+  - Editor Player or platform difference
+  - RenderGraph validation error
+  - visual regression caused by rendering behavior
+
+required:
+  - type: binding
+    name: symptom_and_exact_error
+  - type: binding
+    name: reproduction_conditions
+  - type: binding
+    name: affected_rendering_sources
+  - type: binding
+    name: renderer_feature_order
+  - type: repository_reference
+    path: SkillReferences/RENDERING_STANDARDS.md
+
+conditional:
+  project_fallback:
+    - type: repository_reference
+      path: Specs/ProjectProfile.md
+  render_graph:
+    - type: repository_reference
+      path: .agents/skills/unity-rendering/SKILL.md
+  shader_compile_or_variant:
+    - type: repository_reference
+      path: SkillReferences/SHADER_PERFORMANCE_STANDARDS.md
+    - type: repository_reference
+      path: SkillReferences/ShaderPerformance/UNITY_URP_POLICY.md
+  strict_variant:
+    - type: binding
+      name: matching Variant Policy and governor Skill
+  player_only:
+    - type: binding
+      name: build and platform evidence
+
+excluded_by_default:
+  - SkillReferences/BEAUTIFUL_DEFINITION_INTEGRATION.md
+  - unrelated CSharp antipattern catalog
+
+rules:
+  mutation_before_confirmed_cause: false
+  one_primary_hypothesis_per_patch: true
+  editor_result_does_not_prove_player: true
+  direct_source_read_required: true
+  detected_project_facts_override_project_profile: true
+  project_profile_is_fallback_only: true
+
+limits:
+  initial_file_reads: 7
+  context_expansion_hops: 1
+
+output:
+  - confirmed_facts
+  - hypotheses
+  - rejected_hypotheses
+  - smallest_observation_needed
+  - domain_evidence_required
+  - mutation_gate

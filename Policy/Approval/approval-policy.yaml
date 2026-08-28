@@ -1,0 +1,19 @@
+schema_version: "1.0"
+kind: approval_policy
+authority: Policy
+risk_source: Policy/Risk/risk-levels.yaml
+requirements:
+  R0: not_required
+  R1: conditional
+  R2: before_destructive_or_contract_change
+  R3: required_for_project_asset_or_settings_change
+  R4: always_required
+tool_operations:
+  mutate: explicit_permission_required
+  bake: separate_explicit_permission_required
+  visual_acceptance: human_review_required
+rules:
+  policy_decides_whether_approval_is_required: true
+  orchestration_places_human_gate: true
+  runtime_pauses_serializes_and_applies_decision: true
+  runtime_revalidates_high_risk_action_before_execution: true

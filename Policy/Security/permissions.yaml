@@ -1,0 +1,34 @@
+schema_version: "1.0"
+kind: permission_requirement_policy
+authority: Policy
+source_provenance:
+  legacy_source: compatibility://mcp-activation
+requirements:
+  inspect:
+    mutation: prohibited
+    explicit_mutation_permission: not_applicable
+  plan:
+    mutation: prohibited
+    explicit_mutation_permission: not_applicable
+  mutate:
+    mutation: allowed_when_authorized
+    requires:
+      - approved_plan
+      - explicit_mutation_permission
+      - revision
+      - diff
+      - undo_path
+  bake:
+    mutation: allowed_when_authorized
+    requires:
+      - separate_explicit_bake_permission
+      - dependency_invalidation
+  capture:
+    mutation: prohibited
+    requires:
+      - editor_connection
+      - evidence_requirement
+rules:
+  automatic_save: prohibited
+  permission_definition_is_not_tool_exposure: true
+  runtime_must_recheck_high_risk_permission_immediately_before_execution: true

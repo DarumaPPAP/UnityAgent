@@ -1,0 +1,148 @@
+schema_version: "3.0"
+id: graphics-mcp
+primary_skill: .agents/skills/unity-architecture-design/SKILL.md
+
+metadata:
+  type: context
+  title: Graphics MCP
+  summary:
+    - Route Unity graphics inspection, planning, mutation, bake, and capture contracts.
+  purpose:
+    - Select one primary graphics MCP capability while preserving UnityAgent ownership.
+  decisions:
+    - id: mcp-contract-authority
+      label: UnityAgent MCP routing rules remain authoritative
+      source_ref: .ai/context-packs/graphics-mcp.yaml#rules
+  forbidden:
+    - id: unapproved-graphics-mutation
+      label: Unapproved graphics mutation, bake, or capture is forbidden
+      source_ref: .ai/harness/task-contracts/graphics-mcp.yaml#prohibited_mutations
+  related: []
+  priority: critical
+  tags: [mcp, graphics, routing]
+
+use_when:
+  - UnityAgentMCP architecture or requirements
+  - UnityGraphicsMCP architecture or requirements
+  - reference image or natural language to Unity graphics direction
+  - Timeline Cinemachine Volume lighting GI reflection VFX integration
+  - graphics inspection planning mutation bake capture evaluation workflow
+  - Built-in URP HDRP Custom SRP capability routing
+
+required:
+  - type: repository_reference
+    path: .ai/user-policy.yaml
+  - type: repository_reference
+    path: AGENTS.md
+  - type: repository_reference
+    path: SkillReferences/ARCHITECTURE_DECISION_POLICY.md
+  - type: repository_reference
+    path: .ai/harness/mcp-activation.yaml
+  - type: repository_reference
+    path: .ai/knowledge/graphics/unity-graphics-mcp.yaml
+  - type: external_reference
+    repository: DarumaPPAP/MyUnityMCP
+    path: AGENTS.md
+  - type: external_reference
+    repository: DarumaPPAP/MyUnityMCP
+    path: Specs/UnityAgentMCP/spec.md
+
+conditional:
+  project_fallback:
+    - type: repository_reference
+      path: Specs/ProjectProfile.md
+  graphics_domain_contract_or_implementation:
+    - type: external_reference
+      repository: DarumaPPAP/MyUnityMCP
+      path: Specs/UnityGraphicsMCP/spec.md
+    - type: external_reference
+      repository: DarumaPPAP/MyUnityMCP
+      path: Specs/UnityGraphicsMCP/plan.md
+    - type: external_reference
+      repository: DarumaPPAP/MyUnityMCP
+      path: Specs/UnityGraphicsMCP/editor-tool-design.md
+  visual_goal_or_reference:
+    - type: context_include
+      context_id: visual-direction
+  renderer_feature_or_render_graph_change:
+    - type: context_include
+      context_id: renderer-feature-change
+  shader_change:
+    - type: context_include
+      context_id: shader-change
+  performance_claim_or_platform_budget:
+    - type: context_include
+      context_id: performance
+  direct_scene_prefab_material_mutation:
+    - type: context_include
+      context_id: asset-data-change
+
+excluded_by_default:
+  - all Beautiful-Definition profiles
+  - unrelated rendering knowledge
+  - every MCP manifest except the selected primary MCP
+  - every MCP package source file during normal tool use
+  - mutation bake and capture tool groups before their gates are satisfied
+  - unselected pipeline backend implementation details
+  - legacy Supervisor routing documents
+
+rules:
+  user_policy_has_priority_over_generic_mcp_architecture: true
+  unity_agent_owns_preferences_routes_and_domain_contracts: true
+  mcp_repository: DarumaPPAP/MyUnityMCP
+  mcp_specification_root: Specs
+  mcp_package_root: Packages
+  mcp_catalog_root: Catalog
+  mcp_generated_assets_are_owned_by_target_unity_project: true
+  load_only_selected_creator_or_domain_manifest: true
+  package_source_not_loaded_during_normal_tool_use: true
+  select_exactly_one_primary_creator_or_domain_mcp: true
+  conditional_domain_mcp_limit: 2
+  inspect_target_project_before_backend_selection: true
+  fixed_unity_version_pipeline_path_or_platform_defaults_are_prohibited_in_mcp_contract: true
+  detected_project_facts_override_profiles_and_preferences: true
+  project_profile_is_fallback_only: true
+  explicit_requested_target_is_separate_from_detected_project_facts: true
+  unverified_is_not_unsupported: true
+  backend_not_implemented_must_be_reported_explicitly: true
+  silent_pipeline_fallback_is_prohibited: true
+  root_namespace_must_be_resolved_before_code_generation: true
+  placeholder_namespace_is_prohibited: true
+  enum_type_uses_e_upper_snake_case: true
+  struct_type_uses_s_upper_snake_case: true
+  single_cohesive_script_first: true
+  pipeline_specific_assemblies_require_confirmed_package_boundary: true
+  backend_interface_requires_multiple_real_implementations_or_external_boundary: true
+  inspect_plan_apply_bake_capture_are_separate_operations: true
+  read_only_operations_must_not_dirty_assets_or_scenes: true
+  mutation_tool_group_requires_approved_plan_and_explicit_permission: true
+  bake_tool_group_requires_separate_explicit_permission: true
+  project_settings_renderer_data_and_pipeline_asset_mutation_require_explicit_approval: true
+  visual_acceptance_requires_human_review: true
+
+limits:
+  initial_file_reads: 8
+  context_expansion_hops: 1
+
+output:
+  - selected_execution_profile
+  - selected_creator_or_primary_domain_mcp
+  - selected_tool_groups
+  - detected_project_facts
+  - explicit_requested_target
+  - project_profile_fallbacks_used
+  - selected_backend_and_capabilities
+  - compatibility_verification_state
+  - confirmed_project_context
+  - ownership_and_lifetime
+  - change_axes
+  - selected_architecture
+  - rejected_alternatives
+  - file_plan_with_split_reason
+  - dependency_direction
+  - pipeline_capability_contract
+  - safety_and_mutation_contract
+  - validation_and_evidence_plan
+  - unresolved_bindings
+  - MyUnityMCP_changed_paths
+  - target_Unity_Project_generated_paths

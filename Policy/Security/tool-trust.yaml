@@ -1,0 +1,23 @@
+schema_version: "1.0"
+kind: tool_trust_policy
+authority: Policy
+source_provenance:
+  legacy_source: compatibility://mcp-activation
+  legacy_section: source_read_policy
+source_read_policy:
+  normal_tool_use: prohibited
+  mcp_implementation: allowed_for_selected_package_and_direct_dependencies
+  mcp_bug_fix: allowed_for_selected_package_and_direct_dependencies
+  schema_audit: allowed_for_selected_package_and_direct_dependencies
+  unity_version_migration: allowed_for_selected_package_and_direct_dependencies
+  security_review: allowed_for_selected_package_and_direct_dependencies
+  all_package_scan: prohibited
+safety:
+  inspect_is_read_only: true
+  plan_is_read_only: true
+  automatic_save: prohibited
+  silent_fallback: prohibited
+  visual_acceptance_requires_human_review: true
+rules:
+  policy_defines_permission_requirements_only: true
+  runtime_performs_tool_exposure_and_enforcement: true

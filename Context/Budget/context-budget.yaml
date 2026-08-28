@@ -1,0 +1,211 @@
+schema_version: "1.0"
+kind: context_budget_contract
+
+purpose:
+  - Bound retrieved Context before model execution without weakening authoritative rules.
+  - Separate measurable retrieval cost from model-specific token accounting.
+  - Require explicit compression evidence instead of silently dropping Context.
+
+scope:
+  measures:
+    - selected_policy_and_context_artifacts
+    - selected_domain_skill_and_task_contract
+    - selected_project_facts
+    - selected_project_source_and_direct_dependencies
+    - selected_repository_and_external_references
+    - selected_knowledge_and_background_context
+  does_not_measure:
+    - system_prompt_overhead
+    - current_user_instruction_tokens
+    - tool_protocol_overhead
+    - model_hidden_reasoning_tokens
+    - provider_billing_tokens
+    - loop_total_cost
+  loop_and_model_execution_budget_owner: DarumaPPAP/Unity-Graph-Engineering
+  context_selection_budget_owner: DarumaPPAP/UnityAgent
+
+source_of_truth:
+  canonical_contract: true
+  generated_budget_reports_are_not_policy: true
+  model_provider_token_count_is_optional_evidence: true
+
+estimator:
+  id: utf8-bytes-conservative-v1
+  exact_model_tokenizer: false
+  unit: estimated_tokens
+  formula: ceil(selected_utf8_bytes / 3)
+  utf8_bytes_per_estimated_token: 3
+  intent: conservative_cross_language_estimate
+  provider_token_count_must_not_be_called_exact_unless_tokenizer_is_recorded: true
+
+retrieval_observation:
+  required_fields:
+    - source_id
+    - role
+    - source_revision
+    - original_utf8_bytes
+    - selected_utf8_bytes
+    - compression
+  compression_required_fields:
+    - mode
+  allowed_roles:
+    - user_policy
+    - context_pack
+    - primary_skill
+    - task_contract
+    - project_fact
+    - target_source
+    - direct_dependency
+    - required_context
+    - conditional_context
+    - context_include
+    - external_reference
+    - knowledge
+    - background_reference
+    - prior_failure
+  compression_modes:
+    - none
+    - lossless_excerpt
+    - semantic_summary
+  local_repository_sources_are_measured_automatically_when_no_override_exists: true
+  project_and_external_sources_require_explicit_observation: true
+  selected_utf8_bytes_must_not_exceed_original: true
+  zero_byte_required_artifact_is_forbidden: true
+
+compression_policy:
+  full_only_roles:
+    - user_policy
+    - context_pack
+    - primary_skill
+    - task_contract
+    - project_fact
+  lossless_excerpt_allowed_roles:
+    - target_source
+    - direct_dependency
+    - required_context
+    - conditional_context
+    - context_include
+    - external_reference
+    - knowledge
+    - background_reference
+    - prior_failure
+  semantic_summary_allowed_roles:
+    - knowledge
+    - background_reference
+    - prior_failure
+  lossless_excerpt_requires_selected_ranges: true
+  semantic_summary_requires_summary_revision: true
+  canonical_source_is_never_rewritten_by_compression: true
+  mutation_target_must_remain_traceable_to_source_revision: true
+  required_context_must_not_be_silently_dropped: true
+
+profiles:
+  tight:
+    retrieval:
+      max_artifacts: 10
+      max_selected_utf8_bytes: 98304
+      max_external_fetches: 2
+      max_context_includes: 1
+      max_expansion_hops: 1
+    context:
+      soft_estimated_tokens: 24000
+      hard_estimated_tokens: 32768
+  standard:
+    retrieval:
+      max_artifacts: 14
+      max_selected_utf8_bytes: 163840
+      max_external_fetches: 4
+      max_context_includes: 2
+      max_expansion_hops: 1
+    context:
+      soft_estimated_tokens: 40000
+      hard_estimated_tokens: 56000
+  wide:
+    retrieval:
+      max_artifacts: 22
+      max_selected_utf8_bytes: 262144
+      max_external_fetches: 6
+      max_context_includes: 3
+      max_expansion_hops: 1
+    context:
+      soft_estimated_tokens: 64000
+      hard_estimated_tokens: 90000
+
+route_profiles:
+  architecture-design: standard
+  graphics-mcp: wide
+  csharp-local-fix: tight
+  rendering-incident: wide
+  shader-change: standard
+  renderer-feature-change: standard
+  performance-experiment: standard
+  asset-data-change: standard
+  portable-feature: standard
+  safe-import-integration: standard
+  visual-direction: standard
+
+budget_decision:
+  statuses:
+    - within_budget
+    - compression_required
+    - blocked
+    - unmeasured
+  within_budget:
+    - all_required_artifacts_measured
+    - hard_retrieval_limits_satisfied
+    - estimated_tokens_at_or_below_soft_limit
+  compression_required:
+    - all_required_artifacts_measured
+    - hard_limits_not_exceeded
+    - soft_context_limit_exceeded
+  blocked:
+    - hard_context_limit_exceeded
+    - hard_retrieval_limit_exceeded
+  unmeasured:
+    - required_project_or_external_observation_missing
+
+validation_failures:
+  reject_before_budget_decision:
+    - invalid_compression_on_protected_role
+    - required_artifact_dropped
+    - invalid_source_revision
+    - invalid_byte_measurement
+    - unexpected_selected_artifact
+
+execution_guards:
+  mutation_requires_within_budget: true
+  compression_required_must_be_resolved_before_mutation: true
+  blocked_must_stop_before_mutation: true
+  unmeasured_must_stop_before_mutation: true
+  read_only_analysis_may_report_unmeasured_without_claiming_budget_pass: true
+
+compression_order:
+  - deduplicate_identical_source_revision
+  - remove_unselected_conditional_context
+  - use_lossless_relevant_ranges
+  - summarize_non_authoritative_knowledge
+  - preserve_unresolved_binding_instead_of_guessing
+  - stop_when_hard_limit_cannot_be_satisfied
+
+reporting:
+  required_fields:
+    - contract
+    - profile
+    - estimator
+    - coverage
+    - retrieval
+    - context
+    - compression
+    - decision
+    - blocking_reasons
+  record_original_and_selected_bytes: true
+  record_saved_bytes: true
+  record_compression_modes: true
+  record_missing_observations: true
+  record_candidate_sources_for_compression: true
+
+calibration:
+  provisional_thresholds: true
+  thresholds_require_golden_regression_before_tightening: true
+  production_measurements_should_update_profiles_not_bypass_guards: true
+  exact_provider_token_evidence_may_be_added_without_replacing_conservative_estimate: true

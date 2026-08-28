@@ -1,0 +1,63 @@
+schema_version: "3.1"
+kind: typed_context_pack_contract
+migration:
+  legacy_contract: Context/Compatibility/legacy-context-pack.schema.yaml
+  legacy_source_refs_are_resolved_before_use: true
+metadata:
+  type: context
+  title:
+    max_length: 80
+  summary:
+    min_items: 1
+    max_items: 3
+    item_max_length: 160
+  purpose:
+    min_items: 1
+    max_items: 5
+  decisions:
+    min_items: 1
+    max_items: 12
+    required_fields: [id, label, source_ref]
+  forbidden:
+    min_items: 1
+    max_items: 12
+    required_fields: [id, label, source_ref]
+  related:
+    max_items: 8
+    required_fields: [id, relation, reason, source_ref]
+  priority:
+    allowed: [critical, high, normal, low]
+  tags:
+    max_items: 8
+relations:
+  allowed:
+    - related-to
+    - depends-on
+    - hands-off-to
+    - conflicts-with
+    - refines
+typed_context:
+  allowed_types:
+    - binding
+    - repository_reference
+    - external_reference
+    - context_include
+    - route_handoff
+source_refs:
+  canonical_roots:
+    - Policy/
+    - Context/
+    - Runtime/
+    - Persistence/
+    - .agents/
+    - SkillReferences/
+    - Specs/
+  compatibility_scheme: compatibility://
+  legacy_refs_must_be_resolved_by: Context/Compatibility/path_resolver.py
+invariants:
+  context_pack_is_model_input_definition_not_state: true
+  metadata_is_not_execution_authority: true
+  context_include_does_not_change_primary_route: true
+  route_handoff_changes_primary_ownership: true
+  project_profile_is_fallback_only: true
+  detected_project_facts_precede_project_profile: true

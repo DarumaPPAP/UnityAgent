@@ -1,0 +1,90 @@
+schema_version: "3.0"
+id: performance
+primary_skill: .agents/skills/unity-runtime-evidence/SKILL.md
+
+metadata:
+  type: context
+  title: Performance Evidence
+  summary:
+    - Measure CPU, GPU, memory, build, or load performance under fixed conditions.
+  purpose:
+    - Require a baseline, candidate measurement, quality check, and revert condition.
+  decisions:
+    - id: measured-performance-only
+      label: Performance claims require measurement
+      source_ref: .ai/context-packs/performance.yaml#rules
+  forbidden:
+    - id: unmeasured-optimization-claim
+      label: Unmeasured optimization claims are forbidden
+      source_ref: .ai/harness/task-contracts/performance-experiment.yaml#prohibited_mutations
+  related: []
+  priority: high
+  tags: [performance, evidence, measurement]
+
+use_when:
+  - CPU GPU or memory optimization
+  - render performance change
+  - shader performance change
+  - build size or load performance
+
+required:
+  - type: binding
+    name: measurable_metric
+  - type: binding
+    name: reproduction_scene_or_workload
+  - type: binding
+    name: target_platform
+  - type: binding
+    name: quality_settings
+  - type: binding
+    name: baseline_capture_or_explicit_missing_baseline
+
+conditional:
+  project_fallback:
+    - type: repository_reference
+      path: Specs/ProjectProfile.md
+  csharp_cpu_or_gc:
+    - type: binding
+      name: matching CSharp audit Skill
+    - type: repository_reference
+      path: SkillReferences/CODING_STANDARDS.md
+  shader_gpu:
+    - type: repository_reference
+      path: SkillReferences/SHADER_PERFORMANCE_STANDARDS.md
+    - type: binding
+      name: matching shader audit and runtime evidence Skill
+  rendering_pipeline:
+    - type: repository_reference
+      path: SkillReferences/RENDERING_STANDARDS.md
+    - type: repository_reference
+      path: .agents/skills/unity-rendering/SKILL.md
+  variant_or_build_size:
+    - type: repository_reference
+      path: .agents/skills/unity-shader-variant-governor/SKILL.md
+    - type: binding
+      name: matching Variant Policy
+
+excluded_by_default:
+  - SkillReferences/BEAUTIFUL_DEFINITION_INTEGRATION.md
+  - unrelated domain catalogs
+
+rules:
+  audit_before_mutation: true
+  one_primary_hypothesis_per_patch: true
+  before_after_same_conditions: true
+  quality_regression_check_required: true
+  unmeasured_improvement_cannot_be_claimed: true
+  detected_project_facts_override_project_profile: true
+  project_profile_is_fallback_only: true
+
+limits:
+  initial_file_reads: 6
+  context_expansion_hops: 1
+
+output:
+  - baseline_status
+  - metric_and_capture_contract
+  - primary_hypothesis
+  - minimal_mutation_scope
+  - before_after_requirements
+  - adopt_rework_revert_conditions
