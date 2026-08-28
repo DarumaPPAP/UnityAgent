@@ -38,7 +38,7 @@ contexts:
   - local-fix
   related: []
   pack_path: .ai/context-packs/csharp-local-fix.yaml
-  source_sha256: 66061e80ae818738cb520c2a3e0efe40aa285c9eaf67432300abb603653fa3ca
+  source_sha256: ca314331b59d6eda289cb4e6aa288b1b163928c0152539452659447b2c2b42b4
 - id: graphics-mcp
   title: Graphics MCP
   summary:
