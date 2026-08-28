@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Production MUTATION contract against the phase11-mutation-01 failure mode."""
+"""Validate Production MUTATION contract against observed no-op failure modes."""
 
 from __future__ import annotations
 
@@ -122,14 +122,20 @@ def validate_context_and_skill_fast_path(errors: list[str]) -> None:
 
 def validate_production_fixture_and_no_leak(errors: list[str]) -> None:
     fixture = FIXTURE_SOURCE.read_text(encoding="utf-8")
-    require("_missingFarClipValue" in fixture and "_farClipValue" in fixture,
-            "LocalPatch fixture must preserve one locally inspectable compile-error relationship.", errors)
+    broken_line = "public float FarClip => _farClipValue\n"
+    fixed_line = "public float FarClip => _farClipValue;\n"
+    require(broken_line in fixture,
+            "LocalPatch fixture must contain the single missing-semicolon compile error.", errors)
+    require(fixed_line not in fixture,
+            "LocalPatch fixture must remain broken before Production execution.", errors)
+    require("_missingFarClipValue" not in fixture,
+            "LocalPatch fixture must not use an ambiguous missing-symbol repair anymore.", errors)
 
     contracts = (load_yaml(PRODUCTION_CONTRACTS).get("cases", {}) or {})
     production = contracts.get("GOLDEN-MUTATION-001", {}) or {}
     prompt = str(production.get("production_prompt") or "")
     require(prompt.strip() != "", "Mutation Production prompt must exist.", errors)
-    for leaked in ("_missingFarClipValue", "_farClipValue", "FarClip => _farClipValue"):
+    for leaked in ("_farClipValue;", "semicolon", "セミコロン", "FarClip => _farClipValue;"):
         require(leaked not in prompt, f"Mutation Production prompt leaks the patch answer: {leaked}", errors)
 
     suite_case = production_suite_case()
@@ -143,17 +149,20 @@ def validate_bounded_patch_signal(errors: list[str]) -> None:
     case = golden_mutation_case()
     suite_case = production_suite_case()
     before = FIXTURE_SOURCE.read_text(encoding="utf-8")
-    after = before.replace("_missingFarClipValue", "_farClipValue")
+    after = before.replace(
+        "public float FarClip => _farClipValue\n",
+        "public float FarClip => _farClipValue;\n",
+    )
     require(after != before, "Mutation fixture simulation must produce one patch.", errors)
 
     diff = """diff --git a/CameraDebugger.cs b/CameraDebugger.cs
 --- a/CameraDebugger.cs
 +++ b/CameraDebugger.cs
-@@ -5,5 +5,5 @@ public sealed class CameraDebugger
+@@ -4,5 +4,5 @@ public sealed class CameraDebugger
+ {
      private float _farClipValue = 1000f;
  
-     // Behavior Eval fixture: this symbol is intentionally invalid so the local-fix task has one bounded compile error.
--    public float FarClip => _missingFarClipValue;
+-    public float FarClip => _farClipValue
 +    public float FarClip => _farClipValue;
  }
 """
@@ -206,8 +215,8 @@ def main() -> int:
         return 1
 
     print(
-        "Mutation Production contract validation passed: bounded local compile-error fixes have canonical policy provenance, "
-        "conditional context inputs, no Golden leak, and 5/5 deterministic patch evidence."
+        "Mutation Production contract validation passed: the fixture has one unambiguous source-proven compile fix, "
+        "canonical policy provenance, no Golden leak, and 5/5 deterministic patch evidence."
     )
     return 0
 
