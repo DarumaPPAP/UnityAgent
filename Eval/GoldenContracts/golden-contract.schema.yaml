@@ -1,0 +1,25 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:eval:golden-contract
+title: GoldenContract
+type: object
+additionalProperties: false
+required: [schema_version, contract_id, contract_revision, expected_result, invariants, expected_trajectory, forbidden, evidence_requirements]
+properties:
+  schema_version: {const: '1.0'}
+  contract_id: {type: string, minLength: 1}
+  contract_revision: {type: string, minLength: 1}
+  expected_result:
+    type: array
+    items: {}
+  invariants:
+    type: array
+    items: {}
+  expected_trajectory:
+    type: array
+    items: {}
+  forbidden:
+    type: array
+    items: {}
+  evidence_requirements:
+    type: array
+    items: {}

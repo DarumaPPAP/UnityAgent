@@ -1,0 +1,27 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:runtime:runtime-failure
+title: RuntimeFailure
+type: object
+additionalProperties: false
+required: [schema_version, failure_class, reason, retryable, source_ref, observation_state]
+properties:
+  schema_version:
+    const: '1.0'
+  failure_class:
+    enum:
+    - runtime_timeout
+    - runtime_protocol_failure
+    - unavailable_required_evidence
+    - task_fixture_invalid
+    - runtime_cancelled
+    - runtime_permission_denied
+    - runtime_tool_unavailable
+  reason:
+    type: string
+    minLength: 1
+  retryable:
+    type: boolean
+  source_ref:
+    type: [string, 'null']
+  observation_state:
+    enum: [observed, not_observed]

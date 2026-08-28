@@ -1,0 +1,24 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:operations:trace-record
+title: TraceRecord
+type: object
+additionalProperties: false
+required: [schema_version, trace_id, span_id, run_id, step_id, event_type, severity, timestamp, attributes, evidence_refs]
+properties:
+  schema_version: {const: '1.0'}
+  trace_id: {type: string, minLength: 1}
+  span_id: {type: string, minLength: 1}
+  parent_span_id: {type: [string, 'null']}
+  run_id: {type: string, minLength: 1}
+  step_id: {type: [string, 'null']}
+  event_type: {type: string, minLength: 1}
+  severity:
+    enum: [debug, info, warning, error, critical]
+  timestamp: {type: string, format: date-time}
+  attributes:
+    type: object
+    additionalProperties: true
+  evidence_refs:
+    type: array
+    items: {type: string, minLength: 1}
+    uniqueItems: true

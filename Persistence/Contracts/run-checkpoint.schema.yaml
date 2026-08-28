@@ -1,0 +1,24 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:persistence:run-checkpoint
+title: RunCheckpoint
+type: object
+additionalProperties: false
+required: [schema_version, checkpoint_id, run_id, created_at, reason, execution_state_ref, workflow_state_ref, loop_control_state_refs, evidence_refs, definition_fingerprint]
+properties:
+  schema_version: {const: '1.0'}
+  checkpoint_id: {type: string, minLength: 1}
+  run_id: {type: string, minLength: 1}
+  created_at: {type: string, format: date-time}
+  reason: {type: string, minLength: 1}
+  execution_state_ref: {type: string, minLength: 1}
+  workflow_state_ref: {type: string, minLength: 1}
+  loop_control_state_refs:
+    type: array
+    items: {type: string, minLength: 1}
+    uniqueItems: true
+  evidence_refs:
+    type: array
+    items: {type: string, minLength: 1}
+    uniqueItems: true
+  definition_fingerprint:
+    $ref: urn:unityagent:persistence:definition-fingerprint

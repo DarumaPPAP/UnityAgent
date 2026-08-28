@@ -1,0 +1,21 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:persistence:workflow-state
+title: WorkflowState
+type: object
+additionalProperties: false
+required: [schema_version, run_id, parent_graph_id, active_subgraph_id, active_node_id, shared_state_refs, gate_state_refs, updated_at]
+properties:
+  schema_version: {const: '1.0'}
+  run_id: {type: string, minLength: 1}
+  parent_graph_id: {type: string, minLength: 1}
+  active_subgraph_id: {type: [string, 'null']}
+  active_node_id: {type: [string, 'null']}
+  shared_state_refs:
+    type: array
+    items: {type: string, minLength: 1}
+    uniqueItems: true
+  gate_state_refs:
+    type: array
+    items: {type: string, minLength: 1}
+    uniqueItems: true
+  updated_at: {type: string, format: date-time}
