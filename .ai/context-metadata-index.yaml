@@ -14,7 +14,7 @@ contexts:
   - unity
   related: []
   pack_path: .ai/context-packs/architecture-design.yaml
-  source_sha256: b95252fd57f9a1d26f7804f7f1ac49003cb2f371f09f618008f92c97a233153c
+  source_sha256: c986d67aeb8164ecca74f473e9177c8199f89a9fbfe1685997aa1e2f53369d69
 - id: asset-data-change
   title: Asset Data Change
   summary:
