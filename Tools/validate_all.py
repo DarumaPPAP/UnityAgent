@@ -46,6 +46,7 @@ VALIDATORS = (
     Path("Tools/GoldenEval/validate_typed_context_v3.py"),
     Path("Tools/GoldenEval/validate_context_budget_v1.py"),
     Path("Tools/BehaviorEval/validate_behavior_eval.py"),
+    Path("Tools/BehaviorEval/validate_policy_provenance.py"),
     Path("Tools/BehaviorEval/validate_production_smoke.py"),
     Path("Tools/BehaviorEval/validate_run_integrity.py"),
 )
