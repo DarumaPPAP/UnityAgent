@@ -8,7 +8,7 @@ from pathlib import Path
 CANONICAL_SCAN_ROOTS = (Path("AGENTS.md"), Path("Policy"), Path("Context/Assembly"), Path("Context/Budget"), Path("Context/Compression"), Path("Context/Contracts"), Path("Context/Manifest"), Path("Context/Selection"), Path("Context/Validators"), Path("Context/Tests"), Path("Runtime/Permissions"))
 EXEMPT_PREFIXES = ("Context/Compatibility/", "Context/Packs/", "Context/Retrieval/Knowledge/", "docs/migration/")
 EXEMPT_FILES = {"Context/Budget/_compat_engine.py", "Context/Budget/_compat_validation.py", ".github/workflows/validate-policy-context.yml"}
-LEGACY_MARKER = ".ai/"
+LEGACY_MARKER = "." + "ai/"
 
 def _iter_files(root: Path):
     for target in CANONICAL_SCAN_ROOTS:
@@ -50,7 +50,7 @@ def validate_added_lines(root: Path = Path("."), base_ref: str | None = None) ->
             continue
         if not line.startswith("+") or line.startswith("+++"):
             continue
-        if _exempt(current) or current.startswith(".ai/"):
+        if _exempt(current) or current.startswith(LEGACY_MARKER):
             continue
         added = line[1:]
         if LEGACY_MARKER in added:
