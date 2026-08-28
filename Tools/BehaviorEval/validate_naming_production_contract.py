@@ -15,6 +15,7 @@ if str(BEHAVIOR_EVAL) not in sys.path:
 
 from derive_signals import derive_signals  # noqa: E402
 
+BOOTSTRAP = ROOT / "AGENTS.md"
 ARCH_CONTRACT = ROOT / ".ai" / "harness" / "task-contracts" / "architecture-design.yaml"
 ARCH_CONTEXT = ROOT / ".ai" / "context-packs" / "architecture-design.yaml"
 ENGINEERING_POLICY_ID = "engineering_principles"
@@ -83,6 +84,13 @@ def validate_architecture_policy_anchor(errors: list[str]) -> None:
         errors,
     )
 
+    bootstrap = BOOTSTRAP.read_text(encoding="utf-8")
+    require(
+        "required_policy_clauses" in bootstrap and "Policy provenance" in bootstrap,
+        "Bootstrap must require selected-route required_policy_clauses to be recorded as policy provenance.",
+        errors,
+    )
+
 
 def validate_observed_source_naming_coverage(errors: list[str]) -> None:
     case = {
@@ -109,7 +117,7 @@ def validate_observed_source_naming_coverage(errors: list[str]) -> None:
             "path": "CameraDebugger.cs",
             "language": "csharp",
             "kind": "observed_source",
-            "source": "namespace Fixture { public sealed class CameraDebugger { } }",
+            "source": "namespace Fixture\n{\n    public sealed class CameraDebugger\n    {\n    }\n}\n",
         }
     ]
     derived = derive_signals(
