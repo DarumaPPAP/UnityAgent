@@ -92,15 +92,16 @@ def validate_context_and_skill_fast_path(errors: list[str]) -> None:
         for item in required
         if isinstance(item, dict) and item.get("type") == "binding" and item.get("name")
     }
-    required_refs = {
-        str(item.get("path"))
-        for item in required
-        if isinstance(item, dict) and item.get("type") == "repository_reference" and item.get("path")
-    }
     require(required_bindings == {"target_source"},
             "csharp-local-fix context must not require direct callers for every local patch.", errors)
-    require(".ai/user-policy.yaml" in required_refs,
-            "csharp-local-fix context must include the authoritative user policy.", errors)
+
+    decision_refs = {
+        str(item.get("source_ref"))
+        for item in ((context.get("metadata", {}) or {}).get("decisions", []) or [])
+        if isinstance(item, dict) and item.get("source_ref")
+    }
+    require(set(REQUIRED_POLICIES.values()).issubset(decision_refs),
+            "csharp-local-fix context must anchor both canonical mutation policy clauses without duplicating user-policy as required context.", errors)
 
     rules = context.get("rules", {}) or {}
     require(rules.get("single_purpose_change") is True,
