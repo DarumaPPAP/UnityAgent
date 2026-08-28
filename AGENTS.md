@@ -22,12 +22,13 @@
 2. Policy Risk / Security / Approval / Evidence は `Policy/` を正本として適用する。
 3. Route は Orchestration authority または Phase 4 までの既存互換 routing から明示的に受け取る。Context 自身が technology keyword から route を決めない。
 4. `Context/Selection/context-catalog.yaml` から選択済み Route の Context Pack、Primary Skill、Task Contract参照を解決する。
-5. `Context/Assembly/materialize_context.py` で current-call `MaterializedContextView` を構築する。
-6. `Context/Budget/context-budget.yaml` で Retrieval / Context / Compression Budget を評価する。Required Contextを無言削除しない。
-7. MCP が必要な場合、Context は `Context/Selection/mcp-selection.yaml` で必要Description/Manifestだけを選択し、Policy が許可条件を定義し、Runtime が `Runtime/Permissions/mcp-activation.yaml` に従って実際のTool Groupを公開する。
-8. `Context/Manifest/` は current-call Context provenanceを記録する。WorkflowState / Checkpoint / Evidence truth / Graph topologyの正本にはしない。
-9. User Policy / Context Pack / Prompt / Budget変更時は対応する Contract Test / Golden Regressionを確認する。
-10. 旧Pathを必要とする未移行機能は `Context/Compatibility/legacy-path-map.yaml` の read-only key経由だけで参照する。新規writeは禁止する。
+5. 選択Routeの `required_policy_clauses` は Policy provenance として記録し、Evidence / Eval から追跡可能にする。
+6. `Context/Assembly/materialize_context.py` で current-call `MaterializedContextView` を構築する。
+7. `Context/Budget/context-budget.yaml` で Retrieval / Context / Compression Budget を評価する。Required Contextを無言削除しない。
+8. MCP が必要な場合、Context は `Context/Selection/mcp-selection.yaml` で必要Description/Manifestだけを選択し、Policy が許可条件を定義し、Runtime が `Runtime/Permissions/mcp-activation.yaml` に従って実際のTool Groupを公開する。
+9. `Context/Manifest/` は current-call Context provenanceを記録する。WorkflowState / Checkpoint / Evidence truth / Graph topologyの正本にはしない。
+10. User Policy / Context Pack / Prompt / Budget変更時は対応する Contract Test / Golden Regressionを確認する。
+11. 旧Pathを必要とする未移行機能は `Context/Compatibility/legacy-path-map.yaml` の read-only key経由だけで参照する。新規writeは禁止する。
 
 ## 3. Canonical map
 

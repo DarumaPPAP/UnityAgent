@@ -1,60 +1,90 @@
-schema_version: "3.1"
-kind: typed_context_pack_contract
-migration:
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:context:context-pack
+title: ContextPack
+description: Canonical typed Context Pack boundary for current-call materialization.
+type: object
+required:
+  - id
+  - primary_skill
+  - required
+properties:
+  schema_version:
+    type: [string, number]
+  id:
+    type: string
+    minLength: 1
+  primary_skill:
+    type: string
+    minLength: 1
+  metadata:
+    type: object
+  required:
+    type: array
+    items:
+      $ref: '#/$defs/entry'
+  conditional:
+    type: object
+    additionalProperties:
+      type: array
+      items:
+        $ref: '#/$defs/entry'
+  excluded_by_default:
+    type: array
+    items:
+      $ref: '#/$defs/entry'
+  rules:
+    type: object
+  limits:
+    type: object
+additionalProperties: true
+$defs:
+  entry:
+    oneOf:
+      - $ref: '#/$defs/binding'
+      - $ref: '#/$defs/repository_reference'
+      - $ref: '#/$defs/external_reference'
+      - $ref: '#/$defs/context_include'
+      - $ref: '#/$defs/route_handoff'
+  binding:
+    type: object
+    required: [type, name]
+    properties:
+      type: {const: binding}
+      name: {type: string, minLength: 1}
+    additionalProperties: true
+  repository_reference:
+    type: object
+    required: [type, path]
+    properties:
+      type: {const: repository_reference}
+      path: {type: string, minLength: 1}
+    additionalProperties: true
+  external_reference:
+    type: object
+    required: [type, repository, path]
+    properties:
+      type: {const: external_reference}
+      repository: {type: string, minLength: 1}
+      path: {type: string, minLength: 1}
+    additionalProperties: true
+  context_include:
+    type: object
+    required: [type, context_id]
+    properties:
+      type: {const: context_include}
+      context_id: {type: string, minLength: 1}
+    additionalProperties: true
+  route_handoff:
+    type: object
+    required: [type, route_id]
+    properties:
+      type: {const: route_handoff}
+      route_id: {type: string, minLength: 1}
+    additionalProperties: true
+x-unityagent-migration:
   legacy_contract: Context/Compatibility/legacy-context-pack.schema.yaml
   legacy_source_refs_are_resolved_before_use: true
-metadata:
-  type: context
-  title:
-    max_length: 80
-  summary:
-    min_items: 1
-    max_items: 3
-    item_max_length: 160
-  purpose:
-    min_items: 1
-    max_items: 5
-  decisions:
-    min_items: 1
-    max_items: 12
-    required_fields: [id, label, source_ref]
-  forbidden:
-    min_items: 1
-    max_items: 12
-    required_fields: [id, label, source_ref]
-  related:
-    max_items: 8
-    required_fields: [id, relation, reason, source_ref]
-  priority:
-    allowed: [critical, high, normal, low]
-  tags:
-    max_items: 8
-relations:
-  allowed:
-    - related-to
-    - depends-on
-    - hands-off-to
-    - conflicts-with
-    - refines
-typed_context:
-  allowed_types:
-    - binding
-    - repository_reference
-    - external_reference
-    - context_include
-    - route_handoff
-source_refs:
-  canonical_roots:
-    - Policy/
-    - Context/
-    - Runtime/
-    - Persistence/
-    - .agents/
-    - SkillReferences/
-    - Specs/
-  compatibility_scheme: compatibility://
-  legacy_refs_must_be_resolved_by: Context/Compatibility/path_resolver.py
-invariants:
+x-unityagent-invariants:
   context_pack_is_model_input_definition_not_state: true
   metadata_is_not_execution_authority: true
   context_include_does_not_change_primary_route: true
