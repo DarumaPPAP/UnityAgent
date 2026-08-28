@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""Normalize legacy BehaviorEval bundles into Phase 1 canonical contracts.
-
-Migration-only adapter: preserve structured legacy facts, fail closed on
-contradictions, and never infer mutation/no-op or Agent quality from missing data.
-"""
+"""Migration-only legacy BehaviorEval -> Phase 1 canonical contract normalizer."""
 from __future__ import annotations
 
 import argparse
@@ -15,25 +11,17 @@ from typing import Any
 import yaml
 
 INFRA_FAILURES = {
-    "runtime_timeout",
-    "runtime_protocol_failure",
-    "evaluator_contract_failure",
-    "task_fixture_invalid",
-    "unavailable_required_evidence",
+    "runtime_timeout", "runtime_protocol_failure", "evaluator_contract_failure",
+    "task_fixture_invalid", "unavailable_required_evidence",
 }
-RUNTIME_FAILURES = {
-    "runtime_timeout",
-    "runtime_protocol_failure",
-    "task_fixture_invalid",
-    "unavailable_required_evidence",
-}
+RUNTIME_FAILURES = INFRA_FAILURES - {"evaluator_contract_failure"}
 
 
 class NormalizationError(ValueError):
     pass
 
 
-def _load_yaml(path: Path) -> dict[str, Any]:
+def _yaml(path: Path) -> dict[str, Any]:
     try:
         value = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     except FileNotFoundError as exc:
@@ -43,7 +31,7 @@ def _load_yaml(path: Path) -> dict[str, Any]:
     return value
 
 
-def _load_json(path: Path) -> dict[str, Any]:
+def _json(path: Path) -> dict[str, Any]:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as exc:
@@ -53,12 +41,11 @@ def _load_json(path: Path) -> dict[str, Any]:
     return value
 
 
-def _text(value: Any, fallback: str) -> str:
-    text = str(value or "").strip()
-    return text or fallback
+def _text(value: Any, fallback: str = "") -> str:
+    return str(value or "").strip() or fallback
 
 
-def _definition_fingerprint(envelope: dict[str, Any]) -> dict[str, str]:
+def _fingerprint(envelope: dict[str, Any]) -> dict[str, str]:
     fp = envelope.get("execution_fingerprint") or {}
     if not isinstance(fp, dict):
         raise NormalizationError("execution_fingerprint must be an object")
@@ -82,94 +69,98 @@ def _metrics(bundle: Path, envelope: dict[str, Any]) -> tuple[dict[str, Any] | N
     evidence = envelope.get("evidence") or {}
     if not isinstance(evidence, dict):
         raise NormalizationError("evidence must be an object")
-    metrics_ref = evidence.get("metrics_ref")
-    if metrics_ref:
+    ref = evidence.get("metrics_ref")
+    if ref:
         root = bundle.resolve()
-        path = (root / str(metrics_ref)).resolve()
+        path = (root / str(ref)).resolve()
         if path != root and root not in path.parents:
             raise NormalizationError("metrics_ref escapes bundle")
-        return _load_json(path), path.relative_to(root).as_posix()
+        return _json(path), path.relative_to(root).as_posix()
     fallback = bundle / "metrics.json"
-    if fallback.is_file():
-        return _load_json(fallback), "metrics.json"
-    return None, None
+    return (_json(fallback), "metrics.json") if fallback.is_file() else (None, None)
 
 
 def _changed_paths(metrics: dict[str, Any] | None) -> dict[str, Any]:
     if metrics is None or "changed_paths" not in metrics:
         return {"observation_state": "not_observed", "paths": []}
     raw = metrics["changed_paths"]
-    if not isinstance(raw, list) or any(not isinstance(item, str) or not item.strip() for item in raw):
+    if not isinstance(raw, list) or any(not isinstance(x, str) or not x.strip() for x in raw):
         raise NormalizationError("metrics.changed_paths must be a non-empty-string array when present")
-    paths = [item.replace("\\", "/").strip() for item in raw]
+    paths = [x.replace("\\", "/").strip() for x in raw]
     if len(paths) != len(set(paths)):
         raise NormalizationError("metrics.changed_paths contains duplicate canonical paths")
     return {"observation_state": "observed", "paths": paths}
 
 
-def _gate_outcomes(envelope: dict[str, Any]) -> list[dict[str, Any]]:
+def _gates(envelope: dict[str, Any]) -> list[dict[str, Any]]:
     evidence = envelope.get("evidence") or {}
     raw = evidence.get("gate_evidence") or []
     if not isinstance(raw, list):
         raise NormalizationError("evidence.gate_evidence must be an array")
-    output: list[dict[str, Any]] = []
+    output = []
     for index, item in enumerate(raw):
         if not isinstance(item, dict):
             raise NormalizationError(f"gate_evidence[{index}] must be an object")
-        gate_id = _text(item.get("id") or item.get("gate"), "")
-        status = str(item.get("status") or "").strip()
+        gate_id = _text(item.get("id") or item.get("gate"))
+        status = _text(item.get("status"))
         if not gate_id or status not in {"passed", "failed", "unavailable"}:
             raise NormalizationError(f"gate_evidence[{index}] has invalid id/status")
-        requirement = str(item.get("requirement") or "unknown").strip()
+        requirement = _text(item.get("requirement"), "unknown")
         if requirement not in {"required", "conditional", "informational", "not_applicable", "unknown"}:
             requirement = "unknown"
         refs = item.get("evidence_refs") or []
-        if not isinstance(refs, list) or any(not isinstance(ref, str) or not ref.strip() for ref in refs):
+        if not isinstance(refs, list) or any(not isinstance(x, str) or not x.strip() for x in refs):
             refs = []
         output.append({
-            "gate_id": gate_id,
-            "requirement": requirement,
-            "status": status,
+            "gate_id": gate_id, "requirement": requirement, "status": status,
             "evidence_refs": refs,
-            "detail": str(item.get("evidence") or item.get("detail") or "") or None,
+            "detail": _text(item.get("evidence") or item.get("detail")) or None,
         })
     return output
 
 
-def _failure(envelope: dict[str, Any]) -> tuple[str | None, str, str]:
+def _failure(envelope: dict[str, Any], metrics: dict[str, Any] | None) -> tuple[str | None, str, str]:
     failure = envelope.get("failure") or {}
     if not isinstance(failure, dict):
         raise NormalizationError("failure must be an object when present")
-    failure_class = str(failure.get("class") or "").strip() or None
-    reason = str(failure.get("reason") or "")
-    state = str(failure.get("observation_state") or "").strip()
+    envelope_class = _text(failure.get("class")) or None
+    metrics_class = None
+    if metrics is not None and "failure_class" in metrics:
+        raw = metrics.get("failure_class")
+        if raw is not None and not isinstance(raw, str):
+            raise NormalizationError("metrics.failure_class must be a string or null")
+        metrics_class = _text(raw) or None
+    if envelope_class and metrics_class and envelope_class != metrics_class:
+        raise NormalizationError(
+            f"failure class contradiction: envelope={envelope_class} metrics={metrics_class}"
+        )
+    failure_class = envelope_class or metrics_class
+    state = _text(failure.get("observation_state"))
     if not state:
         state = "not_observed" if failure_class in INFRA_FAILURES else "observed"
     if state not in {"observed", "not_observed"}:
         raise NormalizationError("failure.observation_state is invalid")
-    return failure_class, reason, state
+    return failure_class, _text(failure.get("reason")), state
 
 
 def normalize_bundle(bundle: Path) -> dict[str, Any]:
     bundle = bundle.expanduser().resolve()
-    envelope = _load_yaml(bundle / "execution-envelope.yaml")
-    run_id = _text(envelope.get("run_id"), "")
+    envelope = _yaml(bundle / "execution-envelope.yaml")
+    run_id = _text(envelope.get("run_id"))
     if not run_id:
         raise NormalizationError("legacy envelope has no run_id")
 
     metrics, metrics_ref = _metrics(bundle, envelope)
-    changed_paths = _changed_paths(metrics)
-    gates = _gate_outcomes(envelope)
-    failure_class, failure_reason, observation_state = _failure(envelope)
-    fingerprint = _definition_fingerprint(envelope)
+    changed = _changed_paths(metrics)
+    gates = _gates(envelope)
+    failure_class, failure_reason, observation_state = _failure(envelope, metrics)
+    fp = _fingerprint(envelope)
     executor = envelope.get("executor") or {}
     execution_fp = envelope.get("execution_fingerprint") or {}
     if not isinstance(executor, dict) or not isinstance(execution_fp, dict):
         raise NormalizationError("executor/execution_fingerprint must be objects")
 
-    step_id = f"legacy:{_text(envelope.get('golden_task_id'), run_id)}"
-    action_id = f"legacy:{run_id}:execution"
-    raw_status = str(envelope.get("status") or "").strip()
+    raw_status = _text(envelope.get("status"))
     if raw_status in {"completed", "passed", "ok"}:
         status = "passed"
     elif raw_status == "unavailable":
@@ -178,6 +169,10 @@ def normalize_bundle(bundle: Path) -> dict[str, Any]:
         status = "cancelled"
     else:
         status = "failed"
+
+    untyped_failure = status in {"failed", "unavailable"} and failure_class is None
+    if untyped_failure:
+        observation_state = "not_observed"
 
     runtime_failure = None
     if failure_class in RUNTIME_FAILURES:
@@ -191,39 +186,43 @@ def normalize_bundle(bundle: Path) -> dict[str, Any]:
         }
 
     evidence = envelope.get("evidence") or {}
-    evidence_refs = []
-    for key in ("context_manifest", "response", "diff", "artifact_index", "metrics_ref"):
+    refs = []
+    for key in (
+        "context_manifest", "response", "diff", "artifact_index", "metrics_ref",
+        "codex_events_ref", "codex_stderr_ref",
+    ):
         value = evidence.get(key)
         if isinstance(value, str) and value.strip():
-            evidence_refs.append(value.strip())
-    evidence_refs = list(dict.fromkeys(evidence_refs))
+            refs.append(value.strip())
+    refs = list(dict.fromkeys(refs))
+    step_id = f"legacy:{_text(envelope.get('golden_task_id'), run_id)}"
 
     execution_result = {
         "schema_version": "1.0",
         "run_id": run_id,
         "step_id": step_id,
-        "action_id": action_id,
+        "action_id": f"legacy:{run_id}:execution",
         "status": status,
         "started_at": None,
         "completed_at": None,
         "exit_code": None,
         "runtime_failure": runtime_failure,
-        "changed_paths": changed_paths,
+        "changed_paths": changed,
         "gate_outcomes": gates,
         "tool_identity": {
             "provider": _text(executor.get("provider"), "legacy-unavailable"),
             "model": _text(executor.get("model"), "legacy-unavailable"),
             "model_revision": _text(executor.get("model_revision"), "legacy-unavailable"),
             "tool_manifest_hash": _text(execution_fp.get("tool_manifest_hash"), "legacy-unavailable"),
-            "executor_profile": str(executor.get("profile") or "") or None,
-            "execution_mode": str(executor.get("mode") or "") or None,
+            "executor_profile": _text(executor.get("profile")) or None,
+            "execution_mode": _text(executor.get("mode")) or None,
         },
-        "evidence_refs": evidence_refs,
+        "evidence_refs": refs,
         "telemetry_refs": [metrics_ref] if metrics_ref else [],
-        "definition_fingerprint": fingerprint,
+        "definition_fingerprint": fp,
         "compatibility": {
             "source_contract": "legacy-behavior-eval-envelope",
-            "source_schema_version": str(envelope.get("schema_version") or "unknown"),
+            "source_schema_version": _text(envelope.get("schema_version"), "unknown"),
             "synthetic_step_id": True,
             "synthetic_action_id": True,
         },
@@ -231,7 +230,9 @@ def normalize_bundle(bundle: Path) -> dict[str, Any]:
 
     execution_evidence = []
     for index, gate in enumerate(gates):
-        payload = json.dumps(gate, sort_keys=True, ensure_ascii=False).encode("utf-8")
+        digest = hashlib.sha256(
+            json.dumps(gate, sort_keys=True, ensure_ascii=False).encode("utf-8")
+        ).hexdigest()
         execution_evidence.append({
             "schema_version": "1.0",
             "evidence_id": f"{run_id}:legacy-gate:{index}",
@@ -242,11 +243,11 @@ def normalize_bundle(bundle: Path) -> dict[str, Any]:
             "source_ref": "execution-envelope.yaml",
             "status": gate["status"],
             "payload_ref": None,
-            "hash": hashlib.sha256(payload).hexdigest(),
+            "hash": digest,
             "timestamp": None,
             "provenance": ["execution-envelope.yaml"],
             "gate_outcome": gate,
-            "definition_fingerprint": fingerprint,
+            "definition_fingerprint": fp,
         })
 
     denominator = observation_state == "observed" and failure_class not in INFRA_FAILURES
@@ -258,7 +259,7 @@ def normalize_bundle(bundle: Path) -> dict[str, Any]:
         "failure_class": failure_class,
         "quality_denominator_eligible": denominator,
         "runtime_failure_ref": f"{run_id}:runtime-failure" if runtime_failure else None,
-        "evidence_refs": evidence_refs,
+        "evidence_refs": refs,
         "reason": failure_reason,
         "source_execution_result_ref": f"{run_id}:execution-result",
     }
@@ -266,10 +267,15 @@ def normalize_bundle(bundle: Path) -> dict[str, Any]:
     diagnostics = [
         "Legacy bundle has no canonical step/action identifiers; deterministic compatibility identifiers were assigned."
     ]
-    if changed_paths["observation_state"] == "not_observed":
-        diagnostics.append("changed_paths was not recorded; empty paths must not be interpreted as a mutation no-op.")
-    else:
-        diagnostics.append("changed_paths was preserved from structured metrics.json and was not reparsed from diff text.")
+    diagnostics.append(
+        "changed_paths was preserved from structured metrics.json and was not reparsed from diff text."
+        if changed["observation_state"] == "observed"
+        else "changed_paths was not recorded; empty paths must not be interpreted as a mutation no-op."
+    )
+    if untyped_failure:
+        diagnostics.append(
+            "Legacy bundle has no typed failure_class; failure attribution was intentionally not inferred from response/stderr text."
+        )
 
     return {
         "schema_version": "1.0",

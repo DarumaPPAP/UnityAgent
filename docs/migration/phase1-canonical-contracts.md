@@ -54,8 +54,11 @@ Infrastructure/evaluator/fixture/unavailable-evidence failures are `not_observed
 - never reparses diff text to derive canonical changed paths;
 - marks changed paths `not_observed` when legacy evidence did not record them;
 - preserves gate outcomes and executor/tool identity structurally when available;
-- maps Runtime failure classes without grading Agent quality;
-- fails closed on malformed/contradictory structured facts;
+- accepts a structured `metrics.json.failure_class` only as a typed fallback when the envelope has no typed failure;
+- fails closed if envelope and metrics carry contradictory non-empty failure classes;
+- treats a failed/unavailable legacy run with no typed failure class as `not_observed` instead of guessing from response/stderr text;
+- maps typed Runtime failure classes without grading Agent quality;
+- preserves Codex event/stderr references when the legacy envelope exposes them;
 - records deterministic compatibility IDs when the legacy bundle did not contain canonical step/action IDs.
 
 This adapter is temporary and is deleted only after native end-to-end canonical contracts replace legacy transport.
@@ -65,17 +68,36 @@ This adapter is temporary and is deleted only after native end-to-end canonical 
 - Runtime contract tests: canonical changed-path observation and mutation-scope invariant.
 - Persistence contract tests: semantic-loop/runtime-control separation and Memory evidence provenance.
 - Operations contract test: structured trace/evidence linkage.
-- Eval/replay tests: infrastructure denominator exclusion, existing legacy protocol fixture normalization, structured metrics preservation, malformed metrics fail-closed behavior.
+- Eval/replay tests (7): infrastructure denominator exclusion, existing legacy protocol fixture normalization, structured metrics preservation, malformed metrics fail-closed behavior, structured failure fallback, conflicting typed failures fail-closed, and untyped legacy failure exclusion.
 
 CI entrypoint: `.github/workflows/validate-canonical-contracts.yml`.
+
+## Actual production artifact replay
+
+External historical Production Smoke artifacts were replayed without committing their raw bundle contents into the repository:
+
+- `phase11-naming-04.zip`
+- `phase11-mutation-03.zip`
+- `production-smoke-20260827-utf8.zip`
+
+The three archives contain six case directories in total. All six normalized outputs validate against the canonical `ExecutionResult` and `EvalRecord` schemas.
+
+Observed migration behavior:
+
+- Phase 1.1 bundles preserve structured `metrics.json.changed_paths` directly.
+- Legacy v1.0 failed/unavailable bundles without a typed failure class remain `not_observed` and are excluded from the Agent-quality denominator.
+- Text such as response/stderr timeout messages is intentionally not promoted to a typed `runtime_timeout` fact.
+- Contradictory structured failure classes fail closed rather than choosing one source silently.
 
 ## Phase 1 exit assessment
 
 - Required contract families exist next to their owning authority: yes.
 - `changed_paths`, gate outcome, tool identity, Runtime failure, evidence refs, and mutation scope have canonical structured forms: yes.
 - Missing changed-path evidence cannot silently become a no-op: yes.
-- Historical existing BehaviorEval protocol fixture can normalize into canonical ExecutionResult/EvalRecord: yes.
+- Existing BehaviorEval protocol fixture can normalize into canonical ExecutionResult/EvalRecord: yes.
+- Six historical Production Smoke case directories normalize and validate against canonical ExecutionResult/EvalRecord: yes.
 - Structured legacy metrics are preferred over diff reparsing: yes.
+- Untyped legacy failures cannot silently enter the Agent-quality denominator: yes.
 - Infrastructure failures are excluded from Agent-quality denominator by schema invariant: yes.
 - Production implementation ownership has not been moved prematurely: yes.
 
