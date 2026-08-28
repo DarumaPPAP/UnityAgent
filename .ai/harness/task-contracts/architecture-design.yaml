@@ -8,6 +8,11 @@ required_inputs:
   - scope_classification
   - prohibited_changes
 
+required_policy_clauses:
+  - id: engineering_principles
+    source_path: .ai/user-policy.yaml#core_user_policies.engineering_principles
+    reason: Architecture decisions always apply the user's KISS/YAGNI-first engineering principles before selecting structure or names.
+
 conditional_inputs:
   local_behavior:
     required_when:
@@ -97,6 +102,7 @@ conditional_quality_gates:
   - target_device
 
 completion:
+  - engineering_principles_policy_is_applied_and_recorded
   - scope_specific_design_depth_is_used
   - local_behavior_uses_fast_path_when_sufficient
   - unity_lifecycle_is_checked_before_polling
