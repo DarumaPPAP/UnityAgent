@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the current UnityAgent bootstrap while preserving pre-Phase-2 route checks."""
+"""Validate the current UnityAgent bootstrap through the explicit Phase 2 compatibility surface."""
 
 from __future__ import annotations
 
@@ -8,11 +8,11 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-ENGINE_PATH = Path(__file__).resolve().parent / "_legacy_validate_route_graph.py"
+ENGINE_PATH = ROOT / "Context" / "Compatibility" / "Validators" / "legacy_validate_route_graph.py"
 
 
 def _load_engine():
-    spec = importlib.util.spec_from_file_location("unityagent_legacy_route_graph_validator", ENGINE_PATH)
+    spec = importlib.util.spec_from_file_location("unityagent_compatibility_route_graph_validator", ENGINE_PATH)
     if spec is None or spec.loader is None:
         raise RuntimeError("cannot load route graph compatibility validator")
     module = importlib.util.module_from_spec(spec)
