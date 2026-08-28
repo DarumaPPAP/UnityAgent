@@ -1,0 +1,26 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:persistence:evidence-record
+title: EvidenceRecord
+type: object
+additionalProperties: false
+required: [schema_version, evidence_id, run_id, step_id, source_type, source_ref, timestamp, hash, producer, verification_status, provenance, definition_fingerprint]
+properties:
+  schema_version: {const: '1.0'}
+  evidence_id: {type: string, minLength: 1}
+  run_id: {type: string, minLength: 1}
+  step_id: {type: string, minLength: 1}
+  source_type: {type: string, minLength: 1}
+  source_ref: {type: [string, 'null']}
+  timestamp: {type: [string, 'null'], format: date-time}
+  hash: {type: [string, 'null']}
+  producer: {type: string, minLength: 1}
+  verification_status:
+    enum: [passed, failed, unavailable, unverified]
+  provenance:
+    type: array
+    items: {type: string, minLength: 1}
+    minItems: 1
+    uniqueItems: true
+  payload_ref: {type: [string, 'null']}
+  definition_fingerprint:
+    $ref: urn:unityagent:persistence:definition-fingerprint

@@ -1,0 +1,127 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:runtime:execution-result
+title: ExecutionResult
+type: object
+additionalProperties: false
+required:
+- schema_version
+- run_id
+- step_id
+- action_id
+- status
+- started_at
+- completed_at
+- exit_code
+- runtime_failure
+- changed_paths
+- gate_outcomes
+- tool_identity
+- evidence_refs
+- telemetry_refs
+- definition_fingerprint
+properties:
+  schema_version:
+    const: '1.0'
+  run_id:
+    type: string
+    minLength: 1
+  step_id:
+    type: string
+    minLength: 1
+  action_id:
+    type: string
+    minLength: 1
+  status:
+    enum: [passed, failed, unavailable, cancelled]
+  started_at:
+    type: [string, 'null']
+    format: date-time
+  completed_at:
+    type: [string, 'null']
+    format: date-time
+  exit_code:
+    type: [integer, 'null']
+  runtime_failure:
+    anyOf:
+    - type: 'null'
+    - $ref: urn:unityagent:runtime:runtime-failure
+  changed_paths:
+    $ref: '#/$defs/changed_paths'
+  gate_outcomes:
+    type: array
+    items:
+      $ref: '#/$defs/gate_outcome'
+  tool_identity:
+    $ref: '#/$defs/tool_identity'
+  evidence_refs:
+    type: array
+    items:
+      type: string
+      minLength: 1
+    uniqueItems: true
+  telemetry_refs:
+    type: array
+    items:
+      type: string
+      minLength: 1
+    uniqueItems: true
+  definition_fingerprint:
+    $ref: urn:unityagent:persistence:definition-fingerprint
+  compatibility:
+    type: object
+    additionalProperties: true
+$defs:
+  changed_paths:
+    type: object
+    additionalProperties: false
+    required: [observation_state, paths]
+    properties:
+      observation_state:
+        enum: [observed, not_observed]
+      paths:
+        type: array
+        items:
+          type: string
+          minLength: 1
+        uniqueItems: true
+  gate_outcome:
+    type: object
+    additionalProperties: false
+    required: [gate_id, requirement, status, evidence_refs]
+    properties:
+      gate_id:
+        type: string
+        minLength: 1
+      requirement:
+        enum: [required, conditional, informational, not_applicable, unknown]
+      status:
+        enum: [passed, failed, unavailable]
+      evidence_refs:
+        type: array
+        items:
+          type: string
+          minLength: 1
+        uniqueItems: true
+      detail:
+        type: [string, 'null']
+  tool_identity:
+    type: object
+    additionalProperties: false
+    required: [provider, model, model_revision, tool_manifest_hash]
+    properties:
+      provider:
+        type: string
+        minLength: 1
+      model:
+        type: string
+        minLength: 1
+      model_revision:
+        type: string
+        minLength: 1
+      tool_manifest_hash:
+        type: string
+        minLength: 1
+      executor_profile:
+        type: [string, 'null']
+      execution_mode:
+        type: [string, 'null']

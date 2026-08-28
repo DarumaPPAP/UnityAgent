@@ -1,0 +1,19 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:persistence:session-record
+title: SessionRecord
+type: object
+additionalProperties: false
+required: [schema_version, session_id, created_at, updated_at, active_run_ids, last_checkpoint_ref]
+properties:
+  schema_version: {const: '1.0'}
+  session_id: {type: string, minLength: 1}
+  created_at: {type: string, format: date-time}
+  updated_at: {type: string, format: date-time}
+  active_run_ids:
+    type: array
+    items: {type: string, minLength: 1}
+    uniqueItems: true
+  last_checkpoint_ref: {type: [string, 'null']}
+  metadata:
+    type: object
+    additionalProperties: true
