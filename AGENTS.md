@@ -21,7 +21,7 @@
 1. `.ai/user-policy.yaml`を読む。
 2. `.ai/execution-profiles.yaml`からExecution Profileを選ぶ。
 3. `.ai/context-index.yaml#task_fingerprint`でTask Fingerprintを作り、技術名ではなくPrimary GoalとEvidenceでPrimary Routeを一つ選ぶ。
-4. 選択RouteのContext Pack、Task Contract、Primary Domain Skillを一つずつ読む。Primary Knowledgeは必要時のみ最大一つ、Conditional Contextは条件成立時だけ追加する。
+4. 選択RouteのContext Pack、Task Contract、Primary Domain Skillを一つずつ読む。Task Contractに`required_policy_clauses`がある場合は各ClauseをCanonical Sourceから適用し、Context ManifestのPolicy provenanceへcanonical `id` / `source_path`を記録する。Primary Knowledgeは必要時のみ最大一つ、Conditional Contextは条件成立時だけ追加する。
 5. Mutation前に対象Sourceと必要な直接依存を読み、`.ai/context-budget.yaml`でRetrieval / Context / Compression Budgetを計測する。`within_budget`でなければMutationしない。
 6. MCP能力が必要な場合だけ`.ai/harness/mcp-activation.yaml`から必要Tool Groupを段階的に公開する。
 7. `.ai/harness/`のMutation Contract、Risk、Required Quality Gateで検証し、Evidenceを`passed` / `failed` / `unavailable`で返す。未検証範囲を成功扱いしない。
