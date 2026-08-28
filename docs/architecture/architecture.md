@@ -268,13 +268,13 @@ The migration must preserve the existing authoritative user-specific UnityAgent 
 
 ## Phase 0 companion documents
 
-- `docs/migration/architecture-v3-inventory.md`
-- `docs/migration/architecture-v3-dependency-map.md`
-- `docs/migration/architecture-v3-migration-plan.md`
-- `docs/migration/architecture-v3-canonical-contracts.md`
-- `docs/migration/architecture-v3-split-list.md`
-- `docs/migration/architecture-v3-compatibility-delete-list.md`
-- `docs/migration/architecture-v3-version-resume-matrix.md`
-- `docs/migration/architecture-v3-harness-health-contract.md`
+- `docs/migration/architecture-inventory.md`
+- `docs/migration/architecture-dependency-map.md`
+- `docs/migration/architecture-migration-plan.md`
+- `docs/migration/architecture-canonical-contracts.md`
+- `docs/migration/architecture-split-list.md`
+- `docs/migration/architecture-compatibility-delete-list.md`
+- `docs/migration/architecture-version-resume-matrix.md`
+- `docs/migration/architecture-harness-health-contract.md`
 
 These documents are the review gate before broad movement.
