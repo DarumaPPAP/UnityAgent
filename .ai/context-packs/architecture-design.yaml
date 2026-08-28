@@ -10,6 +10,9 @@ metadata:
   purpose:
     - Decide the smallest cohesive architecture supported by the task scope.
   decisions:
+    - id: engineering-principles-foundation
+      label: User engineering principles are foundational for every architecture decision
+      source_ref: .ai/user-policy.yaml#core_user_policies.engineering_principles
     - id: architecture-rules-authoritative
       label: Existing architecture rules remain authoritative
       source_ref: .ai/context-packs/architecture-design.yaml#rules
@@ -39,6 +42,8 @@ required:
     name: scope_classification
   - type: binding
     name: prohibited_changes
+  - type: repository_reference
+    path: SkillReferences/ENGINEERING_DESIGN_PRINCIPLES.md
   - type: repository_reference
     path: SkillReferences/ARCHITECTURE_DECISION_POLICY.md
   - type: repository_reference
@@ -114,6 +119,7 @@ excluded_by_default:
 
 rules:
   user_policy_has_priority_over_generic_architecture_pattern: true
+  engineering_principles_review_required: true
   minimum_cohesive_solution_first: true
   local_behavior_fast_path: true
   unity_lifecycle_first: true
