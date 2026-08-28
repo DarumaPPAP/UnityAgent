@@ -78,8 +78,17 @@ def _normalize_path(value: str) -> str:
     return value.replace("\\", "/").lstrip("./")
 
 
+def _unified_header_path(line: str, prefix: str) -> str:
+    raw = line[len(prefix):].split("\t", 1)[0].strip()
+    if raw == "/dev/null":
+        return ""
+    if raw.startswith(("a/", "b/")):
+        raw = raw[2:]
+    return _normalize_path(raw)
+
+
 def parse_unified_diff(diff_text: str) -> dict:
-    """Return changed paths and added/removed source text from a unified git diff."""
+    """Return changed paths and source deltas from git or plain unified diffs."""
 
     changed_paths: list[str] = []
     added_paths: list[str] = []
@@ -89,15 +98,37 @@ def parse_unified_diff(diff_text: str) -> dict:
     removed_lines: dict[str, list[str]] = defaultdict(list)
     current_path = ""
     rename_from = ""
+    pending_old_path: str | None = None
+
+    def record_changed(path: str) -> None:
+        if path and path not in changed_paths:
+            changed_paths.append(path)
 
     for line in (diff_text or "").splitlines():
         match = re.match(r"^diff --git a/(.+) b/(.+)$", line)
         if match:
             current_path = _normalize_path(match.group(2))
-            if current_path not in changed_paths:
-                changed_paths.append(current_path)
+            record_changed(current_path)
             rename_from = ""
+            pending_old_path = None
             continue
+
+        if line.startswith("--- "):
+            pending_old_path = _unified_header_path(line, "--- ")
+            continue
+
+        if line.startswith("+++ "):
+            new_path = _unified_header_path(line, "+++ ")
+            old_path = pending_old_path if pending_old_path is not None else current_path
+            current_path = new_path or old_path or current_path
+            record_changed(current_path)
+            if not old_path and new_path and new_path not in added_paths:
+                added_paths.append(new_path)
+            if old_path and not new_path and old_path not in deleted_paths:
+                deleted_paths.append(old_path)
+            pending_old_path = None
+            continue
+
         if line.startswith("new file mode ") and current_path:
             if current_path not in added_paths:
                 added_paths.append(current_path)
