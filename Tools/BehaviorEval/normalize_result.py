@@ -43,21 +43,26 @@ def load_yaml(path: Path) -> dict:
 def _canonical_node_id(entry: Any, prefix: str) -> str:
     if isinstance(entry, str):
         value = entry
+        source_path = ""
     elif isinstance(entry, dict):
-        value = str(entry.get("id") or entry.get("node_id") or "")
-        source_path = str(entry.get("source_path") or "")
-        if not value and "#" in source_path:
-            value = source_path.rsplit("#", 1)[-1]
-        if prefix == "policy" and value and "#" in source_path:
-            fragment = source_path.rsplit("#", 1)[-1]
-            if fragment and fragment != value:
-                raise BehaviorEvidenceError(
-                    f"Policy provenance mismatch: id={value} source fragment={fragment}"
-                )
+        value = str(entry.get("id") or entry.get("node_id") or "").strip()
+        source_path = str(entry.get("source_path") or "").strip()
     else:
-        value = ""
+        return ""
+
     if value.startswith(prefix + ":"):
-        return value.split(":", 1)[1]
+        value = value.split(":", 1)[1]
+
+    fragment = source_path.rsplit("#", 1)[-1].strip() if "#" in source_path else ""
+    fragment_leaf = fragment.rsplit(".", 1)[-1].strip() if fragment else ""
+
+    if not value and fragment_leaf:
+        value = fragment_leaf
+
+    if prefix == "policy" and value and fragment_leaf and fragment_leaf != value:
+        raise BehaviorEvidenceError(
+            f"Policy provenance mismatch: id={value} source fragment={fragment}"
+        )
     return value
 
 
