@@ -16,7 +16,7 @@ task:
 policy:
   loaded:
     - node_id: semantic_type_naming
-      source_path: .ai/user-policy.yaml#semantic_type_naming
+      source_path: .ai/user-policy.yaml#core_user_policies.semantic_type_naming
       reason: Golden Task requires semantic Type naming
 knowledge:
   loaded: []
