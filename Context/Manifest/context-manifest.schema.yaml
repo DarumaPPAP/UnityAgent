@@ -19,7 +19,7 @@ properties:
   attempt: {type: integer, minimum: 1}
   previous_manifest_ref: {type: [string, "null"]}
   materialized_context:
-    $ref: ../Contracts/materialized-context-view.schema.yaml
+    $ref: urn:unityagent:context:materialized-context-view
   budget_report:
     type: object
   unresolved_bindings:

@@ -104,9 +104,9 @@ properties:
         items: {type: string, minLength: 1}
       decision: {enum: [within_budget, compression_required, blocked, unmeasured]}
   context_fingerprint:
-    $ref: context-fingerprint.schema.yaml
+    $ref: urn:unityagent:context:context-fingerprint
   definition_fingerprint:
-    $ref: ../../Persistence/Contracts/definition-fingerprint.schema.yaml
+    $ref: urn:unityagent:persistence:definition-fingerprint
 $defs:
   ref:
     type: object

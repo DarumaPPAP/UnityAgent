@@ -17,9 +17,9 @@ def validate(path: Path) -> None:
     fingerprint_schema = yaml.safe_load(fingerprint_schema_path.read_text(encoding="utf-8"))
     definition_schema = yaml.safe_load(definition_schema_path.read_text(encoding="utf-8"))
     store = {
-        "../Contracts/materialized-context-view.schema.yaml": context_schema,
-        "context-fingerprint.schema.yaml": fingerprint_schema,
-        "../../Persistence/Contracts/definition-fingerprint.schema.yaml": definition_schema,
+        "urn:unityagent:context:materialized-context-view": context_schema,
+        "urn:unityagent:context:context-fingerprint": fingerprint_schema,
+        "urn:unityagent:persistence:definition-fingerprint": definition_schema,
     }
     resolver = RefResolver.from_schema(schema, store=store)
     document = yaml.safe_load(path.read_text(encoding="utf-8"))

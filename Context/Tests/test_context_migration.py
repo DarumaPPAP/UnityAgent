@@ -86,7 +86,10 @@ class ContextMigrationTests(unittest.TestCase):
         schema = yaml.safe_load((ROOT / "Context/Contracts/materialized-context-view.schema.yaml").read_text(encoding="utf-8"))
         fingerprint = yaml.safe_load((ROOT / "Context/Contracts/context-fingerprint.schema.yaml").read_text(encoding="utf-8"))
         definition = yaml.safe_load((ROOT / "Persistence/Contracts/definition-fingerprint.schema.yaml").read_text(encoding="utf-8"))
-        resolver = RefResolver.from_schema(schema, store={"context-fingerprint.schema.yaml": fingerprint, "../../Persistence/Contracts/definition-fingerprint.schema.yaml": definition})
+        resolver = RefResolver.from_schema(schema, store={
+            "urn:unityagent:context:context-fingerprint": fingerprint,
+            "urn:unityagent:persistence:definition-fingerprint": definition,
+        })
         Draft202012Validator(schema, resolver=resolver).validate(view)
         Draft202012Validator(definition).validate(view["definition_fingerprint"])
 
