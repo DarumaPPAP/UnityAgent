@@ -31,8 +31,9 @@
 11. Orchestrationは `Persistence/Contracts/WorkflowState` / `LoopControlState` 互換のstate projectionを返すが、durable writeは行わない。Persistenceが `Persistence/persistence-layout.yaml` に従って ExecutionState / WorkflowState / LoopControlState をdurable truthとしてcommitする。
 12. RuntimeがcaptureしたExecution Evidenceは `Persistence/Evidence` にappendされて初めてdurable Evidence truthになる。Checkpointはcommitted Stateのimmutable snapshot refsを束ね、Memory/Evidenceそのものにはならない。
 13. Resume時は `Persistence/Resume/` が保存済みDefinitionFingerprintと現在定義を比較し、compatible / migration / replan / Human Reviewをfail-closedで決定する。
-14. `Context/Manifest/` は current-call Context provenanceを記録し、WorkflowState / Checkpoint / Evidence truth / Graph topologyの正本にはしない。
-15. 旧Pathを必要とする未移行機能は `Context/Compatibility/legacy-path-map.yaml` の read-only key経由だけで参照する。新規writeは禁止する。
+14. Evalが必要な場合、`Eval/Datasets/` と `Eval/GoldenContracts/` を評価入力の正本とし、Runtime/Persistenceのstructured factsを `Eval/Behavior/` / `Eval/Attribution/` で測定する。`not_observed` infrastructure runはAgent品質denominatorから除外し、Evalは必要ならnon-applying `ChangeProposal`だけを生成する。
+15. `Context/Manifest/` は current-call Context provenanceを記録し、WorkflowState / Checkpoint / Evidence truth / Graph topologyの正本にはしない。
+16. 旧Pathを必要とする未移行機能は明示された Compatibility boundary 経由だけで参照する。新規writeは禁止する。
 
 ## 3. Canonical map
 
@@ -54,7 +55,9 @@
 | Persistence Memory | `Persistence/Memory/` | durable long-term Memory lifecycle and promotion gate |
 | Persistence Evidence | `Persistence/Evidence/` | append/immutable-oriented Evidence truth |
 | Persistence Session | `Persistence/Session/` | session-to-run/checkpoint durable association |
-| Eval Contracts | `Eval/` | quality measurement / attribution |
+| Eval Behavior / Golden / Datasets | `Eval/Behavior/` + `Eval/Golden/` + `Eval/Datasets/` | Actual Behavior / Golden grading and regression data |
+| Eval Attribution / Replay | `Eval/Attribution/` + `Eval/Replay/` | typed failure attribution, quality denominator, historical replay |
+| Eval Change Proposals | `Eval/ChangeProposals/` | non-applying improvement proposals only |
 
 ## 4. Responsibility guards
 
@@ -68,9 +71,13 @@
 - Context Memory Projectionはmodel inputでありdurable Memory truthではない。
 - Runtime Evidence captureはdurable truthではなく、Persistence Evidenceへのappend後にのみhistorical Evidenceとなる。
 - Evidenceはhistorical factとしてimmutable-orientedに扱い、Resumeの都合で元record/payload/hash/provenanceを書き換えない。
+- EvalはRuntime/Codex/Unity/process executionを実装しない。既に観測されたstructured factsを測定する。
+- Evalはtyped failureをresponse/stderr proseから推測しない。`changed_paths`をdiffから再構築せずRuntimeのstructured factを保持する。
+- Evalの`not_observed` infrastructure/evaluator/fixture/unavailable-evidence runをAgent品質denominatorへ入れない。
+- EvalのGolden expected contentをProduction Prompt / Contextへ注入しない。
+- Evalはproduction definitionを直接変更せず、`applies_change: false` のChangeProposalだけを出せる。
 - Unknown Project Factや不足Bindingを推測で埋めない。
 - `unavailable`を成功扱いしない。CompileだけでRuntime / Visual / Performance / Player / 実機を承認しない。
-- EvalのGolden expected contentをProduction Promptへ注入しない。
 - RuntimeはAgent品質を採点しない。
 - RuntimeのUnity Artifact GraphはAsset dependency graphであり、Agent ParentGraph/SubGraphではない。
 - Compatibilityはread-only。旧Sourceの削除はPhase 8の明示Human Gateまで行わない。
@@ -80,8 +87,11 @@
 - Phase 3以降、actual executionはUnityAgent `Runtime/` がcanonical owner。
 - Phase 4以降、Route / ParentGraph / SubGraph / Node / Gate / LocalLoop / semantic TODO selection / semantic replanはUnityAgent `Orchestration/` がcanonical owner。
 - Phase 5以降、ExecutionState / WorkflowState / LoopControlState / RunCheckpoint / SessionRecord / MemoryRecord / EvidenceRecord のdurable truthはUnityAgent `Persistence/` がcanonical owner。
-- `DarumaPPAP/Unity-Graph-Engineering` の旧State/Continuation/ExecutionOrchestrator/LayeredMemory実装はPhase 8 Human Gateまで互換・監査用referenceとして残すが、新しいPersistence authorityではない。
-- Legacy state/memory/evidenceはexplicit compatibility loader/migration経由でのみ取り込み、ambiguous mappingはfail closedにする。
+- Phase 6以降、Behavior Eval / Golden Eval / datasets / graders / failure attribution / historical replay / evaluation reportsはUnityAgent `Eval/` がcanonical owner。
+- `Tools/BehaviorEval/` と `Tools/GoldenEval/` はPhase 8までcanonical Evalへのcompatibility shimとして残す。旧subprocess-capable Behavior runnerは `Eval/Compatibility/BehaviorEval/` の監査用referenceでありcanonical execution pathではない。
+- Unity-Graph-Engineering `BehaviorEvalAdapter` のexecution bridgeはcanonical authorityではない。Runtime factsの評価変換だけがUnityAgent Evalへ取り込まれる。
+- `DarumaPPAP/Unity-Graph-Engineering` の旧State/Continuation/ExecutionOrchestrator/LayeredMemory実装はPhase 8 Human Gateまで互換・監査用referenceとして残す。
+- Legacy state/memory/evidence/eval artifactはexplicit compatibility loader/replay経由でのみ取り込み、ambiguous mappingはfail closedにする。
 - `DarumaPPAP/MyUnityMCP` はMCP manifest / tool schema / package implementationの外部ownerのままとする。
 
 ## 6. User-specific entrypoints
@@ -99,11 +109,12 @@
 - Persistence Layout: `Persistence/persistence-layout.yaml`
 - State / Checkpoint / Resume: `Persistence/State/` + `Persistence/Checkpoint/` + `Persistence/Resume/`
 - Durable Memory / Evidence: `Persistence/Memory/` + `Persistence/Evidence/`
-- Golden / Actual Behavior Eval: `Eval/` と既存Tests。Runtime/Orchestration/Persistenceはgradingしない。
+- Golden / Actual Behavior Eval: `Eval/Golden/` + `Eval/Behavior/` + `Eval/Datasets/`
+- Eval Attribution / Replay: `Eval/Attribution/` + `Eval/Replay/`
 
 ## 7. Completion handoff
 
-OrchestrationからRuntimeへ、適用Policy revision / Route / Context ID / Context Fingerprint / Execution Profile / Task Contract runtime projection / mutation scope / validation requirementsを渡します。RuntimeはExecutionResult / typed RuntimeFailure / MutationEvidence / captured Evidence / Telemetryを返します。Persistenceはそのうちdurableに保持すべきState/Evidence/Memory/Checkpoint/Sessionをcanonical contractsに従って保存し、Orchestration/Contextへread-onlyな事実・projectionを返します。Evalは保存済み事実を測定しますが、Persistenceを書き換えません。
+OrchestrationからRuntimeへ、適用Policy revision / Route / Context ID / Context Fingerprint / Execution Profile / Task Contract runtime projection / mutation scope / validation requirementsを渡します。RuntimeはExecutionResult / typed RuntimeFailure / MutationEvidence / captured Evidence / Telemetryを返します。Persistenceはそのうちdurableに保持すべきState/Evidence/Memory/Checkpoint/Sessionをcanonical contractsに従って保存します。EvalはRuntime/Persistenceのstructured factsとcanonical GoldenContract/Datasetを読み、quality measurement / failure attribution / regression reportを生成します。必要な改善はChangeProposalとして提案しますが、production authorityを直接書き換えません。
 
 ## 8. Anti-regression
 
@@ -116,6 +127,10 @@ OrchestrationからRuntimeへ、適用Policy revision / Route / Context ID / Con
 - Runtimeからsemantic Graph/TODO/replan authorityを新設しない。
 - Runtimeからdurable Evidence/Memory/Checkpoint truthを書き込まない。
 - PersistenceからRoute/semantic decision/Runtime execution/Eval grading authorityを新設しない。
+- EvalからRuntime/process/tool/Unity executionを実装しない。
+- EvalからPolicy/Context/Orchestration/Runtime/Persistence/Operationsのproduction definitionを直接変更しない。
+- `not_observed` runをAgent品質regressionとして数えない。
+- Runtime structured factsをEval側のdiff/text parserで再構築しない。
 - Checkpoint/Memory/Evidenceを同じrecordとして扱わない。
 - Resume migrationでoriginal checkpoint/evidenceを上書きしない。
 - RuntimeでAgent qualityをgradeしない。
