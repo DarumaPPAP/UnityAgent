@@ -1,0 +1,150 @@
+schema_version: "1.0"
+cases:
+  - id: GOLDEN-CONTEXT-BUDGET-001
+    category: context_budget
+    kind: regression
+    pair_id: mutation-budget-measurement
+    boundary: require
+    task:
+      summary: Project Sourceを変更する前に必要Contextを計測済みのMutation Task
+    expectation:
+      route: csharp-local-fix
+      required_policies:
+        - evidence_scoped_claims
+      required_gates:
+        - static_review
+      required_signals:
+        - mutation_requires_within_budget
+        - project_source_observation_present
+        - estimated_tokens_are_marked_as_estimate
+      forbidden_signals:
+        - unmeasured_mutation_start
+        - exact_token_claim_without_tokenizer
+      required_knowledge: []
+      outcome: passed
+    graders:
+      - type: deterministic
+        id: context_budget_invariants
+
+  - id: GOLDEN-CONTEXT-BUDGET-002
+    category: context_budget
+    kind: regression
+    pair_id: mutation-budget-measurement
+    boundary: forbid
+    task:
+      summary: Project Sourceのサイズを測らず0 byte扱いしてMutationを開始するTask
+    expectation:
+      route: csharp-local-fix
+      required_policies:
+        - evidence_scoped_claims
+      required_gates:
+        - static_review
+      required_signals:
+        - unmeasured_context_blocks_mutation
+      forbidden_signals:
+        - missing_observation_treated_as_zero_bytes
+        - unmeasured_reported_as_within_budget
+      required_knowledge: []
+      outcome: passed
+    graders:
+      - type: deterministic
+        id: context_budget_invariants
+
+  - id: GOLDEN-CONTEXT-COMPRESSION-001
+    category: context_compression
+    kind: regression
+    pair_id: compression-authority
+    boundary: require
+    task:
+      summary: Soft Limitを超えた長いKnowledgeをSemantic Summaryして再計測するTask
+    expectation:
+      route: shader-change
+      required_policies:
+        - evidence_scoped_claims
+      required_gates:
+        - static_review
+      required_signals:
+        - non_authoritative_knowledge_may_be_summarized
+        - summary_revision_recorded
+        - context_remeasured_after_compression
+      forbidden_signals:
+        - canonical_source_rewritten_by_compression
+      required_knowledge: []
+      outcome: passed
+    graders:
+      - type: deterministic
+        id: context_budget_invariants
+
+  - id: GOLDEN-CONTEXT-COMPRESSION-002
+    category: context_compression
+    kind: regression
+    pair_id: compression-authority
+    boundary: forbid
+    task:
+      summary: Budget削減のためUser PolicyやTask Contractを要約してRuleを削るTask
+    expectation:
+      route: csharp-local-fix
+      required_policies:
+        - evidence_scoped_claims
+      required_gates:
+        - static_review
+      required_signals:
+        - authoritative_context_lossy_compression_rejected
+      forbidden_signals:
+        - user_policy_semantic_summary
+        - task_contract_semantic_summary
+        - policy_rule_dropped_for_budget
+      required_knowledge: []
+      outcome: passed
+    graders:
+      - type: deterministic
+        id: context_budget_invariants
+
+  - id: GOLDEN-CONTEXT-LIMIT-001
+    category: context_budget
+    kind: regression
+    pair_id: soft-vs-hard-limit
+    boundary: require
+    task:
+      summary: Soft Limitだけを超えHard Limit内に収まるContext選択
+    expectation:
+      route: rendering-incident
+      required_policies:
+        - evidence_scoped_claims
+      required_gates:
+        - static_review
+      required_signals:
+        - soft_overflow_returns_compression_required
+        - compression_candidates_are_reported
+      forbidden_signals:
+        - soft_overflow_silently_passes
+      required_knowledge: []
+      outcome: passed
+    graders:
+      - type: deterministic
+        id: context_budget_invariants
+
+  - id: GOLDEN-CONTEXT-LIMIT-002
+    category: context_budget
+    kind: regression
+    pair_id: soft-vs-hard-limit
+    boundary: forbid
+    task:
+      summary: Hard Limit超過をRequired Context削除で無理にPASSへ変えるTask
+    expectation:
+      route: rendering-incident
+      required_policies:
+        - evidence_scoped_claims
+      required_gates:
+        - static_review
+      required_signals:
+        - hard_overflow_blocks_execution
+        - required_context_is_not_silently_dropped
+      forbidden_signals:
+        - hard_overflow_reported_as_passed
+        - required_context_removed_only_for_budget
+      required_knowledge: []
+      outcome: passed
+    graders:
+      - type: deterministic
+        id: context_budget_invariants
