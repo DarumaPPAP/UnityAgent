@@ -53,7 +53,8 @@ jobs:
             .github/ProductionSmoke/run_one_repo_smoke.py \
             Eval/Behavior/grade_production_smoke.py \
             Eval/Rebaseline/rebaseline.py \
-            Eval/Rebaseline/build_rebaseline_summary.py
+            Eval/Rebaseline/build_rebaseline_summary.py \
+            Eval/Rebaseline/validate_rebaseline_summary.py
 
       - name: Verify real smoke is manual-only and full-suite
         shell: bash
