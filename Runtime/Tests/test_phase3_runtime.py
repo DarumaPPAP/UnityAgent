@@ -70,6 +70,22 @@ class Phase3RuntimeTests(unittest.TestCase):
         schema = yaml.safe_load((ROOT / "Operations/Observability/trace-record.schema.yaml").read_text(encoding="utf-8"))
         Draft202012Validator(schema).validate(value)
 
+    def test_codex_runner_denies_unauthorized_mutation_before_launch(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            workspace = base / "workspace"
+            output = base / "output"
+            workspace.mkdir()
+            marker = base / "launched.txt"
+            fake = base / "fake_codex.py"
+            fake.write_text(f"from pathlib import Path\nPath({str(marker)!r}).write_text('launched')\n", encoding="utf-8")
+            request = {"schema_version": "1.0", "run_id": "deny", "step_id": "step", "action_id": "action", "workspace_root": str(workspace), "prompt": "mutate", "execution": {"profile": "personal_full_control", "work_kind": "mutation", "mutation_authorized": False}, "mutation_scope": {"allowed_paths": ["CameraDebugger.cs"], "prohibited_paths": []}, "tool_identity": {"provider": "fixture", "model": "fixture-model", "model_revision": "1", "tool_manifest_hash": "fixture"}, "definition_fingerprint": fingerprint()}
+            result = codex_runner.execute(request, output, command_prefix=[sys.executable, "-S", str(fake)], timeout_seconds=5, reasoning_effort="high")
+            self.assertEqual(result["status"], "failed")
+            self.assertEqual(result["runtime_failure"]["failure_class"], "runtime_permission_denied")
+            self.assertEqual(result["changed_paths"]["observation_state"], "not_observed")
+            self.assertFalse(marker.exists())
+
     def test_codex_runner_fake_cli_preserves_structured_changed_paths(self):
         with tempfile.TemporaryDirectory() as temp:
             base = Path(temp)
@@ -79,7 +95,7 @@ class Phase3RuntimeTests(unittest.TestCase):
             (workspace / "CameraDebugger.cs").write_text("old\n", encoding="utf-8")
             fake = base / "fake_codex.py"
             fake.write_text("from pathlib import Path\nimport sys\ncwd=Path(sys.argv[sys.argv.index('--cd')+1])\n(cwd/'CameraDebugger.cs').write_text('new\\n',encoding='utf-8')\nout=Path(sys.argv[sys.argv.index('--output-last-message')+1])\nout.write_text('done\\n',encoding='utf-8')\nprint('{\"type\":\"event\"}')\n", encoding="utf-8")
-            request = {"schema_version": "1.0", "run_id": "run", "step_id": "step", "action_id": "action", "workspace_root": str(workspace), "prompt": "bounded fix", "execution": {"work_kind": "mutation"}, "mutation_scope": {"allowed_paths": ["CameraDebugger.cs"], "prohibited_paths": []}, "tool_identity": {"provider": "fixture", "model": "fixture-model", "model_revision": "1", "tool_manifest_hash": "fixture"}, "definition_fingerprint": fingerprint()}
+            request = {"schema_version": "1.0", "run_id": "run", "step_id": "step", "action_id": "action", "workspace_root": str(workspace), "prompt": "bounded fix", "execution": {"profile": "personal_full_control", "work_kind": "mutation", "mutation_authorized": True}, "mutation_scope": {"allowed_paths": ["CameraDebugger.cs"], "prohibited_paths": []}, "tool_identity": {"provider": "fixture", "model": "fixture-model", "model_revision": "1", "tool_manifest_hash": "fixture"}, "definition_fingerprint": fingerprint()}
             result = codex_runner.execute(request, output, command_prefix=[sys.executable, "-S", str(fake)], timeout_seconds=5, reasoning_effort="high")
             self.assertEqual(result["status"], "passed")
             self.assertEqual(result["changed_paths"], {"observation_state": "observed", "paths": ["CameraDebugger.cs"]})
