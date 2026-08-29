@@ -7,6 +7,11 @@ rules:
   unknown_dimensions_must_not_be_guessed: true
   unmatched_fallback: generic-planning
 routes:
+  generic-planning:
+    priority: 0
+    entry_action: plan
+    forced_profile: generic_planning
+    fingerprint_match: {}
   architecture-design:
     priority: 80
     entry_action: plan
