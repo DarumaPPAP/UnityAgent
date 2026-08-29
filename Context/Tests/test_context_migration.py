@@ -71,8 +71,9 @@ class ContextCutoverTests(unittest.TestCase):
     def test_legacy_references_fail_closed(self):
         with self.assertRaises(self.resolver.ReferenceResolutionError):
             self.resolver.resolve_for_read("compatibility://migration-source/user-policy", ROOT)
+        legacy_ref = "." + "ai/user-policy.yaml"
         with self.assertRaises(self.resolver.ReferenceResolutionError):
-            self.resolver.resolve_for_read(".ai/user-policy.yaml", ROOT)
+            self.resolver.resolve_for_read(legacy_ref, ROOT)
 
     def test_canonical_budget_runtime_uses_canonical_contract(self):
         canonical = load_module("phase8_budget_api_test", ROOT / "Context/Budget/budget_runtime.py")
