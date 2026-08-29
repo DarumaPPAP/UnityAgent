@@ -60,17 +60,16 @@ def execution_result(*, paths=None, failure=None):
 
 
 class Phase6EvalTests(unittest.TestCase):
-    def test_canonical_dataset_copy_is_byte_equivalent(self):
-        pairs = [
-            (ROOT / "Tests" / "BehaviorEval", ROOT / "Eval" / "Datasets" / "Behavior"),
-            (ROOT / "Tests" / "GoldenTasks", ROOT / "Eval" / "Datasets" / "Golden"),
-        ]
-        for legacy, canonical in pairs:
-            legacy_files = {p.relative_to(legacy).as_posix(): p for p in legacy.rglob("*") if p.is_file()}
-            canonical_files = {p.relative_to(canonical).as_posix(): p for p in canonical.rglob("*") if p.is_file() and p.name != "paths.py"}
-            self.assertEqual(set(legacy_files), set(canonical_files))
-            for relative in legacy_files:
-                self.assertEqual(legacy_files[relative].read_bytes(), canonical_files[relative].read_bytes(), relative)
+    def test_canonical_datasets_are_present_and_self_contained(self):
+        behavior = ROOT / "Eval" / "Datasets" / "Behavior"
+        golden = ROOT / "Eval" / "Datasets" / "Golden"
+        self.assertTrue((behavior / "suites.yaml").is_file())
+        self.assertTrue((behavior / "execution-envelope.schema.yaml").is_file())
+        self.assertTrue((behavior / "ProtocolFixtures" / "valid" / "execution-envelope.yaml").is_file())
+        self.assertTrue((golden / "cases.yaml").is_file())
+        self.assertTrue((golden / "context-budget-v1.yaml").is_file())
+        self.assertFalse((ROOT / "Tests" / "BehaviorEval").exists())
+        self.assertFalse((ROOT / "Tests" / "GoldenTasks").exists())
 
     def test_runtime_adapter_preserves_structured_changed_paths(self):
         source = execution_result(paths=["Assets/CameraDebugger.cs"])
