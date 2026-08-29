@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -13,6 +14,22 @@ assert spec is not None and spec.loader is not None
 smoke = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = smoke
 spec.loader.exec_module(smoke)
+
+
+def _definition_fingerprint() -> dict[str, str]:
+    return {
+        "schema_version": "1.0",
+        "architecture_version": "3.1",
+        "policy_revision": "p",
+        "prompt_revision": "q",
+        "context_revision": "c",
+        "graph_revision": "g",
+        "runtime_profile_revision": "r",
+        "tool_schema_revision": "t",
+        "checkpoint_schema_revision": "cp",
+        "evidence_schema_revision": "e",
+        "eval_contract_revision": "v",
+    }
 
 
 class OneRepoProductionSmokeTests(unittest.TestCase):
@@ -66,6 +83,26 @@ class OneRepoProductionSmokeTests(unittest.TestCase):
         self.assertNotIn("expected_route", prompt)
         self.assertNotIn("required_signals", prompt)
         self.assertNotIn("forbidden_signals", prompt)
+
+    def test_persist_execution_uses_persistence_safe_evidence_id(self):
+        with tempfile.TemporaryDirectory() as temp:
+            case_dir = Path(temp)
+            runtime_dir = case_dir / "runtime"
+            runtime_dir.mkdir()
+            (runtime_dir / "execution-result.yaml").write_text("status: passed\n", encoding="utf-8")
+            result = {
+                "run_id": "phase9-baseline-20260830-02-golden-arch-001",
+                "step_id": "production-smoke",
+                "status": "passed",
+                "definition_fingerprint": _definition_fingerprint(),
+            }
+
+            evidence_id = smoke._persist_execution(case_dir, result)
+
+            expected = "phase9-baseline-20260830-02-golden-arch-001-execution-result"
+            self.assertEqual(evidence_id, expected)
+            self.assertNotIn(":", evidence_id)
+            self.assertTrue((case_dir / "persistence/evidence/records" / f"{expected}.json").is_file())
 
     def test_ci_harness_is_not_an_authority_module(self):
         self.assertTrue(MODULE_PATH.as_posix().endswith(".github/ProductionSmoke/run_one_repo_smoke.py"))
