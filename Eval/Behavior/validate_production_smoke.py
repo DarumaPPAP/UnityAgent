@@ -12,10 +12,10 @@ import yaml
 from run_behavior_eval import build_request, validate_request
 
 ROOT = Path(__file__).resolve().parents[2]
-SUITES = ROOT / "Tests" / "BehaviorEval" / "suites.yaml"
-GOLDEN_CASES = ROOT / "Tests" / "GoldenTasks" / "cases.yaml"
-PRODUCTION_CONTRACTS = ROOT / "Tests" / "BehaviorEval" / "production-smoke-contracts.yaml"
-TASK_CONTRACTS = ROOT / ".ai" / "harness" / "task-contracts"
+SUITES = ROOT / "Eval" / "Datasets" / "Behavior" / "suites.yaml"
+GOLDEN_CASES = ROOT / "Eval" / "Datasets" / "Golden" / "cases.yaml"
+PRODUCTION_CONTRACTS = ROOT / "Eval" / "Datasets" / "Behavior" / "production-smoke-contracts.yaml"
+TASK_CONTRACTS = ROOT / "Orchestration" / "Contracts" / "TaskContracts"
 EXPECTED_CASES = {
     "GOLDEN-ARCH-001": "architecture",
     "GOLDEN-NAMING-001": "naming",
