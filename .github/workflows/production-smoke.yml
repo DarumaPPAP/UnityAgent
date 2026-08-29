@@ -3,10 +3,6 @@ name: One-repo Production Smoke
 on:
   workflow_dispatch:
     inputs:
-      case:
-        description: Optional Golden task id to execute; empty runs the full Production Smoke suite
-        required: false
-        type: string
       model:
         description: Codex model used by the canonical Runtime runner
         required: true
@@ -32,7 +28,6 @@ jobs:
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       SMOKE_RUN_ID: phase9-${{ github.run_id }}-${{ github.run_attempt }}
-      SMOKE_CASE: ${{ inputs.case }}
       SMOKE_MODEL: ${{ inputs.model }}
       SMOKE_REASONING_EFFORT: ${{ inputs.reasoning_effort }}
     steps:
@@ -57,10 +52,15 @@ jobs:
       - name: Install Python validation dependencies
         run: python -m pip install --disable-pip-version-check PyYAML jsonschema
 
-      - name: Validate smoke integration boundaries
+      - name: Validate smoke and re-baseline integration boundaries
         run: |
           python -m unittest discover -s .github/ProductionSmoke -p "test_*.py"
-          python -m py_compile .github/ProductionSmoke/run_one_repo_smoke.py Eval/Behavior/grade_production_smoke.py
+          python -m unittest Eval.Tests.test_phase9_rebaseline
+          python -m py_compile \
+            .github/ProductionSmoke/run_one_repo_smoke.py \
+            Eval/Behavior/grade_production_smoke.py \
+            Eval/Rebaseline/rebaseline.py \
+            Eval/Rebaseline/build_rebaseline_summary.py
 
       - name: Production credential preflight
         shell: bash
@@ -91,31 +91,40 @@ jobs:
         run: npm install -g @openai/codex@latest
 
       - name: Record runtime versions
+        shell: bash
         run: |
-          codex --version
+          codex_version="$(codex --version | head -n 1)"
+          echo "CODEX_VERSION=$codex_version" >> "$GITHUB_ENV"
+          echo "$codex_version"
           python --version
           dotnet --version
 
-      - name: Execute and grade one-repo Production Smoke
+      - name: Execute, grade and aggregate one-repo Production Smoke
         shell: bash
         run: |
           set +e
-          case_args=()
-          if [ -n "$SMOKE_CASE" ]; then
-            case_args=(--case "$SMOKE_CASE")
-          fi
           python .github/ProductionSmoke/run_one_repo_smoke.py \
             --run-id "$SMOKE_RUN_ID" \
             --model "$SMOKE_MODEL" \
             --reasoning-effort "$SMOKE_REASONING_EFFORT" \
-            --timeout-seconds 240 \
-            "${case_args[@]}"
+            --timeout-seconds 240
           execution_code=$?
+
           python Eval/Behavior/grade_production_smoke.py --run-id "$SMOKE_RUN_ID"
           grade_code=$?
+
+          python Eval/Rebaseline/build_rebaseline_summary.py \
+            --run-id "$SMOKE_RUN_ID" \
+            --source-revision "$GITHUB_SHA" \
+            --model "$SMOKE_MODEL" \
+            --reasoning-effort "$SMOKE_REASONING_EFFORT" \
+            --codex-version "$CODEX_VERSION"
+          rebaseline_code=$?
+
           echo "execution_exit=$execution_code"
           echo "grade_exit=$grade_code"
-          if [ "$execution_code" -ne 0 ] || [ "$grade_code" -ne 0 ]; then
+          echo "rebaseline_exit=$rebaseline_code"
+          if [ "$execution_code" -ne 0 ] || [ "$grade_code" -ne 0 ] || [ "$rebaseline_code" -ne 0 ]; then
             exit 1
           fi
 
