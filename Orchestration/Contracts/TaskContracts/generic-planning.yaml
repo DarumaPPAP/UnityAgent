@@ -1,0 +1,38 @@
+id: generic-planning
+default_execution_profile: generic_planning
+risk_level: R0
+mutation_channel_binding: none
+
+required_inputs:
+  - goal
+
+required_policy_clauses:
+  - id: evidence_scoped_claims
+    source_path: Policy/User/user-policy.yaml#core_user_policies.evidence_scoped_claims
+    reason: Read-only planning and verification must separate observed evidence from unverified claims.
+
+allowed_mutations: []
+prohibited_mutations:
+  - source_change
+  - asset_change
+  - project_setting_change
+  - speculative_implementation
+
+required_knowledge: []
+required_quality_gates:
+  - static_review
+conditional_quality_gates: []
+
+completion:
+  - requested_read_only_analysis_or_verification_is_answered
+  - evidence_boundaries_are_preserved
+  - unverified_conditions_are_explicit
+
+stop_conditions:
+  - required_evidence_is_unavailable_and_the_request_requires_a_verified_claim
+
+result_format:
+  summary: bounded_read_only_result
+  changed_artifacts: none
+  validation: observed_gate_statuses
+  unresolved: unverified_conditions
