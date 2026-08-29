@@ -1,0 +1,48 @@
+id: performance-experiment
+default_execution_profile: personal_full_control
+risk_level: R2
+mutation_channel_binding: request
+
+required_inputs:
+  - optimization_goal
+  - measurement_metric
+  - fixed_test_conditions
+  - quality_constraints
+  - revert_condition
+
+allowed_mutations:
+  - one_bounded_candidate_change
+  - measurement_support_owned_by_the_experiment
+
+prohibited_mutations:
+  - optimization_claim_without_baseline
+  - simultaneous_unrelated_optimizations
+  - quality_regression_without_explicit_tradeoff
+  - editor_only_measurement_for_target_device_claim
+
+required_knowledge: []
+required_quality_gates:
+  - static_review
+  - baseline_measurement
+  - candidate_measurement
+  - quality_regression_check
+conditional_quality_gates:
+  - player
+  - target_device
+
+completion:
+  - baseline_and_candidate_use_same_conditions
+  - result_is_adopt_reject_or_inconclusive
+  - revert_condition_is_evaluated
+  - measurement_limitations_are_recorded
+
+stop_conditions:
+  - baseline_cannot_be_collected
+  - test_conditions_are_not_stable
+  - candidate_requires_multiple_unbounded_changes
+
+result_format:
+  summary: metric_delta_quality_and_verdict
+  changed_artifacts: candidate_and_measurement_support
+  validation: before_after_and_quality_gates
+  unresolved: noise_platform_limits_and_followups
