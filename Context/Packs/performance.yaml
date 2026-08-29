@@ -12,11 +12,11 @@ metadata:
   decisions:
     - id: measured-performance-only
       label: Performance claims require measurement
-      source_ref: .ai/context-packs/performance.yaml#rules
+      source_ref: Context/Packs/performance.yaml#rules
   forbidden:
     - id: unmeasured-optimization-claim
       label: Unmeasured optimization claims are forbidden
-      source_ref: .ai/harness/task-contracts/performance-experiment.yaml#prohibited_mutations
+      source_ref: Orchestration/Contracts/TaskContracts/performance-experiment.yaml#prohibited_mutations
   related: []
   priority: high
   tags: [performance, evidence, measurement]

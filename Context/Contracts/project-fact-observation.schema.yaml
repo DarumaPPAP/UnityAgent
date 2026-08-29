@@ -1,0 +1,37 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:context:project-fact-observation
+title: ProjectFactObservation
+description: Attempt-scoped Project Fact provenance and freshness contract.
+type: object
+additionalProperties: false
+required:
+  - key
+  - value
+  - source_kind
+  - source_path
+  - revision
+  - observed_at_attempt
+  - freshness
+  - reason
+properties:
+  key: {type: string, minLength: 1}
+  value: {}
+  source_kind:
+    enum: [detected_project, user_confirmed, project_profile]
+  source_path: {type: string, minLength: 1}
+  revision: {type: string, minLength: 1}
+  observed_at_attempt: {type: integer, minimum: 1}
+  freshness:
+    type: object
+    additionalProperties: false
+    required: [status, checked_at_attempt]
+    properties:
+      status: {enum: [current, stale, unknown]}
+      checked_at_attempt: {type: integer, minimum: 1}
+  reason: {type: string, minLength: 1}
+x-unityagent-invariants:
+  current_requires_checked_at_current_manifest_attempt: true
+  checked_at_attempt_must_not_precede_observed_at_attempt: true
+  observed_at_attempt_must_not_exceed_manifest_attempt: true
+  retry_requires_explicit_reobservation_or_revalidation: true
+  stale_or_unknown_must_not_be_presented_as_current: true

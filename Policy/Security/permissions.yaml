@@ -2,7 +2,8 @@ schema_version: "1.0"
 kind: permission_requirement_policy
 authority: Policy
 source_provenance:
-  legacy_source: compatibility://mcp-activation
+  migration_record: docs/migration/architecture-split-list.md
+  legacy_source_id: mcp-activation
 requirements:
   inspect:
     mutation: prohibited

@@ -1,0 +1,128 @@
+name: One-repo Production Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      case:
+        description: Optional Golden task id to execute; empty runs the full Production Smoke suite
+        required: false
+        type: string
+      model:
+        description: Codex model used by the canonical Runtime runner
+        required: true
+        default: gpt-5.6-sol
+        type: string
+      reasoning_effort:
+        description: Runtime reasoning effort
+        required: true
+        default: high
+        type: choice
+        options:
+          - medium
+          - high
+          - xhigh
+
+permissions:
+  contents: read
+
+jobs:
+  production-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      SMOKE_RUN_ID: phase9-${{ github.run_id }}-${{ github.run_attempt }}
+      SMOKE_CASE: ${{ inputs.case }}
+      SMOKE_MODEL: ${{ inputs.model }}
+      SMOKE_REASONING_EFFORT: ${{ inputs.reasoning_effort }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Install Python validation dependencies
+        run: python -m pip install --disable-pip-version-check PyYAML jsonschema
+
+      - name: Validate smoke integration boundaries
+        run: |
+          python -m unittest discover -s .github/ProductionSmoke -p "test_*.py"
+          python -m py_compile .github/ProductionSmoke/run_one_repo_smoke.py Eval/Behavior/grade_production_smoke.py
+
+      - name: Production credential preflight
+        shell: bash
+        run: |
+          mkdir -p "Artifacts/ProductionSmoke/$SMOKE_RUN_ID"
+          if [ -z "${OPENAI_API_KEY:-}" ]; then
+            cat > "Artifacts/ProductionSmoke/$SMOKE_RUN_ID/preflight.json" <<'JSON'
+          {
+            "schema_version": "1.0",
+            "status": "BLOCKED_NOT_RUN",
+            "reason": "OPENAI_API_KEY repository secret is not configured",
+            "production_execution_observed": false
+          }
+          JSON
+            echo "::error::Real Production Smoke was not executed because OPENAI_API_KEY is not configured."
+            exit 1
+          fi
+          cat > "Artifacts/ProductionSmoke/$SMOKE_RUN_ID/preflight.json" <<'JSON'
+          {
+            "schema_version": "1.0",
+            "status": "READY",
+            "reason": null,
+            "production_execution_observed": false
+          }
+          JSON
+
+      - name: Install Codex CLI
+        run: npm install -g @openai/codex@latest
+
+      - name: Record runtime versions
+        run: |
+          codex --version
+          python --version
+          dotnet --version
+
+      - name: Execute and grade one-repo Production Smoke
+        shell: bash
+        run: |
+          set +e
+          case_args=()
+          if [ -n "$SMOKE_CASE" ]; then
+            case_args=(--case "$SMOKE_CASE")
+          fi
+          python .github/ProductionSmoke/run_one_repo_smoke.py \
+            --run-id "$SMOKE_RUN_ID" \
+            --model "$SMOKE_MODEL" \
+            --reasoning-effort "$SMOKE_REASONING_EFFORT" \
+            --timeout-seconds 240 \
+            "${case_args[@]}"
+          execution_code=$?
+          python Eval/Behavior/grade_production_smoke.py --run-id "$SMOKE_RUN_ID"
+          grade_code=$?
+          echo "execution_exit=$execution_code"
+          echo "grade_exit=$grade_code"
+          if [ "$execution_code" -ne 0 ] || [ "$grade_code" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Upload Production Smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: one-repo-production-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Artifacts/ProductionSmoke/${{ env.SMOKE_RUN_ID }}/
+          if-no-files-found: error

@@ -10,14 +10,14 @@ metadata:
   version: "2.4.0"
   kind: operation
   entrypoint: false
-  user_policy: .ai/user-policy.yaml
+  user_policy: Policy/User/user-policy.yaml
 ---
 
 # Unity Implement
 
 承認済みTask、Confirmed Incident、または依頼文で完全に境界づけられた局所変更を、最小差分で実装する。
 このSkillは「選択された一件の実装」を所有する。
-Primary Domain Routeは`.ai/context-index.yaml`で選択済みであることを前提とし、このSkill自身をRouting入口にしない。
+Primary Domain Routeは`Orchestration/Routing/task-routes.yaml`で選択済みであることを前提とし、このSkill自身をRouting入口にしない。
 
 ## When to use
 
@@ -34,7 +34,7 @@ Read-only監査には対応Audit Skillを使う。
 優先順に読む。
 
 1. ユーザーが指定したTask ID、ファイル、禁止事項
-2. `.ai/user-policy.yaml`
+2. `Policy/User/user-policy.yaml`
 3. 選択済みContext PackとTask Contract
 4. Feature `spec.md`、`plan.md`、`tasks.md`
 5. 対象コード、直接依存、対象Projectから検出したFact
@@ -123,7 +123,7 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - 既存コードを変更する場合は既存namespaceを保持する。
 - `Namespace`、`RootNamespace`、`<RootNamespace>`、`CHANGE_ME`をC# namespace、asmdef名、`rootNamespace`、Assembly参照へ出力しない。
 - 先頭または末尾が`.`のnamespaceを生成しない。
-- コメントは`.ai/user-policy.yaml`のコメント体系に従い、日本語で意図、制約、所有権、寿命、危険箇所を必要な密度で書く。
+- コメントは`Policy/User/user-policy.yaml`のコメント体系に従い、日本語で意図、制約、所有権、寿命、危険箇所を必要な密度で書く。
 - Type / Responsibility / File Structureを確定してから命名を評価する。長いType名を短縮するためだけに追加Typeを作らない。
 
 新規Typeまたは明示Renameがある場合のみSemantic Type Naming Reviewを行う。
@@ -213,7 +213,7 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 ## Checklist
 
 - [ ] Task / Incident / Rule IDを固定した
-- [ ] `.ai/user-policy.yaml`を適用した
+- [ ] `Policy/User/user-policy.yaml`を適用した
 - [ ] Changed filesとNon-goalsを確認した
 - [ ] 必要な規約だけを読んだ
 - [ ] Existing OwnerとSimplest Cohesive Solutionを先に確認した

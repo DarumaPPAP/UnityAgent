@@ -1,0 +1,55 @@
+schema_version: "3.0"
+id: generic-planning
+primary_skill: .agents/skills/unity-doubt-review/SKILL.md
+
+metadata:
+  type: context
+  title: Generic Planning
+  summary:
+    - Bounded read-only planning or verification fallback.
+  purpose:
+    - Preserve policy and evidence boundaries when no specialized semantic route matches.
+  decisions:
+    - id: evidence-scoped-claims
+      label: Claims remain bounded by observed evidence
+      source_ref: Policy/User/user-policy.yaml#core_user_policies.evidence_scoped_claims
+  forbidden:
+    - id: fallback-mutation
+      label: Generic planning fallback must not mutate production artifacts
+      source_ref: Orchestration/Contracts/TaskContracts/generic-planning.yaml#prohibited_mutations
+  related: []
+  priority: normal
+  tags: [planning, verification, fallback]
+
+use_when:
+  - bounded read-only request with no specialized semantic route
+  - verification report from supplied evidence
+
+required:
+  - type: repository_reference
+    path: Policy/User/user-policy.yaml
+  - type: binding
+    name: goal
+
+conditional: {}
+
+excluded_by_default:
+  - unrelated domain catalogs
+  - mutation-only skills
+  - external references not required by the request
+
+rules:
+  read_only: true
+  user_policy_has_priority: true
+  evidence_scoped_claims: true
+  do_not_guess_unresolved_facts: true
+  no_mutation_from_fallback_route: true
+
+limits:
+  initial_file_reads: 5
+  context_expansion_hops: 1
+
+output:
+  - answer
+  - observed_evidence
+  - unverified_conditions

@@ -1,20 +1,18 @@
 #!/usr/bin/env python3
-"""Validate Typed Context v3 supplemental Golden Regression boundaries."""
+"""Validate Typed Context supplemental Golden Regression boundaries against canonical Context contracts."""
 
 from __future__ import annotations
 
 import sys
 from collections import defaultdict
 from pathlib import Path
-
 import yaml
 
-
 ROOT = Path(__file__).resolve().parents[2]
-CASES_PATH = ROOT / "Tests" / "GoldenTasks" / "typed-context-v3.yaml"
-INDEX_PATH = ROOT / ".ai" / "context-index.yaml"
-PACK_SCHEMA_PATH = ROOT / ".ai" / "context-pack.schema.yaml"
-MANIFEST_SCHEMA_PATH = ROOT / ".ai" / "context-manifest.schema.yaml"
+CASES_PATH = ROOT / "Eval" / "Datasets" / "Golden" / "typed-context-v3.yaml"
+PACK_SCHEMA_PATH = ROOT / "Context" / "Contracts" / "context-pack.schema.yaml"
+PROJECT_FACT_SCHEMA_PATH = ROOT / "Context" / "Contracts" / "project-fact-observation.schema.yaml"
+MANIFEST_SCHEMA_PATH = ROOT / "Context" / "Manifest" / "context-manifest.schema.yaml"
 
 EXPECTED_PAIRS = {
     "project-fact-freshness": {
@@ -39,11 +37,11 @@ def main() -> int:
     errors: list[str] = []
     try:
         suite = load(CASES_PATH)
-        index = load(INDEX_PATH)
         pack_schema = load(PACK_SCHEMA_PATH)
+        project_fact_schema = load(PROJECT_FACT_SCHEMA_PATH)
         manifest_schema = load(MANIFEST_SCHEMA_PATH)
     except (OSError, ValueError, yaml.YAMLError) as exc:
-        print(f"Typed Context v3 Golden validation failed:\n- {exc}")
+        print(f"Typed Context Golden validation failed:\n- {exc}")
         return 1
 
     cases = suite.get("cases", [])
@@ -63,7 +61,6 @@ def main() -> int:
         elif case_id in ids:
             errors.append(f"Duplicate Golden case id: {case_id}")
         ids.add(case_id)
-
         pair_id = str(case.get("pair_id", ""))
         boundary = str(case.get("boundary", ""))
         if boundary not in {"require", "forbid"}:
@@ -91,48 +88,46 @@ def main() -> int:
             if signal not in signals:
                 errors.append(f"{pair_id}:{boundary} missing required signal {signal}")
 
-    rules = index.get("routing_rules", {}) or {}
+    defs = pack_schema.get("$defs", {}) or {}
+    for required_type in ("binding", "repository_reference", "external_reference", "context_include", "route_handoff"):
+        if required_type not in defs:
+            errors.append(f"Canonical Context Pack schema missing typed entry: {required_type}")
+    invariants = pack_schema.get("x-unityagent-invariants", {}) or {}
+    for invariant in ("scalar_context_entries_forbidden", "context_include_does_not_change_primary_route", "route_handoff_changes_primary_ownership"):
+        if invariants.get(invariant) is not True:
+            errors.append(f"Canonical Context Pack invariant missing: {invariant}")
+
+    fact_invariants = project_fact_schema.get("x-unityagent-invariants", {}) or {}
+    for invariant in (
+        "current_requires_checked_at_current_manifest_attempt",
+        "checked_at_attempt_must_not_precede_observed_at_attempt",
+        "observed_at_attempt_must_not_exceed_manifest_attempt",
+        "retry_requires_explicit_reobservation_or_revalidation",
+    ):
+        if fact_invariants.get(invariant) is not True:
+            errors.append(f"Canonical Project Fact invariant missing: {invariant}")
+
+    manifest_rules = manifest_schema.get("x-unityagent-rules", {}) or {}
     for rule in (
-        "scalar_context_entries_forbidden",
-        "context_include_does_not_change_primary_route",
-        "route_handoff_changes_primary_route",
-        "project_fact_provenance_required",
-        "current_project_fact_requires_current_attempt_check",
-        "retry_must_not_implicitly_reuse_project_facts",
+        "current_project_fact_requires_checked_at_attempt_equal_manifest_attempt",
+        "project_fact_checked_at_attempt_must_not_precede_observed_at_attempt",
+        "project_fact_observed_at_attempt_must_not_exceed_manifest_attempt",
+        "retry_requires_explicit_project_fact_reobservation_or_revalidation",
     ):
-        if rules.get(rule) is not True:
-            errors.append(f"Canonical routing rule missing: {rule}")
-
-    if str(pack_schema.get("schema_version")) != "3.0":
-        errors.append("Context Pack contract must be v3.0")
-    if str(manifest_schema.get("schema_version")) != "3.1":
-        errors.append("Context Manifest schema must be v3.1")
-
-    typed_context = pack_schema.get("typed_context", {}) or {}
-    allowed_types = set(typed_context.get("allowed_types", []) or [])
-    for required_type in (
-        "binding",
-        "repository_reference",
-        "external_reference",
-        "context_include",
-        "route_handoff",
-    ):
-        if required_type not in allowed_types:
-            errors.append(f"Typed Context contract missing type: {required_type}")
-
-    fact_rules = manifest_schema.get("project_fact_rules", {}) or {}
-    if fact_rules.get("current_requires_checked_at_attempt_equal_manifest_attempt") is not True:
-        errors.append("Manifest schema does not enforce current-attempt freshness")
-    if fact_rules.get("retry_requires_explicit_reobservation_or_revalidation") is not True:
-        errors.append("Manifest schema does not require retry Fact revalidation")
+        if manifest_rules.get(rule) is not True:
+            errors.append(f"Canonical Context Manifest rule missing: {rule}")
+    project_facts = ((manifest_schema.get("properties") or {}).get("project_facts") or {})
+    item_ref = (project_facts.get("items") or {}).get("$ref")
+    if item_ref != "urn:unityagent:context:project-fact-observation":
+        errors.append("Context Manifest project_facts must reference the canonical ProjectFactObservation contract")
 
     if errors:
-        print("Typed Context v3 Golden validation failed:")
+        print("Typed Context Golden validation failed:")
         for error in errors:
             print(f"- {error}")
         return 1
 
-    print(f"Typed Context v3 Golden validation passed: {len(cases)} cases / {len(EXPECTED_PAIRS)} boundary pairs.")
+    print(f"Typed Context Golden validation passed: {len(cases)} cases / {len(EXPECTED_PAIRS)} boundary pairs.")
     return 0
 
 

@@ -1,5 +1,0 @@
-schema_version: "1.0"
-artifacts:
-  - path: generated/CameraDebugger.cs
-    language: csharp
-    kind: generated_source

@@ -1,0 +1,62 @@
+name: Validate Production Smoke Integration
+
+on:
+  pull_request:
+    paths:
+      - ".github/ProductionSmoke/**"
+      - "Runtime/Runner/Codex/**"
+      - "Runtime/Guardrails/**"
+      - "Runtime/Profiles/**"
+      - "Persistence/Evidence/**"
+      - "Context/Assembly/**"
+      - "Context/Selection/**"
+      - "Context/Packs/generic-planning.yaml"
+      - "Context/Budget/context-budget.yaml"
+      - "Orchestration/Routing/**"
+      - "Orchestration/Contracts/TaskContracts/**"
+      - "Eval/Behavior/grade_production_smoke.py"
+      - "Eval/Behavior/normalize_result.py"
+      - "Eval/Behavior/run_behavior_eval.py"
+      - "Eval/Datasets/Behavior/**"
+      - ".github/workflows/production-smoke.yml"
+      - ".github/workflows/validate-production-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  integration-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install validation dependencies
+        run: python -m pip install --disable-pip-version-check PyYAML jsonschema
+
+      - name: Validate Production Smoke integration boundaries
+        run: |
+          python -m unittest discover -s .github/ProductionSmoke -p "test_*.py"
+          python -m py_compile .github/ProductionSmoke/run_one_repo_smoke.py Eval/Behavior/grade_production_smoke.py
+
+      - name: Verify real smoke is manual-only
+        shell: bash
+        run: |
+          if grep -Eq '^[[:space:]]*pull_request:' .github/workflows/production-smoke.yml; then
+            echo "::error::Real Production Smoke must not be an automatic pull_request workflow."
+            exit 1
+          fi
+          grep -Eq '^[[:space:]]*workflow_dispatch:' .github/workflows/production-smoke.yml
+          grep -Fq 'BLOCKED_NOT_RUN' .github/workflows/production-smoke.yml
+
+      - name: Verify CI harness is outside production authority modules
+        shell: bash
+        run: |
+          test -f .github/ProductionSmoke/run_one_repo_smoke.py
+          test ! -e Tools/ProductionSmoke/run_one_repo_smoke.py
+          test ! -e Operations/Tests/test_one_repo_production_smoke.py

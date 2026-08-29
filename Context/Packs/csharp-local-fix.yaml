@@ -12,17 +12,17 @@ metadata:
   decisions:
     - id: bounded-csharp-change
       label: Bounded CSharp rules remain authoritative
-      source_ref: .ai/context-packs/csharp-local-fix.yaml#rules
+      source_ref: Context/Packs/csharp-local-fix.yaml#rules
     - id: single-purpose-change-policy
       label: One local fix keeps one change reason
-      source_ref: .ai/user-policy.yaml#core_user_policies.single_purpose_change
+      source_ref: Policy/User/user-policy.yaml#core_user_policies.single_purpose_change
     - id: preserve-existing-structure-policy
       label: Existing structure and contracts remain preserved
-      source_ref: .ai/user-policy.yaml#core_user_policies.preserve_existing_structure
+      source_ref: Policy/User/user-policy.yaml#core_user_policies.preserve_existing_structure
   forbidden:
     - id: unrelated-source-churn
       label: Unrelated refactoring and formatting churn are forbidden
-      source_ref: .ai/harness/task-contracts/csharp-local-fix.yaml#prohibited_mutations
+      source_ref: Orchestration/Contracts/TaskContracts/csharp-local-fix.yaml#prohibited_mutations
   related: []
   priority: normal
   tags: [csharp, local-fix, compile]

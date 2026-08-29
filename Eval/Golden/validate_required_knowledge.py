@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
-"""Validate Task Contract required_knowledge routing completeness."""
+"""Validate canonical Task Contract required_knowledge routing completeness."""
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
-
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
-INDEX_PATH = ROOT / ".ai" / "context-index.yaml"
-RUNTIME_PATH = ROOT / "Tools" / "ContextManifest" / "context_manifest_runtime.py"
+CATALOG_PATH = ROOT / "Context" / "Selection" / "context-catalog.yaml"
+MATERIALIZER_PATH = ROOT / "Context" / "Assembly" / "materialize_context.py"
 
 
 def load_yaml(path: Path) -> dict:
@@ -23,46 +21,46 @@ def load_yaml(path: Path) -> dict:
 def main() -> int:
     errors: list[str] = []
     try:
-        index = load_yaml(INDEX_PATH)
-        runtime_text = RUNTIME_PATH.read_text(encoding="utf-8")
+        catalog = load_yaml(CATALOG_PATH)
+        materializer_text = MATERIALIZER_PATH.read_text(encoding="utf-8")
     except (OSError, ValueError, yaml.YAMLError) as exc:
         print(f"Required Knowledge validation failed:\n- {exc}")
         return 1
 
     covered = 0
-    for route_key, route in (index.get("routes", {}) or {}).items():
+    for route_id, route in (catalog.get("routes", {}) or {}).items():
         if not isinstance(route, dict):
             continue
         contract_path = route.get("task_contract")
         if not contract_path:
+            errors.append(f"{route_id}: canonical task_contract is required.")
             continue
         try:
             contract = load_yaml(ROOT / str(contract_path))
-        except Exception as exc:  # noqa: BLE001
-            errors.append(f"{route_key}: failed to load Task Contract: {exc}")
+        except Exception as exc:  # noqa: BLE001 - report exact route/contract failure.
+            errors.append(f"{route_id}: failed to load Task Contract: {exc}")
             continue
         required = [str(value) for value in contract.get("required_knowledge", []) or []]
         if not required:
             continue
         covered += 1
         selection = route.get("knowledge_selection")
-        if selection is not None and selection not in {"required", "required_when_domain_matches", "optional"}:
-            errors.append(
-                f"{route.get('id', route_key)}: unsupported knowledge_selection value {selection}."
-            )
+        if selection not in {"required", "required_when_domain_matches", "optional"}:
+            errors.append(f"{route_id}: required_knowledge requires explicit knowledge_selection; found {selection!r}.")
         if any(not value.strip() for value in required):
-            errors.append(f"{route.get('id', route_key)}: required_knowledge contains an empty selector.")
+            errors.append(f"{route_id}: required_knowledge contains an empty selector.")
 
     for marker in (
-        "request.get('knowledge'",
-        "'knowledge': {'loaded': knowledge}",
-        "stable_node_id('knowledge'",
+        "knowledge_refs: list[str] | None",
+        '_selected_ref(logical, "knowledge", root)',
+        'route.get("knowledge_selection") == "required_when_domain_matches"',
+        'unresolved.append("knowledge_selection")',
     ):
-        if marker not in runtime_text:
-            errors.append(f"Context Manifest Runtime missing knowledge handling marker: {marker}")
+        if marker not in materializer_text:
+            errors.append(f"Canonical Context materializer missing knowledge handling marker: {marker}")
 
     if covered == 0:
-        errors.append("No Task Contract with required_knowledge was found; completeness check is ineffective.")
+        errors.append("No canonical Task Contract with required_knowledge was found; completeness check is ineffective.")
 
     if errors:
         print("Required Knowledge validation failed:")

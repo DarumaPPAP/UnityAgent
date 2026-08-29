@@ -34,7 +34,7 @@ class EvalContractTests(unittest.TestCase):
             validate("urn:unityagent:eval:eval-record", broken)
 
     def test_existing_legacy_protocol_fixture_normalizes_without_inventing_changed_paths(self):
-        bundle = ROOT / "Tests" / "BehaviorEval" / "ProtocolFixtures" / "valid"
+        bundle = ROOT / "Eval" / "Datasets" / "Behavior" / "ProtocolFixtures" / "valid"
         result = normalize_bundle(bundle)
         execution = result["execution_result"]
         self.assertEqual(execution["changed_paths"], {"observation_state":"not_observed","paths":[]})

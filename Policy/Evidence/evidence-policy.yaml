@@ -1,7 +1,7 @@
 schema_version: "1.0"
 kind: evidence_policy
 authority: Policy
-legacy_gate_catalog: compatibility://quality-gates
+gate_catalog: Policy/Evidence/quality-gates.yaml
 result_statuses:
   - passed
   - failed

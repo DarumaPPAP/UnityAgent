@@ -7,6 +7,11 @@ rules:
   unknown_dimensions_must_not_be_guessed: true
   unmatched_fallback: generic-planning
 routes:
+  generic-planning:
+    priority: 0
+    entry_action: plan
+    forced_profile: generic_planning
+    fingerprint_match: {}
   architecture-design:
     priority: 80
     entry_action: plan
@@ -27,11 +32,11 @@ routes:
     priority: 90
     entry_action: implement
     fingerprint_match:
-      intent: [fix, implement]
+      intent: [fix, implement, review]
       artifact: [csharp]
       scope: [local]
       architecture_state: [decided, not_applicable]
-      mutation_target: [source]
+      mutation_target: [source, none]
       evidence_state: [known, partial]
   rendering-incident:
     priority: 100

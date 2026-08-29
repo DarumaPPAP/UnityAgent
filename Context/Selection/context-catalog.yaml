@@ -8,59 +8,65 @@ risk_policy: Policy/Risk/risk-levels.yaml
 context_budget: Context/Budget/context-budget.yaml
 mcp_selection: Context/Selection/mcp-selection.yaml
 routes:
+  generic-planning:
+    context_pack: Context/Packs/generic-planning.yaml
+    primary_skill: .agents/skills/unity-doubt-review/SKILL.md
+    task_contract: Orchestration/Contracts/TaskContracts/generic-planning.yaml
   architecture-design:
     context_pack: Context/Packs/architecture-design.yaml
     primary_skill: .agents/skills/unity-architecture-design/SKILL.md
-    task_contract: compatibility://task-contracts/architecture-design
+    task_contract: Orchestration/Contracts/TaskContracts/architecture-design.yaml
     knowledge_selection: optional
   graphics-mcp:
     context_pack: Context/Packs/graphics-mcp.yaml
     primary_skill: .agents/skills/unity-architecture-design/SKILL.md
-    task_contract: compatibility://task-contracts/graphics-mcp
+    task_contract: Orchestration/Contracts/TaskContracts/graphics-mcp.yaml
     knowledge_selection: required_when_domain_matches
     mcp_selection: required
   csharp-local-fix:
     context_pack: Context/Packs/csharp-local-fix.yaml
     primary_skill: .agents/skills/csharp-safe-patch/SKILL.md
-    task_contract: compatibility://task-contracts/csharp-local-fix
+    task_contract: Orchestration/Contracts/TaskContracts/csharp-local-fix.yaml
   rendering-incident:
     context_pack: Context/Packs/rendering-incident.yaml
     primary_skill: .agents/skills/unity-incident-investigation/SKILL.md
-    task_contract: compatibility://task-contracts/rendering-incident
+    task_contract: Orchestration/Contracts/TaskContracts/rendering-incident.yaml
   shader-change:
     context_pack: Context/Packs/shader-change.yaml
     primary_skill: .agents/skills/unity-rendering/SKILL.md
-    task_contract: compatibility://task-contracts/shader-change
+    task_contract: Orchestration/Contracts/TaskContracts/shader-change.yaml
     knowledge_selection: required_when_domain_matches
   renderer-feature-change:
     context_pack: Context/Packs/renderer-feature-change.yaml
     primary_skill: .agents/skills/unity-rendering/SKILL.md
-    task_contract: compatibility://task-contracts/renderer-feature-change
+    task_contract: Orchestration/Contracts/TaskContracts/renderer-feature-change.yaml
     knowledge_selection: required_when_domain_matches
   performance-experiment:
     context_pack: Context/Packs/performance.yaml
     primary_skill: .agents/skills/unity-runtime-evidence/SKILL.md
-    task_contract: compatibility://task-contracts/performance-experiment
+    task_contract: Orchestration/Contracts/TaskContracts/performance-experiment.yaml
   asset-data-change:
     context_pack: Context/Packs/asset-data-change.yaml
     primary_skill: .agents/skills/csharp-safe-patch/SKILL.md
-    task_contract: compatibility://task-contracts/asset-data-change
+    task_contract: Orchestration/Contracts/TaskContracts/asset-data-change.yaml
   portable-feature:
     context_pack: Context/Packs/portable-feature.yaml
     primary_skill: .agents/skills/unity-architecture-design/SKILL.md
-    task_contract: compatibility://task-contracts/portable-feature
+    task_contract: Orchestration/Contracts/TaskContracts/portable-feature.yaml
+    knowledge_selection: required_when_domain_matches
     forced_profile: generic_planning
   safe-import-integration:
     context_pack: Context/Packs/asset-data-change.yaml
     primary_skill: .agents/skills/csharp-safe-patch/SKILL.md
-    task_contract: compatibility://task-contracts/safe-import-integration
+    task_contract: Orchestration/Contracts/TaskContracts/safe-import-integration.yaml
     forced_profile: team_safe_import
   visual-direction:
     context_pack: Context/Packs/visual-direction.yaml
     primary_skill: .agents/skills/unity-visual-direction/SKILL.md
-    task_contract: compatibility://task-contracts/visual-direction
+    task_contract: Orchestration/Contracts/TaskContracts/visual-direction.yaml
     knowledge_selection: optional
 rules:
   context_catalog_does_not_select_route: true
   technology_keyword_is_not_route_authority: true
   materialization_is_bounded_to_selected_route: true
+  compatibility_uri_is_forbidden_after_phase8_cutover: true

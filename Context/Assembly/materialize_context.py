@@ -18,8 +18,8 @@ def _load_module(name: str, path: Path):
     spec.loader.exec_module(module)
     return module
 
-resolver = _load_module("phase2_path_resolver", ROOT / "Context/Compatibility/path_resolver.py")
-budget = _load_module("phase2_budget_runtime", ROOT / "Context/Budget/budget_runtime.py")
+resolver = _load_module("phase8_path_resolver", ROOT / "Context/Selection/path_resolver.py")
+budget = _load_module("phase8_budget_runtime", ROOT / "Context/Budget/budget_runtime.py")
 
 def _yaml(path: Path) -> dict[str, Any]:
     value = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
@@ -190,7 +190,7 @@ def materialize_context(run_id: str, route_id: str, prompt_spec_ref: str | None 
     hash_lines.append(yaml.safe_dump(state_payload, sort_keys=True, allow_unicode=True))
     context_hash = f"sha256:{hashlib.sha256(chr(10).join(hash_lines).encode()).hexdigest()}"
     context_id = f"ctx-{context_hash.split(':', 1)[1][:16]}"
-    return {"schema_version": "1.0", "context_id": context_id, "run_id": run_id, "route_id": route_id, "prompt_spec_ref": prompt_spec_ref, "selected_refs": {"policy": policy_refs, "prompt_spec": prompt_ref, "context_pack": pack, "primary_skill": skill, "task_contract": task, "required_context": required_context, "conditional_context": conditional_context, "context_includes": context_includes, "external_references": external_references, "knowledge": knowledge, "memory_projections": sorted(set(memory_projection_refs or [])), "tool_schema_refs": sorted(set(selected_tool_refs))}, "resolved_bindings": bindings, "unresolved_bindings": sorted(set(unresolved)), "active_conditions": sorted(conditions), "budget_report": budget_report, "context_fingerprint": {"schema_version": "1.0", "algorithm": "sha256", "value": context_hash, "selected_source_revisions": sorted(source_revisions, key=lambda x: x["ref"])}, "definition_fingerprint": {"schema_version": "1.0", "architecture_version": "v3.1", "policy_revision": _policy_revision(policy_refs), "prompt_revision": prompt_revision, "context_revision": context_hash, "graph_revision": "compatibility-phase4", "runtime_profile_revision": "compatibility-phase3", "tool_schema_revision": "unbound-runtime", "checkpoint_schema_revision": "1.0", "evidence_schema_revision": "1.0", "eval_contract_revision": "1.0"}}
+    return {"schema_version": "1.0", "context_id": context_id, "run_id": run_id, "route_id": route_id, "prompt_spec_ref": prompt_spec_ref, "selected_refs": {"policy": policy_refs, "prompt_spec": prompt_ref, "context_pack": pack, "primary_skill": skill, "task_contract": task, "required_context": required_context, "conditional_context": conditional_context, "context_includes": context_includes, "external_references": external_references, "knowledge": knowledge, "memory_projections": sorted(set(memory_projection_refs or [])), "tool_schema_refs": sorted(set(selected_tool_refs))}, "resolved_bindings": bindings, "unresolved_bindings": sorted(set(unresolved)), "active_conditions": sorted(conditions), "budget_report": budget_report, "context_fingerprint": {"schema_version": "1.0", "algorithm": "sha256", "value": context_hash, "selected_source_revisions": sorted(source_revisions, key=lambda x: x["ref"])}, "definition_fingerprint": {"schema_version": "1.0", "architecture_version": "v3.1", "policy_revision": _policy_revision(policy_refs), "prompt_revision": prompt_revision, "context_revision": context_hash, "graph_revision": "orchestration-phase4-canonical", "runtime_profile_revision": "runtime-phase3-canonical", "tool_schema_revision": "unbound-runtime", "checkpoint_schema_revision": "1.1", "evidence_schema_revision": "1.1", "eval_contract_revision": "eval-phase6-canonical"}}
 
 def main() -> int:
     parser = argparse.ArgumentParser()

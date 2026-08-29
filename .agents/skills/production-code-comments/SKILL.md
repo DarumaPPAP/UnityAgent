@@ -9,7 +9,7 @@ metadata:
   version: "2.1.0"
   kind: user-policy-operation
   policy_owner: user
-  policy_source: .ai/user-policy.yaml#comment_system
+  policy_source: Policy/User/user-policy.yaml#comment_system
   protected: true
   entrypoint: conditional
 ---
@@ -20,7 +20,7 @@ metadata:
 
 ## Required references
 
-1. `.ai/user-policy.yaml`
+1. `Policy/User/user-policy.yaml`
 2. `SkillReferences/JAPANESE_CODE_COMMENT_STANDARDS.md`
 3. `SkillReferences/COMMENT_REVIEW_CHECKLIST.md`
 4. 対象分野に応じた既存Standards
@@ -55,7 +55,7 @@ metadata:
 
 ## Checklist
 
-- [ ] `.ai/user-policy.yaml`のコメントPolicyを適用した
+- [ ] `Policy/User/user-policy.yaml`のコメントPolicyを適用した
 - [ ] 自明な処理を説明していない
 - [ ] 理由、制約、所有権、寿命を優先した
 - [ ] コードと矛盾していない

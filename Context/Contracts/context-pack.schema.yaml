@@ -81,10 +81,8 @@ $defs:
       type: {const: route_handoff}
       route_id: {type: string, minLength: 1}
     additionalProperties: true
-x-unityagent-migration:
-  legacy_contract: Context/Compatibility/legacy-context-pack.schema.yaml
-  legacy_source_refs_are_resolved_before_use: true
 x-unityagent-invariants:
+  scalar_context_entries_forbidden: true
   context_pack_is_model_input_definition_not_state: true
   metadata_is_not_execution_authority: true
   context_include_does_not_change_primary_route: true

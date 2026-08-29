@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate canonical Phase-6 Actual Behavior Eval boundaries without execution."""
+"""Validate canonical Actual Behavior Eval boundaries without execution."""
 from __future__ import annotations
 
 from collections import Counter
@@ -19,7 +19,7 @@ GOLDEN_CASES = ROOT / "Eval" / "Datasets" / "Golden" / "cases.yaml"
 CANDIDATE_SCHEMA = ROOT / "Eval" / "Datasets" / "Golden" / "candidate-result.schema.yaml"
 CANONICAL_RUNNER = ROOT / "Eval" / "Behavior" / "run_behavior_eval.py"
 RUNTIME_ADAPTER = ROOT / "Eval" / "Behavior" / "runtime_adapter.py"
-LEGACY_RUNNER = ROOT / "Eval" / "Compatibility" / "BehaviorEval" / "run_behavior_eval.py"
+REMOVED_COMPATIBILITY_ROOT = ROOT / "Eval" / "Compatibility"
 
 
 def load_yaml(path: Path) -> dict:
@@ -92,9 +92,9 @@ def main() -> int:
         focuses.update(str(value) for value in item.get("focus", []) or [])
         if task_id not in cases:
             continue
-        case_dir = ROOT / "Artifacts" / "BehaviorEval" / "phase6-protocol" / task_id
+        case_dir = ROOT / "Artifacts" / "BehaviorEval" / "phase8-protocol" / task_id
         try:
-            request = build_request("phase6-protocol", "revision", cases[task_id], item, case_dir, suite_id="smoke")
+            request = build_request("phase8-protocol", "revision", cases[task_id], item, case_dir, suite_id="smoke")
             validate_request(request, suite_id="smoke")
             require("expectation" not in request, f"{task_id}: request leaked expectation.", errors)
             require(str((request.get("workspace") or {}).get("fixture") or "").startswith("Eval/Datasets/Behavior/Fixtures/"), f"{task_id}: fixture did not project to canonical Eval dataset.", errors)
@@ -113,10 +113,10 @@ def main() -> int:
         if task_id not in cases or task_id not in production_contracts:
             errors.append(f"Invalid production case: {task_id}")
             continue
-        case_dir = ROOT / "Artifacts" / "BehaviorEval" / "phase6-production-protocol" / task_id
+        case_dir = ROOT / "Artifacts" / "BehaviorEval" / "phase8-production-protocol" / task_id
         try:
             request = build_request(
-                "phase6-production", "revision", cases[task_id], item, case_dir,
+                "phase8-production", "revision", cases[task_id], item, case_dir,
                 suite_id="production_smoke", production_contract=production_contracts[task_id],
             )
             validate_request(request, suite_id="production_smoke")
@@ -128,7 +128,7 @@ def main() -> int:
             errors.append(f"{task_id}: production request validation failed: {exc}")
 
     command = build_executor_command(["python", "adapter.py"], Path("request.yaml"), Path("case-output"))
-    require(command[-4:] == ["--request", "request.yaml", "--output", "case-output"], "Compatibility protocol command formatting drifted.", errors)
+    require(command[-4:] == ["--request", "request.yaml", "--output", "case-output"], "Runtime executor command formatting drifted.", errors)
 
     runner_source = CANONICAL_RUNNER.read_text(encoding="utf-8")
     adapter_source = RUNTIME_ADAPTER.read_text(encoding="utf-8")
@@ -137,14 +137,14 @@ def main() -> int:
         require(token not in adapter_source, f"Runtime->Eval adapter contains execution token: {token}", errors)
     require("changed_paths" in adapter_source, "Runtime adapter must preserve changed_paths.", errors)
     require("diff" not in adapter_source.lower(), "Runtime adapter must not reconstruct canonical facts from diff text.", errors)
-    require(LEGACY_RUNNER.is_file(), "Legacy external execution runner must remain isolated under Eval/Compatibility through Phase 8.", errors)
+    require(not REMOVED_COMPATIBILITY_ROOT.exists(), "Eval/Compatibility must remain absent after Phase 8 cutover.", errors)
 
     if errors:
         print("Behavior Eval validation failed:")
         for error in errors:
             print(f"- {error}")
         return 1
-    print("Behavior Eval validation passed: Eval grades only; Runtime executes; structured facts/no-leak/denominator boundaries are canonical.")
+    print("Behavior Eval validation passed: Eval grades only; Runtime executes; compatibility execution shim is removed.")
     return 0
 
 

@@ -7,8 +7,6 @@ from pathlib import Path
 from Context.Retrieval.Memory.project_memory import retrieve_projections
 from Orchestration.Graph.state_mapping import loop_control_state_patch, workflow_state_patch
 from Persistence.Checkpoint.checkpoint_store import CheckpointStore
-from Persistence.Compatibility.legacy_graph_loader import normalize_legacy_run_state, reject_continuation_decision_as_durable_state
-from Persistence.Compatibility.legacy_memory_loader import normalize_legacy_layered_records
 from Persistence.Evidence.evidence_store import EvidenceStore
 from Persistence.Evidence.runtime_adapter import from_runtime_execution_evidence
 from Persistence.Memory.memory_store import MemoryStore
@@ -232,46 +230,6 @@ class Phase5PersistenceTests(unittest.TestCase):
         self.assertEqual(migrated["migration_from"]["checkpoint_id"], "legacy-cp")
         CheckpointStore(self.root).load("run-1", "migrated-cp")
 
-    def test_legacy_graph_loader_requires_exact_topology_mapping(self):
-        legacy = {
-            "run_id": "legacy-run", "status": "running", "updated_at": "2026-08-29T00:00:00Z",
-            "nodes": [{"id": "inspect_sources", "status": "running", "attempts": 2, "last_action": "read", "last_evidence": ["ev-1"]}],
-        }
-        normalized = normalize_legacy_run_state(
-            legacy, parent_graph_id="development", subgraph_by_node={"inspect_sources": "investigation"},
-        )
-        self.assertEqual(normalized["workflow_state"]["active_subgraph_id"], "investigation")
-        self.assertEqual(normalized["loop_control_states"], [])
-        with self.assertRaises(PersistenceError):
-            normalize_legacy_run_state(legacy, parent_graph_id="development", subgraph_by_node={})
-        with self.assertRaises(PersistenceError):
-            reject_continuation_decision_as_durable_state({"controller": "native_continuation"})
-
-    def test_legacy_layered_memory_splits_raw_evidence_from_memory(self):
-        legacy = [
-            {
-                "memory_id": "ev-legacy", "layer": "L0_raw_evidence", "statement": "raw",
-                "raw_refs": ["Evidence/raw/ev-legacy.txt"], "confidence": "verified",
-                "scope_class": "portable_artifact", "sha256": "b" * 64,
-            },
-            {
-                "memory_id": "atom-1", "layer": "L1_atom", "statement": "observation",
-                "raw_refs": ["Evidence/raw/ev-legacy.txt"], "confidence": "verified",
-                "scope_class": "portable_artifact", "created_at": "2026-08-29T00:00:00Z",
-            },
-            {
-                "memory_id": "scenario-1", "layer": "L2_scenario", "statement": "scenario",
-                "atom_refs": ["atom-1"], "confidence": "probable", "scope_class": "portable_artifact",
-                "created_at": "2026-08-29T00:00:00Z", "applicability": ["Unity"], "limits": ["one case"],
-            },
-        ]
-        result = normalize_legacy_layered_records(legacy)
-        self.assertEqual([x["evidence_id"] for x in result["evidence_candidates"]], ["ev-legacy"])
-        records = {x["memory_id"]: x for x in result["memory_records"]}
-        self.assertEqual(records["atom-1"]["source_evidence_refs"], ["ev-legacy"])
-        self.assertIn("atom-1", records["scenario-1"]["source_memory_refs"])
-        self.assertEqual(records["scenario-1"]["source_evidence_refs"], ["ev-legacy"])
-
     def test_memory_scope_downgrade_is_blocked(self):
         store = MemoryStore(self.root)
         store.put({
@@ -353,7 +311,7 @@ class Phase5PersistenceTests(unittest.TestCase):
     def test_persistence_implementation_does_not_import_runtime_or_orchestration(self):
         root = Path(__file__).resolve().parents[2] / "Persistence"
         implementation = []
-        for folder in ("Store", "State", "Evidence", "Memory", "Session", "Checkpoint", "Resume", "Migrations", "Compatibility"):
+        for folder in ("Store", "State", "Evidence", "Memory", "Session", "Checkpoint", "Resume", "Migrations"):
             implementation.extend((root / folder).glob("*.py"))
         text = "\n".join(path.read_text(encoding="utf-8") for path in implementation)
         self.assertNotRegex(text, r"(?m)^\s*(?:from|import)\s+Runtime\b")

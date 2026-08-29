@@ -13,8 +13,8 @@ import yaml
 from derive_signals import derive_signals
 
 ROOT = Path(__file__).resolve().parents[2]
-GOLDEN_CASES = ROOT / "Tests" / "GoldenTasks" / "cases.yaml"
-BEHAVIOR_SUITES = ROOT / "Tests" / "BehaviorEval" / "suites.yaml"
+GOLDEN_CASES = ROOT / "Eval" / "Datasets" / "Golden" / "cases.yaml"
+BEHAVIOR_SUITES = ROOT / "Eval" / "Datasets" / "Behavior" / "suites.yaml"
 
 FORBIDDEN_SECRET_KEYS = {
     "api_key", "apikey", "authorization", "auth_header", "secret", "access_token",

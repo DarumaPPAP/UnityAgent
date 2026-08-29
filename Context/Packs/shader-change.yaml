@@ -12,11 +12,11 @@ metadata:
   decisions:
     - id: shader-contract-preservation
       label: Shader contract preservation remains authoritative
-      source_ref: .ai/context-packs/shader-change.yaml#rules
+      source_ref: Context/Packs/shader-change.yaml#rules
   forbidden:
     - id: unsupported-shader-contract-change
       label: Unbounded shader contract changes are forbidden
-      source_ref: .ai/harness/task-contracts/shader-change.yaml#prohibited_mutations
+      source_ref: Orchestration/Contracts/TaskContracts/shader-change.yaml#prohibited_mutations
   related: []
   priority: high
   tags: [shader, hlsl, rendering]

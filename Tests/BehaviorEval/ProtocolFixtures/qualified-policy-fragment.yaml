@@ -1,6 +1,0 @@
-schema_version: '1.0'
-policy:
-  loaded:
-    - id: minimum_cohesive_solution_first
-      source_path: .unityagent-control/.ai/user-policy.yaml#core_user_policies.minimum_cohesive_solution_first
-      reason: regression fixture from phase11-naming-03

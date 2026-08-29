@@ -12,11 +12,11 @@ metadata:
   decisions:
     - id: mcp-contract-authority
       label: UnityAgent MCP routing rules remain authoritative
-      source_ref: .ai/context-packs/graphics-mcp.yaml#rules
+      source_ref: Context/Packs/graphics-mcp.yaml#rules
   forbidden:
     - id: unapproved-graphics-mutation
       label: Unapproved graphics mutation, bake, or capture is forbidden
-      source_ref: .ai/harness/task-contracts/graphics-mcp.yaml#prohibited_mutations
+      source_ref: Orchestration/Contracts/TaskContracts/graphics-mcp.yaml#prohibited_mutations
   related: []
   priority: critical
   tags: [mcp, graphics, routing]
@@ -31,15 +31,17 @@ use_when:
 
 required:
   - type: repository_reference
-    path: .ai/user-policy.yaml
+    path: Policy/User/user-policy.yaml
   - type: repository_reference
     path: AGENTS.md
   - type: repository_reference
     path: SkillReferences/ARCHITECTURE_DECISION_POLICY.md
   - type: repository_reference
-    path: .ai/harness/mcp-activation.yaml
+    path: Context/Selection/mcp-selection.yaml
   - type: repository_reference
-    path: .ai/knowledge/graphics/unity-graphics-mcp.yaml
+    path: Runtime/Permissions/mcp-activation.yaml
+  - type: repository_reference
+    path: Context/Retrieval/Knowledge/graphics/unity-graphics-mcp.yaml
   - type: external_reference
     repository: DarumaPPAP/MyUnityMCP
     path: AGENTS.md

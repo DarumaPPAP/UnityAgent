@@ -13,11 +13,10 @@ for path in (ROOT, HERE):
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))
 
-from Context.Compatibility.path_resolver import resolve_for_read, resolve_reference  # noqa: E402
 from derive_signals import derive_signals  # noqa: E402
 
 BOOTSTRAP = ROOT / "AGENTS.md"
-ARCH_CONTRACT = resolve_for_read("compatibility://task-contracts/architecture-design", ROOT)
+ARCH_CONTRACT = ROOT / "Orchestration" / "Contracts" / "TaskContracts" / "architecture-design.yaml"
 ARCH_CONTEXT = ROOT / "Context" / "Packs" / "architecture-design.yaml"
 ENGINEERING_POLICY_ID = "engineering_principles"
 ENGINEERING_POLICY_SOURCE = "Policy/User/user-policy.yaml#core_user_policies.engineering_principles"
@@ -37,7 +36,7 @@ def require(condition: bool, message: str, errors: list[str]) -> None:
 
 
 def _canonical_ref(value: object) -> str:
-    return resolve_reference(str(value or ""), ROOT)
+    return str(value or "").replace("\\", "/").strip()
 
 
 def validate_architecture_policy_anchor(errors: list[str]) -> None:

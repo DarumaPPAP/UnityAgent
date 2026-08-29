@@ -12,11 +12,11 @@ metadata:
   decisions:
     - id: cause-before-mutation
       label: Rendering mutation requires a confirmed cause
-      source_ref: .ai/context-packs/rendering-incident.yaml#rules
+      source_ref: Context/Packs/rendering-incident.yaml#rules
   forbidden:
     - id: premature-rendering-mutation
       label: Mutation before confirmed cause is forbidden
-      source_ref: .ai/harness/task-contracts/rendering-incident.yaml#prohibited_mutations
+      source_ref: Orchestration/Contracts/TaskContracts/rendering-incident.yaml#prohibited_mutations
   related: []
   priority: critical
   tags: [rendering, incident, investigation]

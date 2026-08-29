@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run UnityAgent contract validation without GitHub Actions."""
+"""Run canonical UnityAgent validation without GitHub Actions."""
 
 from __future__ import annotations
 
@@ -9,54 +9,54 @@ from pathlib import Path
 
 import yaml
 
-
 ROOT = Path(__file__).resolve().parents[1]
-GRAPH_SCHEMA = Path("Tools/GraphObservatory/schema/graph.schema.json")
 
 YAML_ROOTS = (
-    Path(".ai"),
-    Path("Tests/BehaviorEval"),
-    Path("Tests/ContractValidator"),
-    Path("Tests/ContextRouting"),
-    Path("Tests/ContextManifest"),
-    Path("Tests/GoldenTasks"),
-    Path("Tests/SkillRouting"),
-    Path("Tests/SkillEvals"),
+    Path("Policy"),
+    Path("Context"),
+    Path("Orchestration"),
+    Path("Runtime"),
+    Path("Persistence"),
+    Path("Operations"),
+    Path("Eval"),
+    Path(".agents"),
 )
 
 VALIDATORS = (
+    Path("Policy/Validators/validate_user_policy_integrity.py"),
+    Path("Context/Validators/validate_stale_paths.py"),
     Path("Tools/SkillValidator/validate_skills.py"),
     Path("Tools/SkillEval/validate_skill_evals.py"),
     Path("Tools/ContractValidator/validate_contracts.py"),
     Path("Tools/ContextPackValidator/validate_context_packs.py"),
-    Path("Tools/RouteGraphValidator/validate_route_graph.py"),
-    Path("Tools/TaskFingerprintValidator/validate_task_fingerprints.py"),
-    Path("Tools/GraphContractValidator/validate_graph_contract.py"),
-    Path("Tools/ContextCatalog/validate_context_catalog.py"),
-    Path("Tools/HarnessProjection/validate_effective_harness.py"),
-    Path("Tools/LoopIntegration/validate_loop_integration.py"),
-    Path("Tools/GraphObservatory/validate_context_explorer.py"),
-    Path("Tools/ContextManifest/validate_context_manifest.py"),
-    Path("Tools/ContextManifest/validate_typed_context_runtime.py"),
-    Path("Tools/ContextBudget/validate_context_budget.py"),
-    Path("Tools/GoldenEval/validate_gate_catalog.py"),
-    Path("Tools/GoldenEval/validate_required_knowledge.py"),
-    Path("Tools/GoldenEval/validate_golden_tasks.py"),
-    Path("Tools/GoldenEval/validate_naming_grader.py"),
-    Path("Tools/GoldenEval/validate_typed_context_v3.py"),
-    Path("Tools/GoldenEval/validate_context_budget_v1.py"),
-    Path("Tools/BehaviorEval/validate_behavior_eval.py"),
-    Path("Tools/BehaviorEval/validate_policy_provenance.py"),
-    Path("Tools/BehaviorEval/validate_naming_production_contract.py"),
-    Path("Tools/BehaviorEval/validate_mutation_production_contract.py"),
-    Path("Tools/BehaviorEval/validate_production_smoke.py"),
-    Path("Tools/BehaviorEval/validate_run_integrity.py"),
+    Path("Eval/Golden/validate_gate_catalog.py"),
+    Path("Eval/Golden/validate_required_knowledge.py"),
+    Path("Eval/Golden/validate_golden_tasks.py"),
+    Path("Eval/Golden/validate_naming_grader.py"),
+    Path("Eval/Golden/validate_typed_context_v3.py"),
+    Path("Eval/Golden/validate_context_budget_v1.py"),
+    Path("Eval/Behavior/validate_behavior_eval.py"),
+    Path("Eval/Behavior/validate_policy_provenance.py"),
+    Path("Eval/Behavior/validate_naming_production_contract.py"),
+    Path("Eval/Behavior/validate_mutation_production_contract.py"),
+    Path("Eval/Behavior/validate_production_smoke.py"),
+    Path("Eval/Behavior/validate_run_integrity.py"),
+    Path("Eval/Behavior/validate_phase8_cutover.py"),
+)
+
+TEST_SUITES = (
+    Path("Policy/Tests"),
+    Path("Context/Tests"),
+    Path("Runtime/Tests"),
+    Path("Orchestration/Tests"),
+    Path("Persistence/Tests"),
+    Path("Eval/Tests"),
+    Path("Operations/Tests"),
 )
 
 
 def validate_yaml() -> list[str]:
     errors: list[str] = []
-
     for relative_root in YAML_ROOTS:
         root = ROOT / relative_root
         if not root.exists():
@@ -67,22 +67,12 @@ def validate_yaml() -> list[str]:
                     yaml.safe_load(stream)
             except Exception as exc:  # noqa: BLE001 - report parser failure with file path.
                 errors.append(f"{path.relative_to(ROOT)}: {exc}")
-
     return errors
 
 
-def run_validator(path: Path) -> int:
-    full_path = ROOT / path
-    if not full_path.is_file():
-        print(f"[FAIL] Missing validator: {path}")
-        return 1
-
-    print(f"\n== {path} ==")
-    completed = subprocess.run(
-        [sys.executable, str(full_path)],
-        cwd=ROOT,
-        check=False,
-    )
+def run_command(label: str, command: list[str]) -> int:
+    print(f"\n== {label} ==")
+    completed = subprocess.run(command, cwd=ROOT, check=False)
     return completed.returncode
 
 
@@ -93,23 +83,34 @@ def main() -> int:
         for error in yaml_errors:
             print(f"- {error}")
         return 1
-
     print("YAML syntax validation passed.")
 
     failed: list[str] = []
-    if not (ROOT / GRAPH_SCHEMA).is_file():
-        failed.append(str(GRAPH_SCHEMA))
     for validator in VALIDATORS:
-        if run_validator(validator) != 0:
+        full_path = ROOT / validator
+        if not full_path.is_file():
+            failed.append(f"missing:{validator}")
+            continue
+        if run_command(str(validator), [sys.executable, str(full_path)]) != 0:
             failed.append(str(validator))
+
+    for suite in TEST_SUITES:
+        full_path = ROOT / suite
+        if not full_path.is_dir():
+            failed.append(f"missing:{suite}")
+            continue
+        label = f"unittest:{suite}"
+        command = [sys.executable, "-m", "unittest", "discover", "-s", str(suite), "-p", "test_*.py"]
+        if run_command(label, command) != 0:
+            failed.append(label)
 
     if failed:
         print("\nUnityAgent local validation failed:")
-        for validator in failed:
-            print(f"- {validator}")
+        for item in failed:
+            print(f"- {item}")
         return 1
 
-    print("\nUnityAgent local validation passed.")
+    print("\nUnityAgent canonical local validation passed.")
     return 0
 
 
