@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-MODULE_PATH = ROOT / "Operations/ProductionSmoke/run_one_repo_smoke.py"
+MODULE_PATH = ROOT / "Tools/ProductionSmoke/run_one_repo_smoke.py"
 
 spec = importlib.util.spec_from_file_location("one_repo_production_smoke", MODULE_PATH)
 assert spec is not None and spec.loader is not None
