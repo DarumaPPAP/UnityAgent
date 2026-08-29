@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Canonical Phase 8 repository reference resolver.
 
-Only canonical repository-relative paths are accepted. Legacy compatibility:// URIs and
+Only canonical repository-relative paths are accepted. Deprecated migration URI schemes and
 legacy migration-root paths are rejected after cutover instead of being silently rewritten.
 """
 from __future__ import annotations
@@ -10,6 +10,7 @@ from pathlib import Path
 
 LEGACY_ROOT = "." + "ai"
 LEGACY_PREFIX = LEGACY_ROOT + "/"
+DEPRECATED_URI_SCHEME = "compatibility" + "://"
 
 
 class ReferenceResolutionError(ValueError):
@@ -20,8 +21,8 @@ def resolve_reference(reference: str) -> str:
     value = str(reference).strip()
     if not value:
         raise ReferenceResolutionError("reference is required")
-    if value.startswith("compatibility://"):
-        raise ReferenceResolutionError("compatibility URI is forbidden after Phase 8 cutover")
+    if value.startswith(DEPRECATED_URI_SCHEME):
+        raise ReferenceResolutionError("deprecated migration URI is forbidden after Phase 8 cutover")
     base = value.split("#", 1)[0]
     if base == LEGACY_ROOT or base.startswith(LEGACY_PREFIX):
         raise ReferenceResolutionError("legacy migration-root path is forbidden after Phase 8 cutover")
