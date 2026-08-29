@@ -9,6 +9,7 @@ required:
   - run_id
   - attempt
   - materialized_context
+  - project_facts
   - budget_report
   - unresolved_bindings
   - generated_at
@@ -20,6 +21,10 @@ properties:
   previous_manifest_ref: {type: [string, "null"]}
   materialized_context:
     $ref: urn:unityagent:context:materialized-context-view
+  project_facts:
+    type: array
+    items:
+      $ref: urn:unityagent:context:project-fact-observation
   budget_report:
     type: object
   unresolved_bindings:
@@ -31,3 +36,7 @@ x-unityagent-rules:
   workflow_state_is_not_authoritative_here: true
   evidence_truth_is_not_authoritative_here: true
   graph_topology_is_not_authoritative_here: true
+  current_project_fact_requires_checked_at_attempt_equal_manifest_attempt: true
+  project_fact_checked_at_attempt_must_not_precede_observed_at_attempt: true
+  project_fact_observed_at_attempt_must_not_exceed_manifest_attempt: true
+  retry_requires_explicit_project_fact_reobservation_or_revalidation: true
