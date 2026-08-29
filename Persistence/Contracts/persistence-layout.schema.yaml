@@ -1,0 +1,33 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:persistence:layout
+title: PersistenceLayout
+type: object
+additionalProperties: false
+required: [schema_version, authority, root_semantics, paths, invariants]
+properties:
+  schema_version: {const: '1.0'}
+  authority: {const: Persistence}
+  root_semantics: {const: caller_selected_not_source_tree_implicit}
+  paths:
+    type: object
+    additionalProperties: false
+    required: [execution_state, workflow_state, loop_control_state, checkpoints, sessions, memory_records, evidence_records]
+    properties:
+      execution_state: {type: string, minLength: 1}
+      workflow_state: {type: string, minLength: 1}
+      loop_control_state: {type: string, minLength: 1}
+      checkpoints: {type: string, minLength: 1}
+      sessions: {type: string, minLength: 1}
+      memory_records: {type: string, minLength: 1}
+      evidence_records: {type: string, minLength: 1}
+  invariants:
+    type: object
+    additionalProperties: false
+    required: [one_authoritative_execution_state, checkpoint_is_not_memory, checkpoint_is_not_evidence, memory_is_not_evidence, context_projection_is_not_durable_truth, runtime_capture_is_not_durable_truth_until_appended]
+    properties:
+      one_authoritative_execution_state: {const: true}
+      checkpoint_is_not_memory: {const: true}
+      checkpoint_is_not_evidence: {const: true}
+      memory_is_not_evidence: {const: true}
+      context_projection_is_not_durable_truth: {const: true}
+      runtime_capture_is_not_durable_truth_until_appended: {const: true}

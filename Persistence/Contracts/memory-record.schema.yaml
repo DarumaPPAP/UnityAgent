@@ -5,7 +5,8 @@ type: object
 additionalProperties: false
 required: [schema_version, memory_id, statement, scope_class, confidence, source_evidence_refs, created_at, updated_at]
 properties:
-  schema_version: {const: '1.0'}
+  schema_version:
+    enum: ['1.0', '1.1']
   memory_id: {type: string, minLength: 1}
   statement: {type: string, minLength: 1}
   scope_class:
@@ -17,6 +18,10 @@ properties:
     items: {type: string, minLength: 1}
     minItems: 1
     uniqueItems: true
+  source_memory_refs:
+    type: array
+    items: {type: string, minLength: 1}
+    uniqueItems: true
   created_at: {type: string, format: date-time}
   updated_at: {type: string, format: date-time}
   applicability:
@@ -25,3 +30,28 @@ properties:
   limits:
     type: array
     items: {type: string}
+  layer:
+    enum: [atom, scenario, reusable_candidate]
+  provenance:
+    type: array
+    items: {type: string, minLength: 1}
+    uniqueItems: true
+  promotion_target:
+    enum: [none, execution_reference, unityagent_knowledge, user_policy_candidate]
+  review_status:
+    enum: [not_required, pending, approved, rejected]
+  supersedes:
+    type: array
+    items: {type: string, minLength: 1}
+    uniqueItems: true
+  conflicts_with:
+    type: array
+    items: {type: string, minLength: 1}
+    uniqueItems: true
+  repository: {type: [string, 'null']}
+  unity_version: {type: [string, 'null']}
+  platform: {type: [string, 'null']}
+  tags:
+    type: array
+    items: {type: string, minLength: 1}
+    uniqueItems: true
