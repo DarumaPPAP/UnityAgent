@@ -127,8 +127,15 @@ def execute(request: dict[str, Any], output: Path, *, command_prefix: list[str],
     final_path = output / "response.md"
     events_path = output / "codex-events.jsonl"
     stderr_path = output / "codex-stderr.txt"
-    command = [*command_prefix, "exec", "--ephemeral", "--json", "--skip-git-repo-check", "--sandbox", "workspace-write", "--model", model, "-c", f'model_reasoning_effort="{reasoning_effort}"', "--output-last-message", str(final_path), "--cd", str(workspace), str(request["prompt"])]
-    process = run_streaming_process(command, cwd=workspace, timeout_seconds=timeout_seconds, stdout_path=events_path, stderr_path=stderr_path)
+    command = [*command_prefix, "exec", "--ephemeral", "--json", "--skip-git-repo-check", "--sandbox", "workspace-write", "--model", model, "-c", f'model_reasoning_effort="{reasoning_effort}"', "--output-last-message", str(final_path), "--cd", str(workspace), "-"]
+    process = run_streaming_process(
+        command,
+        cwd=workspace,
+        timeout_seconds=timeout_seconds,
+        stdout_path=events_path,
+        stderr_path=stderr_path,
+        stdin_text=str(request["prompt"]),
+    )
     after = snapshot_workspace(workspace, excluded_prefixes=(".unityagent-control",))
     changed = changed_paths(before, after)
     scope = request.get("mutation_scope", {}) or {}
