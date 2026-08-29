@@ -1,0 +1,100 @@
+name: One-repo Production Smoke
+
+on:
+  pull_request:
+    paths:
+      - "Operations/ProductionSmoke/**"
+      - "Operations/Tests/test_one_repo_production_smoke.py"
+      - "Runtime/Runner/Codex/**"
+      - "Runtime/Guardrails/**"
+      - "Runtime/Profiles/**"
+      - "Persistence/Evidence/**"
+      - "Context/Assembly/**"
+      - "Context/Selection/**"
+      - "Context/Packs/generic-planning.yaml"
+      - "Context/Budget/context-budget.yaml"
+      - "Orchestration/Routing/**"
+      - "Orchestration/Contracts/TaskContracts/**"
+      - "Eval/Behavior/grade_production_smoke.py"
+      - "Eval/Behavior/normalize_result.py"
+      - "Eval/Behavior/run_behavior_eval.py"
+      - "Eval/Datasets/Behavior/**"
+      - ".github/workflows/production-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  production-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      SMOKE_RUN_ID: phase8-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Install Python validation dependencies
+        run: python -m pip install --disable-pip-version-check PyYAML jsonschema
+
+      - name: Production credential preflight
+        shell: bash
+        run: |
+          if [ -z "${OPENAI_API_KEY:-}" ]; then
+            echo "::error::OPENAI_API_KEY repository secret is required for real one-repo Production Smoke."
+            exit 1
+          fi
+
+      - name: Install Codex CLI
+        run: npm install -g @openai/codex@latest
+
+      - name: Record runtime versions
+        run: |
+          codex --version
+          python --version
+          dotnet --version
+
+      - name: Validate smoke integration boundaries
+        run: python -m unittest Operations.Tests.test_one_repo_production_smoke
+
+      - name: Execute and grade one-repo Production Smoke
+        shell: bash
+        run: |
+          set +e
+          python Operations/ProductionSmoke/run_one_repo_smoke.py \
+            --run-id "$SMOKE_RUN_ID" \
+            --model gpt-5.6-sol \
+            --reasoning-effort high \
+            --timeout-seconds 240
+          execution_code=$?
+          python Eval/Behavior/grade_production_smoke.py --run-id "$SMOKE_RUN_ID"
+          grade_code=$?
+          echo "execution_exit=$execution_code"
+          echo "grade_exit=$grade_code"
+          if [ "$execution_code" -ne 0 ] || [ "$grade_code" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Upload Production Smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: one-repo-production-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Artifacts/ProductionSmoke/${{ env.SMOKE_RUN_ID }}/
+          if-no-files-found: warn
