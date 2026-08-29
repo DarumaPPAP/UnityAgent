@@ -1,0 +1,21 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:runtime:health-check-result
+title: HealthCheckResult
+type: object
+additionalProperties: false
+required: [schema_version, check_id, run_id, step_id, kind, target, status, observed_at, evidence_refs, details, runtime_profile_revision, tool_schema_revision]
+properties:
+  schema_version: {const: "1.0"}
+  check_id: {type: string, minLength: 1}
+  run_id: {type: string, minLength: 1}
+  step_id: {type: string, minLength: 1}
+  kind: {enum: [environment, unity_availability, tool_health]}
+  target: {type: string, minLength: 1}
+  status: {enum: [healthy, degraded, unavailable, failed]}
+  observed_at: {type: string, format: date-time}
+  evidence_refs:
+    type: array
+    items: {type: string, minLength: 1}
+  details: {type: object}
+  runtime_profile_revision: {type: string, minLength: 1}
+  tool_schema_revision: {type: string, minLength: 1}

@@ -1,0 +1,20 @@
+schema_version: "1.0"
+authority: runtime_execution_only
+profiles:
+  generic_planning:
+    project_access: none
+    allowed_work_kinds: [analysis, verification]
+    direct_mutation: false
+  personal_full_control:
+    project_access: full_when_authorized
+    allowed_work_kinds: [analysis, verification, mutation]
+    direct_mutation: authorized_only
+  team_safe_import:
+    project_access: no_external_export
+    allowed_work_kinds: [analysis, verification, portable_import]
+    direct_mutation: portable_import_only
+    staging_required: true
+rules:
+  profile_selection_is_orchestration_owned: true
+  runtime_only_enforces_supplied_profile: true
+  semantic_retry_or_replan_is_forbidden_here: true

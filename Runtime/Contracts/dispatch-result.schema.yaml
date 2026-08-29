@@ -1,0 +1,16 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:runtime:dispatch-result
+title: DispatchResult
+type: object
+additionalProperties: false
+required: [schema_version, status, exit_code, failure_class, timed_out, cancelled, duration_seconds]
+properties:
+  schema_version: {const: "1.0"}
+  status: {enum: [passed, failed, cancelled]}
+  exit_code: {type: integer}
+  failure_class:
+    type: [string, "null"]
+    enum: [runtime_timeout, runtime_protocol_failure, runtime_cancelled, runtime_permission_denied, runtime_tool_unavailable, null]
+  timed_out: {type: boolean}
+  cancelled: {type: boolean}
+  duration_seconds: {type: number, minimum: 0}

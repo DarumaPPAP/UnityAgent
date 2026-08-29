@@ -1,0 +1,31 @@
+schema_version: "1.0"
+harnesses:
+  codex:
+    owner: Runtime/Runner/Codex
+    kind: agent_runner
+    execution: implemented
+  unity_editor_artifact_graph:
+    owner: Runtime/Harnesses/Unity/Editor
+    kind: unity_editor
+    execution: implemented
+    graph_semantics: asset_dependency_only
+  test:
+    owner: Runtime/Harnesses/command_harness.py
+    kind: test
+    execution: configured_command
+  performance:
+    owner: Runtime/Harnesses/command_harness.py
+    kind: performance
+    execution: configured_command
+  scm:
+    owner: Runtime/Harnesses/command_harness.py
+    kind: scm
+    execution: configured_command
+  ix:
+    owner: Runtime/Dispatcher
+    kind: code_intelligence_transport
+    execution: configured_command
+rules:
+  no_semantic_fallback_inside_runtime: true
+  unavailable_is_not_pass: true
+  graph_selection_is_not_runtime_authority: true
