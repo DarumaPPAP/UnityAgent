@@ -20,9 +20,10 @@ def adapt_execution_result(
 ) -> dict[str, Any]:
     """Project canonical Runtime facts into Eval without invoking Runtime.
 
-    `changed_paths` is copied structurally. Diff text is never parsed to recreate
-    the fact. Mutation no-op classification is evaluator-side and is applied
-    only when the caller declares that the Golden case expects a mutation.
+    `changed_paths` is copied structurally. Textual patch artifacts are never
+    parsed to recreate the fact. Mutation no-op classification is evaluator-side
+    and is applied only when the caller declares that the Golden case expects a
+    mutation.
     """
     if execution_result.get("schema_version") != "1.0":
         raise RuntimeEvalAdapterError("unsupported ExecutionResult schema_version")

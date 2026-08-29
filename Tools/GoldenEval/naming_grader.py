@@ -17,10 +17,14 @@ if not TARGET.is_file():
 if __name__ == "__main__":
     runpy.run_path(str(TARGET), run_name="__main__")
 else:
-    spec = importlib.util.spec_from_file_location(f"_unityagent_eval_golden_{TARGET.stem}", TARGET)
+    module_name = f"_unityagent_eval_golden_{TARGET.stem}"
+    spec = importlib.util.spec_from_file_location(module_name, TARGET)
     if spec is None or spec.loader is None:
         raise ImportError(str(TARGET))
     module = importlib.util.module_from_spec(spec)
+    # dataclasses and similar runtime helpers resolve the defining module through
+    # sys.modules while the module body is executing.
+    sys.modules[module_name] = module
     spec.loader.exec_module(module)
     for name in dir(module):
         if not name.startswith("_"):

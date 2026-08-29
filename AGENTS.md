@@ -33,7 +33,7 @@
 13. Resume時は `Persistence/Resume/` が保存済みDefinitionFingerprintと現在定義を比較し、compatible / migration / replan / Human Reviewをfail-closedで決定する。
 14. Evalが必要な場合、`Eval/Datasets/` と `Eval/GoldenContracts/` を評価入力の正本とし、Runtime/Persistenceのstructured factsを `Eval/Behavior/` / `Eval/Attribution/` で測定する。`not_observed` infrastructure runはAgent品質denominatorから除外し、Evalは必要ならnon-applying `ChangeProposal`だけを生成する。
 15. `Context/Manifest/` は current-call Context provenanceを記録し、WorkflowState / Checkpoint / Evidence truth / Graph topologyの正本にはしない。
-16. 旧Pathを必要とする未移行機能は明示された Compatibility boundary 経由だけで参照する。新規writeは禁止する。
+16. 旧Pathを必要とする未移行機能は `Context/Compatibility/legacy-path-map.yaml` のread-only key / resolver経由だけで参照する。新規writeは禁止する。
 
 ## 3. Canonical map
 

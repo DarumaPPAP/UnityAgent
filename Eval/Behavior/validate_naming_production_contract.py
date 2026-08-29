@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Validate Production Naming policy provenance and observed-source coverage contracts."""
-
 from __future__ import annotations
 
 import sys
@@ -9,17 +8,19 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
-BEHAVIOR_EVAL = ROOT / "Tools" / "BehaviorEval"
-if str(BEHAVIOR_EVAL) not in sys.path:
-    sys.path.insert(0, str(BEHAVIOR_EVAL))
+HERE = Path(__file__).resolve().parent
+for path in (ROOT, HERE):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
 
+from Context.Compatibility.path_resolver import resolve_for_read, resolve_reference  # noqa: E402
 from derive_signals import derive_signals  # noqa: E402
 
 BOOTSTRAP = ROOT / "AGENTS.md"
-ARCH_CONTRACT = ROOT / ".ai" / "harness" / "task-contracts" / "architecture-design.yaml"
-ARCH_CONTEXT = ROOT / ".ai" / "context-packs" / "architecture-design.yaml"
+ARCH_CONTRACT = resolve_for_read("compatibility://task-contracts/architecture-design", ROOT)
+ARCH_CONTEXT = ROOT / "Context" / "Packs" / "architecture-design.yaml"
 ENGINEERING_POLICY_ID = "engineering_principles"
-ENGINEERING_POLICY_SOURCE = ".ai/user-policy.yaml#core_user_policies.engineering_principles"
+ENGINEERING_POLICY_SOURCE = "Policy/User/user-policy.yaml#core_user_policies.engineering_principles"
 ENGINEERING_REFERENCE = "SkillReferences/ENGINEERING_DESIGN_PRINCIPLES.md"
 
 
@@ -35,6 +36,10 @@ def require(condition: bool, message: str, errors: list[str]) -> None:
         errors.append(message)
 
 
+def _canonical_ref(value: object) -> str:
+    return resolve_reference(str(value or ""), ROOT)
+
+
 def validate_architecture_policy_anchor(errors: list[str]) -> None:
     contract = load_yaml(ARCH_CONTRACT)
     required_clauses = contract.get("required_policy_clauses", []) or []
@@ -43,7 +48,7 @@ def validate_architecture_policy_anchor(errors: list[str]) -> None:
         for item in required_clauses
         if isinstance(item, dict)
         and item.get("id") == ENGINEERING_POLICY_ID
-        and item.get("source_path") == ENGINEERING_POLICY_SOURCE
+        and _canonical_ref(item.get("source_path")) == ENGINEERING_POLICY_SOURCE
     ]
     require(
         len(matching) == 1,
@@ -62,7 +67,7 @@ def validate_architecture_policy_anchor(errors: list[str]) -> None:
     require(
         any(
             isinstance(item, dict)
-            and item.get("source_ref") == ENGINEERING_POLICY_SOURCE
+            and _canonical_ref(item.get("source_ref")) == ENGINEERING_POLICY_SOURCE
             for item in decisions
         ),
         "architecture-design context must anchor the canonical engineering_principles clause.",
@@ -154,7 +159,7 @@ def main() -> int:
         return 1
 
     print(
-        "Naming Production contract validation passed: engineering_principles provenance is anchored and "
+        "Naming Production contract validation passed: engineering_principles provenance is canonicalized and "
         "observed C# sources provide complete no-new-Type naming coverage."
     )
     return 0

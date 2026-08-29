@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Validate Context Budget v1 supplemental Golden Regression boundaries."""
-
 from __future__ import annotations
 
 import sys
@@ -10,10 +9,16 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
-CASES_PATH = ROOT / "Tests" / "GoldenTasks" / "context-budget-v1.yaml"
-BUDGET_PATH = ROOT / ".ai" / "context-budget.yaml"
-INDEX_PATH = ROOT / ".ai" / "context-index.yaml"
-MANIFEST_SCHEMA_PATH = ROOT / ".ai" / "context-manifest.schema.yaml"
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from Context.Compatibility.path_resolver import resolve_for_read, resolve_reference  # noqa: E402
+
+CASES_PATH = ROOT / "Eval" / "Datasets" / "Golden" / "context-budget-v1.yaml"
+BUDGET_PATH = ROOT / "Context" / "Budget" / "context-budget.yaml"
+INDEX_PATH = resolve_for_read("compatibility://migration-source/routing-index", ROOT)
+MANIFEST_SCHEMA_PATH = ROOT / "Context" / "Manifest" / "context-manifest.schema.yaml"
+CANONICAL_BUDGET_REF = "Context/Budget/context-budget.yaml"
 
 EXPECTED_PAIRS = {
     "mutation-budget-measurement": {
@@ -124,6 +129,9 @@ def main() -> int:
         if guards.get(guard) is not True:
             errors.append(f"Context Budget execution guard missing: {guard}")
 
+    # The historical routing index remains a read-only compatibility source until
+    # Phase 8. Resolve its stored references through the Phase-2 compatibility map
+    # before comparing them with canonical ownership.
     rules = index.get("routing_rules", {}) or {}
     for rule in (
         "context_budget_required_before_mutation",
@@ -133,10 +141,11 @@ def main() -> int:
         "hard_context_budget_overflow_stops_mutation",
     ):
         if rules.get(rule) is not True:
-            errors.append(f"Canonical routing rule missing: {rule}")
+            errors.append(f"Compatibility routing rule missing: {rule}")
 
-    if index.get("context_budget") != ".ai/context-budget.yaml":
-        errors.append("context-index must bind .ai/context-budget.yaml")
+    resolved_budget_ref = resolve_reference(str(index.get("context_budget") or ""), ROOT)
+    if resolved_budget_ref != CANONICAL_BUDGET_REF:
+        errors.append("compatibility routing index must resolve to the canonical Context Budget contract")
 
     extensions = manifest_schema.get("extensions", {}) or {}
     if str(extensions.get("context_budget")) != "1.0":
