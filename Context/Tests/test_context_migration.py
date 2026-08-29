@@ -34,7 +34,8 @@ class ContextCutoverTests(unittest.TestCase):
         self.assertTrue(catalog["materializer_requires_explicit_route_id"])
         self.assertTrue(catalog["rules"]["context_catalog_does_not_select_route"])
         routes = catalog["routes"]
-        self.assertEqual(len(routes), 11)
+        self.assertIn("generic-planning", routes)
+        self.assertGreaterEqual(len(routes), 12)
         deprecated_scheme = "compatibility" + "://"
         for route_id, route in routes.items():
             contract = str(route["task_contract"])
