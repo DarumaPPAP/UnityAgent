@@ -76,8 +76,8 @@ class ContextCutoverTests(unittest.TestCase):
 
     def test_canonical_budget_runtime_uses_canonical_contract(self):
         canonical = load_module("phase8_budget_api_test", ROOT / "Context/Budget/budget_runtime.py")
+        self.assertEqual(canonical.CONTRACT.as_posix(), "Context/Budget/context-budget.yaml")
         report = canonical.evaluate("csharp-local-fix", [100, 200], root=ROOT)
-        self.assertEqual(report["contract"], "Context/Budget/context-budget.yaml")
         self.assertEqual(report["decision"], "within_budget")
 
 
