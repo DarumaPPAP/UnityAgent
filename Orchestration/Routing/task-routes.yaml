@@ -27,11 +27,11 @@ routes:
     priority: 90
     entry_action: implement
     fingerprint_match:
-      intent: [fix, implement]
+      intent: [fix, implement, review]
       artifact: [csharp]
       scope: [local]
       architecture_state: [decided, not_applicable]
-      mutation_target: [source]
+      mutation_target: [source, none]
       evidence_state: [known, partial]
   rendering-incident:
     priority: 100
