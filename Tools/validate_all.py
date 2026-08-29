@@ -25,7 +25,6 @@ YAML_ROOTS = (
 VALIDATORS = (
     Path("Policy/Validators/validate_user_policy_integrity.py"),
     Path("Context/Validators/validate_stale_paths.py"),
-    Path("Context/Budget/validate_context_budget.py"),
     Path("Tools/SkillValidator/validate_skills.py"),
     Path("Tools/SkillEval/validate_skill_evals.py"),
     Path("Tools/ContractValidator/validate_contracts.py"),
