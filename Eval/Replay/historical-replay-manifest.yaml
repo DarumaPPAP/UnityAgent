@@ -1,0 +1,13 @@
+schema_version: '1.0'
+source: docs/migration/phase1-canonical-contracts.md
+historical_archives:
+  - phase11-naming-04.zip
+  - phase11-mutation-03.zip
+  - production-smoke-20260827-utf8.zip
+recorded_case_directory_count: 6
+required_namespace_coverage: [ARCH, NAMING, MUTATION, EVIDENCE]
+replay_rules:
+  changed_paths: preserve_structured_metrics_only
+  untyped_failure: not_observed
+  contradictory_typed_failure: fail_closed
+  raw_archives_committed_to_repository: false
