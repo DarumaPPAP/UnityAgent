@@ -10,7 +10,7 @@ from naming_grader import GOLDEN_ARTIFACT_ROOT, grade_csharp_source, resolve_art
 from run_golden_evals import infer_naming_failures
 
 ROOT = Path(__file__).resolve().parents[2]
-FIXTURES = ROOT / "Tests" / "GoldenTasks" / "Fixtures" / "Naming"
+FIXTURES = ROOT / "Eval" / "Datasets" / "Golden" / "Fixtures" / "Naming"
 
 
 def read_fixture(name: str) -> str:
