@@ -9,7 +9,7 @@ metadata:
   version: "2.2.0"
   kind: operation
   entrypoint: false
-  user_policy: .ai/user-policy.yaml
+  user_policy: Policy/User/user-policy.yaml
 ---
 
 # Unity Plan
@@ -26,12 +26,12 @@ metadata:
 
 要件自体が未確定なら`unity-specify`へ戻す。
 単一ファイルの局所修正で変更境界が明確なら、不要なPlanを増やさない。
-Primary Domain Routeは`.ai/context-index.yaml`で選択済みであることを前提とし、このSkill自身をRouting入口にしない。
+Primary Domain Routeは`Orchestration/Routing/task-routes.yaml`で選択済みであり、対応する`Context/Selection/context-catalog.yaml`のMaterializationを前提とする。このSkill自身をRouting入口にしない。
 
 ## Inputs
 
 1. ユーザーの今回の明示指示
-2. `.ai/user-policy.yaml`
+2. `Policy/User/user-policy.yaml`
 3. 対象Featureの`spec.md`
 4. 関連する既存コード、既存アーキテクチャ、Asset、Prefab、Scene、Shader契約
 5. 対象Projectから検出したFactとユーザー確認済みProject Fact
@@ -164,7 +164,7 @@ UnityAgent自身へ製品固有Planを保存しない。
 
 ## Checklist
 
-- [ ] `.ai/user-policy.yaml`を適用した
+- [ ] `Policy/User/user-policy.yaml`を適用した
 - [ ] 検出済みProject FactをProject Profileより優先した
 - [ ] Project Profileを使用した場合は未解決FactのFallbackとしてのみ使用した
 - [ ] 全主要判断がRequirement IDへ追跡できる
