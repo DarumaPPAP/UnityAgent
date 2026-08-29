@@ -2,7 +2,8 @@ schema_version: "1.0"
 kind: tool_trust_policy
 authority: Policy
 source_provenance:
-  legacy_source: compatibility://mcp-activation
+  migration_record: docs/migration/architecture-split-list.md
+  legacy_source_id: mcp-activation
   legacy_section: source_read_policy
 source_read_policy:
   normal_tool_use: prohibited
