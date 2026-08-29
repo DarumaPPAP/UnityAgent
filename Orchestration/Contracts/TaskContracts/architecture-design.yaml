@@ -43,6 +43,7 @@ conditional_inputs:
     required_when:
       - new_type_is_planned
       - type_rename_is_proposed
+      - explicit_type_naming_review_is_requested
     inputs:
       - type_responsibility
       - namespace_context
@@ -118,6 +119,7 @@ completion:
   - unnecessary_abstractions_are_removed
   - naming_is_deferred_until_type_responsibility_is_resolved
   - planned_new_or_renamed_types_follow_semantic_naming_contract_when_applicable
+  - explicit_naming_review_uses_semantic_naming_contract_when_requested
   - existing_public_and_serialized_names_are_preserved_unless_rename_is_requested
   - user_policy_is_preserved
   - naming_convention_is_preserved
