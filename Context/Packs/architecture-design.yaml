@@ -55,6 +55,9 @@ conditional:
   csharp_output:
     - type: repository_reference
       path: SkillReferences/CODE_FORMATTING_STANDARDS.md
+  explicit_type_naming_review:
+    - type: repository_reference
+      path: SkillReferences/TYPE_NAMING_STANDARDS.md
   local_behavior:
     - type: binding
       name: attachment_target
