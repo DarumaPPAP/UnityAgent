@@ -6,7 +6,7 @@ allowed-tools:
   - Write
   - Edit
 metadata:
-  version: "2.2.0"
+  version: "2.3.0"
 ---
 
 # C# Safe Patch
@@ -49,8 +49,19 @@ metadata:
 6. class/struct、sync/async、exception contract、Job dependency graphを自動変更しない。
 7. 現行命名規則を維持し、短い代入やMethod Callを不必要に改行しない。
 8. Diffに無関係なrename、整形、移動がないか確認する。
-9. 利用可能な最強の検証を実行する。Compileを実行できない場合はPASS扱いせず`unavailable`にする。
+9. 利用可能な最強の検証を実行する。検証生成物はTarget workspaceへ残さず、検証Tool/Command自体が失敗した場合はPASSへ変換しない。Compileを実行できない場合はPASS扱いせず`unavailable`にする。
 10. 未解決RiskとRevert条件を記録する。
+
+## Validation isolation and fail-closed verification
+
+Safe Patchの検証はPatchのmutation scopeを汚染してはならない。
+
+- Compile、syntax check、code generation、temporary project作成などの検証生成物をTarget workspaceへ新規作成しない。明示されたallowed path以外へ `.dll` / `.exe` / `.pdb` / `.obj` / temporary source / project fileを残さない。
+- Compilerがoutput fileを要求する場合は、可能ならin-memory validationを使う。実ファイルが必要ならOSの一時ディレクトリ等、Target workspace外の明示的なtemporary pathへ通常の拡張子付きファイルとして出力し、検証後に削除する。
+- Windowsの予約デバイス名 `CON` / `NUL` / `PRN` / `AUX` / `COM1`-`COM9` / `LPT1`-`LPT9` をCompiler outputやtemporary artifact名として使わない。Toolchainによって通常ファイルとしてmaterializeされ、mutation scopeを汚染する可能性がある。
+- PowerShellなど非終端Errorを継続できるShellでは、検証処理をfail-closedにする。Tool load、compile、parse、diagnostic取得のいずれかがErrorになった場合、その後の空配列や未初期化値を根拠にPASSを報告しない。
+- `Add-Type` / Roslyn load / compiler invocationの失敗後に、別条件だけを見て「syntax validation passed」「compile passed」と扱わない。
+- 検証後にworkspaceを再確認し、許可されたSource変更以外のartifactが残っていれば検証成功として完了しない。不要artifactを安全に除去できない場合は停止して報告する。
 
 ## Output contract
 
@@ -73,6 +84,8 @@ metadata:
 - Formattingを理由に命名規則を変更しない。
 - 短い式を`=`直後で機械的に改行しない。
 - Compile未実行をCompile PASSとして報告しない。
+- 検証のためだけのCompiler artifactをTarget workspaceへ残さない。
+- 検証ToolのErrorを無視してPASSを作らない。
 
 ## Checklist
 
@@ -86,6 +99,8 @@ metadata:
 - [ ] 現行命名規則を維持した
 - [ ] Canonical Formattingを維持した
 - [ ] 無関係な差分がない
+- [ ] 検証生成物がTarget workspaceへ残っていない
+- [ ] 検証Tool/CommandのErrorをPASSへ変換していない
 - [ ] 検証とRevert条件を記録した
 
 ## Common mistakes
@@ -97,3 +112,5 @@ metadata:
 - Job dependencyを単純化してrace conditionを作る。
 - 別Findingをついでに修正する。
 - 短い代入を見た目だけのために複数行へ分割する。
+- `NUL`でCompiler outputを捨てようとして失敗した後、`CON`等の別予約名をoutputへ使う。
+- `Add-Type`やRoslyn Assembly loadのError後、diagnosticsが空であることだけを理由にPASSを報告する。
