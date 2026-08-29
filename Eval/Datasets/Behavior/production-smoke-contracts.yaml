@@ -22,7 +22,8 @@ cases:
     production_prompt: |
       既存 CameraDebugger へ Far Clip 変更検出を追加する設計を検討してください。
       既存責務内で完結させるべきか、新規 Type へ分離すべきか判断してください。
-      必要なら Type Naming もレビューしてください。
+      Type Naming Review として、既存 CameraDebugger の名前を維持すべきか、新規 Type が本当に必要かも確認してください。
+      新規 Type または Rename を提案する場合だけ、適用可能な Type Naming 規約に照らして名前をレビューしてください。
       今回は実装しないでください。
 
   GOLDEN-MUTATION-001:
