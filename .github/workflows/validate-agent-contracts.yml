@@ -4,12 +4,17 @@ on:
   pull_request:
     paths:
       - ".agents/skills/**"
-      - ".ai/**"
       - "AGENTS.md"
       - "README.md"
+      - "Policy/**"
+      - "Context/**"
+      - "Orchestration/**"
+      - "Runtime/**"
+      - "Persistence/**"
+      - "Operations/**"
+      - "Eval/**"
       - "SkillReferences/**"
       - "Tools/**"
-      - "Tests/**"
       - ".github/workflows/validate-agent-contracts.yml"
       - ".github/workflows/actual-behavior-eval.yml"
   push:
@@ -17,12 +22,17 @@ on:
       - main
     paths:
       - ".agents/skills/**"
-      - ".ai/**"
       - "AGENTS.md"
       - "README.md"
+      - "Policy/**"
+      - "Context/**"
+      - "Orchestration/**"
+      - "Runtime/**"
+      - "Persistence/**"
+      - "Operations/**"
+      - "Eval/**"
       - "SkillReferences/**"
       - "Tools/**"
-      - "Tests/**"
       - ".github/workflows/validate-agent-contracts.yml"
       - ".github/workflows/actual-behavior-eval.yml"
 
@@ -41,5 +51,5 @@ jobs:
       - name: Install YAML parser
         run: python -m pip install --disable-pip-version-check pyyaml
 
-      - name: Validate UnityAgent locally-equivalent contracts
+      - name: Validate UnityAgent canonical contracts
         run: python Tools/validate_all.py
