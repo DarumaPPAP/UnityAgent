@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Context Budget v1 supplemental Golden Regression boundaries."""
+"""Validate canonical Context Budget v1 Golden regression boundaries."""
 from __future__ import annotations
 
 import sys
@@ -12,13 +12,10 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from Context.Compatibility.path_resolver import resolve_for_read, resolve_reference  # noqa: E402
-
 CASES_PATH = ROOT / "Eval" / "Datasets" / "Golden" / "context-budget-v1.yaml"
 BUDGET_PATH = ROOT / "Context" / "Budget" / "context-budget.yaml"
-INDEX_PATH = resolve_for_read("compatibility://migration-source/routing-index", ROOT)
-LEGACY_MANIFEST_SCHEMA_PATH = ROOT / "Context" / "Compatibility" / "legacy-context-manifest.schema.yaml"
-CANONICAL_BUDGET_REF = "Context/Budget/context-budget.yaml"
+MATERIALIZED_SCHEMA_PATH = ROOT / "Context" / "Contracts" / "materialized-context-view.schema.yaml"
+CONTEXT_CATALOG_PATH = ROOT / "Context" / "Selection" / "context-catalog.yaml"
 
 EXPECTED_PAIRS = {
     "mutation-budget-measurement": {
@@ -48,8 +45,8 @@ def main() -> int:
     try:
         suite = load(CASES_PATH)
         budget = load(BUDGET_PATH)
-        index = load(INDEX_PATH)
-        legacy_manifest_schema = load(LEGACY_MANIFEST_SCHEMA_PATH)
+        materialized_schema = load(MATERIALIZED_SCHEMA_PATH)
+        context_catalog = load(CONTEXT_CATALOG_PATH)
     except (OSError, ValueError, yaml.YAMLError) as exc:
         print(f"Context Budget v1 Golden validation failed:\n- {exc}")
         return 1
@@ -129,34 +126,6 @@ def main() -> int:
         if guards.get(guard) is not True:
             errors.append(f"Context Budget execution guard missing: {guard}")
 
-    # The historical routing index remains a read-only compatibility source until
-    # Phase 8. Resolve its stored references through the Phase-2 compatibility map
-    # before comparing them with canonical ownership.
-    rules = index.get("routing_rules", {}) or {}
-    for rule in (
-        "context_budget_required_before_mutation",
-        "estimated_context_tokens_are_not_exact_provider_tokens",
-        "project_and_external_budget_observation_required",
-        "authoritative_context_lossy_compression_forbidden",
-        "hard_context_budget_overflow_stops_mutation",
-    ):
-        if rules.get(rule) is not True:
-            errors.append(f"Compatibility routing rule missing: {rule}")
-
-    resolved_budget_ref = resolve_reference(str(index.get("context_budget") or ""), ROOT)
-    if resolved_budget_ref != CANONICAL_BUDGET_REF:
-        errors.append("compatibility routing index must resolve to the canonical Context Budget contract")
-
-    # These extension fields belong to the historical Context Manifest contract,
-    # not the Phase-2 canonical current-call ContextManifest schema. Keep the
-    # regression check against its explicit read-only compatibility copy.
-    extensions = legacy_manifest_schema.get("extensions", {}) or {}
-    if str(extensions.get("context_budget")) != "1.0":
-        errors.append("Compatibility Context Manifest must declare Context Budget extension v1.0")
-    budget_rules = legacy_manifest_schema.get("budget_rules", {}) or {}
-    if budget_rules.get("mutation_requires_within_budget") is not True:
-        errors.append("Compatibility Context Manifest budget rules must block non-budgeted mutation")
-
     profiles = budget.get("profiles", {}) or {}
     for profile_id in ("tight", "standard", "wide"):
         profile = profiles.get(profile_id)
@@ -168,6 +137,21 @@ def main() -> int:
         hard = int(context_limits.get("hard_estimated_tokens", 0) or 0)
         if not (0 < soft < hard):
             errors.append(f"Invalid soft/hard Context Budget profile: {profile_id}")
+
+    route_profiles = budget.get("route_profiles", {}) or {}
+    for route_id in (context_catalog.get("routes", {}) or {}):
+        profile_id = str(route_profiles.get(route_id, "standard"))
+        if profile_id not in profiles:
+            errors.append(f"{route_id}: unknown Context Budget profile {profile_id}")
+
+    budget_report = (((materialized_schema.get("properties") or {}).get("budget_report") or {}).get("properties") or {})
+    decisions = set(((budget_report.get("decision") or {}).get("enum") or []))
+    expected_decisions = {"within_budget", "compression_required", "blocked", "unmeasured"}
+    if decisions != expected_decisions:
+        errors.append("MaterializedContextView budget_report decisions must match the canonical Context Budget runtime")
+    estimator_schema = budget_report.get("estimator") or {}
+    if estimator_schema.get("const") != estimator.get("id"):
+        errors.append("MaterializedContextView estimator must match the canonical Context Budget estimator id")
 
     if errors:
         print("Context Budget v1 Golden validation failed:")
