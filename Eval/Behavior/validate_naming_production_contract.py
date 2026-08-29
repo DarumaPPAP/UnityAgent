@@ -18,6 +18,7 @@ from derive_signals import derive_signals  # noqa: E402
 BOOTSTRAP = ROOT / "AGENTS.md"
 ARCH_CONTRACT = ROOT / "Orchestration" / "Contracts" / "TaskContracts" / "architecture-design.yaml"
 ARCH_CONTEXT = ROOT / "Context" / "Packs" / "architecture-design.yaml"
+ARCH_SKILL = ROOT / ".agents" / "skills" / "unity-architecture-design" / "SKILL.md"
 PRODUCTION_CONTRACTS = ROOT / "Eval" / "Datasets" / "Behavior" / "production-smoke-contracts.yaml"
 ENGINEERING_POLICY_ID = "engineering_principles"
 ENGINEERING_POLICY_SOURCE = "Policy/User/user-policy.yaml#core_user_policies.engineering_principles"
@@ -97,6 +98,41 @@ def validate_architecture_policy_anchor(errors: list[str]) -> None:
     )
 
 
+def validate_naming_contract_semantics(errors: list[str]) -> None:
+    contract = load_yaml(ARCH_CONTRACT)
+    semantic = ((contract.get("conditional_inputs", {}) or {}).get("semantic_type_naming", {}) or {})
+    required_when = set(semantic.get("required_when", []) or [])
+    require(
+        "explicit_type_naming_review_is_requested" in required_when,
+        "architecture-design semantic_type_naming must activate for an explicit Type Naming Review request.",
+        errors,
+    )
+    conditional_gates = set(contract.get("conditional_quality_gates", []) or [])
+    require(
+        "namespace_and_type_naming_review" in conditional_gates,
+        "architecture-design must expose namespace_and_type_naming_review as a conditional gate.",
+        errors,
+    )
+    completion = set(contract.get("completion", []) or [])
+    require(
+        "explicit_naming_review_uses_semantic_naming_contract_when_requested" in completion,
+        "architecture-design completion must preserve explicit Naming Review semantics.",
+        errors,
+    )
+
+    skill = ARCH_SKILL.read_text(encoding="utf-8")
+    require(
+        "ユーザーから明示的なType Naming Review要求" in skill,
+        "Architecture Skill must apply Semantic Type Naming when the user explicitly requests the review.",
+        errors,
+    )
+    require(
+        "namespace_and_type_naming_review`を省略しない" in skill,
+        "Architecture Skill must not omit the Naming gate when an explicit review concludes that no new Type is needed.",
+        errors,
+    )
+
+
 def validate_naming_production_prompt(errors: list[str]) -> None:
     contracts = load_yaml(PRODUCTION_CONTRACTS)
     cases = contracts.get("cases", {}) or {}
@@ -161,6 +197,7 @@ def main() -> int:
     errors: list[str] = []
     try:
         validate_architecture_policy_anchor(errors)
+        validate_naming_contract_semantics(errors)
         validate_naming_production_prompt(errors)
         validate_observed_source_naming_coverage(errors)
     except (OSError, UnicodeError, ValueError, yaml.YAMLError) as exc:
@@ -174,7 +211,8 @@ def main() -> int:
 
     print(
         "Naming Production contract validation passed: engineering_principles provenance is canonicalized, "
-        "the no-new-Type naming review prompt is explicit, and observed C# sources provide complete naming coverage."
+        "explicit Naming Review semantics are enforced, the no-new-Type prompt is explicit, and observed C# "
+        "sources provide complete naming coverage."
     )
     return 0
 
