@@ -85,6 +85,44 @@ class OneRepoProductionSmokeTests(unittest.TestCase):
         self.assertNotIn("required_signals", prompt)
         self.assertNotIn("forbidden_signals", prompt)
 
+    def test_envelope_keeps_conditional_unavailable_diagnostic(self):
+        envelope = smoke._envelope(
+            "run-1",
+            "GOLDEN-ARCH-001",
+            {"tool_identity": {}, "definition_fingerprint": {}},
+            [
+                {
+                    "id": "namespace_and_type_naming_review",
+                    "requirement": "conditional",
+                    "status": "unavailable",
+                    "evidence": "Not applicable in this execution.",
+                }
+            ],
+            "evidence-1",
+            None,
+        )
+        self.assertEqual(envelope["status"], "completed")
+        self.assertIsNone(envelope["failure_class"])
+
+    def test_envelope_keeps_required_unavailable_blocking(self):
+        envelope = smoke._envelope(
+            "run-2",
+            "GOLDEN-ARCH-001",
+            {"tool_identity": {}, "definition_fingerprint": {}},
+            [
+                {
+                    "id": "architecture_fit",
+                    "requirement": "required",
+                    "status": "unavailable",
+                    "evidence": "Required gate was not observed.",
+                }
+            ],
+            "evidence-2",
+            None,
+        )
+        self.assertEqual(envelope["status"], "unavailable")
+        self.assertIsNone(envelope["failure_class"])
+
     def test_deterministic_compile_capture_is_utf8_and_replacement_safe(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

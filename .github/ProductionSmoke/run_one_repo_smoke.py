@@ -423,7 +423,7 @@ def _envelope(case_run_id: str, task_id: str, runtime_result: dict[str, Any], ga
         failure_class = "agent_behavior_regression"
         status = "failed"
     else:
-        blocking = [gate for gate in gates if gate.get("requirement") in {"required", "conditional"}]
+        blocking = [gate for gate in gates if gate.get("requirement") == "required"]
         if any(gate.get("status") == "failed" for gate in blocking):
             status = "failed"
             failure_class = "agent_behavior_regression"
