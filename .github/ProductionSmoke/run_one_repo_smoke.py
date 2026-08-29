@@ -337,6 +337,8 @@ def _deterministic_mutation_evidence(workspace: Path, case_dir: Path, changed: l
         [dotnet, "build", str(project), "--nologo", "--verbosity", "minimal"],
         cwd=compile_dir,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         capture_output=True,
         check=False,
     )

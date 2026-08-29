@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 MODULE_PATH = ROOT / ".github/ProductionSmoke/run_one_repo_smoke.py"
@@ -83,6 +84,37 @@ class OneRepoProductionSmokeTests(unittest.TestCase):
         self.assertNotIn("expected_route", prompt)
         self.assertNotIn("required_signals", prompt)
         self.assertNotIn("forbidden_signals", prompt)
+
+    def test_deterministic_compile_capture_is_utf8_and_replacement_safe(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            workspace = root / "workspace"
+            case_dir = root / "case"
+            workspace.mkdir()
+            case_dir.mkdir()
+            (workspace / "CameraDebugger.cs").write_text(
+                "public sealed class CameraDebugger {}\n",
+                encoding="utf-8",
+            )
+            completed = mock.Mock(returncode=0, stdout="compile passed\n", stderr="")
+
+            with (
+                mock.patch.object(smoke.shutil, "which", return_value="dotnet"),
+                mock.patch.object(smoke.subprocess, "run", return_value=completed) as run,
+            ):
+                evidence = smoke._deterministic_mutation_evidence(
+                    workspace,
+                    case_dir,
+                    ["CameraDebugger.cs"],
+                    ["CameraDebugger.cs"],
+                )
+
+            kwargs = run.call_args.kwargs
+            self.assertTrue(kwargs["text"])
+            self.assertEqual(kwargs["encoding"], "utf-8")
+            self.assertEqual(kwargs["errors"], "replace")
+            self.assertTrue((case_dir / "compile-evidence.txt").is_file())
+            self.assertEqual(evidence[-1]["status"], "passed")
 
     def test_persist_execution_uses_persistence_safe_evidence_id(self):
         with tempfile.TemporaryDirectory() as temp:
