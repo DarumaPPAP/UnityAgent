@@ -18,6 +18,7 @@ from derive_signals import derive_signals  # noqa: E402
 BOOTSTRAP = ROOT / "AGENTS.md"
 ARCH_CONTRACT = ROOT / "Orchestration" / "Contracts" / "TaskContracts" / "architecture-design.yaml"
 ARCH_CONTEXT = ROOT / "Context" / "Packs" / "architecture-design.yaml"
+PRODUCTION_CONTRACTS = ROOT / "Eval" / "Datasets" / "Behavior" / "production-smoke-contracts.yaml"
 ENGINEERING_POLICY_ID = "engineering_principles"
 ENGINEERING_POLICY_SOURCE = "Policy/User/user-policy.yaml#core_user_policies.engineering_principles"
 ENGINEERING_REFERENCE = "SkillReferences/ENGINEERING_DESIGN_PRINCIPLES.md"
@@ -96,6 +97,19 @@ def validate_architecture_policy_anchor(errors: list[str]) -> None:
     )
 
 
+def validate_naming_production_prompt(errors: list[str]) -> None:
+    contracts = load_yaml(PRODUCTION_CONTRACTS)
+    cases = contracts.get("cases", {}) or {}
+    case = cases.get("GOLDEN-NAMING-001", {}) or {}
+    prompt = str(case.get("production_prompt") or "")
+    require(case.get("primary_focus") == "naming", "GOLDEN-NAMING-001 primary_focus must remain naming.", errors)
+    require("Type Naming Review" in prompt, "Naming Production prompt must explicitly request Type Naming Review.", errors)
+    require("既存 CameraDebugger の名前を維持すべきか" in prompt, "Naming Production prompt must review preservation of the existing CameraDebugger name.", errors)
+    require("新規 Type が本当に必要か" in prompt, "Naming Production prompt must review whether a new Type is actually necessary.", errors)
+    require("新規 Type または Rename を提案する場合だけ" in prompt, "Detailed Type Naming rules must stay conditional on an actual new-Type or Rename proposal.", errors)
+    require("必要なら Type Naming" not in prompt, "Ambiguous optional Naming wording must not return to the Production prompt.", errors)
+
+
 def validate_observed_source_naming_coverage(errors: list[str]) -> None:
     case = {
         "id": "GOLDEN-NAMING-001",
@@ -147,6 +161,7 @@ def main() -> int:
     errors: list[str] = []
     try:
         validate_architecture_policy_anchor(errors)
+        validate_naming_production_prompt(errors)
         validate_observed_source_naming_coverage(errors)
     except (OSError, UnicodeError, ValueError, yaml.YAMLError) as exc:
         errors.append(str(exc))
@@ -158,8 +173,8 @@ def main() -> int:
         return 1
 
     print(
-        "Naming Production contract validation passed: engineering_principles provenance is canonicalized and "
-        "observed C# sources provide complete no-new-Type naming coverage."
+        "Naming Production contract validation passed: engineering_principles provenance is canonicalized, "
+        "the no-new-Type naming review prompt is explicit, and observed C# sources provide complete naming coverage."
     )
     return 0
 
