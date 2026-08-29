@@ -21,8 +21,8 @@ scope:
     - model_hidden_reasoning_tokens
     - provider_billing_tokens
     - loop_total_cost
-  loop_and_model_execution_budget_owner: DarumaPPAP/Unity-Graph-Engineering
-  context_selection_budget_owner: DarumaPPAP/UnityAgent
+  loop_and_model_execution_budget_owner: DarumaPPAP/UnityAgent:Runtime
+  context_selection_budget_owner: DarumaPPAP/UnityAgent:Context
 
 source_of_truth:
   canonical_contract: true
@@ -132,6 +132,7 @@ profiles:
       hard_estimated_tokens: 90000
 
 route_profiles:
+  generic-planning: tight
   architecture-design: standard
   graphics-mcp: wide
   csharp-local-fix: tight
