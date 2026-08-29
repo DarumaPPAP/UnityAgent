@@ -1,0 +1,90 @@
+schema_version: '1.0'
+parent_graph_id: development
+entry_subgraph_id: planning
+subgraphs:
+  - id: planning
+    purpose: classify task semantics, select one route, materialize bounded context, and choose the smallest viable path
+    entry_node_id: classify_task
+    nodes:
+      - {id: classify_task, kind: semantic, owner: orchestration, parallel_safe: false, write_set: []}
+      - {id: select_route, kind: semantic, owner: orchestration, parallel_safe: false, write_set: []}
+      - {id: materialize_context, kind: context_handoff, owner: context, parallel_safe: false, write_set: []}
+      - {id: plan_scope, kind: semantic, owner: orchestration, parallel_safe: false, write_set: []}
+  - id: investigation
+    purpose: obtain only the evidence needed to identify a bounded implementation or answer
+    entry_node_id: environment_check
+    nodes:
+      - {id: environment_check, kind: health_check, owner: runtime, runtime_contract: HealthCheckResult, parallel_safe: false, write_set: []}
+      - {id: inspect_sources, kind: runtime_action, owner: runtime, runtime_contract: ExecutionResult, parallel_safe: true, write_set: []}
+      - {id: assess_evidence, kind: semantic, owner: orchestration, parallel_safe: false, write_set: []}
+  - id: implementation
+    purpose: execute the minimum cohesive approved mutation
+    entry_node_id: mutation_precheck
+    nodes:
+      - {id: mutation_precheck, kind: semantic, owner: orchestration, parallel_safe: false, write_set: []}
+      - {id: execute_change, kind: runtime_action, owner: runtime, runtime_contract: ExecutionResult, parallel_safe: false, write_set: [requested_mutation_scope]}
+      - {id: assess_change, kind: semantic, owner: orchestration, parallel_safe: false, write_set: []}
+  - id: validation
+    purpose: obtain the required evidence without converting unavailable evidence into PASS
+    entry_node_id: validation_health_check
+    nodes:
+      - {id: validation_health_check, kind: health_check, owner: runtime, runtime_contract: HealthCheckResult, parallel_safe: false, write_set: []}
+      - {id: verify, kind: verification, owner: runtime, runtime_contract: ExecutionEvidence, parallel_safe: true, write_set: []}
+      - {id: assess_validation, kind: semantic, owner: orchestration, parallel_safe: false, write_set: []}
+  - id: delivery
+    purpose: produce the bounded result and explicit remaining validation without changing execution facts
+    entry_node_id: compose_result
+    nodes:
+      - {id: compose_result, kind: delivery, owner: orchestration, parallel_safe: false, write_set: []}
+      - {id: complete, kind: delivery, owner: orchestration, parallel_safe: false, write_set: []}
+edges:
+  - {from: classify_task, to: select_route, on: classified}
+  - {from: select_route, to: materialize_context, on: selected}
+  - {from: materialize_context, to: plan_scope, on: context_ready}
+  - {from: plan_scope, to: environment_check, on: investigate}
+  - {from: plan_scope, to: mutation_precheck, on: implement}
+  - {from: plan_scope, to: validation_health_check, on: verify_only}
+  - {from: plan_scope, to: compose_result, on: answer_only}
+  - {from: environment_check, to: inspect_sources, on: healthy}
+  - {from: environment_check, to: assess_evidence, on: unavailable}
+  - {from: inspect_sources, to: assess_evidence, on: observed}
+  - {from: assess_evidence, to: mutation_precheck, on: implementation_ready}
+  - {from: assess_evidence, to: compose_result, on: answer_ready}
+  - {from: mutation_precheck, to: execute_change, on: approved}
+  - {from: mutation_precheck, to: compose_result, on: blocked}
+  - {from: execute_change, to: assess_change, on: observed}
+  - {from: assess_change, to: validation_health_check, on: validation_required}
+  - {from: assess_change, to: compose_result, on: validation_not_required}
+  - {from: validation_health_check, to: verify, on: healthy}
+  - {from: validation_health_check, to: assess_validation, on: unavailable}
+  - {from: verify, to: assess_validation, on: observed}
+  - {from: assess_validation, to: compose_result, on: sufficient}
+  - {from: assess_validation, to: compose_result, on: unavailable_but_reportable}
+  - {from: compose_result, to: complete, on: delivered}
+gates:
+  - {id: mutation_policy_gate, node_id: mutation_precheck, source: policy}
+  - {id: runtime_health_gate, node_id: environment_check, source: runtime_health}
+  - {id: validation_health_gate, node_id: validation_health_check, source: runtime_health}
+  - {id: evidence_gate, node_id: assess_validation, source: runtime_evidence}
+local_loops:
+  - id: investigation-evidence-loop
+    subgraph_id: investigation
+    from_node_id: assess_evidence
+    to_node_id: inspect_sources
+    continue_on: [more_targeted_evidence_needed]
+    replan_on: [hypothesis_invalidated, route_mismatch]
+    exit_on: [implementation_ready, answer_ready]
+  - id: implementation-correction-loop
+    subgraph_id: implementation
+    from_node_id: assess_change
+    to_node_id: mutation_precheck
+    continue_on: [bounded_correction_needed]
+    replan_on: [implementation_strategy_invalid]
+    exit_on: [validation_required, validation_not_required]
+  - id: validation-evidence-loop
+    subgraph_id: validation
+    from_node_id: assess_validation
+    to_node_id: verify
+    continue_on: [additional_required_evidence_available]
+    replan_on: [validation_strategy_invalid]
+    exit_on: [sufficient, unavailable_but_reportable]

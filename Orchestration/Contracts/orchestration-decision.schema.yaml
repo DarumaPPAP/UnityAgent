@@ -1,0 +1,22 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:orchestration:decision
+title: OrchestrationDecision
+type: object
+additionalProperties: false
+required: [schema_version, decision, route_id, subgraph_id, node_id, reason, runtime_handoff, state_patch]
+properties:
+  schema_version: {const: '1.0'}
+  decision: {enum: [continue, run_runtime, fast_path, replan, blocked, complete]}
+  route_id: {type: [string, 'null']}
+  subgraph_id: {type: [string, 'null']}
+  node_id: {type: [string, 'null']}
+  reason: {type: string, minLength: 1}
+  runtime_handoff:
+    anyOf:
+      - type: 'null'
+      - type: object
+        additionalProperties: true
+        required: [run_id, step_id, action_id, execution_profile]
+  state_patch:
+    type: object
+    additionalProperties: true
