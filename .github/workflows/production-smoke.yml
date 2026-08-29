@@ -3,7 +3,7 @@ name: One-repo Production Smoke
 on:
   pull_request:
     paths:
-      - "Operations/ProductionSmoke/**"
+      - "Tools/ProductionSmoke/**"
       - "Operations/Tests/test_one_repo_production_smoke.py"
       - "Runtime/Runner/Codex/**"
       - "Runtime/Guardrails/**"
@@ -53,6 +53,9 @@ jobs:
       - name: Install Python validation dependencies
         run: python -m pip install --disable-pip-version-check PyYAML jsonschema
 
+      - name: Validate smoke integration boundaries
+        run: python -m unittest Operations.Tests.test_one_repo_production_smoke
+
       - name: Production credential preflight
         shell: bash
         run: |
@@ -70,14 +73,11 @@ jobs:
           python --version
           dotnet --version
 
-      - name: Validate smoke integration boundaries
-        run: python -m unittest Operations.Tests.test_one_repo_production_smoke
-
       - name: Execute and grade one-repo Production Smoke
         shell: bash
         run: |
           set +e
-          python Operations/ProductionSmoke/run_one_repo_smoke.py \
+          python Tools/ProductionSmoke/run_one_repo_smoke.py \
             --run-id "$SMOKE_RUN_ID" \
             --model gpt-5.6-sol \
             --reasoning-effort high \
