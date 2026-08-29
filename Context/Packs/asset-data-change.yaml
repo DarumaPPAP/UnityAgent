@@ -12,11 +12,11 @@ metadata:
   decisions:
     - id: serialized-asset-channel
       label: Serialized asset rules remain authoritative
-      source_ref: .ai/context-packs/asset-data-change.yaml#rules
+      source_ref: Context/Packs/asset-data-change.yaml#rules
   forbidden:
     - id: raw-unity-yaml-mutation
       label: Raw Scene, Prefab, or Material YAML mutation is forbidden
-      source_ref: .ai/harness/task-contracts/asset-data-change.yaml#prohibited_mutations
+      source_ref: Orchestration/Contracts/TaskContracts/asset-data-change.yaml#prohibited_mutations
   related: []
   priority: high
   tags: [asset, serialization, editor]
@@ -29,7 +29,7 @@ use_when:
 
 required:
   - type: repository_reference
-    path: .ai/user-policy.yaml
+    path: Policy/User/user-policy.yaml
   - type: binding
     name: target_assets
   - type: binding
@@ -41,7 +41,7 @@ required:
   - type: binding
     name: rollback_asset_or_revision
   - type: repository_reference
-    path: .ai/harness/mutation-channels.yaml
+    path: Runtime/Guardrails/mutation-channels.yaml
 
 conditional:
   project_fallback:
@@ -61,9 +61,9 @@ conditional:
       context_id: renderer-feature-change
   team_safe_import:
     - type: repository_reference
-      path: .ai/execution-profiles.yaml
+      path: Runtime/Profiles/runtime-profiles.yaml
     - type: repository_reference
-      path: .ai/harness/task-contracts/safe-import-integration.yaml
+      path: Orchestration/Contracts/TaskContracts/safe-import-integration.yaml
 
 excluded_by_default:
   - raw Unity YAML mutation

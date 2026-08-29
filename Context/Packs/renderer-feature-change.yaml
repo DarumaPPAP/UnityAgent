@@ -12,11 +12,11 @@ metadata:
   decisions:
     - id: renderer-pass-contract
       label: Existing pass and resource contracts remain authoritative
-      source_ref: .ai/context-packs/renderer-feature-change.yaml#rules
+      source_ref: Context/Packs/renderer-feature-change.yaml#rules
   forbidden:
     - id: unapproved-renderer-setting-change
       label: Unapproved renderer and project setting changes are forbidden
-      source_ref: .ai/harness/task-contracts/renderer-feature-change.yaml#prohibited_mutations
+      source_ref: Orchestration/Contracts/TaskContracts/renderer-feature-change.yaml#prohibited_mutations
   related: []
   priority: high
   tags: [rendering, renderer-feature, rendergraph]
@@ -29,7 +29,7 @@ use_when:
 
 required:
   - type: repository_reference
-    path: .ai/user-policy.yaml
+    path: Policy/User/user-policy.yaml
   - type: binding
     name: target_renderer_feature_or_pass
   - type: binding

@@ -12,11 +12,11 @@ metadata:
   decisions:
     - id: portable-boundaries-explicit
       label: Portable package boundaries remain explicit
-      source_ref: .ai/context-packs/portable-feature.yaml#rules
+      source_ref: Context/Packs/portable-feature.yaml#rules
   forbidden:
     - id: guessed-project-binding
       label: Guessed project bindings and unrequested setup are forbidden
-      source_ref: .ai/harness/task-contracts/portable-feature.yaml#prohibited_mutations
+      source_ref: Orchestration/Contracts/TaskContracts/portable-feature.yaml#prohibited_mutations
   related: []
   priority: normal
   tags: [portable, package, bindings]
@@ -29,7 +29,7 @@ use_when:
 
 required:
   - type: repository_reference
-    path: .ai/user-policy.yaml
+    path: Policy/User/user-policy.yaml
   - type: binding
     name: portable_goal
   - type: binding
@@ -60,9 +60,9 @@ conditional:
       context_id: asset-data-change
   team_safe_import:
     - type: repository_reference
-      path: .ai/execution-profiles.yaml
+      path: Runtime/Profiles/runtime-profiles.yaml
     - type: repository_reference
-      path: .ai/harness/task-contracts/safe-import-integration.yaml
+      path: Orchestration/Contracts/TaskContracts/safe-import-integration.yaml
 
 excluded_by_default:
   - assumed project paths scene names renderer data layers and shader tags

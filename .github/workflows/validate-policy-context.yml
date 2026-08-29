@@ -6,15 +6,11 @@ on:
       - "AGENTS.md"
       - "Policy/**"
       - "Context/**"
+      - "Orchestration/Contracts/TaskContracts/**"
       - "Runtime/Permissions/**"
+      - "Runtime/Profiles/**"
+      - "Runtime/Guardrails/**"
       - "Prompt/**"
-      - ".ai/user-policy.yaml"
-      - ".ai/context-*.yaml"
-      - ".ai/context-packs/**"
-      - ".ai/knowledge/**"
-      - ".ai/knowledge-graph-pilot.yaml"
-      - ".ai/harness/mcp-activation.yaml"
-      - ".ai/harness/risk-levels.yaml"
       - ".github/workflows/validate-policy-context.yml"
   push:
     branches: [main]
@@ -22,11 +18,14 @@ on:
       - "AGENTS.md"
       - "Policy/**"
       - "Context/**"
+      - "Orchestration/Contracts/TaskContracts/**"
       - "Runtime/Permissions/**"
+      - "Runtime/Profiles/**"
+      - "Runtime/Guardrails/**"
       - ".github/workflows/validate-policy-context.yml"
 
 jobs:
-  phase2:
+  canonical-policy-context:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -38,13 +37,11 @@ jobs:
           python-version: "3.12"
       - name: Install validation dependencies
         run: python -m pip install --disable-pip-version-check PyYAML jsonschema
-      - name: Policy lossless migration
-        run: python Policy/Validators/validate_user_policy_equivalence.py
+      - name: Canonical user policy integrity
+        run: python Policy/Validators/validate_user_policy_integrity.py
       - name: Policy tests
         run: python -m unittest discover -s Policy/Tests -p "test_*.py"
       - name: Context tests
         run: python -m unittest discover -s Context/Tests -p "test_*.py"
-      - name: Stale legacy path guard
-        env:
-          PHASE2_BASE_REF: origin/${{ github.base_ref || 'main' }}
+      - name: Cutover stale legacy path guard
         run: python Context/Validators/validate_stale_paths.py

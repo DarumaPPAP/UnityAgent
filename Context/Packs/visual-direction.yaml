@@ -12,11 +12,11 @@ metadata:
   decisions:
     - id: visual-intent-before-mutation
       label: Visual intent and beauty gates remain authoritative
-      source_ref: .ai/context-packs/visual-direction.yaml#rules
+      source_ref: Context/Packs/visual-direction.yaml#rules
   forbidden:
     - id: visual-acceptance-without-human-review
       label: Visual acceptance without human review is forbidden
-      source_ref: .ai/harness/task-contracts/visual-direction.yaml#prohibited_mutations
+      source_ref: Orchestration/Contracts/TaskContracts/visual-direction.yaml#prohibited_mutations
   related: []
   priority: normal
   tags: [visual, beauty, human-review]
