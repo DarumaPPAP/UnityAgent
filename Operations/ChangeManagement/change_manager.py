@@ -12,6 +12,9 @@ class ChangeManagementError(ValueError):
     pass
 
 
+RISK_LEVELS = {"R0", "R1", "R2", "R3", "R4"}
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -26,14 +29,13 @@ def build_version_manifest(
     validate_definition_fingerprint(definition_fingerprint)
     if not manifest_id or not operations_revision:
         raise ChangeManagementError("manifest_id and operations_revision are required")
-    manifest = {
+    return {
         "schema_version": "1.0",
         "manifest_id": manifest_id,
         **{field: str(definition_fingerprint[field]) for field in DEFINITION_FIELDS},
         "operations_revision": operations_revision,
         "generated_at": generated_at or _now(),
     }
-    return manifest
 
 
 def build_change_request(
@@ -73,6 +75,7 @@ def authorize_change(
     policy_decision: dict[str, Any],
     approval_decision: dict[str, Any],
 ) -> dict[str, Any]:
+    """Authorize a versioned change without allowing rollback/critical-risk approval downgrade."""
     if request.get("status") != "proposed":
         raise ChangeManagementError("only proposed changes can be authorized")
     if policy_decision.get("allowed") is not True:
@@ -83,14 +86,36 @@ def authorize_change(
     approval_required = policy_decision.get("approval_required")
     if not isinstance(approval_required, bool):
         raise ChangeManagementError("Policy approval_required decision is required")
+
+    risk_raw = policy_decision.get("risk_level")
+    risk_level = str(risk_raw or "")
+    if risk_raw is not None and risk_level not in RISK_LEVELS:
+        raise ChangeManagementError("Policy decision has invalid risk_level")
+
+    # R4 is always approval-required in Policy/Approval/approval-policy.yaml.
+    if risk_level == "R4" and approval_required is not True:
+        raise ChangeManagementError("R4 change cannot downgrade always-required approval")
+
+    # A rollback is itself a destructive operational recovery action. Even if a
+    # malformed/stale Policy decision is presented, ChangeManagement refuses to
+    # downgrade it below the canonical R4 + explicit approval boundary.
+    if request.get("kind") == "rollback":
+        if risk_level != "R4":
+            raise ChangeManagementError("rollback change requires canonical R4 risk")
+        if approval_required is not True:
+            raise ChangeManagementError("rollback change always requires explicit approval")
+
     approval_status = str(approval_decision.get("status") or "")
     approval_ref = str(approval_decision.get("decision_ref") or "")
     if approval_required and approval_status != "approved":
         raise ChangeManagementError("required change approval is missing")
     if approval_status not in {"approved", "not_required"}:
         raise ChangeManagementError("invalid approval decision")
+    if request.get("kind") == "rollback" and approval_status != "approved":
+        raise ChangeManagementError("rollback change requires explicit approved decision")
     if not approval_ref:
         raise ChangeManagementError("Approval decision_ref is required even when approval is not required")
+
     authorized = deepcopy(request)
     authorized["status"] = "authorized"
     authorized["policy_decision_ref"] = policy_ref
