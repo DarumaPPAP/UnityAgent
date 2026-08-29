@@ -1,0 +1,197 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:eval:rebaseline-summary
+title: RebaselineSummary
+type: object
+additionalProperties: false
+required:
+  - schema_version
+  - phase
+  - run_id
+  - status
+  - source
+  - runtime
+  - cases
+  - taxonomy
+  - diagnostics
+  - quality
+  - definition_fingerprints
+  - historical_replay
+  - baseline
+properties:
+  schema_version: {const: '1.0'}
+  phase: {const: 9}
+  run_id: {type: string, minLength: 1}
+  status:
+    enum: [smoke_passed_pending_historical, baseline_ready, not_eligible, blocked_not_run]
+  source:
+    type: object
+    additionalProperties: false
+    required: [repository, revision]
+    properties:
+      repository: {const: DarumaPPAP/UnityAgent}
+      revision: {type: string, minLength: 1}
+  runtime:
+    type: object
+    additionalProperties: false
+    required: [model, reasoning_effort, codex_version, production_execution_observed]
+    properties:
+      model: {type: string, minLength: 1}
+      reasoning_effort: {type: string, minLength: 1}
+      codex_version: {type: string, minLength: 1}
+      production_execution_observed: {type: boolean}
+  cases:
+    type: object
+    additionalProperties: false
+    properties:
+      GOLDEN-ARCH-001: {$ref: '#/$defs/caseResult'}
+      GOLDEN-NAMING-001: {$ref: '#/$defs/caseResult'}
+      GOLDEN-MUTATION-001: {$ref: '#/$defs/caseResult'}
+      GOLDEN-EVIDENCE-001: {$ref: '#/$defs/caseResult'}
+  taxonomy:
+    type: object
+    additionalProperties: false
+    required: [counts, attribution_counts]
+    properties:
+      counts:
+        type: object
+        additionalProperties: false
+        required:
+          - agent_behavior_regression
+          - runtime_timeout
+          - runtime_protocol_failure
+          - runtime_cancelled
+          - runtime_tool_unavailable
+          - runtime_permission_denied
+          - evaluator_contract_failure
+          - task_fixture_invalid
+          - unavailable_required_evidence
+        properties:
+          agent_behavior_regression: {type: integer, minimum: 0}
+          runtime_timeout: {type: integer, minimum: 0}
+          runtime_protocol_failure: {type: integer, minimum: 0}
+          runtime_cancelled: {type: integer, minimum: 0}
+          runtime_tool_unavailable: {type: integer, minimum: 0}
+          runtime_permission_denied: {type: integer, minimum: 0}
+          evaluator_contract_failure: {type: integer, minimum: 0}
+          task_fixture_invalid: {type: integer, minimum: 0}
+          unavailable_required_evidence: {type: integer, minimum: 0}
+      attribution_counts:
+        type: object
+        additionalProperties: {type: integer, minimum: 0}
+  diagnostics:
+    type: object
+    additionalProperties: false
+    required: [failure_detail_counts]
+    properties:
+      failure_detail_counts:
+        type: object
+        additionalProperties: {type: integer, minimum: 0}
+  quality:
+    type: object
+    additionalProperties: false
+    required: [total, observed, not_observed, quality_denominator, quality_passed, regression_pass_rate]
+    properties:
+      total: {type: integer, minimum: 0}
+      observed: {type: integer, minimum: 0}
+      not_observed: {type: integer, minimum: 0}
+      quality_denominator: {type: integer, minimum: 0}
+      quality_passed: {type: integer, minimum: 0}
+      regression_pass_rate: {type: number, minimum: 0, maximum: 1}
+  definition_fingerprints:
+    type: object
+    additionalProperties: false
+    properties:
+      GOLDEN-ARCH-001: {$ref: '#/$defs/definitionFingerprint'}
+      GOLDEN-NAMING-001: {$ref: '#/$defs/definitionFingerprint'}
+      GOLDEN-MUTATION-001: {$ref: '#/$defs/definitionFingerprint'}
+      GOLDEN-EVIDENCE-001: {$ref: '#/$defs/definitionFingerprint'}
+  historical_replay:
+    type: object
+    additionalProperties: false
+    required: [status, observed_namespaces, case_count, quality_denominator_eligible_count]
+    properties:
+      status: {enum: [pending, passed, failed]}
+      observed_namespaces:
+        type: array
+        items: {enum: [ARCH, NAMING, MUTATION, EVIDENCE]}
+        uniqueItems: true
+      case_count: {type: integer, minimum: 0}
+      quality_denominator_eligible_count: {type: integer, minimum: 0}
+  baseline:
+    type: object
+    additionalProperties: false
+    required: [eligible, freeze_status, reasons]
+    properties:
+      eligible: {type: boolean}
+      freeze_status: {enum: [pending, ready]}
+      reasons:
+        type: array
+        items: {type: string, minLength: 1}
+        uniqueItems: true
+$defs:
+  caseResult:
+    type: object
+    additionalProperties: false
+    required:
+      - task_id
+      - status
+      - observation_state
+      - quality_denominator_eligible
+      - taxonomy_failure_classes
+      - attributions
+      - diagnostic_failure_details
+    properties:
+      task_id: {type: string, minLength: 1}
+      status: {enum: [passed, failed]}
+      observation_state: {enum: [observed, not_observed]}
+      quality_denominator_eligible: {type: boolean}
+      taxonomy_failure_classes:
+        type: array
+        items:
+          enum:
+            - agent_behavior_regression
+            - runtime_timeout
+            - runtime_protocol_failure
+            - runtime_cancelled
+            - runtime_tool_unavailable
+            - runtime_permission_denied
+            - evaluator_contract_failure
+            - task_fixture_invalid
+            - unavailable_required_evidence
+        uniqueItems: true
+      attributions:
+        type: array
+        items:
+          enum: [none, agent_quality, runtime_infrastructure, evaluator_infrastructure, fixture_invalid, unavailable_evidence, policy_or_permission]
+        uniqueItems: true
+      diagnostic_failure_details:
+        type: array
+        items: {type: string, minLength: 1}
+        uniqueItems: true
+  definitionFingerprint:
+    type: object
+    additionalProperties: false
+    required:
+      - schema_version
+      - architecture_version
+      - policy_revision
+      - prompt_revision
+      - context_revision
+      - graph_revision
+      - runtime_profile_revision
+      - tool_schema_revision
+      - checkpoint_schema_revision
+      - evidence_schema_revision
+      - eval_contract_revision
+    properties:
+      schema_version: {const: '1.0'}
+      architecture_version: {type: string, minLength: 1}
+      policy_revision: {type: string, minLength: 1}
+      prompt_revision: {type: string, minLength: 1}
+      context_revision: {type: string, minLength: 1}
+      graph_revision: {type: string, minLength: 1}
+      runtime_profile_revision: {type: string, minLength: 1}
+      tool_schema_revision: {type: string, minLength: 1}
+      checkpoint_schema_revision: {type: string, minLength: 1}
+      evidence_schema_revision: {type: string, minLength: 1}
+      eval_contract_revision: {type: string, minLength: 1}
