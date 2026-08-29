@@ -52,7 +52,7 @@ def main() -> int:
 
     for marker in (
         "knowledge_refs: list[str] | None",
-        'role": "knowledge"',
+        '_selected_ref(logical, "knowledge", root)',
         'route.get("knowledge_selection") == "required_when_domain_matches"',
         'unresolved.append("knowledge_selection")',
     ):
