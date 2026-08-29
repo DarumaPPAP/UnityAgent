@@ -1,0 +1,21 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:operations:change-request
+title: ChangeRequest
+type: object
+additionalProperties: false
+required: [schema_version, change_id, kind, status, current_manifest_id, target_manifest_id, summary, source_change_proposal_refs, policy_decision_ref, approval_decision_ref, created_at]
+properties:
+  schema_version: {const: '1.0'}
+  change_id: {type: string, minLength: 1}
+  kind: {enum: [rollout, rollback, config_update]}
+  status: {enum: [proposed, authorized, applied, failed, rolled_back]}
+  current_manifest_id: {type: string, minLength: 1}
+  target_manifest_id: {type: string, minLength: 1}
+  summary: {type: string, minLength: 1}
+  source_change_proposal_refs:
+    type: array
+    items: {type: string, minLength: 1}
+    uniqueItems: true
+  policy_decision_ref: {type: [string, 'null']}
+  approval_decision_ref: {type: [string, 'null']}
+  created_at: {type: string, format: date-time}

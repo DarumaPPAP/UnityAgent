@@ -1,0 +1,22 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:operations:audit-event
+title: AuditEvent
+type: object
+additionalProperties: false
+required: [schema_version, event_id, run_id, actor_type, action, target, outcome, policy_revision, approval_id, timestamp, attributes, evidence_refs]
+properties:
+  schema_version: {const: '1.0'}
+  event_id: {type: string, minLength: 1}
+  run_id: {type: [string, 'null']}
+  actor_type: {enum: [runtime, orchestration, operator, automation, system]}
+  action: {type: string, minLength: 1}
+  target: {type: string, minLength: 1}
+  outcome: {enum: [requested, authorized, rejected, applied, failed]}
+  policy_revision: {type: string, minLength: 1}
+  approval_id: {type: [string, 'null']}
+  timestamp: {type: string, format: date-time}
+  attributes: {type: object, additionalProperties: true}
+  evidence_refs:
+    type: array
+    items: {type: string, minLength: 1}
+    uniqueItems: true

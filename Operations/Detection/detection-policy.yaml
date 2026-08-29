@@ -1,0 +1,13 @@
+schema_version: '1.0'
+authority: Operations
+thresholds:
+  retry_storm_count: 3
+  latency_ms: 5000.0
+  cost_usd: 2.0
+  quality_pass_rate: 0.80
+  quality_min_samples: 3
+rules:
+  detection_never_mutates_runtime: true
+  detection_uses_structured_runtime_or_eval_facts: true
+  not_observed_eval_records_do_not_enter_quality_drift_denominator: true
+  correlated_incident_requires_multiple_signal_kinds_for_same_run: true

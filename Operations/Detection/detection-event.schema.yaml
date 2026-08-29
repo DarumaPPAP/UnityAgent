@@ -1,0 +1,24 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:operations:detection-event
+title: DetectionEvent
+type: object
+additionalProperties: false
+required: [schema_version, detection_id, kind, severity, status, run_ids, observed_at, signal_refs, attributes]
+properties:
+  schema_version: {const: '1.0'}
+  detection_id: {type: string, minLength: 1}
+  kind:
+    enum: [retry_storm, latency_drift, cost_drift, route_drift, quality_drift, correlated_incident]
+  severity: {enum: [warning, error, critical]}
+  status: {const: detected}
+  run_ids:
+    type: array
+    minItems: 1
+    items: {type: string, minLength: 1}
+    uniqueItems: true
+  observed_at: {type: string, format: date-time}
+  signal_refs:
+    type: array
+    items: {type: string, minLength: 1}
+    uniqueItems: true
+  attributes: {type: object, additionalProperties: true}

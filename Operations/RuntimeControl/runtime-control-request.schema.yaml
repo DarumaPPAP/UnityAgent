@@ -1,0 +1,17 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:operations:runtime-control-request
+title: RuntimeControlRequest
+type: object
+additionalProperties: false
+required: [schema_version, request_id, action, run_id, route_id, requested_by, reason, parameters, requested_at]
+properties:
+  schema_version: {const: '1.0'}
+  request_id: {type: string, minLength: 1}
+  action:
+    enum: [pause, resume, stop, quarantine, disable_route, rollback_config, force_hitl, switch_model, replay_checkpoint]
+  run_id: {type: [string, 'null']}
+  route_id: {type: [string, 'null']}
+  requested_by: {type: string, minLength: 1}
+  reason: {type: string, minLength: 1}
+  parameters: {type: object, additionalProperties: true}
+  requested_at: {type: string, format: date-time}

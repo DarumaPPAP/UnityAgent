@@ -1,0 +1,48 @@
+schema_version: '1.0'
+authority: Operations
+policy_authority: Policy
+approval_policy: Policy/Approval/approval-policy.yaml
+rules:
+  raw_request_dispatch_forbidden: true
+  policy_decision_required: true
+  approval_decision_required: true
+  operations_may_not_override_policy: true
+  operations_may_not_invoke_runtime_execution_control_internals: true
+  dispatch_requires_authorization_hash: true
+actions:
+  pause:
+    minimum_risk: R2
+    target_authority: Runtime
+    target_api: runtime.operations.pause
+  resume:
+    minimum_risk: R2
+    target_authority: Runtime
+    target_api: runtime.operations.resume
+  stop:
+    minimum_risk: R3
+    target_authority: Runtime
+    target_api: runtime.operations.stop
+  quarantine:
+    minimum_risk: R3
+    target_authority: Runtime
+    target_api: runtime.operations.quarantine
+  disable_route:
+    minimum_risk: R3
+    target_authority: Orchestration
+    target_api: orchestration.operations.disable_route
+  rollback_config:
+    minimum_risk: R4
+    target_authority: ChangeManagement
+    target_api: operations.change_management.rollback_config
+  force_hitl:
+    minimum_risk: R2
+    target_authority: Orchestration
+    target_api: orchestration.operations.force_hitl
+  switch_model:
+    minimum_risk: R3
+    target_authority: Runtime
+    target_api: runtime.operations.switch_model
+  replay_checkpoint:
+    minimum_risk: R3
+    target_authority: Orchestration
+    target_api: orchestration.operations.replay_checkpoint

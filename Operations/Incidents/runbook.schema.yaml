@@ -1,0 +1,30 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:operations:runbook
+title: Runbook
+type: object
+additionalProperties: false
+required: [schema_version, runbook_id, title, applies_to, steps]
+properties:
+  schema_version: {const: '1.0'}
+  runbook_id: {type: string, minLength: 1}
+  title: {type: string, minLength: 1}
+  applies_to:
+    type: array
+    minItems: 1
+    items: {type: string, minLength: 1}
+    uniqueItems: true
+  steps:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      additionalProperties: false
+      required: [step_id, kind, description, control_action, requires_human_gate]
+      properties:
+        step_id: {type: string, minLength: 1}
+        kind: {enum: [observe, diagnose, control, verify]}
+        description: {type: string, minLength: 1}
+        control_action:
+          type: [string, 'null']
+          enum: [null, pause, resume, stop, quarantine, disable_route, rollback_config, force_hitl, switch_model, replay_checkpoint]
+        requires_human_gate: {type: boolean}

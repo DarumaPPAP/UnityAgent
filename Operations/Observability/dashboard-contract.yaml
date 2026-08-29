@@ -1,0 +1,26 @@
+schema_version: '1.0'
+authority: Operations
+dashboards:
+  runtime-health:
+    panels:
+      - runtime_latency_ms
+      - runtime_retry_count
+      - runtime_cost_usd
+      - runtime_failure_rate
+      - tool_availability
+  routing-quality:
+    panels:
+      - route_mismatch_count
+      - eval_regression_pass_rate
+      - not_observed_rate
+  incidents:
+    panels:
+      - open_incidents
+      - critical_incidents
+      - control_actions
+      - rollback_requests
+rules:
+  dashboards_are_read_only: true
+  dashboard_queries_do_not_mutate_runtime: true
+  dashboard_quality_metrics_are_sourced_from_eval: true
+  dashboard_runtime_metrics_are_sourced_from_runtime_telemetry: true

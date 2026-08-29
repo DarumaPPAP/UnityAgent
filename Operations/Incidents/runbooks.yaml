@@ -1,0 +1,59 @@
+schema_version: '1.0'
+runbooks:
+  retry-storm:
+    title: Retry storm containment
+    applies_to: [retry_storm, correlated_incident]
+    steps:
+      - step_id: inspect
+        kind: diagnose
+        description: Inspect recent retry/timeout/tool-health traces and evidence refs.
+        control_action: null
+        requires_human_gate: false
+      - step_id: pause
+        kind: control
+        description: Request a Policy/Approval-authorized pause when retries are still active.
+        control_action: pause
+        requires_human_gate: true
+      - step_id: verify
+        kind: verify
+        description: Verify retry rate and Runtime health before any resume request.
+        control_action: null
+        requires_human_gate: false
+  drift:
+    title: Operational drift investigation
+    applies_to: [latency_drift, cost_drift, route_drift, quality_drift]
+    steps:
+      - step_id: inspect
+        kind: diagnose
+        description: Compare Runtime telemetry, route traces and Eval metrics against the current VersionManifest.
+        control_action: null
+        requires_human_gate: false
+      - step_id: force-hitl
+        kind: control
+        description: Request forced HITL if continued execution could amplify the drift.
+        control_action: force_hitl
+        requires_human_gate: true
+      - step_id: verify
+        kind: verify
+        description: Confirm the drift signal cleared before restoring normal operation.
+        control_action: null
+        requires_human_gate: false
+  critical-containment:
+    title: Critical correlated incident containment
+    applies_to: [correlated_incident]
+    steps:
+      - step_id: quarantine
+        kind: control
+        description: Request quarantine through the authorized Operations control path.
+        control_action: quarantine
+        requires_human_gate: true
+      - step_id: diagnose
+        kind: diagnose
+        description: Correlate Runtime, Persistence Evidence and Eval references without rewriting historical facts.
+        control_action: null
+        requires_human_gate: false
+      - step_id: recovery
+        kind: control
+        description: Request checkpoint replay or rollback only after compatibility and approval checks.
+        control_action: replay_checkpoint
+        requires_human_gate: true
