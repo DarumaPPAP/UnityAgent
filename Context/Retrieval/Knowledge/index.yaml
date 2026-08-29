@@ -12,7 +12,7 @@ selection:
 
 knowledge:
   graphics.unity_graphics_mcp:
-    path: .ai/knowledge/graphics/unity-graphics-mcp.yaml
+    path: Context/Retrieval/Knowledge/graphics/unity-graphics-mcp.yaml
     status: draft
     related:
       conditional:
@@ -22,7 +22,7 @@ knowledge:
         - rendering.shader_variants
 
   rendering.temporal_anti_aliasing:
-    path: .ai/knowledge/rendering/temporal-anti-aliasing.yaml
+    path: Context/Retrieval/Knowledge/rendering/temporal-anti-aliasing.yaml
     status: reviewed
     related:
       required:
@@ -34,21 +34,21 @@ knowledge:
         - rendering.shader_variants
 
   rendering.motion_vectors:
-    path: .ai/knowledge/rendering/motion-vectors.yaml
+    path: Context/Retrieval/Knowledge/rendering/motion-vectors.yaml
     status: draft
 
   rendering.transparent_rendering:
-    path: .ai/knowledge/rendering/transparent-rendering.yaml
+    path: Context/Retrieval/Knowledge/rendering/transparent-rendering.yaml
     status: draft
 
   rendering.outline_rendering:
-    path: .ai/knowledge/rendering/outline-rendering.yaml
+    path: Context/Retrieval/Knowledge/rendering/outline-rendering.yaml
     status: draft
 
   rendering.ui_composition:
-    path: .ai/knowledge/rendering/ui-composition.yaml
+    path: Context/Retrieval/Knowledge/rendering/ui-composition.yaml
     status: draft
 
   rendering.shader_variants:
-    path: .ai/knowledge/rendering/shader-variants.yaml
+    path: Context/Retrieval/Knowledge/rendering/shader-variants.yaml
     status: draft
