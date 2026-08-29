@@ -152,6 +152,31 @@ def validate_context_and_skill_fast_path(errors: list[str]) -> None:
         "Safe-patch skill must keep compile evidence honest.",
         errors,
     )
+    require(
+        "Validation isolation and fail-closed verification" in skill,
+        "Safe-patch skill must define verification isolation and fail-closed validation.",
+        errors,
+    )
+    require(
+        "検証生成物をTarget workspaceへ新規作成しない" in skill,
+        "Safe-patch validation must not leave compiler artifacts inside the target workspace.",
+        errors,
+    )
+    require(
+        "`CON` / `NUL` / `PRN` / `AUX`" in skill,
+        "Safe-patch validation must forbid Windows reserved device names as compiler outputs.",
+        errors,
+    )
+    require(
+        "検証Tool/Command自体が失敗した場合はPASSへ変換しない" in skill,
+        "Safe-patch validation must fail closed instead of converting tool errors into PASS.",
+        errors,
+    )
+    require(
+        "`Add-Type` / Roslyn load / compiler invocationの失敗後" in skill,
+        "Safe-patch validation must explicitly forbid PASS after compiler/loader failure.",
+        errors,
+    )
 
 
 def validate_production_fixture_and_no_leak(errors: list[str]) -> None:
@@ -257,7 +282,7 @@ def main() -> int:
 
     print(
         "Mutation Production contract validation passed: one unambiguous source-proven compile fix, "
-        "canonical policy provenance, no Golden leak, and 5/5 deterministic patch evidence."
+        "canonical policy provenance, isolated fail-closed verification, no Golden leak, and 5/5 deterministic patch evidence."
     )
     return 0
 
