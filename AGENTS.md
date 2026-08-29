@@ -26,9 +26,10 @@
 6. `Context/Assembly/materialize_context.py` で current-call `MaterializedContextView` を構築する。
 7. `Context/Budget/context-budget.yaml` で Retrieval / Context / Compression Budget を評価する。Required Contextを無言削除しない。
 8. MCP が必要な場合、Context は `Context/Selection/mcp-selection.yaml` で必要Description/Manifestだけを選択し、Policy が許可条件を定義し、Runtime が `Runtime/Permissions/mcp-activation.yaml` に従って実際のTool Groupを公開する。
-9. `Context/Manifest/` は current-call Context provenanceを記録する。WorkflowState / Checkpoint / Evidence truth / Graph topologyの正本にはしない。
-10. User Policy / Context Pack / Prompt / Budget変更時は対応する Contract Test / Golden Regressionを確認する。
-11. 旧Pathを必要とする未移行機能は `Context/Compatibility/legacy-path-map.yaml` の read-only key経由だけで参照する。新規writeは禁止する。
+9. Actual execution は `Runtime/` を通す。process invocation、hard timeout/cancellation、mutation scope、tool dispatch、health/verification/evidence capture は Runtime authority とする。
+10. `Context/Manifest/` は current-call Context provenanceを記録する。WorkflowState / Checkpoint / Evidence truth / Graph topologyの正本にはしない。
+11. User Policy / Context Pack / Prompt / Budget / Runtime Contract変更時は対応する Contract Test / Golden Regressionを確認する。
+12. 旧Pathを必要とする未移行機能は `Context/Compatibility/legacy-path-map.yaml` の read-only key経由だけで参照する。新規writeは禁止する。
 
 ## 3. Canonical map
 
@@ -44,7 +45,10 @@
 | Context Budget / Compression | `Context/Budget/` + `Context/Compression/` | bounded model input |
 | Context Assembly / Manifest | `Context/Assembly/` + `Context/Manifest/` | Materialized Context View / provenance |
 | Runtime Contracts | `Runtime/Contracts/` | canonical execution facts |
-| Runtime Tool Exposure | `Runtime/Permissions/` | actual tool exposure/enforcement |
+| Runtime Execution | `Runtime/Runner/` + `Runtime/Dispatcher/` + `Runtime/ExecutionControl/` | actual process/tool execution and hard limits |
+| Runtime Guardrails | `Runtime/Sandbox/` + `Runtime/Guardrails/` + `Runtime/Permissions/` | scope / permission enforcement |
+| Runtime Harnesses | `Runtime/Harnesses/` + `Runtime/Health/` + `Runtime/Verification/` | Unity/Test/Performance/SCM/tool observation |
+| Runtime Evidence / Telemetry | `Runtime/EvidenceCapture/` + `Runtime/Telemetry/` | current-run evidence capture and telemetry production |
 | Persistence Contracts | `Persistence/Contracts/` | state/checkpoint/memory/evidence contracts |
 | Eval Contracts | `Eval/` | quality measurement / attribution |
 
@@ -58,14 +62,17 @@
 - `unavailable`を成功扱いしない。CompileだけでRuntime / Visual / Performance / Player / 実機を承認しない。
 - EvalのGolden expected contentをProduction Promptへ注入しない。
 - Runtimeのhard timeout / hard retry / process kill と Graph semantic replan を混同しない。
+- RuntimeはAgent品質を採点しない。観測されたExecutionResult / RuntimeFailure / MutationEvidenceを出力し、品質分類はEvalへ渡す。
+- RuntimeのUnity Artifact GraphはAsset dependency graphであり、Agent ParentGraph/SubGraphではない。
 - Compatibilityはread-only。旧Sourceの削除はPhase 8の明示Human Gateまで行わない。
 
 ## 5. Current execution compatibility
 
-- Phase 3 / Phase 4 の cutover までは、実 Production Agent Execution、Loop / Graph、Execution Retry、Checkpoint、Human Gate の既存実装は `DarumaPPAP/Unity-Graph-Engineering` を compatibility execution owner として利用する。
-- これは最終 Authority ではなく移行中の互換境界であり、UnityAgent 内へ同じ Runtime / Graph 実装を二重作成しない。
-- `DarumaPPAP/MyUnityMCP` は MCP manifest / tool schema / package implementation の外部 owner のままとし、Context は必要な記述だけを選択する。
-- Phase 2 では Policy / Context の canonical source だけを切り替え、Runtime / Orchestration / Persistence の ownership cutover は先取りしない。
+- Phase 3 以降、実 Production Agent の process execution、hard timeout/cancellation、tool dispatch、mutation enforcement、Runtime health/verification/evidence capture は UnityAgent `Runtime/` を canonical owner とする。
+- Phase 4 の cutover までは、ParentGraph/SubGraph/Node、semantic continuation、TODO selection、semantic replan/retry は `DarumaPPAP/Unity-Graph-Engineering` を compatibility orchestration owner として利用する。
+- Durable WorkflowState / Checkpoint / Memory / EvidenceRecord の ownership cutover は Persistence Phaseを先取りしない。
+- `DarumaPPAP/MyUnityMCP` は MCP manifest / tool schema / package implementation の外部 owner のままとし、RuntimeはPolicy/Contextで許可・選択済みの能力だけを実行する。
+- Unity-Graph-Engineering はPhase 8の明示Human Gateまで削除・archiveしない。
 
 ## 6. User-specific entrypoints
 
@@ -76,17 +83,20 @@
 - Runtime / Performance: `.agents/skills/unity-runtime-evidence/`
 - Context Budget: `Context/Budget/context-budget.yaml`
 - Prompt Templates: `Context/Prompt/Templates/`
-- Golden / Actual Behavior Eval: `Eval/` と既存 Tests。Production execution ownershipの統合は後続Phaseで行う。
+- Runtime Execution: `Runtime/Runner/` + `Runtime/Harnesses/`
+- Golden / Actual Behavior Eval: `Eval/` と既存 Tests。Runtimeはgradingしない。
 
 ## 7. Completion handoff
 
-Execution Ownerへ、適用Policy revision / Route / Context Pack / Primary Skill / Task Contract / Context ID / Context Fingerprint / Budget decision / Compression / unresolved bindings / validation requirementsを渡します。ContextはExecution結果やdurable stateを正本として保持しません。
+OrchestrationからRuntimeへ、適用Policy revision / Route / Context ID / Context Fingerprint / Execution Profile / Task Contract runtime projection / mutation scope / validation requirementsを渡します。RuntimeはExecutionResult / typed RuntimeFailure / MutationEvidence / Evidence refs / Telemetry refsを返し、durable stateやquality gradeを正本として保持しません。
 
 ## 8. Anti-regression
 
 - `AGENTS.md`へ詳細規約本文を戻さない。
 - Policy canonical sourceを互換Sourceで上書きしない。
 - ContextからRoute/Graph/Retry authorityを新設しない。
-- ContextからDurable Memory/Checkpoint/Evidence storeを書き込まない。
+- Runtimeからsemantic Graph/TODO/replan authorityを新設しない。
+- RuntimeからDurable Memory/Checkpoint/Evidence storeを書き込まない。
+- RuntimeでAgent qualityをgradeしない。
 - 新しい旧Path直参照・writeを追加しない。
 - Golden expectationをPromptへ混入させない。
