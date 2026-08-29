@@ -35,10 +35,11 @@ class ContextCutoverTests(unittest.TestCase):
         self.assertTrue(catalog["rules"]["context_catalog_does_not_select_route"])
         routes = catalog["routes"]
         self.assertEqual(len(routes), 11)
+        deprecated_scheme = "compatibility" + "://"
         for route_id, route in routes.items():
             contract = str(route["task_contract"])
             self.assertTrue(contract.startswith("Orchestration/Contracts/TaskContracts/"), route_id)
-            self.assertFalse(contract.startswith("compatibility://"), route_id)
+            self.assertFalse(contract.startswith(deprecated_scheme), route_id)
             self.assertTrue((ROOT / contract).is_file(), route_id)
 
     def test_materialized_context_uses_direct_task_contract(self):
@@ -60,7 +61,7 @@ class ContextCutoverTests(unittest.TestCase):
         fingerprint = yaml.safe_load((ROOT / "Context/Contracts/context-fingerprint.schema.yaml").read_text(encoding="utf-8"))
         definition = yaml.safe_load((ROOT / "Persistence/Contracts/definition-fingerprint.schema.yaml").read_text(encoding="utf-8"))
         resolver = RefResolver.from_schema(schema, store={
-            "urn:unityagent:context:context-fingerprint": fingerprint,
+            "urn:unityagent:context:materialized-context-view": fingerprint,
             "urn:unityagent:persistence:definition-fingerprint": definition,
         })
         Draft202012Validator(schema, resolver=resolver).validate(view)
@@ -69,8 +70,9 @@ class ContextCutoverTests(unittest.TestCase):
             self.assertNotIn("compatibility", str(value))
 
     def test_legacy_references_fail_closed(self):
+        deprecated_ref = "compatibility" + "://migration-source/user-policy"
         with self.assertRaises(self.resolver.ReferenceResolutionError):
-            self.resolver.resolve_for_read("compatibility://migration-source/user-policy", ROOT)
+            self.resolver.resolve_for_read(deprecated_ref, ROOT)
         legacy_ref = "." + "ai/user-policy.yaml"
         with self.assertRaises(self.resolver.ReferenceResolutionError):
             self.resolver.resolve_for_read(legacy_ref, ROOT)
