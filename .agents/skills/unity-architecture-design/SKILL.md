@@ -7,7 +7,7 @@ allowed-tools:
   - Edit
   - Bash
 metadata:
-  version: "1.3.0"
+  version: "1.3.1"
 ---
 
 # Unity Architecture Design
@@ -36,7 +36,7 @@ Unityの設計をPattern名から決めず、最初に問題規模とExisting Ow
 2. `SkillReferences/ARCHITECTURE_DECISION_POLICY.md`
 3. `SkillReferences/ARCHITECTURE_STANDARDS.md`
 4. `SkillReferences/CODING_STANDARDS.md`
-5. `SkillReferences/TYPE_NAMING_STANDARDS.md` when new or renamed Types are planned
+5. `SkillReferences/TYPE_NAMING_STANDARDS.md` when new or renamed Types are planned, or when the user explicitly requests Type Naming Review
 6. `SkillReferences/CODE_FORMATTING_STANDARDS.md` when C# output is produced
 7. 対象Sourceと直接依存
 8. ECS、Rendering、UI等の条件付きReference
@@ -226,7 +226,8 @@ Feature / System以上で構造選定が必要な場合のみ、問題に適合�
 
 ### Step 12 — Semantic Type Namingを最後に適用する
 
-新規Typeまたは明示Renameがある場合のみ`TYPE_NAMING_STANDARDS.md`を適用する。
+新規Type、明示Rename、またはユーザーから明示的なType Naming Review要求がある場合に`TYPE_NAMING_STANDARDS.md`を適用する。
+明示Reviewで新規TypeやRenameが不要と判断した場合も、既存Type名の維持、新規Type不要、Naming Convention維持をReview結果として記録する。
 
 Type / Responsibility / File Structureが正当化された後に、次を確認する。
 
@@ -246,13 +247,14 @@ Type / Responsibility / File Structureが正当化された後に、次を確認
 
 - Architecture Fit
 - File Granularity
-- Namespace and Type Naming Review when new or renamed Types are planned
+- Namespace and Type Naming Review when new or renamed Types are planned or an explicit Type Naming Review is requested
 - Ownership and Lifetime when applicable
 - Serialization Validation
 - ECS Data Layout when applicable
 - Performance Capture when Production performance adoption
 
 Naming Gate単独でArchitecture correctnessを証明しない。Architecture Fit / File Granularityを先に満たす。
+明示的なType Naming Review要求がある場合、Review結果が「既存Type名を維持し新規Typeを作らない」であっても`namespace_and_type_naming_review`を省略しない。
 
 ### Step 14 — Decisionを返す
 
@@ -316,7 +318,7 @@ Feature / System以上では必要に応じて次を返す。
 10. File Plan
 11. Types Kept in the Same File
 12. Intentionally Not Created Types
-13. Semantic Type Naming Review when applicable
+13. Semantic Type Naming Review when applicable or explicitly requested
 14. Dependency Direction
 15. Data and Execution Flow
 16. Serialization Contracts
