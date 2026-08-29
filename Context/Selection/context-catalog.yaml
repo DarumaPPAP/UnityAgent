@@ -8,6 +8,10 @@ risk_policy: Policy/Risk/risk-levels.yaml
 context_budget: Context/Budget/context-budget.yaml
 mcp_selection: Context/Selection/mcp-selection.yaml
 routes:
+  generic-planning:
+    context_pack: Context/Packs/generic-planning.yaml
+    primary_skill: .agents/skills/unity-doubt-review/SKILL.md
+    task_contract: Orchestration/Contracts/TaskContracts/generic-planning.yaml
   architecture-design:
     context_pack: Context/Packs/architecture-design.yaml
     primary_skill: .agents/skills/unity-architecture-design/SKILL.md
