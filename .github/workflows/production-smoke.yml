@@ -59,8 +59,8 @@ jobs:
 
       - name: Validate smoke integration boundaries
         run: |
-          python -m unittest Operations.Tests.test_one_repo_production_smoke
-          python -m py_compile Tools/ProductionSmoke/run_one_repo_smoke.py Eval/Behavior/grade_production_smoke.py
+          python -m unittest discover -s .github/ProductionSmoke -p "test_*.py"
+          python -m py_compile .github/ProductionSmoke/run_one_repo_smoke.py Eval/Behavior/grade_production_smoke.py
 
       - name: Production credential preflight
         shell: bash
@@ -104,7 +104,7 @@ jobs:
           if [ -n "$SMOKE_CASE" ]; then
             case_args=(--case "$SMOKE_CASE")
           fi
-          python Tools/ProductionSmoke/run_one_repo_smoke.py \
+          python .github/ProductionSmoke/run_one_repo_smoke.py \
             --run-id "$SMOKE_RUN_ID" \
             --model "$SMOKE_MODEL" \
             --reasoning-effort "$SMOKE_REASONING_EFFORT" \
