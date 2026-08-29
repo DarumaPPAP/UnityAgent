@@ -1,88 +1,27 @@
 #!/usr/bin/env python3
-"""Regression validation for canonical policy provenance normalization."""
-
+"""Phase-6 compatibility shim to canonical Eval/Behavior implementation."""
 from __future__ import annotations
-
+import importlib.util
+import runpy
+import sys
 from pathlib import Path
 
-import yaml
-
-from normalize_result import BehaviorEvidenceError, _canonical_node_id
-
-
 ROOT = Path(__file__).resolve().parents[2]
-FIXTURE = ROOT / "Tests" / "BehaviorEval" / "ProtocolFixtures" / "qualified-policy-fragment.yaml"
-
-
-def require(condition: bool, message: str, errors: list[str]) -> None:
-    if not condition:
-        errors.append(message)
-
-
-def main() -> int:
-    errors: list[str] = []
-
-    try:
-        fixture = yaml.safe_load(FIXTURE.read_text(encoding="utf-8")) or {}
-        loaded = ((fixture.get("policy", {}) or {}).get("loaded", []) or [])
-        require(len(loaded) == 1, "qualified policy regression fixture must contain exactly one policy", errors)
-        if loaded:
-            require(
-                _canonical_node_id(loaded[0], "policy") == "minimum_cohesive_solution_first",
-                "full dotted YAML fragment must normalize to the canonical leaf clause id",
-                errors,
-            )
-    except (OSError, yaml.YAMLError, BehaviorEvidenceError) as exc:
-        errors.append(f"phase11-naming-03 regression fixture failed: {exc}")
-
-    try:
-        derived = _canonical_node_id(
-            {
-                "id": "",
-                "source_path": ".unityagent-control/.ai/user-policy.yaml#core_user_policies.semantic_type_naming",
-            },
-            "policy",
-        )
-        require(derived == "semantic_type_naming", "missing policy id must derive from fragment leaf", errors)
-    except BehaviorEvidenceError as exc:
-        errors.append(f"fragment leaf derivation failed: {exc}")
-
-    try:
-        _canonical_node_id(
-            {
-                "id": "minimum_cohesive_solution_first",
-                "source_path": ".unityagent-control/.ai/user-policy.yaml#core_user_policies.semantic_type_naming",
-            },
-            "policy",
-        )
-        errors.append("mismatched policy id and fragment leaf must be rejected")
-    except BehaviorEvidenceError:
-        pass
-
-    try:
-        prefixed = _canonical_node_id(
-            {
-                "id": "policy:semantic_type_naming",
-                "source_path": ".unityagent-control/.ai/user-policy.yaml#core_user_policies.semantic_type_naming",
-            },
-            "policy",
-        )
-        require(prefixed == "semantic_type_naming", "policy: prefix normalization drifted", errors)
-    except BehaviorEvidenceError as exc:
-        errors.append(f"policy prefix normalization failed: {exc}")
-
-    if errors:
-        print("Policy provenance validation failed:")
-        for error in errors:
-            print(f"- {error}")
-        return 1
-
-    print(
-        "Policy provenance validation passed: full YAML fragment -> canonical leaf id, "
-        "leaf derivation, mismatch rejection, and policy prefix normalization."
-    )
-    return 0
-
+TARGET = ROOT / "Eval" / "Behavior" / Path(__file__).name
+for path in (ROOT, TARGET.parent):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
+if not TARGET.is_file():
+    raise RuntimeError(f"canonical Eval target is missing: {TARGET}")
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    runpy.run_path(str(TARGET), run_name="__main__")
+else:
+    spec = importlib.util.spec_from_file_location(f"_unityagent_eval_behavior_{TARGET.stem}", TARGET)
+    if spec is None or spec.loader is None:
+        raise ImportError(str(TARGET))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    for name in dir(module):
+        if not name.startswith("_"):
+            globals()[name] = getattr(module, name)
