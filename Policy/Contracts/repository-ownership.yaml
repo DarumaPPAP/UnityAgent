@@ -2,7 +2,8 @@ schema_version: "1.0"
 kind: repository_ownership_policy
 authority: Policy
 source_provenance:
-  legacy_source: compatibility://migration-source/mcp-activation
+  migration_record: docs/migration/architecture-split-list.md
+  legacy_source_id: mcp-activation
 repositories:
   policy: DarumaPPAP/UnityAgent
   mcp: DarumaPPAP/MyUnityMCP
