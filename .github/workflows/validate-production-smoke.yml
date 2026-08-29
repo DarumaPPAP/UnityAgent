@@ -3,8 +3,7 @@ name: Validate Production Smoke Integration
 on:
   pull_request:
     paths:
-      - "Tools/ProductionSmoke/**"
-      - "Operations/Tests/test_one_repo_production_smoke.py"
+      - ".github/ProductionSmoke/**"
       - "Runtime/Runner/Codex/**"
       - "Runtime/Guardrails/**"
       - "Runtime/Profiles/**"
@@ -42,8 +41,8 @@ jobs:
 
       - name: Validate Production Smoke integration boundaries
         run: |
-          python -m unittest Operations.Tests.test_one_repo_production_smoke
-          python -m py_compile Tools/ProductionSmoke/run_one_repo_smoke.py Eval/Behavior/grade_production_smoke.py
+          python -m unittest discover -s .github/ProductionSmoke -p "test_*.py"
+          python -m py_compile .github/ProductionSmoke/run_one_repo_smoke.py Eval/Behavior/grade_production_smoke.py
 
       - name: Verify real smoke is manual-only
         shell: bash
@@ -54,3 +53,10 @@ jobs:
           fi
           grep -Eq '^[[:space:]]*workflow_dispatch:' .github/workflows/production-smoke.yml
           grep -Fq 'BLOCKED_NOT_RUN' .github/workflows/production-smoke.yml
+
+      - name: Verify CI harness is outside production authority modules
+        shell: bash
+        run: |
+          test -f .github/ProductionSmoke/run_one_repo_smoke.py
+          test ! -e Tools/ProductionSmoke/run_one_repo_smoke.py
+          test ! -e Operations/Tests/test_one_repo_production_smoke.py
