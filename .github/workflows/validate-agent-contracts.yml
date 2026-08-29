@@ -48,8 +48,8 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install YAML parser
-        run: python -m pip install --disable-pip-version-check pyyaml
+      - name: Install validation dependencies
+        run: python -m pip install --disable-pip-version-check PyYAML jsonschema
 
       - name: Validate UnityAgent canonical contracts
         run: python Tools/validate_all.py
