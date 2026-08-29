@@ -373,7 +373,7 @@ def _persist_execution(case_dir: Path, result: dict[str, Any]) -> str:
     source = case_dir / "runtime/execution-result.yaml"
     digest = "sha256:" + hashlib.sha256(source.read_bytes()).hexdigest()
     runtime_record = {
-        "evidence_id": f"{result['run_id']}:execution-result",
+        "evidence_id": f"{result['run_id']}-execution-result",
         "run_id": result["run_id"],
         "step_id": result["step_id"],
         "producer": "Runtime/Runner/Codex/codex_runner.py",
