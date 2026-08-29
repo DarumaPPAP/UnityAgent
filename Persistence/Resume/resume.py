@@ -1,27 +1,10 @@
 """Fail-closed resume compatibility evaluation."""
 from __future__ import annotations
-from copy import deepcopy
 from typing import Any
 
 from Persistence.Checkpoint.checkpoint_store import CheckpointStore
-from Persistence.Store.atomic_store import PersistenceError, read_json, resolve_ref
-
-CRITICAL_FIELDS = {
-    "architecture_version",
-    "policy_revision",
-    "prompt_revision",
-    "context_revision",
-    "graph_revision",
-    "runtime_profile_revision",
-    "tool_schema_revision",
-    "checkpoint_schema_revision",
-    "evidence_schema_revision",
-    "eval_contract_revision",
-}
-
-
-def _diff(saved: dict[str, Any], current: dict[str, Any]) -> list[str]:
-    return sorted(key for key in CRITICAL_FIELDS if saved.get(key) != current.get(key))
+from Persistence.Contracts.definition_fingerprint import changed_definition_fields, validate_definition_fingerprint
+from Persistence.Store.atomic_store import read_json, resolve_ref
 
 
 def evaluate_resume(
@@ -32,10 +15,11 @@ def evaluate_resume(
     current_definition_fingerprint: dict[str, Any],
     compatibility: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    validate_definition_fingerprint(current_definition_fingerprint, field="current_definition_fingerprint")
     checkpoints = CheckpointStore(store_root)
     checkpoint = checkpoints.load(run_id, checkpoint_id, verify=True)
     saved = checkpoint["definition_fingerprint"]
-    changed = _diff(saved, current_definition_fingerprint)
+    changed = changed_definition_fields(saved, current_definition_fingerprint)
     compatibility = compatibility or {}
 
     if not changed:

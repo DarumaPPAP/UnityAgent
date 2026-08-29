@@ -1,14 +1,15 @@
-"""Immutable checkpoint creation, integrity verification, and restoration."""
+"""Immutable checkpoint creation, integrity verification, and state-only restoration."""
 from __future__ import annotations
 
 from copy import deepcopy
 from datetime import datetime, timezone
 from typing import Any
 
+from Persistence.Contracts.definition_fingerprint import validate_definition_fingerprint
 from Persistence.State.state_store import StateStore
 from Persistence.Evidence.evidence_store import EvidenceStore
 from Persistence.Store.atomic_store import (
-    PersistenceError, append_jsonl, canonical_json, read_json, resolve_ref,
+    PersistenceError, append_jsonl, read_json, resolve_ref,
     sha256_json, write_immutable_json,
 )
 from Persistence.Store.layout import PersistenceLayout
@@ -39,11 +40,15 @@ class CheckpointStore:
         definition_fingerprint: dict[str, Any],
         created_at: str | None = None,
     ) -> dict[str, Any]:
+        validate_definition_fingerprint(definition_fingerprint)
+        loop_ids = list(dict.fromkeys(str(loop_id) for loop_id in loop_ids))
+        evidence_refs = list(dict.fromkeys(str(ref) for ref in evidence_refs))
+
         # A checkpoint may reference only already-durable Evidence. Runtime capture
         # alone is not sufficient to make an Evidence reference historical truth.
         evidence_store = EvidenceStore(self.layout.root)
         for evidence_id in evidence_refs:
-            evidence_store.get(str(evidence_id))
+            evidence_store.get(evidence_id)
 
         refs, hashes = self.states.snapshot_run(run_id, loop_ids)
         record = {
@@ -55,7 +60,7 @@ class CheckpointStore:
             "execution_state_ref": refs["execution_state"],
             "workflow_state_ref": refs["workflow_state"],
             "loop_control_state_refs": [refs[f"loop:{loop_id}"] for loop_id in loop_ids],
-            "evidence_refs": list(dict.fromkeys(evidence_refs)),
+            "evidence_refs": evidence_refs,
             "definition_fingerprint": deepcopy(definition_fingerprint),
             "state_snapshot_hashes": {
                 "execution_state": hashes["execution_state"],
@@ -87,6 +92,11 @@ class CheckpointStore:
         return record
 
     def verify(self, record: dict[str, Any]) -> None:
+        validate_definition_fingerprint(record.get("definition_fingerprint"))
+        evidence_store = EvidenceStore(self.layout.root)
+        for evidence_id in record.get("evidence_refs", []):
+            evidence_store.get(str(evidence_id))
+
         if record.get("schema_version") == "1.1":
             supplied = record.get("checkpoint_hash")
             if not supplied or supplied != _checkpoint_hash(record):
@@ -116,10 +126,29 @@ class CheckpointStore:
             raise PersistenceError("unsupported_checkpoint_schema", f"unsupported checkpoint schema: {record.get('schema_version')}")
 
     def restore(self, run_id: str, checkpoint_id: str) -> None:
+        """Restore only checkpointed current State; Memory and Evidence are never rolled back.
+
+        Callers must perform Resume compatibility evaluation before invoking this
+        low-level state restore when definition revisions may have changed.
+        """
         record = self.load(run_id, checkpoint_id, verify=True)
         execution = read_json(resolve_ref(self.layout.root, record["execution_state_ref"]))
         workflow = read_json(resolve_ref(self.layout.root, record["workflow_state_ref"]))
+        loop_records = [
+            read_json(resolve_ref(self.layout.root, ref))
+            for ref in record.get("loop_control_state_refs", [])
+        ]
+
+        # Exact restore matters: LoopState created after the checkpoint must not
+        # survive and silently influence a resumed graph.
+        loops_dir = self.layout.run_root(run_id) / "current" / "loops"
+        restored_loop_ids = {str(item["loop_id"]) for item in loop_records}
+        if loops_dir.is_dir():
+            for path in loops_dir.glob("*.json"):
+                if path.stem not in restored_loop_ids:
+                    path.unlink()
+
         self.states.save_execution_state(execution)
         self.states.save_workflow_state(workflow)
-        for ref in record.get("loop_control_state_refs", []):
-            self.states.save_loop_control_state(read_json(resolve_ref(self.layout.root, ref)))
+        for loop_record in loop_records:
+            self.states.save_loop_control_state(loop_record)

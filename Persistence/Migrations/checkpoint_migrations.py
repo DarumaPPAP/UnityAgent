@@ -5,6 +5,7 @@ from copy import deepcopy
 from typing import Any
 
 from Persistence.Checkpoint.checkpoint_store import CheckpointStore, _checkpoint_hash
+from Persistence.Contracts.definition_fingerprint import DEFINITION_FIELDS, validate_definition_fingerprint
 from Persistence.Store.atomic_store import PersistenceError, append_jsonl, read_json, resolve_ref, sha256_json, write_immutable_json
 
 
@@ -20,6 +21,25 @@ def migrate_v1_0_to_v1_1(
     source = store.load(run_id, source_checkpoint_id, verify=True)
     if source.get("schema_version") != "1.0":
         raise PersistenceError("migration_source_version_mismatch", "source checkpoint must be schema 1.0")
+
+    source_fingerprint = deepcopy(source.get("definition_fingerprint"))
+    validate_definition_fingerprint(source_fingerprint, field="source.definition_fingerprint")
+    validate_definition_fingerprint(current_definition_fingerprint, field="current_definition_fingerprint")
+    if current_definition_fingerprint["checkpoint_schema_revision"] != "1.1":
+        raise PersistenceError("migration_target_version_mismatch", "v1.0->v1.1 migration requires checkpoint_schema_revision=1.1")
+
+    # A schema migration must not launder unrelated definition changes. Those
+    # changes are handled by Resume compatibility/replan/Human Review instead.
+    unrelated_changes = sorted(
+        field for field in DEFINITION_FIELDS
+        if field != "checkpoint_schema_revision"
+        and source_fingerprint[field] != current_definition_fingerprint[field]
+    )
+    if unrelated_changes:
+        raise PersistenceError(
+            "migration_definition_laundering_forbidden",
+            f"checkpoint schema migration cannot rewrite definition fields: {unrelated_changes}",
+        )
 
     state_refs = [
         source["execution_state_ref"],
@@ -39,10 +59,13 @@ def migrate_v1_0_to_v1_1(
         value = read_json(resolve_ref(store.layout.root, ref))
         loop_hashes[str(value["loop_id"])] = sha256_json(value)
 
+    migrated_fingerprint = deepcopy(source_fingerprint)
+    migrated_fingerprint["checkpoint_schema_revision"] = "1.1"
+
     migrated = deepcopy(source)
     migrated["schema_version"] = "1.1"
     migrated["checkpoint_id"] = new_checkpoint_id
-    migrated["definition_fingerprint"] = deepcopy(current_definition_fingerprint)
+    migrated["definition_fingerprint"] = migrated_fingerprint
     migrated["state_snapshot_hashes"] = {
         "execution_state": sha256_json(execution),
         "workflow_state": sha256_json(workflow),

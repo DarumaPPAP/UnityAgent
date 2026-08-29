@@ -3,6 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
+from Persistence.Contracts.definition_fingerprint import validate_definition_fingerprint
 from Persistence.Store.atomic_store import PersistenceError, append_jsonl, read_json, sha256_json, write_immutable_json
 from Persistence.Store.layout import PersistenceLayout
 
@@ -28,6 +29,7 @@ class EvidenceStore:
             raise PersistenceError("invalid_evidence_record", "invalid verification_status")
         if not record.get("provenance"):
             raise PersistenceError("invalid_evidence_record", "EvidenceRecord provenance must not be empty")
+        validate_definition_fingerprint(record.get("definition_fingerprint"))
 
         path = self.layout.evidence(str(record["evidence_id"]))
         created = write_immutable_json(path, deepcopy(record))
