@@ -38,29 +38,29 @@ subgraphs:
       - {id: compose_result, kind: delivery, owner: orchestration, parallel_safe: false, write_set: []}
       - {id: complete, kind: delivery, owner: orchestration, parallel_safe: false, write_set: []}
 edges:
-  - {from: classify_task, to: select_route, on: classified}
-  - {from: select_route, to: materialize_context, on: selected}
-  - {from: materialize_context, to: plan_scope, on: context_ready}
-  - {from: plan_scope, to: environment_check, on: investigate}
-  - {from: plan_scope, to: mutation_precheck, on: implement}
-  - {from: plan_scope, to: validation_health_check, on: verify_only}
-  - {from: plan_scope, to: compose_result, on: answer_only}
-  - {from: environment_check, to: inspect_sources, on: healthy}
-  - {from: environment_check, to: assess_evidence, on: unavailable}
-  - {from: inspect_sources, to: assess_evidence, on: observed}
-  - {from: assess_evidence, to: mutation_precheck, on: implementation_ready}
-  - {from: assess_evidence, to: compose_result, on: answer_ready}
-  - {from: mutation_precheck, to: execute_change, on: approved}
-  - {from: mutation_precheck, to: compose_result, on: blocked}
-  - {from: execute_change, to: assess_change, on: observed}
-  - {from: assess_change, to: validation_health_check, on: validation_required}
-  - {from: assess_change, to: compose_result, on: validation_not_required}
-  - {from: validation_health_check, to: verify, on: healthy}
-  - {from: validation_health_check, to: assess_validation, on: unavailable}
-  - {from: verify, to: assess_validation, on: observed}
-  - {from: assess_validation, to: compose_result, on: sufficient}
-  - {from: assess_validation, to: compose_result, on: unavailable_but_reportable}
-  - {from: compose_result, to: complete, on: delivered}
+  - {from: classify_task, to: select_route, 'on': classified}
+  - {from: select_route, to: materialize_context, 'on': selected}
+  - {from: materialize_context, to: plan_scope, 'on': context_ready}
+  - {from: plan_scope, to: environment_check, 'on': investigate}
+  - {from: plan_scope, to: mutation_precheck, 'on': implement}
+  - {from: plan_scope, to: validation_health_check, 'on': verify_only}
+  - {from: plan_scope, to: compose_result, 'on': answer_only}
+  - {from: environment_check, to: inspect_sources, 'on': healthy}
+  - {from: environment_check, to: assess_evidence, 'on': unavailable}
+  - {from: inspect_sources, to: assess_evidence, 'on': observed}
+  - {from: assess_evidence, to: mutation_precheck, 'on': implementation_ready}
+  - {from: assess_evidence, to: compose_result, 'on': answer_ready}
+  - {from: mutation_precheck, to: execute_change, 'on': approved}
+  - {from: mutation_precheck, to: compose_result, 'on': blocked}
+  - {from: execute_change, to: assess_change, 'on': observed}
+  - {from: assess_change, to: validation_health_check, 'on': validation_required}
+  - {from: assess_change, to: compose_result, 'on': validation_not_required}
+  - {from: validation_health_check, to: verify, 'on': healthy}
+  - {from: validation_health_check, to: assess_validation, 'on': unavailable}
+  - {from: verify, to: assess_validation, 'on': observed}
+  - {from: assess_validation, to: compose_result, 'on': sufficient}
+  - {from: assess_validation, to: compose_result, 'on': unavailable_but_reportable}
+  - {from: compose_result, to: complete, 'on': delivered}
 gates:
   - {id: mutation_policy_gate, node_id: mutation_precheck, source: policy}
   - {id: runtime_health_gate, node_id: environment_check, source: runtime_health}
