@@ -1,7 +1,7 @@
 schema_version: "1.0"
 kind: materialization_catalog
 authority: Context
-route_authority: external_orchestration_or_phase4_compatibility
+route_authority: Orchestration/Routing
 materializer_requires_explicit_route_id: true
 user_policy: Policy/User/user-policy.yaml
 risk_policy: Policy/Risk/risk-levels.yaml

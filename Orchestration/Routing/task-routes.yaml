@@ -1,0 +1,111 @@
+schema_version: '1.0'
+authority: Orchestration
+source_provenance: phase4-routing-migration-recorded-in-docs
+rules:
+  select_exactly_one_primary_route: true
+  technology_keyword_is_not_route_authority: true
+  unknown_dimensions_must_not_be_guessed: true
+  unmatched_fallback: generic-planning
+routes:
+  architecture-design:
+    priority: 80
+    entry_action: plan
+    fingerprint_match:
+      intent: [design, review, refactor]
+      artifact: [architecture]
+      architecture_state: [undecided]
+      mutation_target: [none, source]
+  graphics-mcp:
+    priority: 90
+    entry_action: plan
+    fingerprint_match:
+      intent: [design, implement, integrate, review]
+      artifact: [mcp]
+      scope: [cross_system, multi_source, read_only]
+      mutation_target: [mcp_contract, none]
+  csharp-local-fix:
+    priority: 90
+    entry_action: implement
+    fingerprint_match:
+      intent: [fix, implement]
+      artifact: [csharp]
+      scope: [local]
+      architecture_state: [decided, not_applicable]
+      mutation_target: [source]
+      evidence_state: [known, partial]
+  rendering-incident:
+    priority: 100
+    entry_action: investigate
+    fingerprint_match:
+      intent: [investigate, fix]
+      artifact: [rendering, shader, renderer_feature]
+      scope: [local, multi_source, project_asset]
+      failure_mode: [rendering_unknown, platform_divergence]
+      evidence_state: [unknown, partial]
+  shader-change:
+    priority: 90
+    entry_action: implement
+    fingerprint_match:
+      intent: [fix, implement, optimize]
+      artifact: [shader]
+      architecture_state: [decided, not_applicable]
+      failure_mode: [none, compile, runtime, performance]
+      mutation_target: [shader_source]
+      evidence_state: [known, partial, baseline_required]
+  renderer-feature-change:
+    priority: 90
+    entry_action: implement
+    fingerprint_match:
+      intent: [fix, implement, refactor]
+      artifact: [renderer_feature]
+      architecture_state: [decided, not_applicable]
+      failure_mode: [none, compile, runtime]
+      mutation_target: [renderer_pipeline]
+      evidence_state: [known, partial]
+  performance-experiment:
+    priority: 95
+    entry_action: investigate
+    fingerprint_match:
+      intent: [optimize, investigate]
+      artifact: [performance]
+      failure_mode: [performance]
+      mutation_target: [none, source, shader_source, renderer_pipeline]
+      evidence_state: [baseline_required, known, partial]
+  asset-data-change:
+    priority: 90
+    entry_action: implement
+    fingerprint_match:
+      intent: [fix, implement, integrate]
+      artifact: [asset_data]
+      scope: [local, project_asset]
+      failure_mode: [none, serialization, runtime]
+      mutation_target: [serialized_asset]
+  portable-feature:
+    priority: 90
+    entry_action: plan
+    forced_profile: generic_planning
+    fingerprint_match:
+      intent: [design, implement]
+      artifact: [package, editor_tool, csharp]
+      scope: [portable_package]
+      mutation_target: [none, source, package]
+      project_access: [unavailable, not_required]
+  safe-import-integration:
+    priority: 100
+    entry_action: implement
+    forced_profile: team_safe_import
+    fingerprint_match:
+      intent: [integrate]
+      artifact: [package]
+      scope: [safe_import]
+      mutation_target: [package]
+      project_access: [restricted]
+  visual-direction:
+    priority: 85
+    entry_action: plan
+    fingerprint_match:
+      intent: [design, review, implement]
+      artifact: [visual]
+      failure_mode: [none, visual]
+      mutation_target: [none, visual_plan, serialized_asset]
+      evidence_state: [known, partial, not_applicable]

@@ -1,0 +1,35 @@
+name: Validate Orchestration
+
+on:
+  pull_request:
+    paths:
+      - "Orchestration/**"
+      - "Context/Selection/context-catalog.yaml"
+      - "AGENTS.md"
+      - "docs/migration/phase4-orchestration.md"
+      - ".github/workflows/validate-orchestration.yml"
+  push:
+    branches: [main]
+    paths:
+      - "Orchestration/**"
+      - "Context/Selection/context-catalog.yaml"
+      - "AGENTS.md"
+      - ".github/workflows/validate-orchestration.yml"
+
+jobs:
+  phase4:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install validation dependencies
+        run: python -m pip install --disable-pip-version-check PyYAML jsonschema
+      - name: Orchestration contracts and topology
+        run: python -m unittest discover -s Orchestration/Tests -p "test_*.py"
+      - name: Runtime boundary remains green
+        run: python -m unittest discover -s Runtime/Tests -p "test_*.py"
+      - name: Context boundary remains green
+        run: python -m unittest discover -s Context/Tests -p "test_*.py"

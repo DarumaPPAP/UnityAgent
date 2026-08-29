@@ -1,0 +1,78 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:orchestration:graph-definition
+title: GraphDefinition
+type: object
+additionalProperties: false
+required: [schema_version, parent_graph_id, entry_subgraph_id, subgraphs, edges, gates, local_loops]
+properties:
+  schema_version: {const: '1.0'}
+  parent_graph_id: {type: string, minLength: 1}
+  entry_subgraph_id: {type: string, minLength: 1}
+  subgraphs:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      additionalProperties: false
+      required: [id, purpose, entry_node_id, nodes]
+      properties:
+        id: {type: string, minLength: 1}
+        purpose: {type: string, minLength: 1}
+        entry_node_id: {type: string, minLength: 1}
+        nodes:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, kind, owner]
+            properties:
+              id: {type: string, minLength: 1}
+              kind: {enum: [semantic, context_handoff, runtime_action, health_check, verification, delivery]}
+              owner: {enum: [orchestration, context, runtime]}
+              runtime_contract: {type: [string, 'null']}
+              parallel_safe: {type: boolean}
+              write_set:
+                type: array
+                items: {type: string, minLength: 1}
+                uniqueItems: true
+  edges:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required: [from, to, 'on']
+      properties:
+        from: {type: string, minLength: 1}
+        to: {type: string, minLength: 1}
+        'on': {type: string, minLength: 1}
+  gates:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required: [id, node_id, source]
+      properties:
+        id: {type: string, minLength: 1}
+        node_id: {type: string, minLength: 1}
+        source: {enum: [policy, context, runtime_evidence, runtime_health, human]}
+  local_loops:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required: [id, subgraph_id, from_node_id, to_node_id, continue_on, replan_on, exit_on]
+      properties:
+        id: {type: string, minLength: 1}
+        subgraph_id: {type: string, minLength: 1}
+        from_node_id: {type: string, minLength: 1}
+        to_node_id: {type: string, minLength: 1}
+        continue_on:
+          type: array
+          items: {type: string, minLength: 1}
+        replan_on:
+          type: array
+          items: {type: string, minLength: 1}
+        exit_on:
+          type: array
+          items: {type: string, minLength: 1}
