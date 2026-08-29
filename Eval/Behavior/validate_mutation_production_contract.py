@@ -13,10 +13,9 @@ for path in (ROOT, HERE):
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))
 
-from Context.Compatibility.path_resolver import resolve_for_read, resolve_reference  # noqa: E402
 from derive_signals import derive_signals  # noqa: E402
 
-TASK_CONTRACT = resolve_for_read("compatibility://task-contracts/csharp-local-fix", ROOT)
+TASK_CONTRACT = ROOT / "Orchestration" / "Contracts" / "TaskContracts" / "csharp-local-fix.yaml"
 CONTEXT_PACK = ROOT / "Context" / "Packs" / "csharp-local-fix.yaml"
 SAFE_PATCH_SKILL = ROOT / ".agents" / "skills" / "csharp-safe-patch" / "SKILL.md"
 GOLDEN_CASES = ROOT / "Eval" / "Datasets" / "Golden" / "cases.yaml"
@@ -43,7 +42,7 @@ def require(condition: bool, message: str, errors: list[str]) -> None:
 
 
 def _canonical_ref(value: object) -> str:
-    return resolve_reference(str(value or ""), ROOT)
+    return str(value or "").replace("\\", "/").strip()
 
 
 def golden_mutation_case() -> dict:
