@@ -1,0 +1,23 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:operations:approved-control-command
+title: ApprovedControlCommand
+type: object
+additionalProperties: false
+required: [schema_version, command_id, request_id, action, target_authority, target_api, run_id, route_id, parameters, policy_revision, risk_level, approval_status, approval_id, authorization_hash, authorized_at]
+properties:
+  schema_version: {const: '1.0'}
+  command_id: {type: string, minLength: 1}
+  request_id: {type: string, minLength: 1}
+  action:
+    enum: [pause, resume, stop, quarantine, disable_route, rollback_config, force_hitl, switch_model, replay_checkpoint]
+  target_authority: {enum: [Runtime, Orchestration, ChangeManagement]}
+  target_api: {type: string, minLength: 1}
+  run_id: {type: [string, 'null']}
+  route_id: {type: [string, 'null']}
+  parameters: {type: object, additionalProperties: true}
+  policy_revision: {type: string, minLength: 1}
+  risk_level: {enum: [R0, R1, R2, R3, R4]}
+  approval_status: {enum: [not_required, approved]}
+  approval_id: {type: [string, 'null']}
+  authorization_hash: {type: string, pattern: '^[a-f0-9]{64}$'}
+  authorized_at: {type: string, format: date-time}

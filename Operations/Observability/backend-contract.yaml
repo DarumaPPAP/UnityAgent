@@ -1,0 +1,11 @@
+schema_version: '1.0'
+authority: Operations
+backend_contract:
+  accepted_record_types: [trace, metric, structured_log, audit, detection, incident]
+  append_only_record_types: [audit, detection, incident]
+  query_filters: [record_type, run_id, event_type, severity, metric_name, since, until]
+  search_is_read_only: true
+  dashboards_are_read_only: true
+  evidence_truth_remains_in_persistence: true
+  execution_state_truth_remains_in_persistence: true
+  eval_quality_truth_remains_in_eval: true

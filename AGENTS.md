@@ -32,8 +32,9 @@
 12. RuntimeがcaptureしたExecution Evidenceは `Persistence/Evidence` にappendされて初めてdurable Evidence truthになる。Checkpointはcommitted Stateのimmutable snapshot refsを束ね、Memory/Evidenceそのものにはならない。
 13. Resume時は `Persistence/Resume/` が保存済みDefinitionFingerprintと現在定義を比較し、compatible / migration / replan / Human Reviewをfail-closedで決定する。
 14. Evalが必要な場合、`Eval/Datasets/` と `Eval/GoldenContracts/` を評価入力の正本とし、Runtime/Persistenceのstructured factsを `Eval/Behavior/` / `Eval/Attribution/` で測定する。`not_observed` infrastructure runはAgent品質denominatorから除外し、Evalは必要ならnon-applying `ChangeProposal`だけを生成する。
-15. `Context/Manifest/` は current-call Context provenanceを記録し、WorkflowState / Checkpoint / Evidence truth / Graph topologyの正本にはしない。
-16. 旧Pathを必要とする未移行機能は `Context/Compatibility/legacy-path-map.yaml` のread-only key / resolver経由だけで参照する。新規writeは禁止する。
+15. Operationsは `Runtime/Telemetry/` とEvalのstructured factsを `Operations/Observability/` へ取り込み、Detection / Incident / Runbookを構築する。運用controlは `Operations/RuntimeControl/` でPolicy decisionとApproval decisionを検証したapproved commandだけを `Runtime/Control/` / `Orchestration/Control/` / `Operations/ChangeManagement/` のapproved APIへ渡す。
+16. `Context/Manifest/` は current-call Context provenanceを記録し、WorkflowState / Checkpoint / Evidence truth / Graph topologyの正本にはしない。
+17. 旧Pathを必要とする未移行機能は `Context/Compatibility/legacy-path-map.yaml` のread-only key / resolver経由だけで参照する。新規writeは禁止する。
 
 ## 3. Canonical map
 
@@ -55,6 +56,9 @@
 | Persistence Memory | `Persistence/Memory/` | durable long-term Memory lifecycle and promotion gate |
 | Persistence Evidence | `Persistence/Evidence/` | append/immutable-oriented Evidence truth |
 | Persistence Session | `Persistence/Session/` | session-to-run/checkpoint durable association |
+| Operations Observability | `Operations/Observability/` + `Operations/Detection/` + `Operations/Incidents/` | telemetry backend/search/dashboard, async detection, incidents and runbooks |
+| Operations Runtime Control | `Operations/RuntimeControl/` + `Runtime/Control/` + `Orchestration/Control/` | external Policy/Approval-gated operational control; never hard execution internals |
+| Operations Change Management | `Operations/ChangeManagement/` | VersionManifest, rollout/rollback/config change management |
 | Eval Behavior / Golden / Datasets | `Eval/Behavior/` + `Eval/Golden/` + `Eval/Datasets/` | Actual Behavior / Golden grading and regression data |
 | Eval Attribution / Replay | `Eval/Attribution/` + `Eval/Replay/` | typed failure attribution, quality denominator, historical replay |
 | Eval Change Proposals | `Eval/ChangeProposals/` | non-applying improvement proposals only |
@@ -71,6 +75,12 @@
 - Context Memory Projectionはmodel inputでありdurable Memory truthではない。
 - Runtime Evidence captureはdurable truthではなく、Persistence Evidenceへのappend後にのみhistorical Evidenceとなる。
 - Evidenceはhistorical factとしてimmutable-orientedに扱い、Resumeの都合で元record/payload/hash/provenanceを書き換えない。
+- Operations observability recordはPersistence Evidence/ExecutionStateの代替truthではない。durable Evidenceは参照だけする。
+- `Operations/RuntimeControl` は外部運用control、`Runtime/ExecutionControl` はhard execution safetyであり別責務とする。
+- Operationsはraw control requestをRuntime/Orchestrationへ直接dispatchしない。Policy decisionとApproval decisionを通過したapproved commandだけを明示control APIへ渡す。
+- OperationsはPolicyのrisk/approval判断を上書きしない。R4 always-required approvalをdowngradeしない。
+- checkpoint replayは `Persistence/Resume` compatibility decision ref無しで実行しない。
+- Operations Detection / Incident / Dashboard / SearchはRuntime/Evalを直接変更しない。
 - EvalはRuntime/Codex/Unity/process executionを実装しない。既に観測されたstructured factsを測定する。
 - Evalはtyped failureをresponse/stderr proseから推測しない。`changed_paths`をdiffから再構築せずRuntimeのstructured factを保持する。
 - Evalの`not_observed` infrastructure/evaluator/fixture/unavailable-evidence runをAgent品質denominatorへ入れない。
@@ -88,6 +98,7 @@
 - Phase 4以降、Route / ParentGraph / SubGraph / Node / Gate / LocalLoop / semantic TODO selection / semantic replanはUnityAgent `Orchestration/` がcanonical owner。
 - Phase 5以降、ExecutionState / WorkflowState / LoopControlState / RunCheckpoint / SessionRecord / MemoryRecord / EvidenceRecord のdurable truthはUnityAgent `Persistence/` がcanonical owner。
 - Phase 6以降、Behavior Eval / Golden Eval / datasets / graders / failure attribution / historical replay / evaluation reportsはUnityAgent `Eval/` がcanonical owner。
+- Phase 7以降、observability backend/search/dashboard、async detection、Incident/Runbook、external operational RuntimeControl、ChangeManagement/VersionManifestはUnityAgent `Operations/` がcanonical owner。
 - `Tools/BehaviorEval/` と `Tools/GoldenEval/` はPhase 8までcanonical Evalへのcompatibility shimとして残す。旧subprocess-capable Behavior runnerは `Eval/Compatibility/BehaviorEval/` の監査用referenceでありcanonical execution pathではない。
 - Unity-Graph-Engineering `BehaviorEvalAdapter` のexecution bridgeはcanonical authorityではない。Runtime factsの評価変換だけがUnityAgent Evalへ取り込まれる。
 - `DarumaPPAP/Unity-Graph-Engineering` の旧State/Continuation/ExecutionOrchestrator/LayeredMemory実装はPhase 8 Human Gateまで互換・監査用referenceとして残す。
@@ -109,12 +120,14 @@
 - Persistence Layout: `Persistence/persistence-layout.yaml`
 - State / Checkpoint / Resume: `Persistence/State/` + `Persistence/Checkpoint/` + `Persistence/Resume/`
 - Durable Memory / Evidence: `Persistence/Memory/` + `Persistence/Evidence/`
+- Operations Observability / Incidents: `Operations/Observability/` + `Operations/Detection/` + `Operations/Incidents/`
+- Operations Control / ChangeManagement: `Operations/RuntimeControl/` + `Operations/ChangeManagement/`
 - Golden / Actual Behavior Eval: `Eval/Golden/` + `Eval/Behavior/` + `Eval/Datasets/`
 - Eval Attribution / Replay: `Eval/Attribution/` + `Eval/Replay/`
 
 ## 7. Completion handoff
 
-OrchestrationからRuntimeへ、適用Policy revision / Route / Context ID / Context Fingerprint / Execution Profile / Task Contract runtime projection / mutation scope / validation requirementsを渡します。RuntimeはExecutionResult / typed RuntimeFailure / MutationEvidence / captured Evidence / Telemetryを返します。Persistenceはそのうちdurableに保持すべきState/Evidence/Memory/Checkpoint/Sessionをcanonical contractsに従って保存します。EvalはRuntime/Persistenceのstructured factsとcanonical GoldenContract/Datasetを読み、quality measurement / failure attribution / regression reportを生成します。必要な改善はChangeProposalとして提案しますが、production authorityを直接書き換えません。
+OrchestrationからRuntimeへ、適用Policy revision / Route / Context ID / Context Fingerprint / Execution Profile / Task Contract runtime projection / mutation scope / validation requirementsを渡します。RuntimeはExecutionResult / typed RuntimeFailure / MutationEvidence / captured Evidence / Telemetryを返します。Persistenceはそのうちdurableに保持すべきState/Evidence/Memory/Checkpoint/Sessionをcanonical contractsに従って保存します。EvalはRuntime/Persistenceのstructured factsとcanonical GoldenContract/Datasetを読み、quality measurement / failure attribution / regression reportを生成します。必要な改善はChangeProposalとして提案しますが、production authorityを直接書き換えません。OperationsはRuntime/Evalのstructured telemetryを観測し、Detection / Incident / Runbookを生成します。運用actionが必要ならPolicy/Approvalを通過したapproved commandだけをauthority別control APIへ渡し、rollout/rollbackはVersionManifest付きChangeManagementで管理します。
 
 ## 8. Anti-regression
 
@@ -127,6 +140,9 @@ OrchestrationからRuntimeへ、適用Policy revision / Route / Context ID / Con
 - Runtimeからsemantic Graph/TODO/replan authorityを新設しない。
 - Runtimeからdurable Evidence/Memory/Checkpoint truthを書き込まない。
 - PersistenceからRoute/semantic decision/Runtime execution/Eval grading authorityを新設しない。
+- Operationsから`Runtime/ExecutionControl`内部へ直接controlを実装しない。
+- OperationsからPolicy/Approvalを迂回するraw control dispatchを実装しない。
+- Operations Detection/Incident/Runbookからproduction mutationを直接実行しない。
 - EvalからRuntime/process/tool/Unity executionを実装しない。
 - EvalからPolicy/Context/Orchestration/Runtime/Persistence/Operationsのproduction definitionを直接変更しない。
 - `not_observed` runをAgent品質regressionとして数えない。
