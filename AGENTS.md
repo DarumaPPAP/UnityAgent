@@ -21,15 +21,16 @@
 1. `Policy/User/user-policy.yaml` を読む。
 2. Policy Risk / Security / Approval / Evidence は `Policy/` を正本として適用する。
 3. Task Fingerprintを構築し、`Orchestration/Routing/task-routes.yaml` でPrimary Routeとsemantic Execution Profileを一つ選ぶ。Technology keywordだけではRouteを決めない。
-4. `Context/Selection/context-catalog.yaml` から選択済み Route の Context Pack、Primary Skill、Task Contract参照を解決する。
-5. `Context/Assembly/materialize_context.py` で current-call `MaterializedContextView` を構築し、Context Budgetを評価する。
-6. 単純でboundedなTaskは `Policy -> Orchestration Route -> Context -> Runtime -> Verification -> Result` のFast Pathを優先する。
-7. semantic coordinationが必要なTaskだけ `Orchestration/Definitions/development-parent-graph.yaml` の ParentGraph/SubGraph/Node/Gate/LocalLoop を使う。
-8. OrchestrationがRuntime handoffを作り、actual process/tool execution、hard timeout/cancellation、mutation scope、tool dispatch、health/verification/evidence capture は `Runtime/` が実行する。
-9. MCP が必要な場合、Contextは必要Description/Manifestを選択し、Policyが許可条件を定義し、Runtimeが実Tool Groupを公開する。
-10. Orchestrationは `Persistence/Contracts/WorkflowState` / `LoopControlState` 互換のstate patchを返すが、durable writeは行わない。
-11. `Context/Manifest/` は current-call Context provenanceを記録し、WorkflowState / Checkpoint / Evidence truth / Graph topologyの正本にはしない。
-12. 旧Pathを必要とする未移行機能は `Context/Compatibility/legacy-path-map.yaml` の read-only key経由だけで参照する。新規writeは禁止する。
+4. 選択Routeの `required_policy_clauses` は Policy provenance として記録し、Evidence / Eval から追跡可能にする。
+5. `Context/Selection/context-catalog.yaml` から選択済み Route の Context Pack、Primary Skill、Task Contract参照を解決する。
+6. `Context/Assembly/materialize_context.py` で current-call `MaterializedContextView` を構築し、Context Budgetを評価する。
+7. 単純でboundedなTaskは `Policy -> Orchestration Route -> Context -> Runtime -> Verification -> Result` のFast Pathを優先する。
+8. semantic coordinationが必要なTaskだけ `Orchestration/Definitions/development-parent-graph.yaml` の ParentGraph/SubGraph/Node/Gate/LocalLoop を使う。
+9. OrchestrationがRuntime handoffを作り、actual process/tool execution、hard timeout/cancellation、mutation scope、tool dispatch、health/verification/evidence capture は `Runtime/` が実行する。
+10. MCP が必要な場合、Contextは必要Description/Manifestを選択し、Policyが許可条件を定義し、Runtimeが実Tool Groupを公開する。
+11. Orchestrationは `Persistence/Contracts/WorkflowState` / `LoopControlState` 互換のstate patchを返すが、durable writeは行わない。
+12. `Context/Manifest/` は current-call Context provenanceを記録し、WorkflowState / Checkpoint / Evidence truth / Graph topologyの正本にはしない。
+13. 旧Pathを必要とする未移行機能は `Context/Compatibility/legacy-path-map.yaml` の read-only key経由だけで参照する。新規writeは禁止する。
 
 ## 3. Canonical map
 
