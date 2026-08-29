@@ -1,0 +1,26 @@
+schema_version: '1.0'
+status: canonical_phase6
+ownership:
+  behavior_and_grading: DarumaPPAP/UnityAgent:Eval
+  execution_runtime: DarumaPPAP/UnityAgent:Runtime
+  durable_evidence: DarumaPPAP/UnityAgent:Persistence
+rules:
+  production_execution_path_required: true
+  evaluation_specific_agent_behavior_forbidden: true
+  actual_behavior_requires_execution_evidence: true
+  agent_self_report_is_supporting_evidence_only: true
+  one_agent_attempt_for_smoke: true
+  unavailable_is_not_passed: true
+  broken_eval_is_not_model_failure: true
+  mutation_requires_sandbox: true
+  main_workspace_mutation_forbidden: true
+  provider_sdk_dependency_in_UnityAgent_forbidden: true
+  eval_runtime_execution_forbidden: true
+  golden_expectation_in_runtime_prompt_forbidden: true
+  structured_runtime_facts_must_be_preserved: true
+  not_observed_quality_denominator_forbidden: true
+  change_proposal_must_not_apply: true
+compatibility:
+  old_behavior_runner: Eval/Compatibility/BehaviorEval/run_behavior_eval.py
+  old_tools_path: Tools/BehaviorEval
+  delete_gate: Phase 8 Human Gate
