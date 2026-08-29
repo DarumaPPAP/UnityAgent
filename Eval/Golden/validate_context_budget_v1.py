@@ -17,7 +17,7 @@ from Context.Compatibility.path_resolver import resolve_for_read, resolve_refere
 CASES_PATH = ROOT / "Eval" / "Datasets" / "Golden" / "context-budget-v1.yaml"
 BUDGET_PATH = ROOT / "Context" / "Budget" / "context-budget.yaml"
 INDEX_PATH = resolve_for_read("compatibility://migration-source/routing-index", ROOT)
-MANIFEST_SCHEMA_PATH = ROOT / "Context" / "Manifest" / "context-manifest.schema.yaml"
+LEGACY_MANIFEST_SCHEMA_PATH = ROOT / "Context" / "Compatibility" / "legacy-context-manifest.schema.yaml"
 CANONICAL_BUDGET_REF = "Context/Budget/context-budget.yaml"
 
 EXPECTED_PAIRS = {
@@ -49,7 +49,7 @@ def main() -> int:
         suite = load(CASES_PATH)
         budget = load(BUDGET_PATH)
         index = load(INDEX_PATH)
-        manifest_schema = load(MANIFEST_SCHEMA_PATH)
+        legacy_manifest_schema = load(LEGACY_MANIFEST_SCHEMA_PATH)
     except (OSError, ValueError, yaml.YAMLError) as exc:
         print(f"Context Budget v1 Golden validation failed:\n- {exc}")
         return 1
@@ -147,12 +147,15 @@ def main() -> int:
     if resolved_budget_ref != CANONICAL_BUDGET_REF:
         errors.append("compatibility routing index must resolve to the canonical Context Budget contract")
 
-    extensions = manifest_schema.get("extensions", {}) or {}
+    # These extension fields belong to the historical Context Manifest contract,
+    # not the Phase-2 canonical current-call ContextManifest schema. Keep the
+    # regression check against its explicit read-only compatibility copy.
+    extensions = legacy_manifest_schema.get("extensions", {}) or {}
     if str(extensions.get("context_budget")) != "1.0":
-        errors.append("Context Manifest must declare Context Budget extension v1.0")
-    budget_rules = manifest_schema.get("budget_rules", {}) or {}
+        errors.append("Compatibility Context Manifest must declare Context Budget extension v1.0")
+    budget_rules = legacy_manifest_schema.get("budget_rules", {}) or {}
     if budget_rules.get("mutation_requires_within_budget") is not True:
-        errors.append("Context Manifest budget rules must block non-budgeted mutation")
+        errors.append("Compatibility Context Manifest budget rules must block non-budgeted mutation")
 
     profiles = budget.get("profiles", {}) or {}
     for profile_id in ("tight", "standard", "wide"):
