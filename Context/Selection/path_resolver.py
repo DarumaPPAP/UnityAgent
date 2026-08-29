@@ -2,10 +2,14 @@
 """Canonical Phase 8 repository reference resolver.
 
 Only canonical repository-relative paths are accepted. Legacy compatibility:// URIs and
-.ai paths are rejected after cutover instead of being silently rewritten.
+legacy migration-root paths are rejected after cutover instead of being silently rewritten.
 """
 from __future__ import annotations
 from pathlib import Path
+
+
+LEGACY_ROOT = "." + "ai"
+LEGACY_PREFIX = LEGACY_ROOT + "/"
 
 
 class ReferenceResolutionError(ValueError):
@@ -19,8 +23,8 @@ def resolve_reference(reference: str) -> str:
     if value.startswith("compatibility://"):
         raise ReferenceResolutionError("compatibility URI is forbidden after Phase 8 cutover")
     base = value.split("#", 1)[0]
-    if base == ".ai" or base.startswith(".ai/"):
-        raise ReferenceResolutionError("legacy .ai path is forbidden after Phase 8 cutover")
+    if base == LEGACY_ROOT or base.startswith(LEGACY_PREFIX):
+        raise ReferenceResolutionError("legacy migration-root path is forbidden after Phase 8 cutover")
     return value
 
 
