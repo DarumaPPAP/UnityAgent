@@ -1,6 +1,6 @@
 schema_version: '1.0'
 authority: Orchestration
-source_provenance: UnityAgent/.ai/context-index.yaml@phase4-migration
+source_provenance: phase4-routing-migration-recorded-in-docs
 rules:
   select_exactly_one_primary_route: true
   technology_keyword_is_not_route_authority: true
