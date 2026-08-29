@@ -1,0 +1,1367 @@
+schema_version: '1.0'
+cases:
+- id: GOLDEN-LIFECYCLE-001
+  category: lifecycle
+  kind: regression
+  pair_id: lifecycle-update
+  boundary: forbid
+  task:
+    summary: Unity Lifecycleまたは既存Callbackで解決できる局所変更
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - unity_lifecycle_first
+    - minimum_cohesive_solution_first
+    required_gates:
+    - static_review
+    - compile
+    required_signals:
+    - lifecycle_or_existing_callback_first
+    forbidden_signals:
+    - unnecessary_update
+    - polling_without_reason
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-LIFECYCLE-002
+  category: lifecycle
+  kind: regression
+  pair_id: lifecycle-update
+  boundary: require
+  task:
+    summary: 継続的な毎Frame観測そのものが要求でUpdateが最小解になるケース
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - case_by_case_design_depth
+    - unity_lifecycle_first
+    required_gates:
+    - static_review
+    - compile
+    required_signals:
+    - update_has_explicit_runtime_reason
+    forbidden_signals:
+    - update_is_globally_forbidden
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-SURFACE-001
+  category: architecture
+  kind: regression
+  pair_id: requirement-surface
+  boundary: forbid
+  task:
+    summary: MainCameraだけを対象にする局所機能
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - requirement_surface_lock
+    - no_premature_generalization
+    required_gates:
+    - static_review
+    - compile
+    required_signals:
+    - uses_existing_main_camera_binding
+    forbidden_signals:
+    - unrequested_target_field
+    - unnecessary_serialized_field
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-SURFACE-002
+  category: architecture
+  kind: regression
+  pair_id: requirement-surface
+  boundary: require
+  task:
+    summary: 複数CameraをInspectorから切り替えることが明示要件の機能
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - requirement_surface_lock
+    required_gates:
+    - static_review
+    - compile
+    required_signals:
+    - explicit_configurable_target_is_preserved
+    forbidden_signals:
+    - hardcoded_main_camera
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-ARCH-001
+  category: architecture
+  kind: regression
+  pair_id: abstraction-depth
+  boundary: forbid
+  task:
+    summary: 一つのComponent内で完結する小規模Local Behavior
+  expectation:
+    route: architecture-design
+    required_policies:
+    - minimum_cohesive_solution_first
+    - no_unrequested_implementation
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    required_signals:
+    - single_cohesive_solution_considered
+    forbidden_signals:
+    - unnecessary_manager
+    - unnecessary_controller
+    - unnecessary_service
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-ARCH-002
+  category: architecture
+  kind: regression
+  pair_id: abstraction-depth
+  boundary: require
+  task:
+    summary: 複数Feature間で中央所有とLifetime管理が実在するSystem
+  expectation:
+    route: architecture-design
+    required_policies:
+    - ownership_and_lifetime
+    - case_by_case_design_depth
+    required_gates:
+    - architecture_fit
+    - ownership_and_lifetime
+    required_signals:
+    - central_owner_has_explicit_responsibility
+    forbidden_signals:
+    - single_script_forced_despite_system_scope
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-FORMAT-001
+  category: formatting
+  kind: regression
+  pair_id: assignment-format
+  boundary: forbid
+  task:
+    summary: 短いCSharp代入文のFormatting
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - preserve_current_naming_convention
+    required_gates:
+    - static_review
+    required_signals:
+    - short_assignment_stays_one_line
+    forbidden_signals:
+    - mechanical_line_break_after_assignment
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-FORMAT-002
+  category: formatting
+  kind: regression
+  pair_id: assignment-format
+  boundary: require
+  task:
+    summary: 十分に長く可読性上の理由がある式の改行
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - preserve_existing_structure
+    required_gates:
+    - static_review
+    required_signals:
+    - line_break_has_readability_reason
+    forbidden_signals:
+    - one_line_is_forced_for_every_expression
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-STATE-001
+  category: state
+  kind: regression
+  pair_id: duplicated-state
+  boundary: forbid
+  task:
+    summary: Unity APIが既にSource of Truthを持つ値を読む局所機能
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - no_extra_state
+    required_gates:
+    - static_review
+    - compile
+    required_signals:
+    - reads_authoritative_state
+    forbidden_signals:
+    - duplicate_state_cache_without_reason
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-STATE-002
+  category: state
+  kind: regression
+  pair_id: duplicated-state
+  boundary: require
+  task:
+    summary: 前回値との差分検出が要件で履歴保持が必要な機能
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - no_extra_state
+    required_gates:
+    - static_review
+    - compile
+    required_signals:
+    - cache_has_change_detection_reason
+    forbidden_signals:
+    - all_private_state_is_forbidden
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-FILE-001
+  category: file_granularity
+  kind: regression
+  pair_id: file-split
+  boundary: forbid
+  task:
+    summary: 将来再利用するかもしれないだけの小規模型分割
+  expectation:
+    route: architecture-design
+    required_policies:
+    - file_split_reason
+    - no_premature_generalization
+    required_gates:
+    - file_granularity
+    required_signals:
+    - feature_local_colocation_considered
+    forbidden_signals:
+    - speculative_file_split
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-FILE-002
+  category: file_granularity
+  kind: regression
+  pair_id: file-split
+  boundary: require
+  task:
+    summary: Attach可能な独立MonoBehaviourと異なるLifetimeを持つ責務
+  expectation:
+    route: architecture-design
+    required_policies:
+    - file_split_reason
+    - ownership_and_lifetime
+    required_gates:
+    - file_granularity
+    - ownership_and_lifetime
+    required_signals:
+    - split_reason_is_concrete
+    forbidden_signals:
+    - forced_colocation_despite_lifetime_boundary
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-MUTATION-001
+  category: mutation
+  kind: regression
+  pair_id: refactor-scope
+  boundary: forbid
+  task:
+    summary: 既知Compile Error一件だけを直す局所Patch
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - single_purpose_change
+    - preserve_existing_structure
+    required_gates:
+    - static_review
+    - compile
+    required_signals:
+    - bounded_patch
+    forbidden_signals:
+    - unrelated_refactor
+    - unrelated_rename
+    - public_contract_change
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-MUTATION-002
+  category: mutation
+  kind: regression
+  pair_id: refactor-scope
+  boundary: require
+  task:
+    summary: ユーザーが明示的にRefactorと公開契約移行を依頼したTask
+  expectation:
+    route: architecture-design
+    required_policies:
+    - preserve_existing_structure
+    required_gates:
+    - architecture_fit
+    - static_review
+    required_signals:
+    - requested_contract_migration_is_explicit
+    forbidden_signals:
+    - refactor_is_globally_forbidden
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-EVIDENCE-001
+  category: evidence
+  kind: regression
+  pair_id: evidence-scope
+  boundary: forbid
+  task:
+    summary: CSharp Compileだけ成功した変更
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - evidence_scoped_claims
+    required_gates:
+    - compile
+    required_signals:
+    - compile_claim_only
+    forbidden_signals:
+    - runtime_pass_claim
+    - target_device_pass_claim
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-EVIDENCE-002
+  category: evidence
+  kind: regression
+  pair_id: evidence-scope
+  boundary: require
+  task:
+    summary: 実機での動作保証を主張するTask
+  expectation:
+    route: performance-experiment
+    required_policies:
+    - evidence_scoped_claims
+    required_gates:
+    - target_device
+    required_signals:
+    - target_device_evidence_present
+    forbidden_signals:
+    - editor_only_evidence_for_device_claim
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-ASSET-001
+  category: asset
+  kind: regression
+  pair_id: asset-mutation
+  boundary: forbid
+  task:
+    summary: Scene Prefab MaterialのSerialized変更
+  expectation:
+    route: asset-data-change
+    required_policies:
+    - preserve_existing_structure
+    required_gates:
+    - serialization_validation
+    required_signals:
+    - authoritative_editor_mutation_path
+    forbidden_signals:
+    - raw_scene_yaml_edit
+    - raw_prefab_yaml_edit
+    - raw_material_yaml_edit
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-ASSET-002
+  category: asset
+  kind: regression
+  pair_id: asset-mutation
+  boundary: require
+  task:
+    summary: SerializedObjectまたはEditor CommandでMaterial値を変更
+  expectation:
+    route: asset-data-change
+    required_policies:
+    - preserve_existing_structure
+    required_gates:
+    - serialization_validation
+    required_signals:
+    - serializedobject_or_editor_command
+    forbidden_signals:
+    - raw_yaml_required
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-PERF-001
+  category: performance
+  kind: regression
+  pair_id: performance-measurement
+  boundary: forbid
+  task:
+    summary: 計測無しで最適化効果を断定する提案
+  expectation:
+    route: performance-experiment
+    required_policies:
+    - performance_requires_measurement
+    - evidence_scoped_claims
+    required_gates:
+    - static_review
+    - baseline_measurement
+    required_signals:
+    - baseline_required_before_claim
+    forbidden_signals:
+    - unmeasured_performance_claim
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-PERF-002
+  category: performance
+  kind: regression
+  pair_id: performance-measurement
+  boundary: require
+  task:
+    summary: 同条件Before After計測とRevert条件がある最適化
+  expectation:
+    route: performance-experiment
+    required_policies:
+    - performance_requires_measurement
+    required_gates:
+    - baseline_measurement
+    - candidate_measurement
+    - quality_regression_check
+    required_signals:
+    - baseline_and_after_capture
+    - revert_condition_recorded
+    forbidden_signals:
+    - measurement_is_optional
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-KNOWLEDGE-001
+  category: knowledge
+  kind: regression
+  pair_id: required-knowledge
+  boundary: require
+  task:
+    summary: Shader Sourceを実際に変更するDomain Task
+  expectation:
+    route: shader-change
+    required_policies:
+    - evidence_scoped_claims
+    required_gates:
+    - static_review
+    - shader_compile
+    required_signals:
+    - primary_rendering_knowledge_selected
+    forbidden_signals:
+    - knowledge_requirement_ignored
+    required_knowledge:
+    - select_primary_rendering_knowledge_from_index
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: required_knowledge_completeness
+- id: GOLDEN-KNOWLEDGE-002
+  category: knowledge
+  kind: regression
+  pair_id: required-knowledge
+  boundary: forbid
+  task:
+    summary: Shader Taskでも全Rendering Knowledgeを無条件一括読込しない
+  expectation:
+    route: shader-change
+    required_policies:
+    - evidence_scoped_claims
+    required_gates:
+    - static_review
+    required_signals:
+    - one_primary_rendering_knowledge_only
+    forbidden_signals:
+    - load_all_rendering_knowledge
+    required_knowledge:
+    - select_primary_rendering_knowledge_from_index
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: required_knowledge_completeness
+- id: GOLDEN-CONTEXT-001
+  category: context
+  kind: regression
+  pair_id: context-selection
+  boundary: require
+  task:
+    summary: Primary Contextだけを選び、明示されたSourceだけを読むTask
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - evidence_scoped_claims
+    required_gates:
+    - static_review
+    required_signals:
+    - primary_context_only
+    forbidden_signals:
+    - unconditional_related_context_read
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-CONTEXT-002
+  category: context
+  kind: regression
+  pair_id: context-selection
+  boundary: forbid
+  task:
+    summary: Related Contextを条件なしで一括読込するTask
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - evidence_scoped_claims
+    required_gates:
+    - static_review
+    required_signals:
+    - one_hop_context_limit_preserved
+    forbidden_signals:
+    - unconditional_related_context_read
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-HARNESS-001
+  category: harness
+  kind: regression
+  pair_id: harness-permission
+  boundary: require
+  task:
+    summary: R0 PlanningでReadとPlanだけを許可しMutationを停止するTask
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - evidence_scoped_claims
+    required_gates:
+    - static_review
+    required_signals:
+    - r0_mutation_blocked
+    forbidden_signals:
+    - mutation_tool_active
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-HARNESS-002
+  category: harness
+  kind: regression
+  pair_id: harness-permission
+  boundary: forbid
+  task:
+    summary: Prohibited MutationをAllowedとして公開するTask
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - evidence_scoped_claims
+    required_gates:
+    - static_review
+    required_signals:
+    - prohibited_wins_over_allowed
+    forbidden_signals:
+    - mutation_conflict_accepted
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-EXPLORER-001
+  category: explorer
+  kind: regression
+  pair_id: explorer-read-only
+  boundary: require
+  task:
+    summary: Context ExplorerからMetadataを検索しSource Pathを確認するTask
+  expectation:
+    route: portable-feature
+    required_policies:
+    - preserve_existing_structure
+    required_gates:
+    - static_review
+    - package_structure_validation
+    required_signals:
+    - read_only_context_projection
+    forbidden_signals:
+    - canonical_yaml_write_api
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-EXPLORER-002
+  category: explorer
+  kind: regression
+  pair_id: explorer-read-only
+  boundary: forbid
+  task:
+    summary: Context ExplorerにEdit Save ApplyまたはAgent Controlを追加するTask
+  expectation:
+    route: portable-feature
+    required_policies:
+    - preserve_existing_structure
+    required_gates:
+    - static_review
+    required_signals:
+    - write_surface_rejected
+    forbidden_signals:
+    - canonical_yaml_write_api
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-CONTEXT-PROFILE-001
+  category: context
+  kind: regression
+  pair_id: project-profile-fallback
+  boundary: forbid
+  task:
+    summary: 対象Projectから必要なUnityとPipeline Factを検出済みのCSharp変更
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - evidence_scoped_claims
+    required_gates:
+    - static_review
+    required_signals:
+    - detected_project_fact_precedes_profile
+    forbidden_signals:
+    - project_profile_overrides_detected_fact
+    - unconditional_project_profile_load
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-CONTEXT-PROFILE-002
+  category: context
+  kind: regression
+  pair_id: project-profile-fallback
+  boundary: require
+  task:
+    summary: Projectへ接続できず必要なProject Factが未解決のPlanning Task
+  expectation:
+    route: csharp-local-fix
+    required_policies:
+    - evidence_scoped_claims
+    required_gates:
+    - static_review
+    required_signals:
+    - project_profile_used_only_for_unresolved_fact
+    forbidden_signals:
+    - project_profile_is_globally_forbidden
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-DESIGN-KISS-001
+  category: architecture
+  kind: regression
+  pair_id: kiss-property-proliferation
+  boundary: forbid
+  task:
+    summary: 既存CameraDebuggerへFar Clip監視を追加する局所変更
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    - minimum_cohesive_solution_first
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    required_signals:
+    - existing_owner_considered_first
+    forbidden_signals:
+    - property_level_type_proliferation
+    - unnecessary_watcher
+    - unnecessary_controller
+    - unnecessary_service
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-DESIGN-KISS-002
+  category: architecture
+  kind: regression
+  pair_id: kiss-property-proliferation
+  boundary: require
+  task:
+    summary: CameraDebuggerの既存責務に自然に含まれるFar Clip監視
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    - minimum_cohesive_solution_first
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    required_signals:
+    - simplest_cohesive_existing_owner_selected
+    forbidden_signals:
+    - new_type_without_split_reason
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-DESIGN-YAGNI-001
+  category: architecture
+  kind: regression
+  pair_id: yagni-single-implementation-interface
+  boundary: forbid
+  task:
+    summary: 現在1種類しかないCameraDebuggerを実装する
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    - no_premature_generalization
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    required_signals:
+    - speculative_interface_rejected
+    forbidden_signals:
+    - single_implementation_interface
+    - speculative_abstract_base
+    - default_implementation_layer
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-DESIGN-YAGNI-002
+  category: architecture
+  kind: regression
+  pair_id: yagni-single-implementation-interface
+  boundary: require
+  task:
+    summary: Variation Axisが存在しない単一CameraDebugger実装
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    - no_premature_generalization
+    required_gates:
+    - architecture_fit
+    required_signals:
+    - single_concrete_type_preserved
+    forbidden_signals:
+    - future_variation_used_as_abstraction_reason
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-DESIGN-SRP-001
+  category: architecture
+  kind: regression
+  pair_id: srp-cohesive-camera-state
+  boundary: forbid
+  task:
+    summary: Far Clip Near Clip FOV Depth Culling MaskをCamera runtime stateとして追跡する
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    required_signals:
+    - cohesive_responsibility_reviewed
+    forbidden_signals:
+    - property_level_tracker_types
+    - srp_interpreted_as_one_property_per_class
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-DESIGN-SRP-002
+  category: architecture
+  kind: regression
+  pair_id: srp-cohesive-camera-state
+  boundary: require
+  task:
+    summary: 同じCamera Runtime State Tracking責務に属する複数Property
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    required_signals:
+    - cohesive_camera_state_tracker_selected
+    forbidden_signals:
+    - mechanical_type_fragmentation
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-DESIGN-DRY-FALSE-001
+  category: architecture
+  kind: regression
+  pair_id: dry-false-duplication
+  boundary: forbid
+  task:
+    summary: HealthとVolumeがそれぞれMathf Clampを使う
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    required_gates:
+    - architecture_fit
+    required_signals:
+    - syntax_similarity_is_not_dry_trigger
+    forbidden_signals:
+    - generic_clamp_helper
+    - abstraction_from_syntax_similarity_only
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-DESIGN-DRY-FALSE-002
+  category: architecture
+  kind: regression
+  pair_id: dry-false-duplication
+  boundary: require
+  task:
+    summary: 異なるDomain RuleとしてHealth ClampとVolume Clampを保持する
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    required_gates:
+    - architecture_fit
+    required_signals:
+    - independent_domain_rules_preserved
+    forbidden_signals:
+    - forced_dry_abstraction
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-DESIGN-DRY-PROVEN-001
+  category: architecture
+  kind: regression
+  pair_id: dry-proven-knowledge
+  boundary: forbid
+  task:
+    summary: Switch向け同一Shadow Distance Ruleが複数Featureに重複している
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    required_gates:
+    - architecture_fit
+    required_signals:
+    - proven_knowledge_duplication_identified
+    forbidden_signals:
+    - same_policy_rule_duplicated_across_features
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-DESIGN-DRY-PROVEN-002
+  category: architecture
+  kind: regression
+  pair_id: dry-proven-knowledge
+  boundary: require
+  task:
+    summary: 同じKnowledgeとChange Reasonであることが確認済みのSwitch Shadow Distance Rule
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    required_gates:
+    - architecture_fit
+    required_signals:
+    - confirmed_shared_policy_abstraction_considered
+    forbidden_signals:
+    - syntax_similarity_only_reason
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-DESIGN-OCP-001
+  category: architecture
+  kind: regression
+  pair_id: ocp-confirmed-variation
+  boundary: forbid
+  task:
+    summary: Backendが1つしか存在せず切替Requirementもない機能
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    - no_premature_generalization
+    required_gates:
+    - architecture_fit
+    required_signals:
+    - ocp_waits_for_confirmed_variation
+    forbidden_signals:
+    - speculative_backend_interface
+    - future_backend_extension_point
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-DESIGN-OCP-002
+  category: architecture
+  kind: regression
+  pair_id: ocp-confirmed-variation
+  boundary: require
+  task:
+    summary: 実際に2 Backendを切り替えるRequirementが存在する機能
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    required_gates:
+    - architecture_fit
+    required_signals:
+    - confirmed_variation_axis_has_contract_boundary
+    forbidden_signals:
+    - variation_axis_ignored
+    required_knowledge: []
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: invariant_signals
+- id: GOLDEN-NAMING-001
+  category: naming
+  kind: regression
+  pair_id: naming-existing-owner
+  boundary: forbid
+  task:
+    summary: 既存CameraDebuggerへFar Clip変更検出を追加し既存責務内で完結する
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    - semantic_type_naming
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    - namespace_and_type_naming_review
+    required_signals: []
+    forbidden_signals: []
+    required_knowledge: []
+    naming:
+      required_type_names: []
+      forbidden_type_names:
+      - MainCameraFarClippingPlaneRuntimeValueChangeNotificationController
+      - CameraFarClipWatcher
+      required_identifiers: []
+      forbidden_identifiers: []
+      require_no_new_type: true
+      require_naming_gate: true
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: type_naming
+- id: GOLDEN-NAMING-002
+  category: naming
+  kind: regression
+  pair_id: naming-existing-owner
+  boundary: require
+  task:
+    summary: 独立したCamera runtime state tracking責務とSplit Reasonが確認された新規Type
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    - semantic_type_naming
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    - namespace_and_type_naming_review
+    required_signals: []
+    forbidden_signals: []
+    required_knowledge: []
+    naming:
+      required_type_names:
+      - CameraStateTracker
+      forbidden_type_names:
+      - CameraFarClipWatcher
+      required_identifiers: []
+      forbidden_identifiers: []
+      require_no_new_type: false
+      require_naming_gate: true
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: type_naming
+- id: GOLDEN-NAMING-003
+  category: naming
+  kind: regression
+  pair_id: naming-over-abbreviation
+  boundary: forbid
+  task:
+    summary: Camera debugging責務の新規Typeで短縮のためだけに略語を発明しない
+  expectation:
+    route: architecture-design
+    required_policies:
+    - semantic_type_naming
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    - namespace_and_type_naming_review
+    required_signals: []
+    forbidden_signals: []
+    required_knowledge: []
+    naming:
+      required_type_names:
+      - CameraDebugger
+      forbidden_type_names:
+      - CamDbg
+      required_identifiers: []
+      forbidden_identifiers: []
+      require_no_new_type: false
+      require_naming_gate: true
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: type_naming
+- id: GOLDEN-NAMING-004
+  category: naming
+  kind: regression
+  pair_id: naming-over-abbreviation
+  boundary: require
+  task:
+    summary: Camera debugging責務をReadableなType名で表す
+  expectation:
+    route: architecture-design
+    required_policies:
+    - semantic_type_naming
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    - namespace_and_type_naming_review
+    required_signals: []
+    forbidden_signals: []
+    required_knowledge: []
+    naming:
+      required_type_names:
+      - CameraDebugger
+      forbidden_type_names:
+      - CamDbg
+      required_identifiers: []
+      forbidden_identifiers: []
+      require_no_new_type: false
+      require_naming_gate: true
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: type_naming
+- id: GOLDEN-NAMING-005
+  category: naming
+  kind: regression
+  pair_id: naming-role-stacking
+  boundary: forbid
+  task:
+    summary: Camera debugging責務へManager Controller等のRole suffixを積み重ねない
+  expectation:
+    route: architecture-design
+    required_policies:
+    - semantic_type_naming
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    - namespace_and_type_naming_review
+    required_signals: []
+    forbidden_signals: []
+    required_knowledge: []
+    naming:
+      required_type_names:
+      - CameraDebugger
+      forbidden_type_names:
+      - CameraDebugManagerController
+      required_identifiers: []
+      forbidden_identifiers: []
+      require_no_new_type: false
+      require_naming_gate: true
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: type_naming
+- id: GOLDEN-NAMING-006
+  category: naming
+  kind: regression
+  pair_id: naming-role-stacking
+  boundary: require
+  task:
+    summary: Camera debuggingの主要Roleを一つに収束させる
+  expectation:
+    route: architecture-design
+    required_policies:
+    - semantic_type_naming
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    - namespace_and_type_naming_review
+    required_signals: []
+    forbidden_signals: []
+    required_knowledge: []
+    naming:
+      required_type_names:
+      - CameraDebugger
+      forbidden_type_names:
+      - CameraDebugManagerController
+      required_identifiers: []
+      forbidden_identifiers: []
+      require_no_new_type: false
+      require_naming_gate: true
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: type_naming
+- id: GOLDEN-NAMING-007
+  category: naming
+  kind: regression
+  pair_id: naming-namespace-redundancy
+  boundary: forbid
+  task:
+    summary: CameraDebugging namespace内でNamespace名をType名へ重複させない
+  expectation:
+    route: architecture-design
+    required_policies:
+    - semantic_type_naming
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    - namespace_and_type_naming_review
+    required_signals: []
+    forbidden_signals: []
+    required_knowledge: []
+    naming:
+      required_type_names:
+      - CameraStateTracker
+      forbidden_type_names:
+      - CameraDebuggingCameraStateTracker
+      required_identifiers:
+      - CameraDebugging
+      forbidden_identifiers: []
+      require_no_new_type: false
+      require_naming_gate: true
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: type_naming
+- id: GOLDEN-NAMING-008
+  category: naming
+  kind: regression
+  pair_id: naming-namespace-redundancy
+  boundary: require
+  task:
+    summary: CameraDebugging namespaceのContextを利用しつつSubjectを失わないType名
+  expectation:
+    route: architecture-design
+    required_policies:
+    - semantic_type_naming
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    - namespace_and_type_naming_review
+    required_signals: []
+    forbidden_signals: []
+    required_knowledge: []
+    naming:
+      required_type_names:
+      - CameraStateTracker
+      forbidden_type_names:
+      - CameraDebuggingCameraStateTracker
+      required_identifiers:
+      - CameraDebugging
+      forbidden_identifiers: []
+      require_no_new_type: false
+      require_naming_gate: true
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: type_naming
+- id: GOLDEN-NAMING-009
+  category: naming
+  kind: regression
+  pair_id: naming-property-proliferation
+  boundary: forbid
+  task:
+    summary: Far Clip Near Clip FOVが同じCamera runtime state tracking責務に属する
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    - semantic_type_naming
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    - namespace_and_type_naming_review
+    required_signals: []
+    forbidden_signals: []
+    required_knowledge: []
+    naming:
+      required_type_names:
+      - CameraStateTracker
+      forbidden_type_names:
+      - CameraFarClipTracker
+      - CameraNearClipTracker
+      - CameraFovTracker
+      required_identifiers: []
+      forbidden_identifiers: []
+      require_no_new_type: false
+      require_naming_gate: true
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: type_naming
+- id: GOLDEN-NAMING-010
+  category: naming
+  kind: regression
+  pair_id: naming-property-proliferation
+  boundary: require
+  task:
+    summary: 凝集したCamera runtime state tracking責務を一つのTypeで表す
+  expectation:
+    route: architecture-design
+    required_policies:
+    - engineering_principles
+    - semantic_type_naming
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    - namespace_and_type_naming_review
+    required_signals: []
+    forbidden_signals: []
+    required_knowledge: []
+    naming:
+      required_type_names:
+      - CameraStateTracker
+      forbidden_type_names:
+      - CameraFarClipTracker
+      - CameraNearClipTracker
+      - CameraFovTracker
+      required_identifiers: []
+      forbidden_identifiers: []
+      require_no_new_type: false
+      require_naming_gate: true
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: type_naming
+- id: GOLDEN-NAMING-011
+  category: naming
+  kind: regression
+  pair_id: naming-existing-api-preservation
+  boundary: forbid
+  task:
+    summary: 既存Public Type LegacyCameraDebugControllerをNaming改善だけでRenameしないLocal変更
+  expectation:
+    route: architecture-design
+    required_policies:
+    - preserve_existing_structure
+    - semantic_type_naming
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    - namespace_and_type_naming_review
+    required_signals: []
+    forbidden_signals: []
+    required_knowledge: []
+    naming:
+      required_type_names:
+      - LegacyCameraDebugController
+      forbidden_type_names:
+      - CameraDebugger
+      required_identifiers: []
+      forbidden_identifiers: []
+      require_no_new_type: false
+      require_naming_gate: true
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: type_naming
+- id: GOLDEN-NAMING-012
+  category: naming
+  kind: regression
+  pair_id: naming-existing-api-preservation
+  boundary: require
+  task:
+    summary: 既存Public Typeを維持しつつ確認済み独立責務だけCameraStateTrackerとして新設する
+  expectation:
+    route: architecture-design
+    required_policies:
+    - preserve_existing_structure
+    - semantic_type_naming
+    required_gates:
+    - architecture_fit
+    - file_granularity
+    - namespace_and_type_naming_review
+    required_signals: []
+    forbidden_signals: []
+    required_knowledge: []
+    naming:
+      required_type_names:
+      - LegacyCameraDebugController
+      - CameraStateTracker
+      forbidden_type_names:
+      - LegacyCameraDebugControllerManager
+      required_identifiers: []
+      forbidden_identifiers: []
+      require_no_new_type: false
+      require_naming_gate: true
+    outcome: passed
+  graders:
+  - type: deterministic
+    id: type_naming

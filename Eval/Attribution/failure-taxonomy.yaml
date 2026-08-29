@@ -1,0 +1,53 @@
+schema_version: '1.1'
+principles:
+  - typed_facts_only_no_text_inference
+  - not_observed_is_excluded_from_agent_quality_denominator
+  - runtime_and_evaluator_defects_are_not_agent_regressions
+  - eval_may_classify_and_propose_but_must_not_mutate_production_definitions
+failures:
+  agent_behavior_regression:
+    attribution: agent_quality
+    observation_state: observed
+    quality_denominator_eligible: true
+  runtime_timeout:
+    attribution: runtime_infrastructure
+    observation_state: not_observed
+    quality_denominator_eligible: false
+  runtime_protocol_failure:
+    attribution: runtime_infrastructure
+    observation_state: not_observed
+    quality_denominator_eligible: false
+  runtime_cancelled:
+    attribution: runtime_infrastructure
+    observation_state: not_observed
+    quality_denominator_eligible: false
+  runtime_tool_unavailable:
+    attribution: runtime_infrastructure
+    observation_state: not_observed
+    quality_denominator_eligible: false
+  runtime_permission_denied:
+    attribution: policy_or_permission
+    observation_state: not_observed
+    quality_denominator_eligible: false
+  evaluator_contract_failure:
+    attribution: evaluator_infrastructure
+    observation_state: not_observed
+    quality_denominator_eligible: false
+  task_fixture_invalid:
+    attribution: fixture_invalid
+    observation_state: not_observed
+    quality_denominator_eligible: false
+  unavailable_required_evidence:
+    attribution: unavailable_evidence
+    observation_state: not_observed
+    quality_denominator_eligible: false
+legacy_golden_failure_details:
+  - routing_miss
+  - context_miss
+  - policy_violation
+  - harness_violation
+  - mutation_violation
+  - evidence_overclaim
+  - model_failure
+  - broken_eval
+  - unavailable_evidence

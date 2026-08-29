@@ -5,14 +5,17 @@ type: object
 additionalProperties: false
 required: [schema_version, eval_id, run_id, observation_state, failure_class, quality_denominator_eligible, runtime_failure_ref, evidence_refs, reason, source_execution_result_ref]
 properties:
-  schema_version: {const: '1.0'}
+  schema_version:
+    enum: ['1.0', '1.1']
   eval_id: {type: string, minLength: 1}
   run_id: {type: string, minLength: 1}
   observation_state:
     enum: [observed, not_observed]
   failure_class:
     type: [string, 'null']
-    enum: [null, agent_behavior_regression, runtime_timeout, runtime_protocol_failure, evaluator_contract_failure, task_fixture_invalid, unavailable_required_evidence]
+    enum: [null, agent_behavior_regression, runtime_timeout, runtime_protocol_failure, evaluator_contract_failure, task_fixture_invalid, unavailable_required_evidence, runtime_cancelled, runtime_permission_denied, runtime_tool_unavailable]
+  failure_attribution:
+    enum: [none, agent_quality, runtime_infrastructure, evaluator_infrastructure, fixture_invalid, unavailable_evidence, policy_or_permission]
   quality_denominator_eligible: {type: boolean}
   runtime_failure_ref: {type: [string, 'null']}
   evidence_refs:
@@ -24,6 +27,12 @@ properties:
 allOf:
 - if:
     properties:
+      schema_version: {const: '1.1'}
+    required: [schema_version]
+  then:
+    required: [failure_attribution]
+- if:
+    properties:
       observation_state: {const: not_observed}
     required: [observation_state]
   then:
@@ -32,7 +41,7 @@ allOf:
 - if:
     properties:
       failure_class:
-        enum: [runtime_timeout, runtime_protocol_failure, evaluator_contract_failure, task_fixture_invalid, unavailable_required_evidence]
+        enum: [runtime_timeout, runtime_protocol_failure, evaluator_contract_failure, task_fixture_invalid, unavailable_required_evidence, runtime_cancelled, runtime_permission_denied, runtime_tool_unavailable]
     required: [failure_class]
   then:
     properties:

@@ -1,49 +1,27 @@
 #!/usr/bin/env python3
-"""Regression-check immutable Actual Behavior run directories."""
-
+"""Phase-6 compatibility shim to canonical Eval/Behavior implementation."""
 from __future__ import annotations
-
-import shutil
+import importlib.util
+import runpy
 import sys
-import uuid
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
-if str(HERE) not in sys.path:
-    sys.path.insert(0, str(HERE))
-
-from run_behavior_eval import BehaviorRunError, _create_fresh_run_root, _safe_run_root
-
-
-def main() -> int:
-    run_id = f"integrity-validator-{uuid.uuid4().hex}"
-    run_root = _safe_run_root(run_id)
-
-    try:
-        _create_fresh_run_root(run_root)
-        marker = run_root / "sentinel.txt"
-        marker.write_text("original evidence\n", encoding="utf-8")
-
-        try:
-            _create_fresh_run_root(run_root)
-        except BehaviorRunError as exc:
-            if "immutable" not in str(exc):
-                print(f"[FAIL] Unexpected reuse error: {exc}")
-                return 1
-        else:
-            print("[FAIL] Existing Behavior Eval run directory was reused.")
-            return 1
-
-        if marker.read_text(encoding="utf-8") != "original evidence\n":
-            print("[FAIL] Existing run evidence was modified during reuse rejection.")
-            return 1
-
-        print("Behavior Eval run integrity validation passed.")
-        return 0
-    finally:
-        if run_root.exists():
-            shutil.rmtree(run_root)
-
+ROOT = Path(__file__).resolve().parents[2]
+TARGET = ROOT / "Eval" / "Behavior" / Path(__file__).name
+for path in (ROOT, TARGET.parent):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
+if not TARGET.is_file():
+    raise RuntimeError(f"canonical Eval target is missing: {TARGET}")
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    runpy.run_path(str(TARGET), run_name="__main__")
+else:
+    spec = importlib.util.spec_from_file_location(f"_unityagent_eval_behavior_{TARGET.stem}", TARGET)
+    if spec is None or spec.loader is None:
+        raise ImportError(str(TARGET))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    for name in dir(module):
+        if not name.startswith("_"):
+            globals()[name] = getattr(module, name)

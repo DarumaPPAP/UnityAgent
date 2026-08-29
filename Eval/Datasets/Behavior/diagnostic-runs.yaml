@@ -1,0 +1,32 @@
+schema_version: "1.0"
+kind: behavior_eval_run_registry
+
+runs:
+  production-smoke-20260827-utf8:
+    classification: diagnostic
+    label: Diagnostic Run D0
+    baseline_eligible: false
+    observed_result: "PASS 0 / Regression 4"
+    reasons:
+      - evaluator_contract_false_negative_present
+      - runtime_timeout_present
+      - task_fixture_invalid_for_compile_only_evidence
+      - route_policy_and_gate_failures_not_separable_from_runtime_failure
+    representative_findings:
+      GOLDEN-ARCH-001: evaluator_contract_failure_candidate
+      GOLDEN-NAMING-001: production_task_contract_mismatch
+      GOLDEN-MUTATION-001: runtime_timeout
+      GOLDEN-EVIDENCE-001: runtime_timeout_and_invalid_evidence_fixture
+
+baseline:
+  current: null
+  promotion_requires:
+    - actual_agent_executed
+    - evaluator_contract_failure_zero
+    - runtime_timeout_zero
+    - runtime_protocol_failure_zero
+    - mutation_violation_zero
+    - evidence_overclaim_zero
+    - golden_expectation_leak_zero
+    - required_evidence_coverage_100_percent
+    - all_four_phase_1_1_cases_observed
