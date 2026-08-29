@@ -49,6 +49,7 @@ routes:
     context_pack: Context/Packs/portable-feature.yaml
     primary_skill: .agents/skills/unity-architecture-design/SKILL.md
     task_contract: Orchestration/Contracts/TaskContracts/portable-feature.yaml
+    knowledge_selection: required_when_domain_matches
     forced_profile: generic_planning
   safe-import-integration:
     context_pack: Context/Packs/asset-data-change.yaml
