@@ -41,11 +41,11 @@ properties:
     items:
       type: object
       additionalProperties: false
-      required: [from, to, on]
+      required: [from, to, 'on']
       properties:
         from: {type: string, minLength: 1}
         to: {type: string, minLength: 1}
-        on: {type: string, minLength: 1}
+        'on': {type: string, minLength: 1}
   gates:
     type: array
     items:
