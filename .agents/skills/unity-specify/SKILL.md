@@ -9,7 +9,7 @@ metadata:
   version: "2.2.0"
   kind: operation
   entrypoint: false
-  user_policy: .ai/user-policy.yaml
+  user_policy: Policy/User/user-policy.yaml
 ---
 
 # Unity Specify
@@ -26,12 +26,12 @@ Unity新機能または仕様変更を、実装判断に使える検証可能な
 
 原因不明の不具合には`unity-incident-investigation`を使う。
 Taskと受け入れ条件が既に明確な局所修正へ、形式的なSpecを強制しない。
-Primary Domain Routeは`.ai/context-index.yaml`で選択済みであることを前提とし、このSkill自身をRouting入口にしない。
+Primary Domain Routeは`Orchestration/Routing/task-routes.yaml`で選択済みであり、対応する`Context/Selection/context-catalog.yaml`のMaterializationを前提とする。このSkill自身をRouting入口にしない。
 
 ## Inputs
 
 1. ユーザーの今回の明示指示
-2. `.ai/user-policy.yaml`
+2. `Policy/User/user-policy.yaml`
 3. 関連する既存Spec、コード、ログ、参考資料
 4. 対象Projectから検出したFactとユーザー確認済みProject Fact
 5. ユーザーが明示した対象、禁止事項、Target Platform
@@ -138,7 +138,7 @@ Target PlatformはPlatform固有API、Build、互換性または性能主張に�
 
 ## Checklist
 
-- [ ] `.ai/user-policy.yaml`を適用した
+- [ ] `Policy/User/user-policy.yaml`を適用した
 - [ ] 検出済みProject FactをProject Profileより優先した
 - [ ] Project Profileを使用した場合は未解決FactのFallbackとしてのみ使用した
 - [ ] 目的と期待結果が実装手段から分離されている
