@@ -1,0 +1,18 @@
+schema_version: '1.0'
+authority: Persistence
+root_semantics: caller_selected_not_source_tree_implicit
+paths:
+  execution_state: runs/{run_id}/current/execution-state.json
+  workflow_state: runs/{run_id}/current/workflow-state.json
+  loop_control_state: runs/{run_id}/current/loops/{loop_id}.json
+  checkpoints: runs/{run_id}/checkpoints/{checkpoint_id}.json
+  sessions: sessions/{session_id}.json
+  memory_records: memory/records/{memory_id}.json
+  evidence_records: evidence/records/{evidence_id}.json
+invariants:
+  one_authoritative_execution_state: true
+  checkpoint_is_not_memory: true
+  checkpoint_is_not_evidence: true
+  memory_is_not_evidence: true
+  context_projection_is_not_durable_truth: true
+  runtime_capture_is_not_durable_truth_until_appended: true
