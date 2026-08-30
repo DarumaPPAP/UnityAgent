@@ -35,6 +35,22 @@ LEGACY_PATH_MARKERS = (
     "Persistence/Compatibility",
 )
 
+HISTORICAL_LINE_MARKERS = (
+    "legacy",
+    "historical",
+    "migration",
+    "deleted",
+    "removed",
+    "forbidden",
+    "do not use",
+    "not use",
+    "旧",
+    "削除",
+    "廃止",
+    "禁止",
+    "復活させ",
+)
+
 MARKDOWN_LINK = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 
 
@@ -73,6 +89,11 @@ def _resolve_link(source: Path, target: str) -> Path | None:
     return (source.parent / file_part).resolve()
 
 
+def _legacy_reference_is_historical(line: str) -> bool:
+    lowered = line.lower()
+    return any(marker in lowered for marker in HISTORICAL_LINE_MARKERS)
+
+
 def main() -> int:
     errors: list[str] = []
     docs = list(_iter_docs())
@@ -83,9 +104,12 @@ def main() -> int:
         relative = path.relative_to(ROOT).as_posix()
         text = path.read_text(encoding="utf-8")
 
-        for marker in LEGACY_PATH_MARKERS:
-            if marker in text:
-                errors.append(f"active legacy path reference {marker}: {relative}")
+        for line_number, line in enumerate(text.splitlines(), start=1):
+            for marker in LEGACY_PATH_MARKERS:
+                if marker in line and not _legacy_reference_is_historical(line):
+                    errors.append(
+                        f"active legacy path reference {marker}: {relative}:{line_number}"
+                    )
 
         for target in MARKDOWN_LINK.findall(text):
             resolved = _resolve_link(path, target)
