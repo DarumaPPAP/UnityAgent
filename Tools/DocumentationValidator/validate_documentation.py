@@ -51,6 +51,22 @@ HISTORICAL_LINE_MARKERS = (
     "復活させ",
 )
 
+# README is a user-facing product/operation document. Development state belongs
+# to migration, eval artifacts or Git history and must not be hard-coded here.
+README_DYNAMIC_STATE_PATTERNS = (
+    (re.compile(r"\bphase\s*\d+\b", re.IGNORECASE), "development phase number"),
+    (re.compile(r"フェーズ\s*\d+"), "development phase number"),
+    (re.compile(r"現在地点"), "current development status"),
+    (re.compile(r"品質基盤\s*v\d+", re.IGNORECASE), "versioned completion status"),
+    (re.compile(r"\bphase\d+-baseline[-\w.]*", re.IGNORECASE), "specific baseline id"),
+    (re.compile(r"\bgpt-\d[\w.-]*", re.IGNORECASE), "specific model version"),
+)
+
+REQUIRED_USER_ENTRYPOINTS = (
+    Path("Tools/validate_all.py"),
+    Path("Tools/run_regression_gate.py"),
+)
+
 MARKDOWN_LINK = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 
 
@@ -94,11 +110,32 @@ def _legacy_reference_is_historical(line: str) -> bool:
     return any(marker in lowered for marker in HISTORICAL_LINE_MARKERS)
 
 
+def _validate_readme_stability(errors: list[str]) -> None:
+    readme = ROOT / "README.md"
+    if not readme.is_file():
+        errors.append("README.md is missing")
+        return
+
+    text = readme.read_text(encoding="utf-8")
+    for pattern, description in README_DYNAMIC_STATE_PATTERNS:
+        match = pattern.search(text)
+        if match:
+            errors.append(
+                f"README must not hard-code {description}: {match.group(0)!r}"
+            )
+
+    for entrypoint in REQUIRED_USER_ENTRYPOINTS:
+        if not (ROOT / entrypoint).is_file():
+            errors.append(f"README user entry point is missing: {entrypoint.as_posix()}")
+
+
 def main() -> int:
     errors: list[str] = []
     docs = list(_iter_docs())
     if not docs:
         errors.append("no active documentation files discovered")
+
+    _validate_readme_stability(errors)
 
     for path in docs:
         relative = path.relative_to(ROOT).as_posix()
