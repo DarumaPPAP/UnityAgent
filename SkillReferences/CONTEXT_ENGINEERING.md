@@ -2,34 +2,46 @@
 
 ## Goal
 
-UnityAgentの専門知識を失わず、Taskごとに必要なSkill、Reference、Sourceだけを読み込み、必要十分なContext量へ制御する。
+UnityAgentの専門知識を失わず、Taskごとに必要なPolicy、Skill、Reference、Sourceだけを選択し、必要十分なContext量へ制御する。
 
-## Selection flow
+Contextは**current-call materialization**を所有し、Route selection、durable State、Memory、Checkpoint、Evidence truthを所有しない。
+
+## Canonical selection flow
 
 ```text
-Execution Mode
+User Request
   ↓
-.ai/context-index.yaml
+Task Fingerprint
+  ↓
+Orchestration/Routing/task-routes.yaml
   ↓
 One Primary Route
   ↓
-One Context Pack
+Context/Selection/context-catalog.yaml
   ↓
-Typed Required + satisfied Typed Conditional references
+One Context Pack
++ One Primary Skill
++ One canonical Task Contract
++ Required Policy Clauses
++ satisfied Conditional Context
   ↓
 Target Source and direct dependencies
   ↓
-.ai/context-budget.yaml
+Context/Budget/context-budget.yaml
   ├─ Retrieval measurement
   ├─ Context estimate
   └─ Compression / stop decision
   ↓
-Budgeted Context Manifest
+Context/Assembly/materialize_context.py
+  ↓
+MaterializedContextView
 ```
+
+Technology keywordだけでRouteを決めない。Context catalogはRouteを選ばず、Orchestrationが選択済みのRouteをmaterializeする。
 
 ## Typed Context Pack v3
 
-Context Packの`required`と`conditional`は、文字列ではなく型付きMappingで記述する。
+Context Packの`required`と`conditional`は型付きMappingで記述する。
 
 ### `binding`
 
@@ -51,7 +63,7 @@ UnityAgent Repository内の実在Artifactを読む。
 
 ### `external_reference`
 
-別RepositoryのArtifactを参照する。`DarumaPPAP/MyUnityMCP/Specs/...`のような文字列をUnityAgent内ローカルパスとして扱わない。
+別RepositoryのArtifactを参照する。外部Repository pathをUnityAgent内ローカルpathとして扱わない。
 
 ```yaml
 - type: external_reference
@@ -61,29 +73,27 @@ UnityAgent Repository内の実在Artifactを読む。
 
 ### `context_include`
 
-現在のPrimary Routeを維持したまま、別Context Packを追加Contextとして選択する。
+現在のPrimary Routeを維持したまま、追加Context Packを選択する。
 
 ```yaml
 - type: context_include
   context_id: shader-change
 ```
 
-IncludeされたContextを暗黙に再帰展開しない。Expansion Hopは1を上限とする。
+Include先を無制限に再帰展開しない。Expansion Hopはcontract上限を守る。
 
 ### `route_handoff`
 
-現在のTask責務を別Primary Routeへ移す必要があることを表す。
+現在Taskのsemantic ownershipを別Primary Routeへ移す必要があることを表す。
 
 ```yaml
 - type: route_handoff
   route_id: rendering-incident
 ```
 
-`context_include`と`route_handoff`を同義に扱わない。前者はContext追加、後者はPrimary Ownershipの変更である。
+`context_include`と`route_handoff`を同義に扱わない。
 
 ## Required / Conditional / Excluded
-
-Context Packは資料を三種類へ分ける。
 
 ### Required
 
@@ -91,11 +101,13 @@ Task成立に必須。Binding、Repository Reference、External Reference等を�
 
 ### Conditional
 
-Variant変更、RenderGraph、Burst、Visual、Runtime Measurementなど、条件が成立した場合だけ読む。
+RenderGraph、Burst、Visual、Runtime Measurement、Project fallback等、条件成立時だけ読む。
 
 ### Excluded by default
 
-Taskと無関係なSupervisor、Visual、C# Catalog、Shader Catalogなど。必要性がEvidenceで判明した場合だけ別RouteまたはSecondary Skillとして追加する。
+Taskと無関係なDomain Skill、Catalog、Knowledge、Project Source等。必要性がEvidenceで判明した場合だけbounded expansionする。
+
+全Skill、全Reference、全Knowledgeを一括読込しない。
 
 ## Project Fact precedence
 
@@ -108,13 +120,13 @@ Project Factは次の順で解決する。
 3. Project固有Context
 4. `Specs/ProjectProfile.md`によるFallback
 
-検出済みFactとProject Profileが競合した場合、Project Profileで上書きしない。Project Profileを読む場合は、どの未解決Factを補うために必要だったかを記録する。
+検出済みFactとProject Profileが競合した場合、Project Profileで上書きしない。Profileを読む場合は、どの未解決Factを補ったか記録する。
 
-Context PackではProject Profileを`required`へ置かず、使用する場合は`conditional.project_fallback`の`repository_reference`へ限定する。
+Context PackでProject Profileを使用する場合は、`conditional.project_fallback`等の明示Conditionalとして扱う。
 
 ## Project Fact provenance and freshness
 
-Project Factは値だけを保存しない。最低限、次を記録する。
+Project Factは値だけでなくprovenanceとfreshnessを記録する。
 
 ```yaml
 key: unity.version
@@ -129,29 +141,27 @@ freshness:
 reason: project_fact
 ```
 
-`source_kind`は`detected_project`、`user_confirmed`、`project_profile`のいずれかとする。
-
-`freshness.status`は次の意味を持つ。
+`source_kind`は少なくとも`detected_project`、`user_confirmed`、`project_profile`を区別する。
 
 - `current`: 現Attemptで再確認済み
-- `stale`: 過去の観測値であり、現在値として使用しない
+- `stale`: 過去値でありcurrentとして使用しない
 - `unknown`: 現在性を確認できない
 
-`current`を名乗るFactは、`freshness.checked_at_attempt`が現在のManifest Attemptと一致しなければならない。
-
-Retryでは前AttemptのProject Factを暗黙コピーしない。同じ`revision`を継続利用する場合でも、現在値として扱うなら現Attemptで再検証し、`checked_at_attempt`を更新する。
-
-`observed_at_attempt`は最初に観測したAttemptを保持してよい。つまり「いつ発見したか」と「最後に現在性を確認したか」を分離する。
+Retryで前AttemptのProject Factをcurrentとして暗黙コピーしない。
 
 ## Context Budget
 
-Context選択量のCanonical Contractは`.ai/context-budget.yaml`とする。
+Canonical Contract:
 
-Context BudgetはModel BillingやLoop全体のCost Budgetではない。UnityAgentが**一回のDomain Attemptへ渡すRetrieved Context量**だけを管理する。
+`Context/Budget/context-budget.yaml`
+
+Context BudgetはModel BillingやLoop全体のCost Budgetではない。**一回のcurrent-callへ渡すretrieved Context量**を管理する。
+
+Runtimeのexecution cost / hard execution limitsとは別責務である。
 
 ### Retrieval Budget
 
-実測できる次の値を使う。
+実測可能な主な値:
 
 - Artifact数
 - Original UTF-8 bytes
@@ -160,9 +170,7 @@ Context BudgetはModel BillingやLoop全体のCost Budgetではない。UnityAge
 - Context Include数
 - Expansion Hop
 
-UnityAgent Repository内Sourceは実ファイルから自動計測できる。
-
-Project SourceとExternal Repository Sourceは、次のObservationを必要とする。
+UnityAgent Repository内Sourceは実ファイルから計測できる。Project SourceとExternal Repository Sourceは明示Observationを要求する。
 
 ```yaml
 retrieval_observations:
@@ -177,71 +185,45 @@ retrieval_observations:
         - L1-L140
 ```
 
-Observationが無いProject / External Sourceを「0 byte」として扱わない。未計測は`unmeasured`とする。
+Observationが無いSourceを`0 byte`として扱わない。未計測は`unmeasured`とする。
 
-### Context estimated tokens
+### Estimated tokens
 
-Provider Tokenizerへ依存しないBudget判定では、UTF-8 byteから保守的な推定値を作る。
+Provider Tokenizerへ依存しないbudget判定では、現contractの保守的推定を使う。
 
 ```text
 estimated_tokens = ceil(selected_utf8_bytes / 3)
 ```
 
-これは**正確なModel Token数ではない**。
+これは正確なModel Token数ではない。
 
-- `estimated_tokens`と明記する。
-- Billing TokenやProvider Tokenと同一視しない。
-- 正確なTokenizerで計測できた場合は追加Evidenceとして記録してよい。
-- Provider Tokenizer名が無い値を`exact_tokens`と呼ばない。
-
-英数字だけでなく日本語Contextでも大幅な過小評価を避けるため、Phase 3初期値は保守的なbyte基準とする。
+- `estimated_tokens`と明記する
+- Billing Token / Provider Tokenと同一視しない
+- 正確なTokenizer計測がある場合だけ追加Evidenceとして記録する
 
 ## Budget profiles
 
-Routeごとに`tight / standard / wide`のBudget Profileを選ぶ。
-
-- `tight`: 局所C# Fixなど、小さいContextで成立するTask
-- `standard`: Shader、Renderer Feature、Asset、Portable Feature等
-- `wide`: Rendering IncidentやGraphics MCPなど、複数Evidenceが必要なTask
-
-Profile閾値は`.ai/context-budget.yaml`が正本であり、現時点では`provisional_thresholds: true`である。
-
-閾値を厳しくする場合はGolden Regressionと実測を先に確認する。Context品質を落として閾値だけ達成しない。
+Routeごとに`tight / standard / wide`を使用する。現在の閾値とRoute mappingの正本は `Context/Budget/context-budget.yaml` であり、`provisional_thresholds: true` の間はGolden regressionとProduction measurementなしに閾値だけを厳しくしない。
 
 ## Context Compression
 
-CompressionはCanonical Sourceを書き換える処理ではない。**今回Modelへ渡す選択Contextだけを縮める処理**である。
+CompressionはCanonical Sourceを書き換えず、今回Modelへ渡す選択Contextだけを縮める。
 
-### Compression mode
+### `none`
 
-#### `none`
+全文を選択する。
 
-全文を選択する。`original_utf8_bytes == selected_utf8_bytes`でなければならない。
+### `lossless_excerpt`
 
-#### `lossless_excerpt`
+Source本文を要約せず必要Rangeだけを選択する。Source RevisionとSelected Rangeを保持する。
 
-Source本文を要約せず、必要Rangeだけを選択する。
+### `semantic_summary`
 
-- Source Revision必須
-- Selected Range必須
-- Target Source / Direct Dependency / Required Contextに使用可能
-- 省略部分を存在しなかったことにしない
-
-#### `semantic_summary`
-
-意味を保持した要約Contextを使う。
-
-使用可能範囲を限定する。
-
-- Knowledge
-- Background Reference
-- Previous Failure summary
-
-`summary_revision`を必須とし、どの要約結果をBudget計測したか追跡する。
+意味を保持した要約Context。Knowledge、Background Reference、Prior Failure等のnon-authoritative contextに限定する。
 
 ### Lossy Compression禁止対象
 
-次は全文保持を基本とし、Semantic Summaryしない。
+原則Semantic Summaryしない:
 
 - User Policy
 - Context Pack
@@ -249,77 +231,58 @@ Source本文を要約せず、必要Rangeだけを選択する。
 - Task Contract
 - Project Fact
 
-Authoritative ContractをBudget都合で要約し、Ruleを欠落させることを禁止する。
-
-### Target Source
-
-Target SourceやDirect DependencyはSemantic Summaryしない。
-
-必要ならSource Revisionを保持した`lossless_excerpt`を使用する。Mutation対象の元Sourceへ追跡できない圧縮結果を実装根拠にしない。
+Target SourceやDirect DependencyもSemantic Summaryせず、必要ならSource Revision付き`lossless_excerpt`を使用する。
 
 ## Budget decision
 
-Budget Reportは次のいずれかになる。
+- `within_budget`: 必要Artifactが計測済みでsoft limit以下
+- `compression_required`: hard limit内だがsoft limit超過
+- `unmeasured`: 必要Observation不足。PASSではない
+- `blocked`: hard limit等を超過
 
-### `within_budget`
+Required Contextを黙って削除してPASSにしない。
 
-必要Artifactが計測済みでSoft Limit以下。Mutationを開始できる。
-
-### `compression_required`
-
-Hard Limit以内だがSoft Limit超過。候補Contextを圧縮して再計測する。
-
-### `unmeasured`
-
-Project / External Sourceなど必要Observationが不足している。Budget PASSではない。
-
-### `blocked`
-
-Hard Limit、Artifact数、External Fetch数、Expansion Hop等を超えている。
-
-Required Contextを黙って削除してPASSへ変えない。Context選択自体を見直すか、責務をHandoffする。
-
-Mutation Taskでは`within_budget`以外を実行許可にしない。
+Mutation Taskはcurrent contractの`mutation_requires_within_budget`に従う。read-only analysisは`unmeasured`を報告できるが、budget PASSとは主張しない。
 
 ## Compression order
-
-Contextが大きい場合は次の順で削減する。
 
 1. 同一Revision Sourceの重複を除去
 2. 成立していないConditional Contextを除去
 3. Relevant RangeだけLossless Excerpt
 4. Non-authoritative Knowledge / BackgroundをSemantic Summary
-5. 不明なBindingはContext追加で推測せずUnresolvedのまま残す
+5. 不明Bindingは推測せずUnresolvedのまま残す
 6. Hard Limitを満たせなければ停止
 
-「先に重要Ruleを要約して削る」順番にしない。
+Authoritative Ruleを先に要約して削らない。
 
 ## Primary Skill
 
-各StateまたはPrompt TaskでPrimary Domain Skillは一つにする。Secondary SkillはPrimaryが所有しない専門判断だけを補う。
+Primary Domain Skillは一つにする。Secondary SkillはPrimaryが所有しない専門判断だけを補う。
 
 例:
 
-- RenderGraph errorの原因未確定: IncidentがPrimary、RenderingがSecondary
-- Shaderの確定済み修正: RenderingまたはShader RefactorがPrimary
-- 美的Scene設計: Visual DirectionがPrimary、RenderingがSecondary
+- RenderGraph errorの原因未確定: IncidentがPrimary、Renderingが必要時Secondary
+- 確定済みC#局所修正: `csharp-safe-patch`
+- 美的Scene設計: Visual DirectionがPrimary、Renderingは技術境界で補助
 
 ## Context expansion
 
-Contextを追加するAgentは次を記録する。
+Context追加時は次を記録する。
 
-- 追加するArtifact
+- 追加Artifact
 - 追加が必要な判断
-- 現在のEvidenceでは不足する理由
+- 現Evidenceでは不足する理由
 - Expansion Hop
 
 「念のため」で全Referenceを読み込まない。
 
-`context_include`を使う場合も、Include先のConditional Contextを自動的に全展開しない。
-
 ## Knowledge Graph
 
-Knowledge Graphは候補Artifactを選ぶNavigation Layerである。
+Knowledge Graphは候補Artifactを絞るNavigation Layerである。
+
+Current pilot contract:
+
+`Context/Retrieval/Knowledge/knowledge-graph-pilot.yaml`
 
 ```text
 Query -> Candidate artifacts -> Direct source read -> Decision
@@ -327,27 +290,24 @@ Query -> Candidate artifacts -> Direct source read -> Decision
 
 禁止:
 
-- Graphだけで原因を確定する
-- 推論Edgeだけで互換性を判断する
-- Graph Report全文を毎回Contextへ入れる
-- Unity生成Folderを無制限にIndexする
-
-Pilot契約は`.ai/knowledge-graph-pilot.yaml`を参照する。
+- Graphだけで原因確定
+- 推論Edgeだけで互換性判断
+- Graph Report全文を毎回Contextへ投入
+- Unity生成Folderを無制限Index
 
 ## Measurement
 
-最低限次を記録する。
+最低限、必要に応じて次を記録する。
 
-- 選択Route
+- selected Route
 - Context Pack
 - Typed Context種別
 - Project Fact revision / freshness
-- Initial file reads
-- Expanded files and reason
+- Initial / expanded readsと理由
 - Retrieved artifact count
 - Original / Selected UTF-8 bytes
 - Estimated Context Tokens
-- Exact Provider Token count when tokenizer evidence is available
+- Exact Provider Token count when supported by tokenizer evidence
 - Compression mode / saved bytes
 - Missing retrieval observations
 - Budget decision
@@ -358,11 +318,23 @@ Pilot契約は`.ai/knowledge-graph-pilot.yaml`を参照する。
 
 Context削減は品質低下を正当化しない。
 
-- 重要Dependency漏れが増えた場合はPackを修正する。
-- Verifier Approvalが低下した場合は採用範囲を戻す。
-- Token削減だけで成功判定しない。
-- stale/unknown Factをcurrentとして扱う変更はRejectする。
-- `context_include`と`route_handoff`を混同する変更はRejectする。
-- `estimated_tokens`を正確なModel Token数として報告する変更はRejectする。
-- Authoritative ContextへのLossy CompressionをRejectする。
-- Mutationを`compression_required / unmeasured / blocked`のまま開始する変更はRejectする。
+- 重要Dependency漏れが増えた場合はPackを修正する
+- Verifier品質が低下したら選択範囲を戻す
+- Token削減だけで成功判定しない
+- stale/unknown Factをcurrentとして扱わない
+- `context_include`と`route_handoff`を混同しない
+- `estimated_tokens`を正確なModel Token数として報告しない
+- Authoritative ContextへLossy Compressionしない
+- Mutationを`compression_required / unmeasured / blocked`のまま開始しない
+
+## Authority boundary
+
+Contextはmaterialization layerである。
+
+- Route / Graph decision -> `Orchestration/`
+- current-call Context -> `Context/`
+- process/tool execution -> `Runtime/`
+- durable Memory / Checkpoint / Evidence -> `Persistence/`
+- quality measurement -> `Eval/`
+
+Legacy `.ai` pathやcompatibility fallbackをcurrent Context authorityとして使用しない。

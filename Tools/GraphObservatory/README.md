@@ -1,18 +1,28 @@
 # UnityAgent Context Explorer
 
-This directory contains the read-only Context Explorer projection. Canonical
-Policy, Context Pack, Harness, and Regression files remain the source of truth.
+`Tools/GraphObservatory/` は、canonical UnityAgent contractからread-only projectionを生成するsupporting toolです。
+
+Production authorityは `Policy/`、`Orchestration/`、`Context/`、`Runtime/`、`Persistence/`、`Operations/`、`Eval/` にあり、このtoolのgraph出力はderived viewにすぎません。
+
+## Current input
+
+Context viewは `Context/Packs/*.yaml` のcurrent metadataを読みます。Phase 8で削除されたlegacy `.ai` treeをcurrent sourceとして使用しません。
 
 ## Build and validate
 
-```text
-python Tools/GraphObservatory/build.py --view context --check
-python Tools/GraphObservatory/build.py --view context --bundle Artifacts/GraphObservatory/ContextExplorer
+```powershell
+python .\Tools\GraphObservatory\build.py --view context --check
+python .\Tools\GraphObservatory\build.py --view context --bundle .\Artifacts\GraphObservatory\ContextExplorer
 ```
 
-The bundle is static and offline. It has no edit, save, apply, agent-control,
-or Canonical YAML write surface. The MVP shows Context metadata and explicit
-one-hop relations only.
+Bundleはstatic / offlineで、edit、save、apply、agent-control、canonical YAML write surfaceを持ちません。
 
-Legacy builder and projection entry points remain as thin compatibility
-adapters until a later approved cleanup removes them.
+## Boundary
+
+- projectionはsource path / hash等のprovenanceを保持する
+- missing relationを推測で埋めない
+- Graph UIからcanonical contractを変更しない
+- Graph outputをRoute、State、Evidence、Eval、Frozen Baselineのtruthとして扱わない
+- legacy builder/projection codeが残る場合もcompatibility authorityとしてProduction bootstrapへ接続しない
+
+Current contractの詳細は `docs/phase8-graph-observatory-spec.md` を参照してください。

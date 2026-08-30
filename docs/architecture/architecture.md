@@ -1,6 +1,6 @@
 # UnityAgent Architecture v3.1
 
-Status: **Architecture Contract / Phase 0 Freeze**
+Status: **Canonical Architecture Contract / Phase 10 operational**
 
 ## Canonical repository
 
@@ -16,36 +16,50 @@ UnityAgent/
 ├─ Eval/
 ├─ .agents/
 ├─ SkillReferences/
+├─ Specs/
+├─ Tools/
 └─ docs/
 ```
 
-Final source of truth is `DarumaPPAP/UnityAgent`. `.ai/` is a migration source only and is deleted only after approved cutover. `DarumaPPAP/Unity-Graph-Engineering` becomes archive/read-only only after successful import, one-repo Production Smoke, and explicit human approval.
+`DarumaPPAP/UnityAgent` が Production execution を含む canonical single-repository authority です。
 
-Do not create top-level `Core/`, `Common/`, `Shared/`, `Tools/`, or `Schemas/` as responsibility catch-alls. Contracts, validators and tests live close to their owner.
+Phase 8 cutover は完了済みです。legacy `.ai/` authority、Context/Eval/Persistence compatibility layer、old Eval / Loop shims、`DarumaPPAP/Unity-Graph-Engineering` への Production execution dependency を active authority として復活させません。
+
+Migration時点の旧構造は `docs/migration/` や Historical Eval Dataset / Replay に監査証跡として残せますが、current Production bootstrap では解決しません。
 
 ## Authority contract
 
 ```text
 Policy defines
-Context materializes model input
 Orchestration decides
+Context materializes
 Runtime executes
 Persistence remembers
 Operations observes and controls
 Eval measures and proposes
 ```
 
+近くのComponentで実装できることと、そのComponentがAuthorityを所有することは同義ではありません。
+
 ### Policy
 
-Owns user/security/approval/evidence/risk rules. Does not own execution state, tool calls, graph scheduling, or grading.
+`Policy/` は user/security/approval/evidence/risk rules を所有します。ユーザー固有Policyの正本は `Policy/User/user-policy.yaml` です。
 
-### Context
-
-Owns Prompt specification, retrieval, packs, selection, compression, budget, bounded Memory projection, manifest and final current-call assembly. Context is a **Materialized Context View**, never the durable state or Memory source of truth.
+Policy は execution state、tool call、graph scheduling、quality grading を所有しません。
 
 ### Orchestration
 
-Owns ParentGraph, SubGraph, Node/Edge, Routing, Branch/Join, Parallel, Gate placement, Local semantic loops, semantic replan and justified orchestrator-worker decomposition.
+`Orchestration/` は semantic decision plane です。
+
+- Primary Route selection
+- ParentGraph / SubGraph / Node / Edge
+- Branch / Join / Parallel
+- Local semantic loop
+- semantic continue / replan
+- Task Contract
+- Runtime handoff
+
+Primary Route の正本は `Orchestration/Routing/task-routes.yaml`、canonical Task Contract は `Orchestration/Contracts/TaskContracts/` にあります。
 
 ```text
 Parent Graph
@@ -54,11 +68,35 @@ Parent Graph
           -> Local Loop when needed
 ```
 
-A giant independent Loop Controller beside Graph is forbidden.
+Local Loopを独立したtop-level control planeとしてGraphの横へ置きません。
+
+### Context
+
+`Context/` は current-call の model input を bounded に materialize します。
+
+- Context selection catalog
+- Context Pack
+- Retrieval
+- Knowledge selection
+- Context Budget / Compression
+- Prompt materialization
+- current-call Context provenance
+
+Route selection は Orchestration が先に行います。Context selection の正本は `Context/Selection/context-catalog.yaml`、materialization は `Context/Assembly/materialize_context.py`、Context Budget は `Context/Budget/context-budget.yaml` です。
+
+Context は durable State / Memory / Checkpoint / Evidence truth ではありません。
 
 ### Runtime / Execution Harness Plane
 
-Owns actual execution: model runner, dispatcher, Unity/Test/Performance/SCM harnesses, sandbox, permissions, guardrails, HITL enforcement, mutation enforcement, verification, evidence capture, telemetry and hard execution safety.
+`Runtime/` は実行可能な処理とhard safetyを所有します。
+
+- model / Codex runner
+- dispatcher / tool execution
+- timeout / cancellation / hard retry ceiling / max turns / cost ceiling
+- sandbox / mutation scope
+- permission / guardrail enforcement
+- Unity / Test / Performance / SCM harness
+- current-run verification / evidence capture / telemetry
 
 ```text
 Runtime/Harnesses/
@@ -68,42 +106,63 @@ Runtime/Harnesses/
 └─ SCM/
 ```
 
-`Runtime/ExecutionControl` owns max turns, hard retry ceiling, timeout, cost ceiling, cancellation, crash cleanup/recovery and emergency stop.
-
-Runtime owns health implementations. Orchestration may own only `EnvironmentCheck`, `UnityAvailabilityCheck` and `ToolHealthCheck` Nodes that call Runtime health contracts.
+Semantic Route / Graph / replan は Runtime のAuthorityではありません。
 
 ### Persistence
 
-Owns authoritative `ExecutionState`, `WorkflowState`, `LoopControlState`, `RunCheckpoint`, `SessionRecord`, long-term `MemoryRecord` and `EvidenceRecord`.
+`Persistence/` は durable truth layer です。
+
+- ExecutionState / WorkflowState / LoopControlState
+- Checkpoint / Resume
+- Session
+- Memory
+- durable Evidence
 
 ```text
 Checkpoint != Memory != Evidence
 ```
 
-Evidence is append-oriented and provenance-bound. Memory promotion never overwrites Evidence.
+RuntimeでcaptureされたEvidenceは、`Persistence/Evidence/` へappendされて初めてhistorical durable Evidenceになります。Resume都合でoriginal Evidenceを上書きしません。
 
 ### Operations
 
-Owns production observability, asynchronous failure detection, incidents, runbooks, operational runtime control and rollout/rollback/configuration change management.
+`Operations/` は production observability、detection、incident/runbook、approved runtime control、rollout/rollback/configuration change managementを所有します。
 
-`Operations/RuntimeControl` is external operational control (pause/resume/stop/quarantine/rollback/force HITL/switch model/replay checkpoint) and is distinct from `Runtime/ExecutionControl`. Operations always passes Policy/Approval.
+`Operations/RuntimeControl` と `Runtime/ExecutionControl` は別責務です。OperationsはPolicy/Approval済みcommandだけをauthority別control APIへ渡します。
 
 ### Eval
 
-Owns datasets, Golden Contracts, graders/scorers, behavior/regression eval, Production Smoke definitions, artifact replay, attribution, reports and change proposals.
+`Eval/` は datasets、Golden Contracts、Behavior grading、Attribution、Historical Replay、Rebaseline、Regression、ChangeProposalを所有します。
 
-Eval never directly modifies production definitions.
+EvalはRuntime/Codex/Unity/process executionを実装せず、Production definitionを直接変更しません。canonical structured factが存在する場合、弱いprose/diffからauthority factを再構築しません。
+
+## Default execution flow
+
+bounded TaskではFast Pathを優先します。
 
 ```text
-Eval
- -> Attribution
- -> Report
- -> Change Proposal
- -> Regression/Safety
- -> Approval
- -> Operations/ChangeManagement
- -> Versioned Deploy
+User Request
+  ↓
+Policy
+  ↓
+Task Fingerprint
+  ↓
+Orchestration Route
+  ↓
+Context materialization
+  ↓
+Runtime handoff / execution
+  ↓
+Verification / Evidence capture
+  ↓
+Persistence append
+  ↓
+Eval measurement when required
+  ↓
+Result
 ```
+
+Semantic coordinationが必要な場合だけ `Orchestration/Definitions/development-parent-graph.yaml` を使用します。
 
 ## Recovery ownership
 
@@ -113,168 +172,136 @@ Execution Recovery   -> Runtime
 Operational Recovery -> Operations
 ```
 
-Semantic Retry/Replan is different from transient process/tool retry, timeout, crash recovery, or hard retry ceilings.
-
-## Default Development Parent Graph
-
-Reusable topology, not a mandatory sequence:
-
-```text
-Development Parent Graph
-│
-├─ Planning SubGraph
-│  ├─ Requirement Analysis
-│  ├─ Context Collection
-│  ├─ Task Breakdown
-│  ├─ Plan
-│  └─ Planning Gate
-│
-├─ Investigation SubGraph
-│  ├─ Code Analysis
-│  ├─ Asset / Project Analysis
-│  ├─ Log / Profiler Analysis
-│  ├─ Hypothesis
-│  └─ Evidence Gate
-│
-├─ Implementation SubGraph
-│  ├─ Change Planning
-│  ├─ Code / Asset Mutation
-│  ├─ Build
-│  └─ Build Gate
-│
-├─ Validation SubGraph
-│  ├─ Tests
-│  ├─ Regression
-│  ├─ Benchmark
-│  ├─ Visual Verification
-│  └─ Quality Gate
-│
-└─ Delivery SubGraph
-   ├─ Documentation
-   ├─ Commit / PR
-   ├─ Change Summary
-   └─ User Report
-```
-
-Simple local tasks preserve the fast path:
-
-```text
-Policy -> Context -> Runtime -> Verification -> Result
-```
+Semantic retry/replan と transient process/tool retry、timeout、process cleanup、hard retry ceiling を混同しません。
 
 ## Approval contract
 
 ```text
-Approval Policy
- -> Approval Requirement
- -> Graph Gate Placement
- -> Runtime Approval Enforcement
- -> approve / edit / reject
- -> resume / replan / stop
+Policy / Approval requirement
+        ↓
+Orchestration gate placement
+        ↓
+Runtime enforcement
+        ↓
+approve / edit / reject
+        ↓
+continue / replan / stop
 ```
 
-Policy defines the requirement, Graph chooses the stop point, Runtime enforces pause/serialization/decision/resume.
+PolicyがRequirementを定義し、Orchestrationがsemantic stop pointを決め、Runtimeが実行境界をenforceします。
 
 ## Evidence contract
 
-Minimum durable Evidence fields:
+Compile / Runtime / Editor / Player / Target Device / Performance / Visual は別Evidence stateとして扱います。
 
-```text
-evidence_id
-run_id
-step_id
-source_type
-source_ref
-timestamp
-hash
-producer
-verification_status
-provenance
-```
+- `unavailable` を成功扱いしない
+- `not_observed` をAgent品質denominatorへ入れない
+- CompileだけでRuntime / Player / Visual / Performanceを保証しない
+- Golden expected contentをProduction Prompt / Contextへ注入しない
 
-Compile/Runtime/Editor/Player/device/Performance/Visual states remain separately evidenced. A canonical structured Runtime fact must not be reconstructed from a weaker text/diff form downstream.
+Runtime EvidenceはPersistence append後にdurable truthとなります。
 
-## Evaluation contract
+## Evaluation and regression contract
 
-Golden is a contract, not only an expected final string. It supports:
+Canonical Production qualityは4 caseで観測します。
 
-- expected result
-- invariants
-- expected trajectory
-- forbidden behaviors
-- evidence requirements
+- `GOLDEN-ARCH-001`
+- `GOLDEN-NAMING-001`
+- `GOLDEN-MUTATION-001`
+- `GOLDEN-EVIDENCE-001`
 
-Minimum failure attribution:
+Phase 9 Frozen Baseline:
 
-- `agent_behavior_regression`
-- `runtime_timeout`
-- `runtime_protocol_failure`
-- `evaluator_contract_failure`
-- `task_fixture_invalid`
-- `unavailable_required_evidence`
+`Eval/Rebaseline/Baselines/phase9-baseline-20260830-09.yaml`
 
-`not_observed` infrastructure/evaluator/fixture runs do not enter the Agent-quality denominator.
+Frozen state:
 
-## Versioning
+- 4/4 observed
+- 4/4 quality-passed
+- `regression_pass_rate = 1.0`
+- canonical failure taxonomy clean
+- DefinitionFingerprint 4/4
+- Historical Replay namespace coverage passed
 
-Version/fingerprint at minimum:
+Phase 10 comparatorはcandidateをこのBaselineと比較し、次を返します。
 
-- Policy
-- Prompt
-- Context
-- ParentGraph/SubGraph
-- Runtime execution profile
-- tool schemas
-- checkpoint schema
-- evidence schema
-- Eval/Golden/Grader contracts
+- `PASS`
+- `BLOCK_REGRESSION`
+- `BLOCK_INCONCLUSIVE`
+- `REBASELINE_REQUIRED`
 
-Run/Checkpoint/Evidence/Eval artifacts retain these revisions. Resume compares saved and current definitions and chooses compatible resume, tested migration, or fail-closed review.
+PASS後もBaselineは自動更新しません。
 
 ## Production Smoke
 
+Canonical Production path:
+
 ```text
-Eval/ProductionSmoke
-  case / invariants / grader
+.github/ProductionSmoke/run_one_repo_smoke.py
+        ↓
+Orchestration / Context materialization
         ↓
 Runtime/Runner/Codex
-  real execution/routing/tools/permissions
         ↓
 Persistence/Evidence
         ↓
-Eval/Graders
+Eval/Behavior/grade_production_smoke.py
+        ↓
+Eval/Rebaseline/build_rebaseline_summary.py
+        ↓
+Eval/Regression/compare_baseline.py
 ```
 
-Destructive effects remain sandboxed/fixture-controlled. Historical ARCH/NAMING/MUTATION/EVIDENCE artifacts are replayed in CI.
+Phase 10の標準運用は `Tools/Phase10/run_local_regression_gate.py` です。ローカルの認証済みCodex CLI sessionを使用し、Frozen Baselineと同じ `gpt-5.6-luna / xhigh` を既定比較identityとします。
 
-## Migration phases
+GitHub-hosted Regression Gateはoptional CI pathです。
 
-0. Architecture Contract + inventory only.
-1. Canonical contracts.
-2. Policy + Context.
-3. Runtime / Harness import.
-4. Orchestration import and explicit SubGraphs.
-5. Persistence consolidation.
-6. Eval consolidation + artifact replay.
-7. Operations closure.
-8. Human-approved `.ai` removal, compatibility deletion, Graph-repo cutover/archive.
-9. Production Smoke re-baseline.
+## Versioning / DefinitionFingerprint
 
-Each phase runs tests, updates migration documentation, and stops on unexplained failures.
+比較・Resume・Rebaselineで少なくとも次を追跡します。
 
-## Protected existing behavior
+- architecture version
+- policy revision
+- prompt revision
+- context revision
+- graph revision
+- runtime profile revision
+- tool schema revision
+- checkpoint schema revision
+- evidence schema revision
+- eval contract revision
 
-The migration must preserve the existing authoritative user-specific UnityAgent policy, including minimal cohesive solution first, no premature abstraction/generalization, exact evidence honesty, mutation safety, approval boundaries, existing comment policy, naming policy, and no unrequested implementation.
+Source revision、Runtime identity、Codex versionもprovenanceとして保持します。
 
-## Phase 0 companion documents
+## Migration state
 
-- `docs/migration/architecture-inventory.md`
-- `docs/migration/architecture-dependency-map.md`
-- `docs/migration/architecture-migration-plan.md`
-- `docs/migration/architecture-canonical-contracts.md`
-- `docs/migration/architecture-split-list.md`
-- `docs/migration/architecture-compatibility-delete-list.md`
-- `docs/migration/architecture-version-resume-matrix.md`
-- `docs/migration/architecture-harness-health-contract.md`
+```text
+Phase 0   Architecture contract                       complete
+Phase 1   Canonical contracts                         complete
+Phase 2   Policy + Context                            complete
+Phase 3   Runtime / Harness                           complete
+Phase 4   Orchestration                               complete
+Phase 5   Persistence                                 complete
+Phase 6   Eval consolidation                          complete
+Phase 7   Operations                                  complete
+Phase 8   Single-repo cutover / legacy removal        complete
+Phase 9   Production re-baseline / baseline freeze    complete
+Phase 10  Baseline comparator / regression gate       complete
+```
 
-These documents are the review gate before broad movement.
+過去Phaseの詳細は `docs/migration/` に残します。Migration文書のhistorical pathをcurrent authorityとして読み替えません。
+
+## Protected user-specific behavior
+
+Architecture変更は、現在のユーザー固有Policyを保持します。
+
+- minimum cohesive solution first
+- no premature abstraction / generalization
+- exact evidence honesty
+- mutation safety
+- approval boundaries
+- existing comment policy
+- naming policy
+- no unrequested implementation
+
+詳細なBootstrap Mapと責務境界は `AGENTS.md` を参照してください。

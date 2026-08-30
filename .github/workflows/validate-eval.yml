@@ -7,6 +7,14 @@ on:
       - "Context/**"
       - "Persistence/**"
       - "Tools/Phase10/**"
+      - "Tools/DocumentationValidator/**"
+      - "Tools/GraphObservatory/**"
+      - "Tests/SkillRouting/**"
+      - "Tests/GraphObservatory/**"
+      - "SkillReferences/**"
+      - "Specs/**"
+      - "docs/**"
+      - "README.md"
       - "AGENTS.md"
       - "Tools/validate_all.py"
       - ".github/workflows/validate-eval.yml"
@@ -19,6 +27,14 @@ on:
       - "Context/**"
       - "Persistence/**"
       - "Tools/Phase10/**"
+      - "Tools/DocumentationValidator/**"
+      - "Tools/GraphObservatory/**"
+      - "Tests/SkillRouting/**"
+      - "Tests/GraphObservatory/**"
+      - "SkillReferences/**"
+      - "Specs/**"
+      - "docs/**"
+      - "README.md"
       - "AGENTS.md"
       - "Tools/validate_all.py"
       - ".github/workflows/validate-eval.yml"
@@ -40,6 +56,11 @@ jobs:
         run: python -m pip install --disable-pip-version-check PyYAML jsonschema
       - name: Canonical Eval tests
         run: python -m unittest discover -s Eval/Tests -p "test_*.py"
+      - name: Validate active documentation and Context Explorer
+        run: |
+          python Tools/DocumentationValidator/validate_documentation.py
+          python Tools/GraphObservatory/validate_context_explorer.py
+          python -m unittest Tests.GraphObservatory.test_context_explorer_projection
       - name: Validate frozen Phase 9 baseline
         run: python Eval/Rebaseline/validate_baseline_freeze.py Eval/Rebaseline/Baselines/phase9-baseline-20260830-09.yaml
       - name: Validate Phase 10 comparator and local gate entry points

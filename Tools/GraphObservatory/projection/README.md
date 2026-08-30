@@ -1,61 +1,45 @@
-# Phase 8.7 Real Data Projection Layer
+# Graph Observatory Real Data Projection Layer
 
 ## Purpose
 
-Convert UnityAgent canonical runtime data into Graph Observatory projections.
+UnityAgent canonical dataをread-only Graph Observatory projectionへ変換する。
 
 Source of Truth:
 
 ```text
-.ai YAML / Context Manifest
-        ↓
-Projection Layer
-        ↓
-Graph Artifact
-        ↓
-Visualizer
+Policy / Orchestration / Context / Runtime / Persistence / Eval
+                         ↓
+                  Projection Layer
+                         ↓
+                   Graph Artifact
+                         ↓
+                     Visualizer
 ```
 
-This layer is read-only. It must not modify canonical configuration.
+このLayerはread-onlyであり、canonical configurationを変更しない。
 
-## Projection Targets
+## Projection targets
+
+現行実装済みprojectionとlegacy/incomplete projectionを区別する。`Tools/GraphObservatory/build.py` が直接公開するviewだけをcurrent supported surfaceとして扱う。
+
+候補surface:
 
 - Context Graph
-- Harness Graph
+- Harness / Verification Graph
 - Execution Graph
 - Regression Graph
 
-## Projection Pipeline
-
-```text
-Canonical Data
-        ↓
-Projection Runner
-        ↓
-Context Projection
-Harness Projection
-Execution Projection
-Regression Projection
-        ↓
-Graph Artifact
-        ↓
-Validator
-```
-
 ## Rules
 
-- Preserve provenance.
-- Preserve node IDs.
-- Preserve typed edges.
-- Missing information becomes unresolved, never guessed.
-- Graph output is a derived view, not a source of truth.
-- Graph editing must not mutate canonical YAML.
+- current canonical pathから読む
+- legacy dot-ai authorityをcurrent inputへ戻さない
+- provenanceを保持する
+- node ID / typed relationを可能な範囲で保持する
+- Missing informationを推測で補わない
+- Graph outputはderived viewでありsource of truthではない
+- Graph editingからcanonical YAMLをmutationしない
+- Empty graphでschema/path mismatchを隠さない
 
 ## Output
 
-Generated artifacts are consumed by Graph Observatory views:
-
-- Architecture View
-- Task View
-- Execution Trace View
-- Regression View
+Generated artifactsは `Artifacts/GraphObservatory/` 配下へ出力し、Production State / Evidence / Frozen Baselineの代替truthとして使用しない。
