@@ -27,6 +27,7 @@ FORBIDDEN_PATHS = (
 )
 
 ACTIVE_SCAN_ROOTS = (
+    "README.md",
     "AGENTS.md",
     ".agents",
     "Policy",
