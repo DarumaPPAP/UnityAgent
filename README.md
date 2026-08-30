@@ -1,286 +1,351 @@
 # UnityAgent
 
-Unity / C# / URP / RenderGraph / Shader / Performance / Visual DirectionのDomain Skill、Knowledge Contract、Task Contract、Standards、Validatorと、**ユーザー固有のUnity開発Policy**を管理する正本Repositoryです。
+UnityAgent is the canonical single-repository authority for a personal Unity development agent. It owns user-specific Policy, semantic routing and task contracts, bounded Context materialization, Runtime execution and guardrails, durable Persistence, Operations observability/control, and Eval quality measurement.
 
-UnityAgentは汎用的なUnity Best Practice集ではありません。ユーザーが決めた設計思想、ファイル粒度、コメント品質、禁止事項、安全境界を、外部記事や一般的推奨より優先して適用する個人専用Unity開発Agentです。
+This repository is **not** a generic Unity best-practice collection. The user's explicit instructions and `Policy/User/user-policy.yaml` take precedence over external references and general recommendations unless a higher safety boundary requires otherwise.
 
-汎用の実行モード、Task Graph、Retry、Token Budget、Checkpoint、Human Gateは`DarumaPPAP/Unity-Graph-Engineering`が所有します。
+## Current state
 
-## Source of truth
-
-- `DarumaPPAP/UnityAgent`: ユーザー固有Policy、Unity Domain Skill、圧縮Knowledge YAML、Task Contract、Quality Gate、Validator
-- `DarumaPPAP/Unity-Graph-Engineering`: Prompt / Graph-Loop実行、Budget、State、Recovery、Human Gate
-- `DarumaPPAP/MyUnityMCP`: UnityAgentMCP、Creator Workflow、Domain MCP、Capability Module、Catalog、Manifest、Tool Schema、Package実装
-- `DarumaPPAP/UnityAIGC-Archive`: 生成した製品コード、製品仕様、導入資料
-- `DarumaPPAP/Beautiful-Definition`: Visual Intent、Beauty Definition、Human feedback
-- `DarumaPPAP/Unity-Knowledge-Products`: 人間向けHTML、詳細解説、実験、Decisionを置く予定の知的資産Repository
-- Google Drive: PDF、PowerPoint、画像、動画、Capture、外部資料の原資料庫
-
-UnityAgent内へ長い技術解説や製品Feature用の新しい`Implementation/`または`Specs/`を作成しません。
-
-## User policy authority
-
-ユーザー固有Policyの正本は`.ai/user-policy.yaml`です。
+UnityAgent's quality foundation v1 is complete through Phase 10.
 
 ```text
-今回のユーザー明示指示
-  ↓
-UnityAgent User Policy
-  ↓
-Project固有Policy
-  ↓
-Unity Domain Standard
-  ↓
-外部Reference
-  ↓
-一般的Best Practice
+Phase 8   Canonical single-repo cutover         complete
+Phase 9   Production re-baseline                complete
+Phase 9   Reviewed baseline freeze              complete
+Phase 10  Baseline comparator / regression gate complete
+Phase 10  Local Production gate                 standard operating path
 ```
 
-Projectから検出した事実とユーザーのPreferenceは分離します。対象ProjectのUnity Version、Render Pipeline、既存namespaceなどの事実は推測しません。一方、ファイル分割、過剰設計防止、日本語コメント、Team Safe ImportなどのユーザーPolicyは一般論で上書きしません。
+The accepted Phase 9 baseline is:
 
-古いPolicyは現在のPolicyへ自動マージしません。競合時は現在のPolicyを保持し、古い重複・廃止情報を削除します。
+`Eval/Rebaseline/Baselines/phase9-baseline-20260830-09.yaml`
 
-コメント体系は保護対象です。
+It freezes a real Production observation using `gpt-5.6-luna`, reasoning effort `xhigh`, with all four canonical cases observed and passed:
 
-- 本番コード: `production-code-comments`
-- 学習・コードリーディング: `learning-code-comments`
-- コメント品質監査: `comment-quality-reviewer`
+- `GOLDEN-ARCH-001`
+- `GOLDEN-NAMING-001`
+- `GOLDEN-MUTATION-001`
+- `GOLDEN-EVIDENCE-001`
+
+The frozen quality result is 4/4 observed, 4/4 quality-passed, `regression_pass_rate = 1.0`, with the canonical failure taxonomy clean.
+
+Phase 10 compares new Production candidates against that frozen baseline. It never auto-updates the baseline.
+
+## Authority order
+
+```text
+Current explicit user instruction
+  ↓
+Policy/User/user-policy.yaml
+  ↓
+Project-specific policy / verified project facts
+  ↓
+Unity domain standards and selected Skills
+  ↓
+External references
+  ↓
+General best practice
+```
+
+Project facts and user preferences are different things. Unity version, render pipeline, namespace, scene structure, assets, package versions, and other project facts must not be guessed. User-specific design and review policies must not be silently replaced by generic recommendations.
+
+`AGENTS.md` is only the bootstrap map. It points to canonical authorities; it is not a duplicate policy store.
+
+## Canonical ownership
+
+| Area | Canonical source | Responsibility |
+| --- | --- | --- |
+| User Policy | `Policy/User/user-policy.yaml` | User-specific development policy |
+| Risk / Security / Approval / Evidence rules | `Policy/` | Decision and safety boundaries |
+| Route selection | `Orchestration/Routing/` | Semantic primary route selection |
+| Parent graph / semantic coordination | `Orchestration/Definitions/` + `Orchestration/Graph/` | Bounded semantic coordination, replan and local loops |
+| Task contracts | `Orchestration/Contracts/TaskContracts/` | Inputs, mutation boundaries, gates, completion / stop conditions |
+| Orchestrator | `Orchestration/Orchestrator/` | Runtime handoff; no process execution implementation |
+| Context selection / materialization | `Context/` | Current-call context, retrieval and budget |
+| Runtime execution | `Runtime/Runner/` + `Runtime/Dispatcher/` + `Runtime/ExecutionControl/` | Actual process / tool execution and hard limits |
+| Runtime guardrails / harnesses | `Runtime/Sandbox/` + `Runtime/Guardrails/` + `Runtime/Permissions/` + `Runtime/Harnesses/` | Mutation scope, permissions and executable verification |
+| Runtime evidence / telemetry | `Runtime/EvidenceCapture/` + `Runtime/Telemetry/` | Current-run observations |
+| Persistence | `Persistence/` | Durable state, checkpoint, memory, evidence and session truth |
+| Operations | `Operations/` | Observability, detection, incident/runbook, approved runtime control and change management |
+| Eval | `Eval/` | Golden/Behavior grading, attribution, replay, rebaseline, regression comparison and change proposals |
+| Domain Skills | `.agents/skills/` | Selected task-specific operating instructions |
+| Supporting references | `SkillReferences/`, `Specs/`, `Templates/`, `docs/` | Human/reference material; not a replacement for canonical authorities above |
+
+The responsibility rule is:
+
+> Policy defines; Orchestration decides; Context materializes; Runtime executes; Persistence remembers; Operations observes/controls; Eval measures/proposes.
+
+Do not move these responsibilities across layers just because a nearby component can technically perform them.
+
+## Production execution flow
+
+For bounded tasks, UnityAgent prefers the shortest canonical path:
+
+```text
+User request
+   ↓
+Policy
+   ↓
+Task fingerprint
+   ↓
+Orchestration/Routing/task-routes.yaml
+   ↓
+One primary route + semantic execution profile
+   ↓
+Context/Selection/context-catalog.yaml
+   ↓
+One Context Pack + one Primary Skill + one Task Contract
+   ↓
+Context/Assembly/materialize_context.py
+   ↓
+Runtime handoff
+   ↓
+Runtime execution / guardrails / evidence capture
+   ↓
+Persistence append
+   ↓
+Eval measurement
+```
+
+A Parent Graph is used only when semantic coordination is actually needed. Local loops are bounded graph coordination; they are not a separate top-level control plane.
+
+## Routes and task contracts
+
+The canonical route selector is:
+
+`Orchestration/Routing/task-routes.yaml`
+
+Current primary routes are:
+
+| Route | Main use |
+| --- | --- |
+| `generic-planning` | Generic planning when no more-specific semantic route matches |
+| `architecture-design` | Architecture, file granularity, type/ownership decisions |
+| `graphics-mcp` | MyUnityMCP graphics/domain capability design |
+| `csharp-local-fix` | Bounded local C# implementation / review |
+| `rendering-incident` | Unknown rendering failure or platform divergence investigation |
+| `shader-change` | ShaderLab / HLSL / Compute changes |
+| `renderer-feature-change` | RendererFeature / renderer pipeline changes |
+| `performance-experiment` | Baseline-backed performance investigation |
+| `asset-data-change` | Scene / Prefab / Material / serialized asset changes |
+| `portable-feature` | Project-independent package / editor tool design |
+| `safe-import-integration` | Restricted staging import path |
+| `visual-direction` | Lighting, composition, look development and visual review |
+
+Technology keywords alone are not route authority. Unknown fingerprint dimensions are not guessed.
+
+Task contracts live under:
+
+`Orchestration/Contracts/TaskContracts/`
+
+They define allowed/prohibited mutation, required gates, completion conditions and stop conditions for the selected route.
 
 ## Execution profiles
 
-入口は`.ai/execution-profiles.yaml`です。
+Execution profiles are Runtime enforcement contracts at:
 
-| Profile | 用途 | Project Context |
-|---|---|---|
-| `generic_planning` | Project非参照の設計、Portable Package、外部Authoring | 不要 |
-| `personal_full_control` | 個人Projectの直接実装、Unity検証、Git | Optional |
-| `team_safe_import` | 会社Projectへの一方向Staging Import | 使用禁止 |
+`Runtime/Profiles/runtime-profiles.yaml`
 
-### Generic Planning
+| Profile | Project access | Mutation role |
+| --- | --- | --- |
+| `generic_planning` | none | no direct mutation |
+| `personal_full_control` | full when authorized | authorized analysis / verification / mutation |
+| `team_safe_import` | no external export | staging-only portable import |
 
-Unity Version、Render Pipeline、Goal、Constraints、禁止事項、期待結果の最小手動入力だけで計画できます。Target PlatformはPlatform固有API、Build、互換性または性能主張がある場合だけ必須です。Project固有Path、Scene、Renderer Data、Layer、ShaderTagは推測せず、未解決Bindingとして残します。
-
-### Personal Full-Control
-
-Project Context GeneratorやUnity Command Surfaceは、Source探索と検証を高速化するOptional Toolです。利用不能でもTaskを中止せず、手動要件とSourceから継続します。Credentialや秘密鍵などのSecretはFull Access時も収集対象外です。
-
-### Team Safe Import
-
-Personal版とは別Packageを前提とし、Project Scanner、Source Export、Screenshot、Hierarchy、Unity Project ID、Git、Issue、Cloud、Environment Variable、組織情報、顧客情報へのアクセス機能を持たせません。会社固有情報は`redacted`項目としてもSchemaへ作りません。
-
-## Execution integration
-
-```text
-User Request
-  ↓
-Unity-Graph-Engineering Execution Router
-  ↓
-UnityAgent Execution Profile
-  ↓
-UnityAgent User Policy
-  ↓
-One Primary Domain Route
-  ↓
-One Task Contract
-  ↓
-One Context Pack
-  ↓
-Zero or One Primary Knowledge Contract
-  ↓
-Target Source or Portable Output
-```
-
-無指定TaskはPrompt Engineeringです。UnityAgentはGraph / Loopへの無断変更、汎用State Machine、Token Budget管理を行いません。
+Profile **selection** belongs to Orchestration. Runtime only enforces the supplied profile; Runtime does not own semantic retry/replan decisions.
 
 ## Context Engineering
 
-Unity Domain Routingの唯一の入口は`.ai/context-index.yaml`です。Context側は「今回AIへ何を渡すか」、Harness側は「何を変更でき、何を検証し、どこで止めるか」を所有します。
+Context selection is resolved through:
+
+`Context/Selection/context-catalog.yaml`
+
+Context is bounded to the already-selected Orchestration route. It does not choose the route and it is not a durable state/evidence store.
+
+The materializer resolves, as needed:
 
 ```text
-.ai/
-├─ user-policy.yaml
-├─ context-index.yaml
-├─ context-manifest.schema.yaml
-├─ execution-profiles.yaml
-├─ context-packs/
-│  ├─ architecture-design.yaml
-│  ├─ graphics-mcp.yaml
-│  ├─ csharp-local-fix.yaml
-│  ├─ rendering-incident.yaml
-│  ├─ shader-change.yaml
-│  ├─ renderer-feature-change.yaml
-│  ├─ performance.yaml
-│  ├─ asset-data-change.yaml
-│  ├─ portable-feature.yaml
-│  └─ visual-direction.yaml
-├─ knowledge/
-│  ├─ knowledge.schema.yaml
-│  ├─ index.yaml
-│  └─ rendering/
-├─ harness/
-│  ├─ task-contracts/
-│  │  ├─ task-contract.schema.yaml
-│  │  ├─ architecture-design.yaml
-│  │  ├─ graphics-mcp.yaml
-│  │  ├─ csharp-local-fix.yaml
-│  │  ├─ rendering-incident.yaml
-│  │  ├─ shader-change.yaml
-│  │  ├─ renderer-feature-change.yaml
-│  │  ├─ performance-experiment.yaml
-│  │  ├─ asset-data-change.yaml
-│  │  ├─ portable-feature.yaml
-│  │  ├─ safe-import-integration.yaml
-│  │  └─ visual-direction.yaml
-│  ├─ quality-gates.yaml
-│  ├─ mutation-channels.yaml
-│  ├─ risk-levels.yaml
-│  └─ mcp-activation.yaml
-└─ knowledge-graph-pilot.yaml
+selected route
+  ├─ Context Pack
+  ├─ Primary Skill
+  ├─ canonical Task Contract
+  ├─ required Policy clauses
+  └─ optional / conditional Knowledge
 ```
 
-全Skill、全Reference、全Knowledgeを一括で読みません。Primary Domain Route、Task Contract、Context Pack、Primary Domain Skillをそれぞれ一つに限定し、Related KnowledgeとConditional Operationは条件成立時だけ追加します。
+Context Budget is defined under `Context/Budget/`. Knowledge retrieval is under `Context/Retrieval/`.
 
-旧Supervisor / Skill Routing互換AdapterはPhase 4で削除済みです。過去互換情報はGit履歴だけをArchiveとし、Routing正本へ戻しません。
+The repository does not load every Skill, reference or Knowledge document for every task.
 
-## Harness Engineering
+## Runtime / Harness boundary
 
-`.ai/harness/`はUnity固有の実行制約と検証契約を所有します。
+Executable safety and verification belong to `Runtime/`, not to a legacy context-side harness tree.
 
-- `task-contracts/`: Taskごとの入力、許可Mutation、禁止Mutation、必須Gate、完了条件、Stop条件
-- `quality-gates.yaml`: Static / Compile / EditMode / PlayMode / Player / Rendering / Performance / Target Device等のEvidence境界
-- `mutation-channels.yaml`: C#、Shader、Scene、Prefab、Material、Package、Project Settingsの正規変更経路
-- `risk-levels.yaml`: R0〜R4とMutation RiskのEscalation
-- `mcp-activation.yaml`: MyUnityMCPのCatalog、Manifest、Tool Groupを段階的に公開するActivation Policy
+Runtime owns:
 
-Loop / Graph / Retry / Checkpoint / Token BudgetはHarnessへ戻さず、`DarumaPPAP/Unity-Graph-Engineering`を正本とします。
+- actual Codex / tool / process execution;
+- hard timeout and cancellation;
+- workspace and mutation-scope enforcement;
+- permissions;
+- Unity/test/performance/SCM harness execution;
+- current-run evidence capture and telemetry.
 
-## Architecture intelligence
+Runtime does **not** own:
 
-新規Feature、System、C#ファイル構成、MonoBehaviour / Plain C# / ScriptableObject / ECSの境界判断には`architecture-design` Routeを使用します。
+- semantic route selection;
+- Parent Graph topology or semantic replan policy;
+- durable Evidence / Memory / Checkpoint truth;
+- Agent quality grading.
 
-- 小規模機能はSingle Cohesive Script First
-- 新規ファイルごとにSplit Reasonを要求
-- Pattern名、hypothetical reuse、Mock可能性、行数だけでは分割しない
-- Controller、Manager、Service、Interface、ScriptableObjectの必要性を明示的に審査
-- データ並列処理ではECS、Jobs、Burst案を積極評価
-- ECS Component、Tag、Aspect、Jobを1型1ファイルへ機械的に分割しない
-- Architecture Decisionへ採用案、不採用案、File Plan、再評価条件を残す
+## Persistence boundary
 
-判断Policyの正本は`.ai/user-policy.yaml`と`SkillReferences/ARCHITECTURE_DECISION_POLICY.md`です。
+Persistence is the durable truth layer.
 
-## Knowledge boundary
+`Checkpoint != Memory != Evidence`.
 
-### UnityAgent YAML
+- Checkpoint stores state snapshot references.
+- Memory is durable retrievable context/history.
+- Evidence is append-only execution evidence after Persistence commit.
+- Resume compares DefinitionFingerprint and fails closed on incompatible state.
 
-AI実装に直接必要な圧縮契約だけを保持します。
+Runtime-captured evidence is not historical durable evidence until it is appended through `Persistence/Evidence/`.
 
-- 使用条件
-- 必須入力
-- 実装契約
-- 禁止事項
-- 関連Knowledge
-- Evidence
-- Stop条件
-- Human Reference ID
+## Eval and evidence semantics
 
-### Unity-Knowledge-Products
+Eval measures structured Runtime/Persistence facts. It must not reconstruct authoritative facts from lossy prose when canonical structured evidence exists.
 
-人間向けのHTML、図、詳細解説、比較、実験、Failure Signature、Decision、Platform差を保存します。AIは設計理由や実験値が必要な場合だけ参照します。
+Important semantics:
 
-### Google Drive
+- `passed`: required evidence supports success.
+- `failed`: observed evidence supports failure.
+- `unavailable`: the gate could not be observed; it is not success.
+- `not_observed`: Production behavior was not observed and is excluded from the Agent-quality denominator.
+- compile success does not prove Runtime, Visual, Performance, Player or target-device success.
+- Golden expected content must never be injected into Production Prompt or Context.
 
-PDF、PowerPoint、画像、動画、Profiler／GPU Captureなどの原資料を保存します。
+Agent regressions are kept separate from infrastructure/runtime/evaluator failures.
 
-## Task contracts
+## Phase 9 frozen baseline
 
-| Contract | 主用途 |
-|---|---|
-| `architecture-design` | 新規Feature/System、ファイル粒度、MVP/MVVM/SO/ECS選定 |
-| `graphics-mcp` | MyUnityMCPのGraphics Domain、Creator Workflow、Capability設計 |
-| `csharp-local-fix` | 確定済みの局所C#修正 |
-| `rendering-incident` | 原因不明の描画、RenderGraph、Editor / Player差 |
-| `shader-change` | ShaderLab、HLSL、Compute |
-| `renderer-feature-change` | RendererFeature、Pass、Resource連携 |
-| `performance-experiment` | Baseline付き性能実験 |
-| `asset-data-change` | Scene、Prefab、Material、Serialized Asset |
-| `portable-feature` | Project非依存のUPM Package／外部Authoring |
-| `safe-import-integration` | Team用一方向Staging Import |
-| `visual-direction` | Lighting、Composition、LookDev、Capture、Human Review |
+The accepted baseline is read-only reference data:
 
-## Capability-independent validation
+`Eval/Rebaseline/Baselines/phase9-baseline-20260830-09.yaml`
 
-Quality Gateの結果は`passed`、`failed`、`unavailable`です。
+It records:
 
-- `unavailable`はTask失敗ではありません。
-- `unavailable`を成功と報告しません。
-- 環境待ちは`unavailable`と`reason_code: deferred-environment`で表現します。
-- 実行できないGateは理由と残作業へ移します。
-- Compile成功だけでRuntime、Visual、Performance、実機を保証しません。
-- Architecture用Gateとして`architecture_fit`、`file_granularity`、`ownership_and_lifetime`、`ecs_data_layout`を使用します。
+- the accepted Production run;
+- exact source revision and runtime identity;
+- 4/4 observed / passed quality;
+- canonical failure taxonomy counts;
+- all four DefinitionFingerprints;
+- Historical Replay namespace coverage;
+- immutable provenance references.
 
-## Mutation channels
+A passing Phase 10 candidate does **not** replace this baseline. Replacing the baseline requires a new Production observation, RebaselineSummary, required Historical Replay, `baseline_ready`, and a dedicated reviewed Freeze PR.
 
-- C#／Shader: Source Patch
-- Scene／Prefab: Connected Editor CommandまたはEditor Script
-- Material: SerializedObjectまたはEditor Command
-- Package: PackageManager ClientまたはPortable UPM Package
-- Project Settings／Render Pipeline Asset: Editor APIと明示承認
-- Raw Scene／Prefab／Material YAML編集: 禁止
+## Phase 10 Regression Gate
 
-## Validation
+The standard operating path is local and uses the already-authenticated local Codex CLI session.
 
-Skill構造Validator:
+From the repository root:
 
-```bash
-python Tools/SkillValidator/validate_skills.py
-python Tools/SkillValidator/validate_skills.py --strict
-python Tools/SkillValidator/validate_skills.py --json
+```powershell
+python .\Tools\Phase10\run_local_regression_gate.py
 ```
 
-Knowledge／Task Contract Validator:
+Default comparison identity:
 
-```bash
-python Tools/ContractValidator/validate_contracts.py
-python Tools/ContractValidator/validate_contracts.py --json
+- model: `gpt-5.6-luna`
+- reasoning effort: `xhigh`
+- per-case timeout: `600` seconds
+
+The runner verifies a clean Git worktree, records the exact HEAD revision and Codex version, executes the four Production Smoke cases, grades them, builds a candidate RebaselineSummary and runs the Baseline Comparator.
+
+The standard local path does not require `OPENAI_API_KEY`. If that variable is inherited from the parent shell, the local runner removes it from the child Production environment before launching Codex.
+
+Phase 10 decisions are:
+
+| Decision | Meaning |
+| --- | --- |
+| `PASS` | Comparable candidate maintains the frozen baseline |
+| `BLOCK_REGRESSION` | Fully observed Agent behavior regressed |
+| `BLOCK_INCONCLUSIVE` | Current Production quality could not be fully established |
+| `REBASELINE_REQUIRED` | Runtime/evaluation definition changed enough that the candidate is not directly comparable |
+
+The optional GitHub-hosted workflow remains available for explicit CI automation. That hosted path requires an appropriate repository credential because a fresh hosted runner has no local ChatGPT/Codex login session.
+
+See `docs/migration/phase10-baseline-comparator.md` for the detailed contract.
+
+## Local validation
+
+Run the canonical local validation suite:
+
+```powershell
+python .\Tools\validate_all.py
 ```
 
-Context Pack Validator:
+It validates canonical YAML, Policy integrity, stale paths, Skills, Knowledge/Task contracts, Context Packs, Golden/Behavior contracts, Phase 8 cutover invariants, and unit-test suites across Policy / Context / Orchestration / Runtime / Persistence / Operations / Eval.
 
-```bash
-python Tools/ContextPackValidator/validate_context_packs.py
+Useful targeted checks include:
+
+```powershell
+python .\Tools\SkillValidator\validate_skills.py --strict
+python .\Tools\ContractValidator\validate_contracts.py
+python .\Tools\ContextPackValidator\validate_context_packs.py
+python .\Eval\Behavior\validate_phase8_cutover.py
+python .\Eval\Rebaseline\validate_baseline_freeze.py .\Eval\Rebaseline\Baselines\phase9-baseline-20260830-09.yaml
+python -m unittest Eval.Tests.test_phase10_baseline_comparator
+python -m unittest Eval.Tests.test_phase10_local_regression_gate
 ```
 
-Canonical Route Graph／User Policy Validator:
+All UnityAgent text artifacts are UTF-8. When inspecting text from PowerShell, use explicit UTF-8 decoding, for example:
 
-```bash
-python Tools/RouteGraphValidator/validate_route_graph.py
+```powershell
+Get-Content ".\README.md" -Raw -Encoding UTF8
 ```
 
-Routing Case:
+## External repository boundary
+
+`DarumaPPAP/Unity-Graph-Engineering` is **not** a UnityAgent Production execution dependency after the Phase 8 cutover. Historical migration provenance may remain in migration documentation, but active execution authority is owned inside this repository.
+
+`DarumaPPAP/MyUnityMCP` remains the external owner for MCP manifest / tool schema / package implementation surfaces that UnityAgent selects or governs through its own Policy, Context and Runtime contracts.
+
+Do not reintroduce a second active execution authority through compatibility adapters, old Graph-side Production runners or fallback paths.
+
+## Legacy / anti-regression rules
+
+The post-cutover repository must remain single-authority.
+
+- Do not restore the legacy dot-ai authority tree.
+- Do not restore Context/Eval/Persistence compatibility layers or old evaluation/loop shims.
+- Do not make Unity-Graph-Engineering a Production execution dependency again.
+- Do not move semantic Graph/replan authority into Runtime.
+- Do not move process/tool execution into Eval or Orchestration.
+- Do not make Context a durable Memory/Checkpoint/Evidence store.
+- Do not treat `not_observed` as Agent regression.
+- Do not rewrite frozen Production evidence to make a candidate pass.
+- Do not auto-update the frozen baseline after a Phase 10 `PASS`.
+
+Historical migration information belongs in `docs/migration/` and historical Eval datasets/replay surfaces, not in active Production bootstrap authority.
+
+## Repository map
 
 ```text
-Tests/ContractValidator/routing-cases.yaml
-Tests/ContextRouting/cases.yaml
+UnityAgent/
+├─ AGENTS.md                 # bootstrap map
+├─ .agents/skills/           # selected domain Skills
+├─ Policy/                   # user / risk / approval / security / evidence authority
+├─ Orchestration/            # routes / graphs / task contracts / runtime handoff
+├─ Context/                  # selection / packs / retrieval / budget / materialization
+├─ Runtime/                  # execution / guardrails / harnesses / telemetry
+├─ Persistence/              # durable state / checkpoint / resume / memory / evidence
+├─ Operations/               # observability / detection / incidents / control / change management
+├─ Eval/                     # behavior / golden / replay / rebaseline / regression
+├─ Tools/                    # local validators and Phase 10 local gate
+├─ SkillReferences/          # supporting domain references
+├─ Specs/                    # supporting feature/project specifications
+├─ Templates/                # reusable supporting templates
+└─ docs/migration/           # historical migration / contract-change provenance
 ```
 
-## TAA Knowledge Pilot
-
-最初のKnowledge Product Pilotとして次を追加しています。
-
-```text
-.ai/knowledge/rendering/temporal-anti-aliasing.yaml
-```
-
-Motion Vector、Transparent、Outline、UI Composition、Shader VariantはRelated Knowledge Stubとして追加し、TAA Taskで条件成立時だけ読み込みます。
-
-## Target KPI
-
-- Framework Token: 50%以上削減
-- Accepted Task総Token: 30%以上削減
-- Context File Read: 30%以上削減
-- Verifier品質低下: 0
-- Missed Dependency悪化: 0
-- 未検証の成功報告: 0
-- ユーザー固有Policyの欠落: 0
-
-削減率は公開事例ではなく、同じUnity TaskとSource revisionによるA/B比較で判断します。
+For the detailed responsibility map, start from `AGENTS.md`. For quality-baseline history, use `docs/migration/phase8-cutover.md`, the Phase 9 migration documents, and `docs/migration/phase10-baseline-comparator.md`.
