@@ -1,357 +1,399 @@
 # UnityAgent
 
-UnityAgent は、個人向け Unity 開発 Agent の **canonical single-repository authority（正本）**です。
+UnityAgent は、**個人の Unity 開発に特化した AI 開発エージェント基盤**です。
 
-ユーザー固有 Policy、semantic routing、Task Contract、bounded Context materialization、Runtime 実行と Guardrail、durable Persistence、Operations の observability/control、Eval による品質測定までを、この Repository 内で一貫して管理します。
+単なる Coding Rule 集ではなく、ユーザーの依頼を受け取ってから、Policy確認、Task分類、Context選択、実行、検証、Evidence保存、品質評価までを一貫した責務分離で扱います。
 
-この Repository は汎用 Unity Best Practice 集ではありません。安全上の上位境界に反しない限り、今回のユーザー明示指示と `Policy/User/user-policy.yaml` を、外部 Reference や一般的推奨より優先します。
+この Repository の目的は、AIに「何でもそれっぽくやらせる」ことではありません。
 
-## 現在地点
+- ユーザー固有の開発方針を最優先する
+- 必要なContextだけを選ぶ
+- Taskごとに許可された範囲だけを変更する
+- 実際に確認できたEvidenceだけを根拠にする
+- Unity / C# / Rendering / Performanceなどの専門判断を適切なSkillへ委譲する
+- 実行結果を評価し、品質低下を検出できるようにする
 
-UnityAgent の品質基盤 v1 は Phase 10 まで完了しています。
+ことを目的としています。
 
-```text
-Phase 8   Canonical single-repo cutover          完了
-Phase 9   Production re-baseline                 完了
-Phase 9   Reviewed baseline freeze               完了
-Phase 10  Baseline comparator / regression gate  完了
-Phase 10  Local Production gate                  標準運用
-```
+---
 
-正式な Phase 9 Frozen Baseline は次です。
+## UnityAgent が行うこと
 
-`Eval/Rebaseline/Baselines/phase9-baseline-20260830-09.yaml`
-
-この Baseline は `gpt-5.6-luna` / reasoning effort `xhigh` による Real Production observation を固定しており、次の4 canonical case がすべて `observed / passed` です。
-
-- `GOLDEN-ARCH-001`
-- `GOLDEN-NAMING-001`
-- `GOLDEN-MUTATION-001`
-- `GOLDEN-EVIDENCE-001`
-
-Frozen quality は 4/4 observed、4/4 quality-passed、`regression_pass_rate = 1.0`、canonical failure taxonomy はすべて clean です。
-
-Phase 10 は、新しい Production candidate をこの Frozen Baseline と比較します。`PASS` しても Baseline は自動更新しません。
-
-## Authority 順位
-
-```text
-今回のユーザー明示指示
-  ↓
-Policy/User/user-policy.yaml
-  ↓
-Project固有Policy / 検証済みProject Fact
-  ↓
-Unity Domain Standard / 選択されたSkill
-  ↓
-外部Reference
-  ↓
-一般的Best Practice
-```
-
-Project Fact とユーザー Preference は分離します。Unity Version、Render Pipeline、namespace、Scene構成、Asset、Package Version などの Project Fact を推測で埋めません。一方、ユーザー固有の設計・レビュー方針を一般論で上書きしません。
-
-`AGENTS.md` は bootstrap map です。詳細規約を複製する場所ではなく、各 canonical authority への入口です。
-
-## Canonical ownership
-
-| Area | Canonical Source | Responsibility |
-| --- | --- | --- |
-| User Policy | `Policy/User/user-policy.yaml` | ユーザー固有の開発Policy |
-| Risk / Security / Approval / Evidence | `Policy/` | 判断・安全境界 |
-| Route selection | `Orchestration/Routing/` | semantic primary route の選択 |
-| Parent Graph / semantic coordination | `Orchestration/Definitions/` + `Orchestration/Graph/` | bounded coordination、replan、local loop |
-| Task Contract | `Orchestration/Contracts/TaskContracts/` | Input、Mutation境界、Gate、Completion / Stop条件 |
-| Orchestrator | `Orchestration/Orchestrator/` | Runtime handoff。process実行は所有しない |
-| Context | `Context/` | current-call の選択・materialization・retrieval・budget |
-| Runtime execution | `Runtime/Runner/` + `Runtime/Dispatcher/` + `Runtime/ExecutionControl/` | 実process / tool実行、hard limit |
-| Runtime guardrails / harnesses | `Runtime/Sandbox/` + `Runtime/Guardrails/` + `Runtime/Permissions/` + `Runtime/Harnesses/` | Mutation scope、Permission、実行可能なVerification |
-| Runtime evidence / telemetry | `Runtime/EvidenceCapture/` + `Runtime/Telemetry/` | current-run observation |
-| Persistence | `Persistence/` | durable State / Checkpoint / Memory / Evidence / Session truth |
-| Operations | `Operations/` | Observability、Detection、Incident/Runbook、approved control、ChangeManagement |
-| Eval | `Eval/` | Golden/Behavior grading、Attribution、Replay、Rebaseline、Regression、ChangeProposal |
-| Domain Skills | `.agents/skills/` | 選択されたTask固有の実行指示 |
-| Supporting references | `SkillReferences/`, `Specs/`, `Templates/`, `docs/` | 人間向け・補助資料。上記authorityの代替ではない |
-
-責務の基本原則は次です。
-
-> Policy defines; Orchestration decides; Context materializes; Runtime executes; Persistence remembers; Operations observes/controls; Eval measures/proposes.
-
-近くのComponentで技術的に実装可能だからという理由で、Authorityを別Layerへ移しません。
-
-## Production execution flow
-
-bounded Task では最短の canonical path を優先します。
+UnityAgent は、ユーザーの依頼をそのまま直接実行するのではなく、まず依頼の意味と実行条件を整理します。
 
 ```text
 User Request
-   ↓
-Policy
-   ↓
-Task Fingerprint
-   ↓
-Orchestration/Routing/task-routes.yaml
-   ↓
-One Primary Route + semantic Execution Profile
-   ↓
-Context/Selection/context-catalog.yaml
-   ↓
-One Context Pack + One Primary Skill + One Task Contract
-   ↓
-Context/Assembly/materialize_context.py
-   ↓
-Runtime handoff
-   ↓
-Runtime execution / guardrails / evidence capture
-   ↓
-Persistence append
-   ↓
-Eval measurement
+    ↓
+Policy確認
+    ↓
+Task分類 / Routing
+    ↓
+Task Contract決定
+    ↓
+必要なContext / Skillを選択
+    ↓
+Runtime実行
+    ↓
+Verification / Evidence Capture
+    ↓
+Persistence
+    ↓
+Eval
+    ↓
+User Report
 ```
 
-Parent Graph は semantic coordination が本当に必要な場合だけ使います。Local Loop は bounded Graph coordination であり、別の top-level control plane ではありません。
+この順序によって、設計判断、Context取得、実際の変更、検証、品質評価を同じ責務へ混ぜません。
 
-## Routes / Task Contracts
+---
 
-Route の正本は次です。
+## 基本原則
+
+### 1. ユーザーの方針を最優先する
+
+UnityAgent は汎用的な Unity Best Practice よりも、ユーザーが明示した要件と `Policy/User/user-policy.yaml` を優先します。
+
+```text
+今回のユーザー明示指示
+    ↓
+User Policy
+    ↓
+検証済みProject Fact / Project固有条件
+    ↓
+UnityAgent Domain Standards / Skill
+    ↓
+External Reference
+    ↓
+Generic Best Practice
+```
+
+一般論だけを理由に、ユーザーが決めた設計方針や命名、作業方法を勝手に置き換えません。
+
+### 2. Project Factを推測しない
+
+Unity Version、Render Pipeline、Package Version、namespace、Scene構成、Asset状態などは可能な限り対象Projectから確認します。
+
+確認できない情報を固定値で補完せず、必要な場合だけFallback情報を使用します。
+
+### 3. 最小の凝集した解決から始める
+
+局所的な修正に不要なManager、Controller、Interface、Profile、Watcherなどを追加しません。
+
+まず既存Component、Unity Lifecycle、既存Callback、既存Source of Truthで解決できるかを確認します。
+
+### 4. Evidenceを推測で補わない
+
+Compile成功はRuntime成功ではありません。
+Editor成功はPlayer成功ではありません。
+静的解析だけでPerformance改善済みとも扱いません。
+
+確認できた範囲と未確認の範囲を分けて報告します。
+
+---
+
+## 全体構成
+
+UnityAgent は責務ごとに次の領域へ分かれています。
+
+| Area | Responsibility |
+| --- | --- |
+| `Policy/` | ユーザー方針、安全、Approval、Risk、Evidence境界 |
+| `Orchestration/` | Task分類、Routing、Graph、Gate、semantic replan |
+| `Context/` | 必要なContextの選択、Retrieval、Budget、Materialization |
+| `Runtime/` | 実process / tool実行、Permission、Mutation制御、Harness |
+| `Persistence/` | State、Checkpoint、Memory、Evidence、Sessionの永続化 |
+| `Operations/` | Observability、Incident、Runbook、Runtime Control |
+| `Eval/` | Golden / Behavior Eval、Regression、Attribution、品質判定 |
+| `.agents/skills/` | Unity分野ごとの専門手順 |
+| `SkillReferences/` | Coding、Architecture、Rendering等の共通規約 |
+| `Specs/` | Project / Feature向け補助仕様 |
+| `Tools/` | Validation、可視化、Regression Gate等の実行入口 |
+
+基本的な責務関係は次です。
+
+```text
+Policy defines
+Orchestration decides
+Context materializes
+Runtime executes
+Persistence remembers
+Operations observes / controls
+Eval measures / proposes
+```
+
+---
+
+## Task が処理される順番
+
+### 1. Policy
+
+最初に、ユーザー固有Policy、安全境界、変更許可、Approval要件を確認します。
+
+Policyは「どう判断してよいか」を定義しますが、実際のprocess実行は行いません。
+
+### 2. Routing
+
+依頼内容からTaskの種類を判断し、Primary Routeを一つ選びます。
+
+Routingの正本は次です。
 
 `Orchestration/Routing/task-routes.yaml`
 
-現在の primary route は以下です。
+Technology keywordだけではなく、依頼の目的、対象、Risk、必要Evidence、Mutation範囲を使って分類します。
 
-| Route | 主用途 |
-| --- | --- |
-| `generic-planning` | より具体的なsemantic routeに一致しない一般Planning |
-| `architecture-design` | Architecture、File粒度、Type / Ownership判断 |
-| `graphics-mcp` | MyUnityMCP Graphics / Domain Capability設計 |
-| `csharp-local-fix` | boundedな局所C#実装 / Review |
-| `rendering-incident` | 原因不明のRendering障害、Platform divergence調査 |
-| `shader-change` | ShaderLab / HLSL / Compute変更 |
-| `renderer-feature-change` | RendererFeature / Renderer Pipeline変更 |
-| `performance-experiment` | Baseline付きPerformance調査 |
-| `asset-data-change` | Scene / Prefab / Material / Serialized Asset変更 |
-| `portable-feature` | Project非依存Package / Editor Tool設計 |
-| `safe-import-integration` | 制限付きStaging Import |
-| `visual-direction` | Lighting、Composition、LookDev、Visual Review |
+### 3. Task Contract
 
-Technology keyword だけで Route を決めません。未知の Fingerprint dimension は推測しません。
-
-Task Contract は次にあります。
+選択されたRouteに対して、実行条件をTask Contractで固定します。
 
 `Orchestration/Contracts/TaskContracts/`
 
-選択されたRouteについて、allowed/prohibited mutation、required gate、completion、stop condition を定義します。
+Task Contractは主に次を定義します。
 
-## Execution Profiles
+- Required Input
+- Allowed Mutation
+- Prohibited Mutation
+- Required Gate
+- Completion Condition
+- Stop Condition
 
-Execution Profile は Runtime enforcement contract です。
+### 4. Context Materialization
 
-`Runtime/Profiles/runtime-profiles.yaml`
-
-| Profile | Project Access | Mutation Role |
-| --- | --- | --- |
-| `generic_planning` | none | direct mutationなし |
-| `personal_full_control` | full when authorized | 許可済み analysis / verification / mutation |
-| `team_safe_import` | no external export | staging-only portable import |
-
-Profile の **選択** は Orchestration が所有します。Runtime は渡された Profile を enforce するだけで、semantic retry / replan のAuthorityは持ちません。
-
-## Context Engineering
-
-Context selection の正本は次です。
-
-`Context/Selection/context-catalog.yaml`
-
-Context は、Orchestrationが先に選んだRouteへ bounded に materialize されます。Context自身はRouteを選ばず、durable State / Evidence store にもなりません。
-
-Materializer は必要に応じて以下を解決します。
+Taskに必要なPolicy、Context Pack、Primary Skill、Source、Referenceだけを選びます。
 
 ```text
 Selected Route
-  ├─ Context Pack
-  ├─ Primary Skill
-  ├─ Canonical Task Contract
-  ├─ Required Policy Clauses
-  └─ Optional / Conditional Knowledge
+    ↓
+Context Catalog
+    ↓
+Context Pack
+    + Primary Skill
+    + Task Contract
+    + Required Policy
+    + Required Source / Reference
+    ↓
+Budget Check
+    ↓
+Materialized Context
 ```
 
-Context Budget は `Context/Budget/`、Knowledge Retrieval は `Context/Retrieval/` が正本です。
+Context selectionの入口は次です。
 
-全Skill、全Reference、全Knowledgeを毎Taskで一括読込しません。
+`Context/Selection/context-catalog.yaml`
 
-## Runtime / Harness boundary
+Contextを大量に読み込むこと自体を品質とはみなしません。必要な情報を欠かさず、不要な情報を増やさないことを重視します。
 
-実行可能なSafetyとVerificationは `Runtime/` が所有します。旧Context側Harness authorityへ戻しません。
+### 5. Runtime
 
-Runtime が所有するもの:
+Runtimeが実際の処理を実行します。
 
-- Codex / tool / process の実実行
-- hard timeout / cancellation
-- workspace / mutation-scope enforcement
-- permission enforcement
-- Unity / test / performance / SCM harness実行
-- current-run evidence capture / telemetry
+主な責務は次です。
 
-Runtime が所有しないもの:
+- Codex / tool / subprocessの実行
+- timeout / cancellation
+- Permission enforcement
+- workspace / mutation scope enforcement
+- Unity Harness
+- Test Harness
+- Performance Harness
+- SCM Harness
+- current-run Evidence capture
 
-- semantic Route selection
-- Parent Graph topology / semantic replan policy
-- durable Evidence / Memory / Checkpoint truth
-- Agent quality grading
+RuntimeはTaskの意味を勝手に変更したり、新しいPrimary Routeを決めたりしません。
 
-## Persistence boundary
+### 6. Verification / Evidence
 
-Persistence は durable truth layer です。
+変更した内容を可能な範囲で検証します。
 
-`Checkpoint != Memory != Evidence`
+```text
+Static Review
+    ↓
+Compile
+    ↓
+Editor / Test
+    ↓
+Player / Runtime
+    ↓
+Target Device / Performance / Visual Evidence
+```
 
-- Checkpoint: State snapshot reference
-- Memory: durable retrievable context/history
-- Evidence: Persistence commit後のappend-only execution evidence
-- Resume: DefinitionFingerprintを比較し、互換性がない場合はfail-closed
+Taskに不要な上位検証を常に要求するわけではありませんが、未実施のGateを成功扱いにはしません。
 
-RuntimeでcaptureしたEvidenceは、`Persistence/Evidence/` へappendされるまでhistorical durable evidenceではありません。
+### 7. Persistence
 
-## Eval / Evidence semantics
+実行中のStateと永続Evidenceを分離します。
 
-Eval は structured Runtime / Persistence facts を測定します。canonical structured evidence が存在する場合、lossy prose から authority fact を再構築しません。
+```text
+Checkpoint != Memory != Evidence
+```
 
-重要な意味論:
+- Checkpoint: 実行状態を再開するためのSnapshot
+- Memory: 後続Taskで再利用可能な情報
+- Evidence: 実際の実行結果を示す永続記録
 
-- `passed`: 必須Evidenceが成功を裏付ける
-- `failed`: 観測済みEvidenceが失敗を裏付ける
-- `unavailable`: Gateを観測できない。成功ではない
-- `not_observed`: Production behaviorを観測できず、Agent quality denominatorから除外
-- Compile成功だけで Runtime / Visual / Performance / Player / Target Device 成功を保証しない
-- Golden expected content を Production Prompt / Context へ注入しない
+### 8. Eval
 
-Agent regression と Runtime / Infrastructure / Evaluator failure は分離します。
+Evalは、実行結果が期待するBehavior Contractを満たしているかを測定します。
 
-## Phase 9 Frozen Baseline
+Agent自身の品質低下と、Runtime / Tool / Environment / Evaluator側の失敗を同一視しません。
 
-正式な accepted baseline は次です。
+---
 
-`Eval/Rebaseline/Baselines/phase9-baseline-20260830-09.yaml`
+## Graph と Loop の扱い
 
-このManifestは以下を固定します。
+すべてのTaskを巨大なGraphへ通すわけではありません。
 
-- accepted Production run
-- exact source revision / Runtime identity
-- 4/4 observed / passed quality
-- canonical failure taxonomy counts
-- 4 caseのDefinitionFingerprint
-- Historical Replay namespace coverage
-- immutable provenance reference
+小さいTaskは短い経路を使います。
 
-Phase 10 candidate が `PASS` しても、このBaselineを置き換えません。
+```text
+Policy
+  ↓
+Routing
+  ↓
+Context
+  ↓
+Runtime
+  ↓
+Verification
+  ↓
+Result
+```
 
-Baseline置換には、新しいProduction observation、RebaselineSummary、必要なHistorical Replay、`baseline_ready`、専用Reviewed Freeze PRが必要です。
+複数の判断、分岐、検証、再計画が必要なTaskだけOrchestration Graphを使用します。
 
-## Phase 10 Regression Gate
+```text
+Parent Graph
+    ↓
+SubGraph
+    ↓
+Node / Edge / Gate
+    ↓
+必要な場所だけLocal Loop
+```
 
-標準運用は **Local Production Gate** です。ローカルの認証済みCodex CLI sessionを利用します。
+LoopはGraphとは別の独立Control Planeではなく、限定された処理を条件付きで再試行・再評価するための構造です。
 
-Repository rootから実行します。
+---
+
+## Skill の扱い
+
+Skillは巨大な知識ファイルではなく、特定の専門作業を安定して実行するための手順です。
+
+`.agents/skills/`
+
+TaskごとにPrimary Skillを一つ選び、Primary Skillが持たない専門判断だけSecondary Skillへ委譲します。
+
+例えば、原因不明のRendering障害ではIncident系Skillが調査を所有し、原因確定後にRendering / Shader系Skillへ修正を渡します。
+
+---
+
+## Unity Projectとの関係
+
+UnityAgent自身はUnity Projectではありません。
+
+実際のScene、Prefab、Material、Shader、C#、Package等は対象Unity Projectが所有します。
+
+UnityAgentはそれらを変更する際の判断、Context、実行制御、Evidence、品質評価を提供します。
+
+Project固有Factは可能な限り実Projectから取得し、`Specs/ProjectProfile.md` は未解決FactのFallbackとしてのみ使用します。
+
+---
+
+## MyUnityMCPとの関係
+
+`DarumaPPAP/MyUnityMCP` はUnity操作やDomain Capabilityを提供する外部MCP Repositoryです。
+
+UnityAgentはMyUnityMCPを直接のAuthorityにはせず、自身のPolicy、Routing、Context、Task Contract、Runtime Guardrailを通して利用します。
+
+```text
+User Request
+    ↓
+UnityAgent
+    ↓
+Policy / Routing / Context / Runtime Guardrail
+    ↓
+MyUnityMCP Tool
+    ↓
+Unity Project
+```
+
+MCP Toolが利用可能だからという理由だけで、許可されていない変更を実行しません。
+
+---
+
+## 品質Regressionの確認
+
+UnityAgentには、現在のProduction behaviorをReviewed Baselineと比較するRegression Gateがあります。
+
+通常の流れは次です。
+
+```text
+Production Smoke
+    ↓
+Behavior Eval
+    ↓
+Candidate Summary
+    ↓
+Baseline Comparator
+    ↓
+PASS
+or
+BLOCK_REGRESSION
+or
+BLOCK_INCONCLUSIVE
+or
+REBASELINE_REQUIRED
+```
+
+BaselineはCandidateがPASSしただけでは自動更新しません。
+
+ローカルでRegression Gateを実行する場合は、stable entry pointを使用します。
 
 ```powershell
-python .\Tools\Phase10\run_local_regression_gate.py
+python .\Tools\run_regression_gate.py
 ```
 
-標準比較条件:
+---
 
-- model: `gpt-5.6-luna`
-- reasoning effort: `xhigh`
-- per-case timeout: `600` seconds
+## Repository全体のValidation
 
-Local runner は clean Git worktree を確認し、正確なHEAD revisionとCodex versionを記録したうえで、4 Production Smoke case → Behavior Eval → RebaselineSummary → Baseline Comparatorまで実行します。
-
-標準Local pathは `OPENAI_API_KEY` を要求しません。親shellからその環境変数を継承していた場合も、Codex起動前に子Production environmentから除去します。
-
-Phase 10の最終判定は4種類です。
-
-| Decision | 意味 |
-| --- | --- |
-| `PASS` | Comparable candidate が Frozen Baseline を維持 |
-| `BLOCK_REGRESSION` | 観測済みAgent Behaviorが劣化 |
-| `BLOCK_INCONCLUSIVE` | 現在のProduction品質を十分に確立できない |
-| `REBASELINE_REQUIRED` | Runtime / Eval definition が変わり直接比較できない |
-
-GitHub-hosted workflow は明示的なCI自動化用のOptional経路として残しています。Hosted runnerにはローカルChatGPT/Codex login sessionが存在しないため、この経路では適切なRepository credentialが別途必要です。
-
-詳細は `docs/migration/phase10-baseline-comparator.md` を参照してください。
-
-## Local Validation
-
-canonical local validation は次です。
+UnityAgent自身のContract、Context、Skill、Eval、Documentation、Regression boundaryをまとめて確認する場合は次を実行します。
 
 ```powershell
 python .\Tools\validate_all.py
 ```
 
-このコマンドは canonical YAML、Policy integrity、stale path、Skill、Knowledge / Task Contract、Context Pack、Golden / Behavior contract、Phase 8 cutover invariant、および Policy / Context / Orchestration / Runtime / Persistence / Operations / Eval のunit testを検証します。
+UnityAgentのText ArtifactはUTF-8です。
 
-個別確認例:
-
-```powershell
-python .\Tools\SkillValidator\validate_skills.py --strict
-python .\Tools\ContractValidator\validate_contracts.py
-python .\Tools\ContextPackValidator\validate_context_packs.py
-python .\Eval\Behavior\validate_phase8_cutover.py
-python .\Eval\Rebaseline\validate_baseline_freeze.py .\Eval\Rebaseline\Baselines\phase9-baseline-20260830-09.yaml
-python -m unittest Eval.Tests.test_phase10_baseline_comparator
-python -m unittest Eval.Tests.test_phase10_local_regression_gate
-```
-
-UnityAgentのText ArtifactはUTF-8です。PowerShellで確認するときは明示的にUTF-8を指定します。
+PowerShellで内容を確認する場合はencodingを明示します。
 
 ```powershell
 Get-Content ".\README.md" -Raw -Encoding UTF8
 ```
 
-## External Repository boundary
+---
 
-`DarumaPPAP/Unity-Graph-Engineering` は Phase 8 cutover 後、**UnityAgent Production execution dependencyではありません**。
+## 入口となるファイル
 
-過去migrationのprovenanceはmigration documentへ残せますが、active execution authority はUnityAgent内の `Orchestration/` / `Runtime/` / `Persistence/` / `Eval/` が所有します。
+| File / Directory | Purpose |
+| --- | --- |
+| `AGENTS.md` | Agentが最初に読むbootstrap map |
+| `Policy/User/user-policy.yaml` | ユーザー固有Policy |
+| `Orchestration/Routing/task-routes.yaml` | Task Routing |
+| `Orchestration/Contracts/TaskContracts/` | Taskごとの実行契約 |
+| `Context/Selection/context-catalog.yaml` | Context選択 |
+| `Context/Packs/` | Domain Context Pack |
+| `Runtime/Profiles/runtime-profiles.yaml` | Runtime execution profile |
+| `.agents/skills/` | 専門Skill |
+| `SkillReferences/` | Domain共通規約 |
+| `Tools/validate_all.py` | Repository全体Validation |
+| `Tools/run_regression_gate.py` | Production Regression Gate |
 
-`DarumaPPAP/MyUnityMCP` は、UnityAgentが自身のPolicy / Context / Runtime contractを通して選択・統制するMCP manifest / tool schema / package implementation surfaceの外部ownerです。
+---
 
-compatibility adapter、旧Graph側Production runner、fallback pathを使って、第二のactive execution authorityを復活させません。
+## READMEの役割
 
-## Legacy / Anti-regression
+このREADMEは、UnityAgentの**目的、構造、利用方法、処理順序、責務境界**を説明するための文書です。
 
-Post-cutover Repositoryはsingle authorityを維持します。
+開発進捗、移行履歴、一時的な実行結果、特定Run ID、特定Baseline ID、モデルVersionなどの変動情報はREADMEの責務ではありません。
 
-- legacy dot-ai authority treeを復活させない
-- Context / Eval / Persistence compatibility layerや旧Eval / Loop shimを復活させない
-- Unity-Graph-EngineeringをProduction execution dependencyへ戻さない
-- semantic Graph / replan authorityをRuntimeへ移さない
-- process / tool executionをEvalやOrchestrationへ移さない
-- Contextをdurable Memory / Checkpoint / Evidence storeにしない
-- `not_observed`をAgent regressionとして扱わない
-- Candidateを通すためにFrozen Production evidenceを書き換えない
-- Phase 10 `PASS` 後にFrozen Baselineを自動更新しない
-
-Historical migration情報は `docs/migration/` とHistorical Eval Dataset / Replay surfaceに残し、active Production bootstrap authorityとして扱いません。
-
-## Repository Map
-
-```text
-UnityAgent/
-├─ AGENTS.md                 # bootstrap map
-├─ .agents/skills/           # selected domain Skills
-├─ Policy/                   # user / risk / approval / security / evidence authority
-├─ Orchestration/            # routes / graphs / task contracts / runtime handoff
-├─ Context/                  # selection / packs / retrieval / budget / materialization
-├─ Runtime/                  # execution / guardrails / harnesses / telemetry
-├─ Persistence/              # durable state / checkpoint / resume / memory / evidence
-├─ Operations/               # observability / detection / incidents / control / change management
-├─ Eval/                     # behavior / golden / replay / rebaseline / regression
-├─ Tools/                    # local validators / Phase 10 local gate
-├─ SkillReferences/          # supporting domain references
-├─ Specs/                    # supporting feature / project specifications
-├─ Templates/                # reusable supporting templates
-└─ docs/migration/           # migration / contract-change provenance
-```
-
-詳細な責務Mapは `AGENTS.md` から確認してください。品質基盤の履歴は `docs/migration/phase8-cutover.md`、Phase 9 migration document群、`docs/migration/phase10-baseline-comparator.md` を正本として追跡します。
+そのような情報は、それぞれのMigration / Eval / Artifact / Git履歴で管理します。
