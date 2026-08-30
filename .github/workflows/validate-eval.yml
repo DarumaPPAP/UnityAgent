@@ -6,6 +6,7 @@ on:
       - "Eval/**"
       - "Context/**"
       - "Persistence/**"
+      - "Tools/Phase10/**"
       - "AGENTS.md"
       - "Tools/validate_all.py"
       - ".github/workflows/validate-eval.yml"
@@ -17,6 +18,7 @@ on:
       - "Eval/**"
       - "Context/**"
       - "Persistence/**"
+      - "Tools/Phase10/**"
       - "AGENTS.md"
       - "Tools/validate_all.py"
       - ".github/workflows/validate-eval.yml"
@@ -40,12 +42,13 @@ jobs:
         run: python -m unittest discover -s Eval/Tests -p "test_*.py"
       - name: Validate frozen Phase 9 baseline
         run: python Eval/Rebaseline/validate_baseline_freeze.py Eval/Rebaseline/Baselines/phase9-baseline-20260830-09.yaml
-      - name: Validate Phase 10 comparator entry points
+      - name: Validate Phase 10 comparator and local gate entry points
         run: |
           python -m py_compile \
             Eval/Regression/baseline_comparator.py \
             Eval/Regression/compare_baseline.py \
-            Eval/Regression/validate_baseline_comparison.py
+            Eval/Regression/validate_baseline_comparison.py \
+            Tools/Phase10/run_local_regression_gate.py
       - name: Canonical Golden validators
         run: |
           python Eval/Golden/validate_gate_catalog.py
