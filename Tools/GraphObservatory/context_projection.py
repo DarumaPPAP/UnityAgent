@@ -12,6 +12,9 @@ import yaml
 from builder.graph_builder import AgentGraph, GraphEdge, GraphNode
 
 
+CANONICAL_CONTEXT_PACKS = Path("Context/Packs")
+
+
 def source_hash(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -29,14 +32,23 @@ def validate_repository_relative_path(value: str) -> str:
 
 def build_context_graph(root: Path) -> AgentGraph:
     graph = AgentGraph(view="context")
-    pack_dir = root / ".ai/context-packs"
-    packs: dict[str, dict[str, Any]] = {}
+    pack_dir = root / CANONICAL_CONTEXT_PACKS
+    if not pack_dir.is_dir():
+        raise FileNotFoundError(f"canonical Context Pack directory is missing: {CANONICAL_CONTEXT_PACKS.as_posix()}")
+
+    packs: dict[str, tuple[Path, dict[str, Any]]] = {}
     for path in sorted(pack_dir.glob("*.yaml")):
         document = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-        packs[str(document["id"])] = (path, document)
+        context_id = str(document.get("id") or "").strip()
+        if not context_id:
+            raise ValueError(f"Context Pack is missing id: {path.relative_to(root).as_posix()}")
+        packs[context_id] = (path, document)
+
+    if not packs:
+        raise ValueError(f"no canonical Context Packs found under {CANONICAL_CONTEXT_PACKS.as_posix()}")
 
     for context_id, (path, document) in sorted(packs.items()):
-        metadata = document.get("metadata", {})
+        metadata = document.get("metadata", {}) or {}
         graph.add_node(
             GraphNode(
                 id=f"context:{context_id}",
