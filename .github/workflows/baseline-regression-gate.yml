@@ -1,4 +1,4 @@
-name: Phase 10 Baseline Regression Gate
+name: Phase 10 Optional CI Baseline Regression Gate
 
 on:
   workflow_dispatch:
@@ -59,16 +59,17 @@ jobs:
       - name: Install Python validation dependencies
         run: python -m pip install --disable-pip-version-check PyYAML jsonschema
 
-      - name: Validate Phase 9 freeze and Phase 10 comparator contracts
+      - name: Validate Phase 9 freeze and Phase 10 contracts
         shell: bash
         run: |
           python Eval/Rebaseline/validate_baseline_freeze.py "$FROZEN_BASELINE"
-          python -m unittest Eval.Tests.test_phase10_baseline_comparator
+          python -m unittest Eval.Tests.test_phase10_baseline_comparator Eval.Tests.test_phase10_local_regression_gate
           python -m py_compile \
             Eval/Regression/baseline_comparator.py \
-            Eval/Regression/compare_baseline.py
+            Eval/Regression/compare_baseline.py \
+            Tools/Phase10/run_local_regression_gate.py
 
-      - name: Production credential preflight
+      - name: Optional CI credential preflight
         shell: bash
         run: |
           mkdir -p "Artifacts/ProductionSmoke/$CANDIDATE_RUN_ID"
@@ -77,11 +78,11 @@ jobs:
           {
             "schema_version": "1.0",
             "status": "BLOCKED_NOT_RUN",
-            "reason": "OPENAI_API_KEY repository secret is not configured",
+            "reason": "OPENAI_API_KEY repository secret is not configured for the optional GitHub-hosted gate",
             "production_execution_observed": false
           }
           JSON
-            echo "::error::Phase 10 gate cannot observe Production behavior without OPENAI_API_KEY."
+            echo "::error::Optional GitHub-hosted Phase 10 gate requires OPENAI_API_KEY. Use Tools/Phase10/run_local_regression_gate.py for the standard local ChatGPT-authenticated path."
             exit 1
           fi
 
