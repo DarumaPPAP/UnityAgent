@@ -85,6 +85,24 @@ class OneRepoProductionSmokeTests(unittest.TestCase):
         self.assertNotIn("required_signals", prompt)
         self.assertNotIn("forbidden_signals", prompt)
 
+    def test_artifact_index_marks_workspace_csharp_as_observed_source(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            workspace = root / "workspace"
+            case_dir = root / "case"
+            workspace.mkdir()
+            case_dir.mkdir()
+            (workspace / "CameraDebugger.cs").write_text(
+                "public sealed class CameraDebugger {}\n",
+                encoding="utf-8",
+            )
+
+            smoke._artifact_index(workspace, case_dir)
+
+            index = smoke.yaml.safe_load((case_dir / "artifact-index.yaml").read_text(encoding="utf-8"))
+            self.assertEqual(index["artifacts"][0]["kind"], "observed_source")
+            self.assertTrue((case_dir / index["artifacts"][0]["path"]).is_file())
+
     def test_envelope_keeps_conditional_unavailable_diagnostic(self):
         envelope = smoke._envelope(
             "run-1",
