@@ -1,0 +1,130 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:eval:baseline-freeze
+title: BaselineFreeze
+type: object
+additionalProperties: false
+required:
+  - schema_version
+  - phase
+  - freeze_id
+  - status
+  - accepted_run
+  - source
+  - runtime
+  - quality
+  - historical_replay
+  - definition_fingerprints
+  - provenance
+properties:
+  schema_version: {const: '1.0'}
+  phase: {const: 9}
+  freeze_id: {type: string, minLength: 1}
+  status: {const: accepted}
+  accepted_run:
+    type: object
+    additionalProperties: false
+    required: [run_id, rebaseline_status]
+    properties:
+      run_id: {type: string, minLength: 1}
+      rebaseline_status: {const: baseline_ready}
+  source:
+    type: object
+    additionalProperties: false
+    required: [repository, revision]
+    properties:
+      repository: {const: DarumaPPAP/UnityAgent}
+      revision: {type: string, pattern: '^[0-9a-f]{40}$'}
+  runtime:
+    type: object
+    additionalProperties: false
+    required: [model, reasoning_effort, codex_version, production_execution_observed]
+    properties:
+      model: {type: string, minLength: 1}
+      reasoning_effort: {type: string, minLength: 1}
+      codex_version: {type: string, minLength: 1}
+      production_execution_observed: {const: true}
+  quality:
+    type: object
+    additionalProperties: false
+    required: [total, observed, not_observed, quality_denominator, quality_passed, regression_pass_rate]
+    properties:
+      total: {const: 4}
+      observed: {const: 4}
+      not_observed: {const: 0}
+      quality_denominator: {const: 4}
+      quality_passed: {const: 4}
+      regression_pass_rate: {const: 1.0}
+  historical_replay:
+    type: object
+    additionalProperties: false
+    required:
+      - status
+      - observed_namespaces
+      - case_count
+      - quality_denominator_eligible_count
+      - quality_semantics
+    properties:
+      status: {const: passed}
+      observed_namespaces:
+        type: array
+        items: {enum: [ARCH, NAMING, MUTATION, EVIDENCE]}
+        uniqueItems: true
+        minItems: 4
+        maxItems: 4
+      case_count: {type: integer, minimum: 4}
+      quality_denominator_eligible_count: {type: integer, minimum: 0}
+      quality_semantics: {const: namespace_coverage_only}
+  definition_fingerprints:
+    type: object
+    additionalProperties: false
+    required:
+      - GOLDEN-ARCH-001
+      - GOLDEN-NAMING-001
+      - GOLDEN-MUTATION-001
+      - GOLDEN-EVIDENCE-001
+    properties:
+      GOLDEN-ARCH-001: {$ref: '#/$defs/definitionFingerprint'}
+      GOLDEN-NAMING-001: {$ref: '#/$defs/definitionFingerprint'}
+      GOLDEN-MUTATION-001: {$ref: '#/$defs/definitionFingerprint'}
+      GOLDEN-EVIDENCE-001: {$ref: '#/$defs/definitionFingerprint'}
+  provenance:
+    type: object
+    additionalProperties: false
+    required:
+      - rebaseline_summary_ref
+      - historical_replay_ref
+      - execution_evidence_immutable
+      - freeze_is_reviewed_repository_change
+    properties:
+      rebaseline_summary_ref: {type: string, minLength: 1}
+      historical_replay_ref: {type: string, minLength: 1}
+      execution_evidence_immutable: {const: true}
+      freeze_is_reviewed_repository_change: {const: true}
+$defs:
+  definitionFingerprint:
+    type: object
+    additionalProperties: false
+    required:
+      - schema_version
+      - architecture_version
+      - policy_revision
+      - prompt_revision
+      - context_revision
+      - graph_revision
+      - runtime_profile_revision
+      - tool_schema_revision
+      - checkpoint_schema_revision
+      - evidence_schema_revision
+      - eval_contract_revision
+    properties:
+      schema_version: {const: '1.0'}
+      architecture_version: {type: string, minLength: 1}
+      policy_revision: {type: string, minLength: 1}
+      prompt_revision: {type: string, minLength: 1}
+      context_revision: {type: string, minLength: 1}
+      graph_revision: {type: string, minLength: 1}
+      runtime_profile_revision: {type: string, minLength: 1}
+      tool_schema_revision: {type: string, minLength: 1}
+      checkpoint_schema_revision: {type: string, minLength: 1}
+      evidence_schema_revision: {type: string, minLength: 1}
+      eval_contract_revision: {type: string, minLength: 1}
