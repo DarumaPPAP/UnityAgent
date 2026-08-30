@@ -364,7 +364,7 @@ def _artifact_index(workspace: Path, case_dir: Path) -> None:
         dest = artifact_root / relative
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, dest)
-        artifacts.append({"path": dest.relative_to(case_dir).as_posix(), "language": "csharp", "kind": "source"})
+        artifacts.append({"path": dest.relative_to(case_dir).as_posix(), "language": "csharp", "kind": "observed_source"})
     (case_dir / "artifact-index.yaml").write_text(
         yaml.safe_dump({"schema_version": "1.0", "artifacts": artifacts}, sort_keys=False, allow_unicode=True),
         encoding="utf-8",
