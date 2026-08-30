@@ -1,6 +1,6 @@
 # Phase 10 — Baseline Comparator / Regression Gate
 
-Status: implementation candidate  
+Status: implemented; local Production gate is the standard operating path  
 Base: Phase 9 frozen baseline merge `a011628dee31353af32866ce3e845ead0363e6b6`  
 Canonical repository: `DarumaPPAP/UnityAgent`
 
@@ -18,7 +18,6 @@ It answers four different questions without conflating them:
 ```text
 Frozen Phase 9 baseline
         │
-        │ comparison authority
         ▼
 Candidate Production Smoke
         │
@@ -41,11 +40,41 @@ Candidate RebaselineSummary
    continue   block     block        REBASELINE_REQUIRED
 ```
 
+## Operating model
+
+Phase 10 has one canonical comparison contract and two execution front ends.
+
+```text
+                         Frozen Phase 9 Baseline
+                                  │
+                                  ▼
+                         Regression Gate Core
+                                  │
+                       ┌──────────┴──────────┐
+                       │                     │
+                       ▼                     ▼
+              Local Production Gate   GitHub-hosted Gate
+                 STANDARD                OPTIONAL
+                       │                     │
+          local Codex CLI session      OPENAI_API_KEY
+          ChatGPT-authenticated        repository secret
+                       │                     │
+                       └──────────┬──────────┘
+                                  ▼
+                         Same Comparator
+                                  ▼
+             PASS / BLOCK / REBASELINE_REQUIRED
+```
+
+The standard path is local because UnityAgent development already occurs on the user's machine and the local Codex CLI can reuse its existing authenticated ChatGPT session. Phase 10 itself does not require `OPENAI_API_KEY`.
+
+The GitHub-hosted workflow is retained only as an explicit CI option for future fully automated execution.
+
 ## Baseline authority
 
 Phase 10 does not create a second baseline.
 
-The baseline authority remains:
+The only baseline authority remains:
 
 `Eval/Rebaseline/Baselines/phase9-baseline-20260830-09.yaml`
 
@@ -61,9 +90,91 @@ Production observation
   → dedicated reviewed Freeze PR
 ```
 
+## Standard local Production Regression Gate
+
+Canonical entry point:
+
+`Tools/Phase10/run_local_regression_gate.py`
+
+Default runtime identity intentionally matches the frozen Phase 9 baseline:
+
+- model: `gpt-5.6-luna`;
+- reasoning effort: `xhigh`;
+- per-case timeout: `600` seconds.
+
+Normal PowerShell invocation from the UnityAgent repository root:
+
+```powershell
+python .\Tools\Phase10\run_local_regression_gate.py
+```
+
+An explicit immutable run ID may be supplied when desired:
+
+```powershell
+python .\Tools\Phase10\run_local_regression_gate.py `
+  --run-id phase10-local-20260830-01 `
+  --model gpt-5.6-luna `
+  --reasoning-effort xhigh `
+  --timeout-seconds 600
+```
+
+The local runner performs this pipeline:
+
+```text
+Validate Phase 9 Freeze
+        ↓
+Verify clean Git worktree
+        ↓
+Record current HEAD revision
+        ↓
+Find local Codex CLI + record version
+        ↓
+Remove OPENAI_API_KEY from child environment
+        ↓
+Production Smoke (4 canonical cases)
+        ↓
+Behavior Eval
+        ↓
+Candidate RebaselineSummary
+        ↓
+Baseline Comparator --require-pass
+        ↓
+baseline-comparison.json
+```
+
+### Local authentication boundary
+
+The local runner does not create, read, print, persist, or require an OpenAI API key.
+
+If `OPENAI_API_KEY` happens to exist in the parent shell, the runner removes it from the Production Smoke child environment before Codex is launched. This prevents the standard path from silently switching to API-key billing.
+
+Codex authentication remains owned by the local Codex CLI installation. If that CLI is not authenticated, Runtime execution will fail and Phase 10 will remain inconclusive rather than inventing a quality result.
+
+The local runner does not perform a separate synthetic LLM authentication probe because that would itself consume an execution and would duplicate the real Production observation.
+
+### Local provenance boundary
+
+A local candidate must have a clean Git worktree before execution.
+
+This is required because `source_revision` must truthfully identify the source that produced the candidate behavior. Generated evidence under ignored `Artifacts/` does not make the worktree dirty.
+
+The runner records:
+
+- current Git branch;
+- current 40-character HEAD revision;
+- clean-worktree state;
+- Codex executable path;
+- Codex version;
+- local execution mode;
+- whether an inherited `OPENAI_API_KEY` value was removed.
+
+The metadata is retained at:
+
+`Artifacts/ProductionSmoke/<run-id>/local-gate-metadata.json`
+
 ## Candidate input
 
-The Phase 10 candidate input is the existing Phase 9 `RebaselineSummary` generated from a new Production Smoke run:
+The Phase 10 comparator consumes the existing Phase 9 `RebaselineSummary` generated from a new Production Smoke run:
 
 `Artifacts/ProductionSmoke/<candidate-run-id>/rebaseline-summary.json`
 
@@ -82,21 +193,13 @@ Orchestration
 
 Historical Replay is **not required for every Phase 10 candidate**.
 
-Phase 10 is a current Production regression gate. A clean candidate may still have:
+A clean candidate may remain:
 
 `RebaselineSummary.status = smoke_passed_pending_historical`
 
-and pass Phase 10 if current Production behavior is fully observed and comparable.
+and still pass Phase 10 if current Production behavior is fully observed and comparable.
 
 Historical Replay becomes mandatory again only when a candidate is proposed as a new frozen baseline.
-
-This preserves the Phase 9 distinction:
-
-```text
-Current Production quality      → Production Smoke / Eval
-Historical compatibility        → Historical Replay
-Reviewed baseline acceptance    → Baseline Freeze
-```
 
 ## Comparability first
 
@@ -105,8 +208,6 @@ A candidate must not be called a regression until the comparator establishes tha
 ### `strict_comparable`
 
 No tracked comparison drift is present.
-
-This normally occurs only when the same source/runtime identity is repeated.
 
 ### `comparable_with_drift`
 
@@ -118,11 +219,9 @@ Informational drift includes:
 - Codex CLI version;
 - per-case `context_revision`.
 
-These facts are recorded in the report but do not by themselves block quality comparison.
+These facts remain visible but do not by themselves block quality comparison.
 
 ### `not_comparable`
-
-A definition/runtime identity changed enough that Phase 10 must not label the result as a regression against the Phase 9 baseline.
 
 Blocking runtime drift:
 
@@ -145,32 +244,24 @@ Result:
 
 `REBASELINE_REQUIRED`
 
-This is deliberately conservative. If a future phase wants to experiment across policy/model changes, it should add an explicit experiment comparison mode instead of weakening the production regression contract.
-
 ### `insufficient_evidence`
 
-The candidate does not contain enough canonical comparison evidence, for example a missing per-case DefinitionFingerprint.
-
-Result:
+Missing canonical comparison evidence, such as a per-case DefinitionFingerprint, produces:
 
 `BLOCK_INCONCLUSIVE`
 
-Missing comparison evidence is not treated as Agent regression and is not silently accepted.
+Missing comparison evidence is not treated as Agent regression and is never silently accepted.
 
 ## Gate decisions
-
-Phase 10 exposes exactly four gate decisions.
 
 | Decision | Meaning | Merge guidance |
 | --- | --- | --- |
 | `PASS` | Comparable candidate meets the frozen Production baseline | May proceed |
 | `BLOCK_REGRESSION` | Fully observed Agent behavior is worse than the frozen baseline | Block / investigate |
-| `BLOCK_INCONCLUSIVE` | Production quality could not be fully established | Block / rerun or repair infrastructure |
+| `BLOCK_INCONCLUSIVE` | Production quality could not be fully established | Block / repair or rerun |
 | `REBASELINE_REQUIRED` | Evaluation/runtime definition changed | Review definition change; do not call it regression |
 
-## Decision order
-
-The comparator is fail-closed and evaluates in this order:
+Decision order:
 
 ```text
 Validate frozen baseline
@@ -196,9 +287,7 @@ BLOCK_INCONCLUSIVE   Definition comparable?
 
 ## Regression definition
 
-An Agent regression requires observed Agent behavior.
-
-Canonical regression signal:
+An Agent regression requires observed Agent behavior:
 
 ```text
 observation_state = observed
@@ -206,15 +295,11 @@ quality_denominator_eligible = true
 status = failed
 ```
 
-or an active canonical:
-
-`agent_behavior_regression`
+or an active canonical `agent_behavior_regression`.
 
 A lower fully-observed quality result than the frozen 4/4 baseline is also a regression.
 
-## Non-Agent failure boundary
-
-The following do not become Agent regressions:
+The following remain non-Agent / inconclusive:
 
 - `runtime_timeout`;
 - `runtime_protocol_failure`;
@@ -225,60 +310,37 @@ The following do not become Agent regressions:
 - `task_fixture_invalid`;
 - `unavailable_required_evidence`.
 
-They produce `BLOCK_INCONCLUSIVE` because the candidate has not proven that the frozen Production quality is maintained.
+## Output artifacts
 
-This preserves Phase 9 attribution semantics instead of turning infrastructure problems into fake Agent regressions.
+Each local run retains the ordinary Phase 9/10 evidence under:
 
-## Output artifact
+`Artifacts/ProductionSmoke/<run-id>/`
 
-Phase 10 writes:
+including:
 
-`Artifacts/ProductionSmoke/<candidate-run-id>/baseline-comparison.json`
+- `execution-summary.json`;
+- per-case Runtime/Persistence/Eval evidence;
+- `eval-summary.json`;
+- `rebaseline-summary.json`;
+- `baseline-comparison.json`;
+- `local-gate-metadata.json`.
 
-The report records:
-
-- frozen baseline identity;
-- candidate identity;
-- comparability status;
-- blocking and informational drift;
-- missing comparison evidence;
-- baseline and candidate quality facts;
-- per-case transition from frozen `passed` state;
-- candidate canonical failure taxonomy;
-- final gate decision and machine-readable reasons.
-
-Example shape:
-
-```json
-{
-  "schema_version": "1.0",
-  "phase": 10,
-  "comparability": {
-    "status": "comparable_with_drift"
-  },
-  "quality_delta": {
-    "quality_passed_delta": 0,
-    "regression_pass_rate_delta": 0.0
-  },
-  "gate": {
-    "decision": "PASS",
-    "reasons": ["candidate_meets_frozen_baseline"]
-  }
-}
-```
-
-## CLI
-
-Generate a comparison report without making the command fail on a non-PASS decision:
+Inspect the final report in PowerShell with explicit UTF-8:
 
 ```powershell
-python .\Eval\Regression\compare_baseline.py --baseline ".\Eval\Rebaseline\Baselines\phase9-baseline-20260830-09.yaml" --candidate ".\Artifacts\ProductionSmoke\<run-id>\rebaseline-summary.json"
+Get-Content ".\Artifacts\ProductionSmoke\<run-id>\baseline-comparison.json" -Raw -Encoding UTF8
 ```
 
-Use as a regression gate:
+## Comparator-only CLI
+
+If a candidate RebaselineSummary already exists, no LLM execution is required to compare it:
 
 ```powershell
-python .\Eval\Regression\compare_baseline.py --baseline ".\Eval\Rebaseline\Baselines\phase9-baseline-20260830-09.yaml" --candidate ".\Artifacts\ProductionSmoke\<run-id>\rebaseline-summary.json" --require-pass
+python .\Eval\Regression\compare_baseline.py `
+  --baseline ".\Eval\Rebaseline\Baselines\phase9-baseline-20260830-09.yaml" `
+  --candidate ".\Artifacts\ProductionSmoke\<run-id>\rebaseline-summary.json" `
+  --output ".\Artifacts\ProductionSmoke\<run-id>\baseline-comparison.json" `
+  --require-pass
 ```
 
 Gate-specific exit codes:
@@ -289,50 +351,21 @@ Gate-specific exit codes:
 - `12` — REBASELINE_REQUIRED;
 - `20` — invalid input/contract/comparison failure.
 
-Validate an already-written report without rerunning Production behavior:
+## Optional GitHub-hosted CI gate
 
-```powershell
-python .\Eval\Regression\validate_baseline_comparison.py ".\Artifacts\ProductionSmoke\<run-id>\baseline-comparison.json" --require-pass
-```
+`.github/workflows/baseline-regression-gate.yml` is intentionally `workflow_dispatch` only and is **not the standard Phase 10 operating path**.
 
-All repository text reads/writes in the Phase 10 path explicitly use UTF-8.
+It is retained for cases where fully automated GitHub-hosted execution is intentionally desired. Because a fresh GitHub-hosted runner has no user's local ChatGPT/Codex session, this optional path currently requires an `OPENAI_API_KEY` repository secret.
 
-For PowerShell inspection, continue to use:
+Recommended optional use:
 
-```powershell
-Get-Content ".\Artifacts\ProductionSmoke\<run-id>\baseline-comparison.json" -Raw -Encoding UTF8
-```
+- release automation when API-backed CI is intentionally enabled;
+- centralized unattended regression checks;
+- future service-account/CI authentication work.
 
-## GitHub Actions operating model
+A failure at that workflow's credential preflight is `BLOCKED_NOT_RUN`; it does not mean Phase 10, Codex quality, or the comparator regressed.
 
-`.github/workflows/baseline-regression-gate.yml` is intentionally `workflow_dispatch` only.
-
-Real Codex-backed Production Smoke is not executed automatically for every PR because it has API cost, runtime latency, and transient infrastructure failure modes.
-
-Recommended use:
-
-- high-impact UnityAgent PRs;
-- Runtime / Context / Eval changes;
-- release candidates;
-- before a deliberate rebaseline;
-- any change whose Production behavior needs explicit proof.
-
-The workflow defaults to the frozen runtime comparison identity:
-
-- model: `gpt-5.6-luna`;
-- reasoning effort: `xhigh`.
-
-It executes:
-
-```text
-Production Smoke
-  → Behavior grading
-  → candidate RebaselineSummary
-  → Baseline Comparator --require-pass
-  → upload retained candidate evidence
-```
-
-The workflow does not run Historical Replay and does not update the frozen baseline.
+The failed run `33301195983` is therefore retained as infrastructure evidence and is not a quality candidate.
 
 ## Authority boundaries
 
@@ -344,16 +377,16 @@ Persistence    stores evidence
 Eval           grades current behavior
 Rebaseline     aggregates candidate facts
 Regression     compares already-produced facts
+Local runner   orchestrates existing authorities only
 ```
 
-`Eval/Regression` must never:
+The local runner must never:
 
-- invoke Codex directly;
-- mutate Unity/C# source;
-- reconstruct changed paths from prose;
+- grade Agent quality itself;
 - rewrite Phase 9 evidence;
 - update the frozen baseline;
-- reinterpret non-Agent infrastructure failures as Agent regressions.
+- reconstruct changed paths from prose;
+- reinterpret infrastructure failures as Agent regressions.
 
 ## Definition of Done
 
@@ -361,24 +394,26 @@ Phase 10 is complete when:
 
 - the Phase 9 freeze is the only baseline authority;
 - comparator schema and validator are canonical;
-- strict/comparable/not-comparable/insufficient-evidence states are tested;
-- PASS, regression, inconclusive and rebaseline-required decisions are tested;
-- runtime timeout is proven to remain non-Agent/inconclusive;
-- model/policy definition changes are proven to require rebaseline;
+- all four gate decisions are tested;
+- non-Agent failures remain inconclusive;
+- model/policy definition changes require rebaseline;
 - source/context/Codex tooling drift remains visible but comparable;
 - candidate Historical Replay is not incorrectly required;
-- a manual real Production Regression Gate workflow exists;
+- the standard local runner exists and uses the local Codex session without requiring an API key;
+- the local runner records clean source provenance and uses the same canonical Phase 10 comparator;
+- the GitHub-hosted API-backed gate remains optional;
 - Phase 9 Production Smoke and Freeze contracts remain unchanged;
-- all canonical CI contracts remain green.
+- all canonical CI contracts remain green;
+- one real local `gpt-5.6-luna / xhigh` candidate reaches `gate.decision = PASS`.
 
 ## After Phase 10
 
-Phase 10 completes the first quality-defense loop:
+After the first real local PASS, the UnityAgent quality-defense loop v1 is complete:
 
 ```text
 Phase 8  single-repository execution authority
 Phase 9  frozen Production quality baseline
-Phase 10 automatic baseline comparison / regression decision
+Phase 10 local/optional-CI regression decision
 ```
 
-After this point, UnityAgent should spend time in real use before adding broader Phase 11 metrics such as first-pass quality, mutation efficiency, evidence coverage, latency, token cost, or expanded production case suites.
+At that point, prefer real usage and observation before adding broader Phase 11 metrics.
