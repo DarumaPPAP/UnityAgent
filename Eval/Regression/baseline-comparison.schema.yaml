@@ -1,0 +1,147 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:eval:baseline-comparison
+title: BaselineComparison
+type: object
+additionalProperties: false
+required:
+  - schema_version
+  - phase
+  - baseline
+  - candidate
+  - comparability
+  - quality_delta
+  - cases
+  - taxonomy
+  - gate
+properties:
+  schema_version: {const: '1.0'}
+  phase: {const: 10}
+  baseline:
+    $ref: '#/$defs/baselineIdentity'
+  candidate:
+    $ref: '#/$defs/candidateIdentity'
+  comparability:
+    type: object
+    additionalProperties: false
+    required: [status, blocking_drift, informational_drift, missing_evidence]
+    properties:
+      status:
+        enum: [strict_comparable, comparable_with_drift, not_comparable, insufficient_evidence]
+      blocking_drift:
+        type: array
+        items: {$ref: '#/$defs/drift'}
+      informational_drift:
+        type: array
+        items: {$ref: '#/$defs/drift'}
+      missing_evidence:
+        type: array
+        items: {type: string, minLength: 1}
+        uniqueItems: true
+  quality_delta:
+    type: object
+    additionalProperties: false
+    required:
+      - baseline
+      - candidate
+      - quality_passed_delta
+      - regression_pass_rate_delta
+    properties:
+      baseline: {$ref: '#/$defs/quality'}
+      candidate: {$ref: '#/$defs/quality'}
+      quality_passed_delta: {type: integer}
+      regression_pass_rate_delta: {type: number}
+  cases:
+    type: object
+    additionalProperties: false
+    required:
+      - GOLDEN-ARCH-001
+      - GOLDEN-NAMING-001
+      - GOLDEN-MUTATION-001
+      - GOLDEN-EVIDENCE-001
+    properties:
+      GOLDEN-ARCH-001: {$ref: '#/$defs/caseDelta'}
+      GOLDEN-NAMING-001: {$ref: '#/$defs/caseDelta'}
+      GOLDEN-MUTATION-001: {$ref: '#/$defs/caseDelta'}
+      GOLDEN-EVIDENCE-001: {$ref: '#/$defs/caseDelta'}
+  taxonomy:
+    type: object
+    additionalProperties: false
+    required: [candidate_counts, active_failure_classes]
+    properties:
+      candidate_counts:
+        type: object
+        additionalProperties: {type: integer, minimum: 0}
+      active_failure_classes:
+        type: array
+        items: {type: string, minLength: 1}
+        uniqueItems: true
+  gate:
+    type: object
+    additionalProperties: false
+    required: [decision, reasons]
+    properties:
+      decision:
+        enum: [PASS, BLOCK_REGRESSION, BLOCK_INCONCLUSIVE, REBASELINE_REQUIRED]
+      reasons:
+        type: array
+        items: {type: string, minLength: 1}
+        uniqueItems: true
+$defs:
+  baselineIdentity:
+    type: object
+    additionalProperties: false
+    required: [freeze_id, run_id, source_revision, model, reasoning_effort, codex_version]
+    properties:
+      freeze_id: {type: string, minLength: 1}
+      run_id: {type: string, minLength: 1}
+      source_revision: {type: string, minLength: 1}
+      model: {type: string, minLength: 1}
+      reasoning_effort: {type: string, minLength: 1}
+      codex_version: {type: string, minLength: 1}
+  candidateIdentity:
+    type: object
+    additionalProperties: false
+    required: [run_id, source_revision, model, reasoning_effort, codex_version]
+    properties:
+      run_id: {type: string, minLength: 1}
+      source_revision: {type: string, minLength: 1}
+      model: {type: string, minLength: 1}
+      reasoning_effort: {type: string, minLength: 1}
+      codex_version: {type: string, minLength: 1}
+  drift:
+    type: object
+    additionalProperties: false
+    required: [scope, field, baseline, candidate]
+    properties:
+      scope: {type: string, minLength: 1}
+      field: {type: string, minLength: 1}
+      baseline: {type: string}
+      candidate: {type: string}
+  quality:
+    type: object
+    additionalProperties: false
+    required: [total, observed, quality_denominator, quality_passed, regression_pass_rate]
+    properties:
+      total: {type: integer, minimum: 0}
+      observed: {type: integer, minimum: 0}
+      quality_denominator: {type: integer, minimum: 0}
+      quality_passed: {type: integer, minimum: 0}
+      regression_pass_rate: {type: number, minimum: 0, maximum: 1}
+  caseDelta:
+    type: object
+    additionalProperties: false
+    required:
+      - baseline_status
+      - candidate_status
+      - candidate_observation_state
+      - candidate_quality_denominator_eligible
+      - transition
+      - regression
+    properties:
+      baseline_status: {const: passed}
+      candidate_status: {enum: [passed, failed, missing]}
+      candidate_observation_state: {enum: [observed, not_observed, missing]}
+      candidate_quality_denominator_eligible:
+        type: [boolean, 'null']
+      transition: {type: string, minLength: 1}
+      regression: {type: boolean}

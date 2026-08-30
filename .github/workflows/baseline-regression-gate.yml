@@ -1,0 +1,150 @@
+name: Phase 10 Baseline Regression Gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: Candidate Codex model; changing from the frozen model requires rebaseline
+        required: true
+        default: gpt-5.6-luna
+        type: string
+      reasoning_effort:
+        description: Candidate reasoning effort; changing from the frozen effort requires rebaseline
+        required: true
+        default: xhigh
+        type: choice
+        options:
+          - medium
+          - high
+          - xhigh
+      timeout_seconds:
+        description: Per-case Runtime timeout
+        required: true
+        default: 600
+        type: number
+
+permissions:
+  contents: read
+
+jobs:
+  baseline-regression-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      CANDIDATE_RUN_ID: phase10-${{ github.run_id }}-${{ github.run_attempt }}
+      CANDIDATE_MODEL: ${{ inputs.model }}
+      CANDIDATE_REASONING_EFFORT: ${{ inputs.reasoning_effort }}
+      CANDIDATE_TIMEOUT_SECONDS: ${{ inputs.timeout_seconds }}
+      FROZEN_BASELINE: Eval/Rebaseline/Baselines/phase9-baseline-20260830-09.yaml
+    steps:
+      - name: Checkout candidate revision
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Install Python validation dependencies
+        run: python -m pip install --disable-pip-version-check PyYAML jsonschema
+
+      - name: Validate Phase 9 freeze and Phase 10 comparator contracts
+        shell: bash
+        run: |
+          python Eval/Rebaseline/validate_baseline_freeze.py "$FROZEN_BASELINE"
+          python -m unittest Eval.Tests.test_phase10_baseline_comparator
+          python -m py_compile \
+            Eval/Regression/baseline_comparator.py \
+            Eval/Regression/compare_baseline.py
+
+      - name: Production credential preflight
+        shell: bash
+        run: |
+          mkdir -p "Artifacts/ProductionSmoke/$CANDIDATE_RUN_ID"
+          if [ -z "${OPENAI_API_KEY:-}" ]; then
+            cat > "Artifacts/ProductionSmoke/$CANDIDATE_RUN_ID/preflight.json" <<'JSON'
+          {
+            "schema_version": "1.0",
+            "status": "BLOCKED_NOT_RUN",
+            "reason": "OPENAI_API_KEY repository secret is not configured",
+            "production_execution_observed": false
+          }
+          JSON
+            echo "::error::Phase 10 gate cannot observe Production behavior without OPENAI_API_KEY."
+            exit 1
+          fi
+
+      - name: Install Codex CLI
+        run: npm install -g @openai/codex@latest
+
+      - name: Record runtime versions
+        shell: bash
+        run: |
+          codex_version="$(codex --version | head -n 1)"
+          echo "CODEX_VERSION=$codex_version" >> "$GITHUB_ENV"
+          echo "$codex_version"
+          python --version
+          dotnet --version
+
+      - name: Execute candidate, grade, summarize and compare
+        shell: bash
+        run: |
+          set +e
+
+          python .github/ProductionSmoke/run_one_repo_smoke.py \
+            --run-id "$CANDIDATE_RUN_ID" \
+            --model "$CANDIDATE_MODEL" \
+            --reasoning-effort "$CANDIDATE_REASONING_EFFORT" \
+            --timeout-seconds "$CANDIDATE_TIMEOUT_SECONDS"
+          execution_code=$?
+
+          python Eval/Behavior/grade_production_smoke.py --run-id "$CANDIDATE_RUN_ID"
+          grade_code=$?
+
+          python Eval/Rebaseline/build_rebaseline_summary.py \
+            --run-id "$CANDIDATE_RUN_ID" \
+            --source-revision "$GITHUB_SHA" \
+            --model "$CANDIDATE_MODEL" \
+            --reasoning-effort "$CANDIDATE_REASONING_EFFORT" \
+            --codex-version "$CODEX_VERSION"
+          rebaseline_code=$?
+
+          python Eval/Regression/compare_baseline.py \
+            --baseline "$FROZEN_BASELINE" \
+            --candidate "Artifacts/ProductionSmoke/$CANDIDATE_RUN_ID/rebaseline-summary.json" \
+            --output "Artifacts/ProductionSmoke/$CANDIDATE_RUN_ID/baseline-comparison.json" \
+            --require-pass
+          comparison_code=$?
+
+          echo "execution_exit=$execution_code"
+          echo "grade_exit=$grade_code"
+          echo "rebaseline_exit=$rebaseline_code"
+          echo "comparison_exit=$comparison_code"
+
+          if [ "$comparison_code" -ne 0 ]; then
+            exit "$comparison_code"
+          fi
+          if [ "$execution_code" -ne 0 ] || [ "$grade_code" -ne 0 ] || [ "$rebaseline_code" -ne 0 ]; then
+            echo "::error::Comparator passed but an upstream Production observation stage returned non-zero."
+            exit 1
+          fi
+          exit 0
+
+      - name: Upload Phase 10 candidate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase10-baseline-regression-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Artifacts/ProductionSmoke/${{ env.CANDIDATE_RUN_ID }}/
+          if-no-files-found: error
