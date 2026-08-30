@@ -42,7 +42,10 @@ jobs:
         run: python Eval/Rebaseline/validate_baseline_freeze.py Eval/Rebaseline/Baselines/phase9-baseline-20260830-09.yaml
       - name: Validate Phase 10 comparator entry points
         run: |
-          python -m py_compile Eval/Regression/baseline_comparator.py Eval/Regression/compare_baseline.py
+          python -m py_compile \
+            Eval/Regression/baseline_comparator.py \
+            Eval/Regression/compare_baseline.py \
+            Eval/Regression/validate_baseline_comparison.py
       - name: Canonical Golden validators
         run: |
           python Eval/Golden/validate_gate_catalog.py
