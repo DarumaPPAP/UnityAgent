@@ -62,6 +62,7 @@ def _drift(scope: str, field: str, baseline: object, candidate: object) -> dict[
 def _baseline_identity(freeze: dict[str, Any]) -> dict[str, str]:
     runtime = freeze["runtime"]
     return {
+        "freeze_id": str(freeze["freeze_id"]),
         "run_id": str(freeze["accepted_run"]["run_id"]),
         "source_revision": str(freeze["source"]["revision"]),
         "model": str(runtime["model"]),
@@ -195,6 +196,16 @@ def _case_deltas(candidate: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return output
 
 
+def _quality_below_baseline(baseline: dict[str, Any], candidate: dict[str, Any]) -> bool:
+    return (
+        candidate["total"] < baseline["total"]
+        or candidate["observed"] < baseline["observed"]
+        or candidate["quality_denominator"] < baseline["quality_denominator"]
+        or candidate["quality_passed"] < baseline["quality_passed"]
+        or candidate["regression_pass_rate"] < baseline["regression_pass_rate"]
+    )
+
+
 def build_baseline_comparison(
     freeze: dict[str, Any], candidate: dict[str, Any]
 ) -> dict[str, Any]:
@@ -259,13 +270,7 @@ def build_baseline_comparison(
             decision = "BLOCK_INCONCLUSIVE"
         elif regressed_cases or agent_regression_count:
             decision = "BLOCK_REGRESSION"
-        elif (
-            candidate_quality["total"] < baseline_quality["total"]
-            or candidate_quality["observed"] < baseline_quality["observed"]
-            or candidate_quality["quality_denominator"] < baseline_quality["quality_denominator"]
-            or candidate_quality["quality_passed"] < baseline_quality["quality_passed"]
-            or candidate_quality["regression_pass_rate"] < baseline_quality["regression_pass_rate"]
-        ):
+        elif _quality_below_baseline(baseline_quality, candidate_quality):
             # With all cases observed/eligible and no infrastructure taxonomy, a
             # lower quality result is an observed Agent regression even if a future
             # summary representation changes how the case detail is expressed.
@@ -307,7 +312,7 @@ def build_baseline_comparison(
 
 
 def validate_baseline_comparison(comparison: dict[str, Any]) -> None:
-    """Validate the report schema and decision/comparability invariants."""
+    """Validate the report schema and derived decision/comparability invariants."""
     try:
         Draft202012Validator(_yaml(SCHEMA_PATH)).validate(comparison)
     except ValidationError as exc:
@@ -315,20 +320,121 @@ def validate_baseline_comparison(comparison: dict[str, Any]) -> None:
             f"BaselineComparison schema validation failed: {exc.message}"
         ) from exc
 
-    status = comparison["comparability"]["status"]
+    comparability = comparison["comparability"]
+    status = comparability["status"]
+    blocking = comparability["blocking_drift"]
+    informational = comparability["informational_drift"]
+    missing = comparability["missing_evidence"]
     decision = comparison["gate"]["decision"]
-    if status == "not_comparable" and decision != "REBASELINE_REQUIRED":
+
+    if status == "strict_comparable" and (blocking or informational or missing):
+        raise BaselineComparisonError("strict_comparable cannot contain recorded drift or missing evidence")
+    if status == "comparable_with_drift" and (blocking or missing or not informational):
         raise BaselineComparisonError(
-            "not_comparable candidate must produce REBASELINE_REQUIRED"
+            "comparable_with_drift requires informational drift only"
         )
-    if status == "insufficient_evidence" and decision != "BLOCK_INCONCLUSIVE":
+    if status == "not_comparable" and (not blocking or missing):
         raise BaselineComparisonError(
-            "insufficient comparability evidence must produce BLOCK_INCONCLUSIVE"
+            "not_comparable requires blocking drift and complete comparison evidence"
         )
-    if decision == "PASS":
-        if status not in {"strict_comparable", "comparable_with_drift"}:
-            raise BaselineComparisonError("PASS requires a comparable candidate")
-        if comparison["taxonomy"]["active_failure_classes"]:
-            raise BaselineComparisonError("PASS cannot contain active failure taxonomy")
-        if any(item["candidate_status"] != "passed" for item in comparison["cases"].values()):
-            raise BaselineComparisonError("PASS requires all canonical cases to pass")
+    if status == "insufficient_evidence" and not missing:
+        raise BaselineComparisonError(
+            "insufficient_evidence requires missing comparison evidence"
+        )
+
+    quality_delta = comparison["quality_delta"]
+    baseline_quality = quality_delta["baseline"]
+    candidate_quality = quality_delta["candidate"]
+    expected_pass_delta = candidate_quality["quality_passed"] - baseline_quality["quality_passed"]
+    expected_rate_delta = (
+        candidate_quality["regression_pass_rate"] - baseline_quality["regression_pass_rate"]
+    )
+    if quality_delta["quality_passed_delta"] != expected_pass_delta:
+        raise BaselineComparisonError("quality_passed_delta is inconsistent")
+    if abs(float(quality_delta["regression_pass_rate_delta"]) - expected_rate_delta) > 1e-12:
+        raise BaselineComparisonError("regression_pass_rate_delta is inconsistent")
+
+    cases = comparison["cases"]
+    for task_id in EXPECTED_CASES:
+        item = cases[task_id]
+        expected_transition = f"passed->{item['candidate_status']}"
+        if item["transition"] != expected_transition:
+            raise BaselineComparisonError(f"{task_id} transition is inconsistent")
+        expected_regression = (
+            item["candidate_observation_state"] == "observed"
+            and item["candidate_quality_denominator_eligible"] is True
+            and item["candidate_status"] == "failed"
+        )
+        if bool(item["regression"]) != expected_regression:
+            raise BaselineComparisonError(f"{task_id} regression flag is inconsistent")
+
+    counts = comparison["taxonomy"]["candidate_counts"]
+    expected_active = sorted(key for key, value in counts.items() if int(value) > 0)
+    if comparison["taxonomy"]["active_failure_classes"] != expected_active:
+        raise BaselineComparisonError("active_failure_classes is inconsistent with candidate_counts")
+
+    incomplete = any(item["candidate_status"] == "missing" for item in cases.values())
+    not_observed = any(
+        item["candidate_observation_state"] != "observed" for item in cases.values()
+    )
+    ineligible = any(
+        item["candidate_quality_denominator_eligible"] is not True
+        for item in cases.values()
+    )
+    regression = any(item["regression"] for item in cases.values())
+    agent_regression = int(counts.get("agent_behavior_regression", 0)) > 0
+    non_agent_failure = any(
+        value > 0 and key != "agent_behavior_regression"
+        for key, value in counts.items()
+    )
+    quality_below = _quality_below_baseline(baseline_quality, candidate_quality)
+
+    if decision == "REBASELINE_REQUIRED":
+        if status != "not_comparable":
+            raise BaselineComparisonError(
+                "REBASELINE_REQUIRED requires not_comparable definition/runtime drift"
+            )
+        return
+
+    if decision == "BLOCK_INCONCLUSIVE":
+        inconclusive = (
+            status == "insufficient_evidence"
+            or (
+                status in {"strict_comparable", "comparable_with_drift"}
+                and (incomplete or not_observed or ineligible or non_agent_failure)
+            )
+        )
+        if not inconclusive:
+            raise BaselineComparisonError(
+                "BLOCK_INCONCLUSIVE requires missing/unfinished/non-Agent evidence"
+            )
+        return
+
+    if status not in {"strict_comparable", "comparable_with_drift"}:
+        raise BaselineComparisonError(
+            f"{decision} requires a comparable candidate"
+        )
+    if incomplete or not_observed or ineligible or non_agent_failure:
+        raise BaselineComparisonError(
+            f"{decision} cannot be used when Production observation is inconclusive"
+        )
+
+    if decision == "BLOCK_REGRESSION":
+        if not (regression or agent_regression or quality_below):
+            raise BaselineComparisonError(
+                "BLOCK_REGRESSION requires observed regression evidence"
+            )
+        return
+
+    if decision != "PASS":
+        raise BaselineComparisonError(f"unknown gate decision invariant: {decision}")
+    if regression or agent_regression or quality_below:
+        raise BaselineComparisonError("PASS cannot contain regression evidence")
+    if comparison["taxonomy"]["active_failure_classes"]:
+        raise BaselineComparisonError("PASS cannot contain active failure taxonomy")
+    if any(item["candidate_status"] != "passed" for item in cases.values()):
+        raise BaselineComparisonError("PASS requires all canonical cases to pass")
+    if any(item["candidate_observation_state"] != "observed" for item in cases.values()):
+        raise BaselineComparisonError("PASS requires all canonical cases to be observed")
+    if any(item["candidate_quality_denominator_eligible"] is not True for item in cases.values()):
+        raise BaselineComparisonError("PASS requires all canonical cases to be quality eligible")
