@@ -18,7 +18,7 @@ Namespace規則:
 - `RootNamespace`が実名の場合: `<RootNamespace>.<FeatureName>`
 - `RootNamespace: NONE`の場合: `<FeatureName>`
 - 既存コードを変更する場合: 既存namespaceを保持する
-- `.Runtime`、`.Editor`、`.Rendering`などの追加階層は禁止する
+- `.Runtime`、`.Editor`、`.Rendering`などの追加階層は既存Project規約または実在するAssembly/ownership boundaryがある場合だけ導入する
 
 `Namespace`、`RootNamespace`、`<RootNamespace>`、`CHANGE_ME`を実際のnamespaceやasmdef名として出力してはならない。先頭または末尾が`.`のnamespaceも禁止する。
 
@@ -59,9 +59,9 @@ Project Profileを使用する場合は、どの未解決Factを補うために�
 
 Platform Build TargetとPerformance Targetを混同しない。Target Platformが未指定でも、Platform非依存の設計、実装、検証を継続する。
 
-## Workspace policy
+## Workspace / Repository boundary
 
-- KnowledgeRepository: `DarumaPPAP/UnityAgent`
+- UnityAgentRepository: `DarumaPPAP/UnityAgent`
 - McpRepository: `DarumaPPAP/MyUnityMCP`
 - McpSpecificationRoot: `DarumaPPAP/MyUnityMCP/Specs/`
 - McpPackageRoot: `DarumaPPAP/MyUnityMCP/Packages/`
@@ -69,7 +69,6 @@ Platform Build TargetとPerformance Targetを混同しない。Target Platform�
 - GeneratedProductRepository: `DarumaPPAP/UnityAIGC-Archive`
 - ImplementationRoot: `DarumaPPAP/UnityAIGC-Archive/Implementation/`
 - GeneratedSpecRoot: `DarumaPPAP/UnityAIGC-Archive/Specs/`
-- ReferenceRoot: `Reference/`
 - GovernanceSpecRoot: `Specs/`
 - UnityProjectPath: user-managed
 - AutomaticFileSync: Disabled
@@ -77,11 +76,22 @@ Platform Build TargetとPerformance Targetを混同しない。Target Platform�
 
 通常の製品コード、製品仕様、導入資料は`GeneratedProductRepository`へ保存する。
 
-UnityAgentが利用するMCP本体、Creator Workflow、Domain MCP、Capability Module、Manifest、Tool Schema、MCP固有仕様は`McpRepository`へ保存する。MCP関連の正本を`UnityAIGC-Archive`へ保存しない。
+UnityAgentが利用するMCP本体、Creator Workflow、Domain MCP、Capability Module、Manifest、Tool Schema、MCP固有仕様は`McpRepository`へ保存する。MCP関連の製品正本を`UnityAIGC-Archive`へ保存しない。
 
 MCPが生成または変更したScene、Prefab、Material、Timeline、Volume Profile等は対象Unity Projectが所有する。
 
-UnityAgentにはRoute、Context Pack、Task Contract、Knowledge Contract、MCP Activation Policyだけを保存する。UnityAgent内へMCP PackageやMCP製品仕様を追加しない。
+UnityAgent自身が所有するのは、個別MCP製品実装ではなく、UnityAgentのProduction authorityです。現在の主なcanonical surfaceは次です。
+
+- `Policy/` — User / Risk / Security / Approval / Evidence rules
+- `Orchestration/` — Route / Graph / Task Contract / Runtime handoff
+- `Context/` — Context Pack / Retrieval / Budget / Materialization / MCP selection
+- `Runtime/` — Execution / Guardrails / Permissions / Harness / Telemetry
+- `Persistence/` — durable State / Checkpoint / Resume / Memory / Evidence
+- `Operations/` — Observability / Detection / Incident / approved control / ChangeManagement
+- `Eval/` — Golden / Behavior / Replay / Rebaseline / Regression
+- `.agents/skills/` / `SkillReferences/` — selected domain procedure / supporting rule
+
+MCP PackageやMCP製品仕様そのものをUnityAgentへ複製しない。UnityAgent側にはMCPを選択・制約・検証するためのcontractだけを保持する。
 
 ## Project-specific preferences
 
