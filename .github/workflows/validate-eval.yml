@@ -10,6 +10,7 @@ on:
       - "Tools/validate_all.py"
       - ".github/workflows/validate-eval.yml"
       - ".github/workflows/actual-behavior-eval.yml"
+      - ".github/workflows/baseline-regression-gate.yml"
   push:
     branches: [main]
     paths:
@@ -19,6 +20,7 @@ on:
       - "AGENTS.md"
       - "Tools/validate_all.py"
       - ".github/workflows/validate-eval.yml"
+      - ".github/workflows/baseline-regression-gate.yml"
 
 permissions:
   contents: read
@@ -38,6 +40,9 @@ jobs:
         run: python -m unittest discover -s Eval/Tests -p "test_*.py"
       - name: Validate frozen Phase 9 baseline
         run: python Eval/Rebaseline/validate_baseline_freeze.py Eval/Rebaseline/Baselines/phase9-baseline-20260830-09.yaml
+      - name: Validate Phase 10 comparator entry points
+        run: |
+          python -m py_compile Eval/Regression/baseline_comparator.py Eval/Regression/compare_baseline.py
       - name: Canonical Golden validators
         run: |
           python Eval/Golden/validate_gate_catalog.py
