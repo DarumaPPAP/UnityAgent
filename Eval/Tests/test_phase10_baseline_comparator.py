@@ -7,6 +7,7 @@ from pathlib import Path
 import yaml
 
 from Eval.Regression.baseline_comparator import (
+    BaselineComparisonError,
     build_baseline_comparison,
     validate_baseline_comparison,
 )
@@ -75,9 +76,11 @@ def _candidate(
 
 class Phase10BaselineComparatorTests(unittest.TestCase):
     def test_clean_candidate_passes_without_historical_replay(self):
-        comparison = build_baseline_comparison(_baseline(), _candidate())
+        baseline = _baseline()
+        comparison = build_baseline_comparison(baseline, _candidate())
         self.assertEqual(comparison["gate"]["decision"], "PASS")
         self.assertEqual(comparison["comparability"]["status"], "comparable_with_drift")
+        self.assertEqual(comparison["baseline"]["freeze_id"], baseline["freeze_id"])
         self.assertEqual(comparison["quality_delta"]["candidate"]["quality_passed"], 4)
         self.assertEqual(comparison["quality_delta"]["candidate"]["regression_pass_rate"], 1.0)
         validate_baseline_comparison(comparison)
@@ -197,6 +200,20 @@ class Phase10BaselineComparatorTests(unittest.TestCase):
             "definition_fingerprints.GOLDEN-EVIDENCE-001",
             comparison["comparability"]["missing_evidence"],
         )
+
+    def test_saved_pass_report_cannot_hide_lower_quality(self):
+        comparison = build_baseline_comparison(_baseline(), _candidate())
+        comparison["quality_delta"]["candidate"]["quality_passed"] = 3
+        comparison["quality_delta"]["quality_passed_delta"] = -1
+        with self.assertRaises(BaselineComparisonError):
+            validate_baseline_comparison(comparison)
+
+    def test_saved_pass_report_cannot_hide_unobserved_case(self):
+        comparison = build_baseline_comparison(_baseline(), _candidate())
+        case = comparison["cases"]["GOLDEN-EVIDENCE-001"]
+        case["candidate_observation_state"] = "not_observed"
+        with self.assertRaises(BaselineComparisonError):
+            validate_baseline_comparison(comparison)
 
 
 if __name__ == "__main__":
