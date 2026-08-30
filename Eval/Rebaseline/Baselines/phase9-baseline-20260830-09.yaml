@@ -1,0 +1,86 @@
+schema_version: '1.0'
+phase: 9
+freeze_id: phase9-baseline-20260830-09-freeze
+status: accepted
+accepted_run:
+  run_id: phase9-baseline-20260830-09
+  rebaseline_status: baseline_ready
+source:
+  repository: DarumaPPAP/UnityAgent
+  revision: 08d915886a24689e40cc74b1d32277bb80a3aa5a
+runtime:
+  model: gpt-5.6-luna
+  reasoning_effort: xhigh
+  codex_version: codex-cli 0.150.1
+  production_execution_observed: true
+quality:
+  total: 4
+  observed: 4
+  not_observed: 0
+  quality_denominator: 4
+  quality_passed: 4
+  regression_pass_rate: 1.0
+historical_replay:
+  status: passed
+  observed_namespaces:
+    - ARCH
+    - EVIDENCE
+    - MUTATION
+    - NAMING
+  case_count: 4
+  quality_denominator_eligible_count: 0
+  quality_semantics: namespace_coverage_only
+definition_fingerprints:
+  GOLDEN-ARCH-001:
+    schema_version: '1.0'
+    architecture_version: v3.1
+    policy_revision: sha256:68291bcc37aa5b9b5a689c0651783006419b6d951434a763bffbff6dc4e06ea5
+    prompt_revision: unbound
+    context_revision: sha256:c3d0bb928c931a88bd5529acbee8edc586cc4154f421a78411901252d527e1cd
+    graph_revision: orchestration-phase4-canonical
+    runtime_profile_revision: runtime-phase3-canonical
+    tool_schema_revision: unbound-runtime
+    checkpoint_schema_revision: '1.1'
+    evidence_schema_revision: '1.1'
+    eval_contract_revision: eval-phase6-canonical
+  GOLDEN-NAMING-001:
+    schema_version: '1.0'
+    architecture_version: v3.1
+    policy_revision: sha256:68291bcc37aa5b9b5a689c0651783006419b6d951434a763bffbff6dc4e06ea5
+    prompt_revision: unbound
+    context_revision: sha256:b54be6639519e60e0a110cccb53cf91191d820a0158c164aab42f94d431d1001
+    graph_revision: orchestration-phase4-canonical
+    runtime_profile_revision: runtime-phase3-canonical
+    tool_schema_revision: unbound-runtime
+    checkpoint_schema_revision: '1.1'
+    evidence_schema_revision: '1.1'
+    eval_contract_revision: eval-phase6-canonical
+  GOLDEN-MUTATION-001:
+    schema_version: '1.0'
+    architecture_version: v3.1
+    policy_revision: sha256:68291bcc37aa5b9b5a689c0651783006419b6d951434a763bffbff6dc4e06ea5
+    prompt_revision: unbound
+    context_revision: sha256:256f1b040719bb578c4b1ebb3d085da49aa89e4061dfa7e59a6af69bb92eef61
+    graph_revision: orchestration-phase4-canonical
+    runtime_profile_revision: runtime-phase3-canonical
+    tool_schema_revision: unbound-runtime
+    checkpoint_schema_revision: '1.1'
+    evidence_schema_revision: '1.1'
+    eval_contract_revision: eval-phase6-canonical
+  GOLDEN-EVIDENCE-001:
+    schema_version: '1.0'
+    architecture_version: v3.1
+    policy_revision: sha256:68291bcc37aa5b9b5a689c0651783006419b6d951434a763bffbff6dc4e06ea5
+    prompt_revision: unbound
+    context_revision: sha256:0d3600c0561c2578b123ad2c03edb112b3f9f8afba848d5661c77d498ec16a90
+    graph_revision: orchestration-phase4-canonical
+    runtime_profile_revision: runtime-phase3-canonical
+    tool_schema_revision: unbound-runtime
+    checkpoint_schema_revision: '1.1'
+    evidence_schema_revision: '1.1'
+    eval_contract_revision: eval-phase6-canonical
+provenance:
+  rebaseline_summary_ref: Artifacts/ProductionSmoke/phase9-baseline-20260830-09/rebaseline-summary.json
+  historical_replay_ref: Artifacts/ProductionSmoke/phase9-baseline-20260830-09/historical-replay.json
+  execution_evidence_immutable: true
+  freeze_is_reviewed_repository_change: true
