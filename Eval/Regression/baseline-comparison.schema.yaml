@@ -17,9 +17,9 @@ properties:
   schema_version: {const: '1.0'}
   phase: {const: 10}
   baseline:
-    $ref: '#/$defs/identity'
+    $ref: '#/$defs/baselineIdentity'
   candidate:
-    $ref: '#/$defs/identity'
+    $ref: '#/$defs/candidateIdentity'
   comparability:
     type: object
     additionalProperties: false
@@ -87,7 +87,18 @@ properties:
         items: {type: string, minLength: 1}
         uniqueItems: true
 $defs:
-  identity:
+  baselineIdentity:
+    type: object
+    additionalProperties: false
+    required: [freeze_id, run_id, source_revision, model, reasoning_effort, codex_version]
+    properties:
+      freeze_id: {type: string, minLength: 1}
+      run_id: {type: string, minLength: 1}
+      source_revision: {type: string, minLength: 1}
+      model: {type: string, minLength: 1}
+      reasoning_effort: {type: string, minLength: 1}
+      codex_version: {type: string, minLength: 1}
+  candidateIdentity:
     type: object
     additionalProperties: false
     required: [run_id, source_revision, model, reasoning_effort, codex_version]
