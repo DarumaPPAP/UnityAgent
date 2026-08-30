@@ -170,7 +170,7 @@ def validate_observed_source_naming_coverage(errors: list[str]) -> None:
         {
             "path": "CameraDebugger.cs",
             "language": "csharp",
-            "kind": "observed_source",
+            "kind": "source",
             "source": "namespace Fixture\n{\n    public sealed class CameraDebugger\n    {\n    }\n}\n",
         }
     ]
