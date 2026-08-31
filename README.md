@@ -329,6 +329,8 @@ TaskごとにPrimary Skillを一つ選び、Primary Skillが持たない専門�
 
 例えば、原因不明のRendering障害ではIncident系Skillが調査を所有し、原因確定後にRendering / Shader系Skillへ修正を渡します。
 
+Unity公式CLIのように外部製品と一緒に更新されるSkillは、UnityAgentへ全文を固定コピーして独自正本化しません。UnityAgent側にはPolicy / Capability selection / Evidence等の固有判断だけを保持し、外部Toolの現在のCommand Surfaceは実際のTool discoveryと公式Skillを優先します。
+
 ---
 
 ## Unity Projectとの関係
@@ -341,6 +343,58 @@ UnityAgentはそれらを変更する際の判断、Context、設計確認、実
 
 Project固有Factは可能な限り実Projectから取得し、`Specs/ProjectProfile.md` は未解決FactのFallbackとしてのみ使用します。
 
+ローカル開発では次を標準とします。
+
+```text
+UnityAgent
+= 独立Repository
+
+Read Scope
+= Target Unity Project Root
+
+Mutation Scope
+= Taskに必要な最小範囲
+```
+
+UnityAgent本体をTarget Unity Projectの`Assets/`配下へコピーしません。`Assets/`だけではPackage Version、Unity Version、ProjectSettings等のProject Factが不足するため、原則Project Rootを読み取り対象にします。
+
+詳細は [ローカルUnity Project開発ガイド](docs/local-project-development.md) を参照してください。実際の依頼には [Development Request Template](Templates/DevelopmentRequest.md) を使用できます。
+
+---
+
+## Unity Tool Runtimeの設計原則
+
+UnityAgentでは、Tool製品名とTaskの意味を分離します。
+
+```text
+Skill      = どう使うか
+Capability = 何をしたいか
+Provider   = 誰が実行できるか
+Transport  = どう接続するか
+Evidence   = 実際に何を観測したか
+```
+
+Target Architectureでは、Orchestrationは`MyUnityMCPを使う`や`Unity CLIを使う`ではなく、`scene.inspect`、`project.test`、`project.build`、`player.observe`等のCapabilityを要求します。
+
+Provider / Transportの選択はRuntimeの実行責務です。Provider名をSemantic Graphの恒久Contractへ埋め込みません。
+
+候補となるProviderは主に次です。
+
+- Unity CLI / `com.unity.pipeline`
+- MyUnityMCP
+- File Provider
+
+重要なSafety Rule:
+
+```text
+Provider unavailable
+!= Safety Contractを下げてよい
+```
+
+例えば承認付きMyUnityMCP Mutationが必要なのに接続できない場合、raw `eval`へsilent fallbackしません。
+
+Capability-driven Tool Broker / Provider Registryは [Unity Tool Runtime](Specs/UnityToolRuntime.md) に定義するTarget Architectureです。**設計書が存在すること自体を実装済みRuntime Capabilityとして扱いません。**
+
 ---
 
 ## MyUnityMCPとの関係
@@ -352,14 +406,17 @@ UnityAgentはMyUnityMCPを直接のAuthorityにはせず、自身のPolicy、Rou
 ```mermaid
 flowchart LR
     U[ユーザー依頼] --> A[UnityAgent]
-    A --> G[Policy / Routing / Context / Guardrail]
-    G --> M[MyUnityMCP Tool]
-    M --> P[Unity Project]
+    A --> C[Capability / Policy / Guardrail]
+    C --> R[Runtime execution boundary]
+    R --> M[MyUnityMCP / Unity CLI / other provider]
+    M --> P[Unity Project / Editor / Player]
     P --> V[検証 / Evidence]
     V --> A
 ```
 
 MCP Toolが利用可能だからという理由だけで、許可されていない変更を実行しません。
+
+MyUnityMCPが提供する`Inspect -> Prepare -> Exact Diff -> Revision -> Approval -> Apply`等の強いSafety Contractを、より低レベルなProviderへの自動Fallbackで迂回しません。
 
 ---
 
@@ -426,11 +483,14 @@ Get-Content ".\README.md" -Raw -Encoding UTF8
 | `Orchestration/Contracts/TaskContracts/` | Taskごとの実行契約 |
 | `Orchestration/Contracts/design-review-artifact.schema.yaml` | Design Reviewの構造化Output Contract |
 | `Templates/DesignReview.md` | 人間が確認するDesign Review表示Template |
+| `Templates/DevelopmentRequest.md` | ローカルUnity開発を渡す依頼Template |
 | `Context/Selection/context-catalog.yaml` | Context選択 |
 | `Context/Packs/` | Domain Context Pack |
 | `Runtime/Profiles/runtime-profiles.yaml` | Runtime実行Profile |
 | `.agents/skills/` | 専門Skill |
 | `SkillReferences/` | Domain共通規約 |
+| `Specs/UnityToolRuntime.md` | Capability-driven Unity Tool RuntimeのTarget Architecture |
+| `docs/local-project-development.md` | Project Root / Scope / Provider / Evidenceを含むローカル開発ガイド |
 | `docs/architecture/unityagent-flow.mmd` | GitHubで描画できる全体関連図 |
 | `Tools/validate_all.py` | Repository全体Validation |
 | `Tools/run_regression_gate.py` | Production Regression Gate |
