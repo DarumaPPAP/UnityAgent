@@ -18,8 +18,8 @@ def _load_module(name: str, path: Path):
     spec.loader.exec_module(module)
     return module
 
-resolver = _load_module("phase8_path_resolver", ROOT / "Context/Selection/path_resolver.py")
-budget = _load_module("phase8_budget_runtime", ROOT / "Context/Budget/budget_runtime.py")
+resolver = _load_module("context_path_resolver", ROOT / "Context/Selection/path_resolver.py")
+budget = _load_module("context_budget_runtime", ROOT / "Context/Budget/budget_runtime.py")
 
 def _yaml(path: Path) -> dict[str, Any]:
     value = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
