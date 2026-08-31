@@ -43,7 +43,7 @@ VALIDATORS = (
     Path("Eval/Behavior/validate_mutation_production_contract.py"),
     Path("Eval/Behavior/validate_production_smoke.py"),
     Path("Eval/Behavior/validate_run_integrity.py"),
-    Path("Eval/Behavior/validate_phase8_cutover.py"),
+    Path("Eval/Behavior/validate_cutover.py"),
 )
 
 CHECK_COMMANDS = (
