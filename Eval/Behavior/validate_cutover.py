@@ -24,12 +24,15 @@ FORBIDDEN_PATHS = (
     "Tools/ContextManifest",
     "Tools/ContextBudget",
     "Tools/ContextCatalog",
+    "Tools/GraphContractValidator",
+    "Tools/TaskFingerprintValidator",
     "Tools/Phase10",
     "Tests/BehaviorEval",
     "Tests/GoldenTasks",
     "Tests/LoopIntegration",
     "Tests/ContextManifest",
     "Tests/ContextCatalog",
+    "Tests/ContextRouting",
 )
 
 ACTIVE_SCAN_ROOTS = (
@@ -110,10 +113,13 @@ def main() -> int:
                 "Tools/ContextManifest/",
                 "Tools/ContextBudget/",
                 "Tools/ContextCatalog/",
+                "Tools/GraphContractValidator/",
+                "Tools/TaskFingerprintValidator/",
                 "Tools/Phase10/",
+                "Tests/ContextRouting/",
             ):
                 if obsolete in text:
-                    errors.append(f"active obsolete tool reference {obsolete}: {relative}")
+                    errors.append(f"active obsolete path reference {obsolete}: {relative}")
 
         if relative.startswith(".github/workflows/") and EXTERNAL_GRAPH_REPOSITORY in text:
             errors.append(f"workflow still depends on Unity-Graph-Engineering: {relative}")
