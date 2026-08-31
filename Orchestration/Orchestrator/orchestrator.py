@@ -7,6 +7,7 @@ import yaml
 from Orchestration.Graph.state_mapping import workflow_state_patch
 
 RUNTIME_NODE_KINDS = {"runtime_action", "health_check", "verification"}
+DESIGN_REVIEW_REQUIREMENTS = {"required", "conditional", "not_required"}
 
 
 def load_graph(path: Path) -> dict[str, Any]:
@@ -56,8 +57,10 @@ def transition(*, graph: dict[str, Any], run_id: str, current_node_id: str, sign
     return {"schema_version": "1.0", "decision": decision, "route_id": route_id, "subgraph_id": subgraph_id, "node_id": node_id, "reason": f"edge {current_node_id} --{signal}--> {node_id}", "runtime_handoff": handoff, "state_patch": patch}
 
 
-def fast_path(*, run_id: str, route_id: str, execution_profile: str, context_id: str, context_fingerprint: str, simple_task: bool, requires_semantic_replan: bool, runtime_action_id: str, task_contract_runtime_projection: dict[str, Any] | None = None, mutation_scope: dict[str, Any] | None = None, validation_requirements: list[str] | None = None) -> dict[str, Any] | None:
-    if not simple_task or requires_semantic_replan:
+def fast_path(*, run_id: str, route_id: str, execution_profile: str, context_id: str, context_fingerprint: str, simple_task: bool, requires_semantic_replan: bool, runtime_action_id: str, design_review_requirement: str = "not_required", task_contract_runtime_projection: dict[str, Any] | None = None, mutation_scope: dict[str, Any] | None = None, validation_requirements: list[str] | None = None) -> dict[str, Any] | None:
+    if design_review_requirement not in DESIGN_REVIEW_REQUIREMENTS:
+        raise ValueError("invalid design_review_requirement")
+    if not simple_task or requires_semantic_replan or design_review_requirement != "not_required":
         return None
     handoff = runtime_handoff(run_id=run_id, node_id=runtime_action_id, route_id=route_id, execution_profile=execution_profile, context_id=context_id, context_fingerprint=context_fingerprint, task_contract_runtime_projection=task_contract_runtime_projection or {}, mutation_scope=mutation_scope or {}, validation_requirements=validation_requirements or [])
     return {"schema_version": "1.0", "decision": "fast_path", "route_id": route_id, "subgraph_id": None, "node_id": runtime_action_id, "reason": "simple bounded task does not require ParentGraph coordination", "runtime_handoff": handoff, "state_patch": {}}

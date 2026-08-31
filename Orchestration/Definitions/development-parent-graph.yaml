@@ -10,6 +10,13 @@ subgraphs:
       - {id: select_route, kind: semantic, owner: orchestration, parallel_safe: false, write_set: []}
       - {id: materialize_context, kind: context_handoff, owner: context, parallel_safe: false, write_set: []}
       - {id: plan_scope, kind: semantic, owner: orchestration, parallel_safe: false, write_set: []}
+  - id: design_review
+    purpose: present the proposed execution graph, review checklist, and final intended result before a design-sensitive task proceeds
+    entry_node_id: compose_design_preview
+    nodes:
+      - {id: compose_design_preview, kind: semantic, owner: orchestration, parallel_safe: false, write_set: []}
+      - {id: present_design_preview, kind: delivery, owner: orchestration, parallel_safe: false, write_set: []}
+      - {id: await_design_approval, kind: semantic, owner: orchestration, parallel_safe: false, write_set: []}
   - id: investigation
     purpose: obtain only the evidence needed to identify a bounded implementation or answer
     entry_node_id: environment_check
@@ -41,13 +48,23 @@ edges:
   - {from: classify_task, to: select_route, 'on': classified}
   - {from: select_route, to: materialize_context, 'on': selected}
   - {from: materialize_context, to: plan_scope, 'on': context_ready}
+  - {from: plan_scope, to: compose_design_preview, 'on': design_review}
   - {from: plan_scope, to: environment_check, 'on': investigate}
   - {from: plan_scope, to: mutation_precheck, 'on': implement}
   - {from: plan_scope, to: validation_health_check, 'on': verify_only}
   - {from: plan_scope, to: compose_result, 'on': answer_only}
+  - {from: compose_design_preview, to: present_design_preview, 'on': preview_ready}
+  - {from: present_design_preview, to: await_design_approval, 'on': presented}
+  - {from: await_design_approval, to: compose_design_preview, 'on': revision_requested}
+  - {from: await_design_approval, to: environment_check, 'on': approved_investigate}
+  - {from: await_design_approval, to: mutation_precheck, 'on': approved_implement}
+  - {from: await_design_approval, to: validation_health_check, 'on': approved_verify_only}
+  - {from: await_design_approval, to: compose_result, 'on': approved_answer_only}
+  - {from: await_design_approval, to: compose_result, 'on': rejected}
   - {from: environment_check, to: inspect_sources, 'on': healthy}
   - {from: environment_check, to: assess_evidence, 'on': unavailable}
   - {from: inspect_sources, to: assess_evidence, 'on': observed}
+  - {from: assess_evidence, to: compose_design_preview, 'on': design_review}
   - {from: assess_evidence, to: mutation_precheck, 'on': implementation_ready}
   - {from: assess_evidence, to: compose_result, 'on': answer_ready}
   - {from: mutation_precheck, to: execute_change, 'on': approved}
@@ -62,18 +79,26 @@ edges:
   - {from: assess_validation, to: compose_result, 'on': unavailable_but_reportable}
   - {from: compose_result, to: complete, 'on': delivered}
 gates:
+  - {id: design_review_gate, node_id: await_design_approval, source: human}
   - {id: mutation_policy_gate, node_id: mutation_precheck, source: policy}
   - {id: runtime_health_gate, node_id: environment_check, source: runtime_health}
   - {id: validation_health_gate, node_id: validation_health_check, source: runtime_health}
   - {id: evidence_gate, node_id: assess_validation, source: runtime_evidence}
 local_loops:
+  - id: design-review-revision-loop
+    subgraph_id: design_review
+    from_node_id: await_design_approval
+    to_node_id: compose_design_preview
+    continue_on: [revision_requested]
+    replan_on: [route_or_scope_changed]
+    exit_on: [approved_investigate, approved_implement, approved_verify_only, approved_answer_only, rejected]
   - id: investigation-evidence-loop
     subgraph_id: investigation
     from_node_id: assess_evidence
     to_node_id: inspect_sources
     continue_on: [more_targeted_evidence_needed]
     replan_on: [hypothesis_invalidated, route_mismatch]
-    exit_on: [implementation_ready, answer_ready]
+    exit_on: [design_review, implementation_ready, answer_ready]
   - id: implementation-correction-loop
     subgraph_id: implementation
     from_node_id: assess_change

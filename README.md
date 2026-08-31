@@ -2,12 +2,13 @@
 
 UnityAgent は、**個人の Unity 開発に特化した AI 開発エージェント基盤**です。
 
-単なる Coding Rule 集ではなく、ユーザーの依頼を受け取ってから、Policy確認、Task分類、Context選択、実行、検証、Evidence保存、品質評価までを一貫した責務分離で扱います。
+単なる Coding Rule 集ではなく、ユーザーの依頼を受け取ってから、Policy確認、Task分類、Context選択、設計確認、実行、検証、Evidence保存、品質評価までを一貫した責務分離で扱います。
 
 この Repository の目的は、AIに「何でもそれっぽくやらせる」ことではありません。
 
 - ユーザー固有の開発方針を最優先する
 - 必要なContextだけを選ぶ
+- 作るものが大きい場合は、実装前に設計とGraphを確認できるようにする
 - Taskごとに許可された範囲だけを変更する
 - 実際に確認できたEvidenceだけを根拠にする
 - Unity / C# / Rendering / Performanceなどの専門判断を適切なSkillへ委譲する
@@ -17,31 +18,32 @@ UnityAgent は、**個人の Unity 開発に特化した AI 開発エージェ�
 
 ---
 
-## UnityAgent が行うこと
+## UnityAgent がどのように動くか
 
-UnityAgent は、ユーザーの依頼をそのまま直接実行するのではなく、まず依頼の意味と実行条件を整理します。
+UnityAgentは、ユーザーの依頼をそのまま直接実行するのではなく、依頼の意味、設計、実行範囲、検証方法を順番に整理してから処理します。
 
-```text
-User Request
-    ↓
-Policy確認
-    ↓
-Task分類 / Routing
-    ↓
-Task Contract決定
-    ↓
-必要なContext / Skillを選択
-    ↓
-Runtime実行
-    ↓
-Verification / Evidence Capture
-    ↓
-Persistence
-    ↓
-Eval
-    ↓
-User Report
+```mermaid
+flowchart LR
+    U[User Request] --> P[Policy]
+    P --> R[Routing]
+    R --> T[Task Contract]
+    T --> C[Context / Skill]
+    C --> G{Design Review?}
+
+    G -->|必要| D[Design Preview]
+    D --> H{Human Approval}
+    H -->|Revise| D
+    H -->|Approve| X[Investigation / Implementation]
+    H -->|Reject| O[User Report]
+
+    G -->|不要| X
+    X --> V[Verification]
+    V --> E[Evidence / Persistence]
+    E --> Q[Eval]
+    Q --> O
 ```
+
+詳細な関連図は [UnityAgent Flow](docs/architecture/unityagent-flow.mmd) で確認できます。GitHubではMermaidとしてそのまま描画されます。
 
 この順序によって、設計判断、Context取得、実際の変更、検証、品質評価を同じ責務へ混ぜません。
 
@@ -51,7 +53,7 @@ User Report
 
 ### 1. ユーザーの方針を最優先する
 
-UnityAgent は汎用的な Unity Best Practice よりも、ユーザーが明示した要件と `Policy/User/user-policy.yaml` を優先します。
+UnityAgentは汎用的なUnity Best Practiceよりも、ユーザーが明示した要件と `Policy/User/user-policy.yaml` を優先します。
 
 ```text
 今回のユーザー明示指示
@@ -89,11 +91,17 @@ Editor成功はPlayer成功ではありません。
 
 確認できた範囲と未確認の範囲を分けて報告します。
 
+### 5. 設計が必要なTaskは、実装前に確認できるようにする
+
+新しいFeature、Architecture、MCP、Portable Tool、Visual Directionなど、設計自体が重要なTaskではDesign Reviewを使用します。
+
+小さなC#修正や、すでにArchitectureが決まっている局所変更まで毎回止めることはしません。
+
 ---
 
 ## 全体構成
 
-UnityAgent は責務ごとに次の領域へ分かれています。
+UnityAgentは責務ごとに次の領域へ分かれています。
 
 | Area | Responsibility |
 | --- | --- |
@@ -141,6 +149,8 @@ Routingの正本は次です。
 
 Technology keywordだけではなく、依頼の目的、対象、Risk、必要Evidence、Mutation範囲を使って分類します。
 
+Routeは、Design Reviewを `required / conditional / not_required` のどれとして扱うかも定義します。
+
 ### 3. Task Contract
 
 選択されたRouteに対して、実行条件をTask Contractで固定します。
@@ -182,7 +192,40 @@ Context selectionの入口は次です。
 
 Contextを大量に読み込むこと自体を品質とはみなしません。必要な情報を欠かさず、不要な情報を増やさないことを重視します。
 
-### 5. Runtime
+### 5. Design Review
+
+設計確認が必要なTaskでは、Mutationへ進む前にDesign Previewをユーザーへ提示します。
+
+主なOutputは次の3つです。
+
+1. **関連図** — 実際に選択されたRoute / SubGraph / Gate / Runtime境界をMermaidで可視化
+2. **チェック項目** — Scope、責務、Mutation範囲、必要Context、Validation、Stop条件などを確認
+3. **最終イメージ仕様書** — 完成後に何がどう動くか、主要Component、Control Flow、Acceptance Criteria、Non-goalを自然言語で固定
+
+表示形式の基本テンプレートは `Templates/DesignReview.md`、構造化Output Contractは `Orchestration/Contracts/design-review-artifact.schema.yaml` です。
+
+```mermaid
+flowchart TD
+    A[Design Preview生成] --> B[関連図]
+    A --> C[チェック項目]
+    A --> D[最終イメージ仕様書]
+    B --> E{Human Review}
+    C --> E
+    D --> E
+    E -->|Approve| F[次のSubGraphへ]
+    E -->|Revise| A
+    E -->|Reject| G[実装せず終了]
+```
+
+Design Reviewが必須のTaskでは、Approveされるまで実装Mutationへ進みません。
+
+### 6. Investigation
+
+既存Projectの事実確認や、原因特定が必要なTaskではRuntimeを使って必要なEvidenceだけを調べます。
+
+調査結果によって設計が変わる場合は、Design Reviewへ戻して更新した関連図・チェック項目・最終イメージを再提示できます。
+
+### 7. Runtime / Implementation
 
 Runtimeが実際の処理を実行します。
 
@@ -200,7 +243,7 @@ Runtimeが実際の処理を実行します。
 
 RuntimeはTaskの意味を勝手に変更したり、新しいPrimary Routeを決めたりしません。
 
-### 6. Verification / Evidence
+### 8. Verification / Evidence
 
 変更した内容を可能な範囲で検証します。
 
@@ -218,7 +261,7 @@ Target Device / Performance / Visual Evidence
 
 Taskに不要な上位検証を常に要求するわけではありませんが、未実施のGateを成功扱いにはしません。
 
-### 7. Persistence
+### 9. Persistence
 
 実行中のStateと永続Evidenceを分離します。
 
@@ -230,7 +273,7 @@ Checkpoint != Memory != Evidence
 - Memory: 後続Taskで再利用可能な情報
 - Evidence: 実際の実行結果を示す永続記録
 
-### 8. Eval
+### 10. Eval
 
 Evalは、実行結果が期待するBehavior Contractを満たしているかを測定します。
 
@@ -258,7 +301,7 @@ Verification
 Result
 ```
 
-複数の判断、分岐、検証、再計画が必要なTaskだけOrchestration Graphを使用します。
+複数の判断、分岐、設計確認、検証、再計画が必要なTaskだけOrchestration Graphを使用します。
 
 ```text
 Parent Graph
@@ -269,6 +312,8 @@ Node / Edge / Gate
     ↓
 必要な場所だけLocal Loop
 ```
+
+Design Reviewも独立した別システムではなく、Parent Graph内のSubGraphです。
 
 LoopはGraphとは別の独立Control Planeではなく、限定された処理を条件付きで再試行・再評価するための構造です。
 
@@ -292,7 +337,7 @@ UnityAgent自身はUnity Projectではありません。
 
 実際のScene、Prefab、Material、Shader、C#、Package等は対象Unity Projectが所有します。
 
-UnityAgentはそれらを変更する際の判断、Context、実行制御、Evidence、品質評価を提供します。
+UnityAgentはそれらを変更する際の判断、Context、設計確認、実行制御、Evidence、品質評価を提供します。
 
 Project固有Factは可能な限り実Projectから取得し、`Specs/ProjectProfile.md` は未解決FactのFallbackとしてのみ使用します。
 
@@ -304,16 +349,14 @@ Project固有Factは可能な限り実Projectから取得し、`Specs/ProjectPro
 
 UnityAgentはMyUnityMCPを直接のAuthorityにはせず、自身のPolicy、Routing、Context、Task Contract、Runtime Guardrailを通して利用します。
 
-```text
-User Request
-    ↓
-UnityAgent
-    ↓
-Policy / Routing / Context / Runtime Guardrail
-    ↓
-MyUnityMCP Tool
-    ↓
-Unity Project
+```mermaid
+flowchart LR
+    U[User Request] --> A[UnityAgent]
+    A --> G[Policy / Routing / Context / Guardrail]
+    G --> M[MyUnityMCP Tool]
+    M --> P[Unity Project]
+    P --> V[Verification / Evidence]
+    V --> A
 ```
 
 MCP Toolが利用可能だからという理由だけで、許可されていない変更を実行しません。
@@ -378,13 +421,17 @@ Get-Content ".\README.md" -Raw -Encoding UTF8
 | --- | --- |
 | `AGENTS.md` | Agentが最初に読むbootstrap map |
 | `Policy/User/user-policy.yaml` | ユーザー固有Policy |
-| `Orchestration/Routing/task-routes.yaml` | Task Routing |
+| `Orchestration/Routing/task-routes.yaml` | Task Routing / Design Review requirement |
+| `Orchestration/Definitions/development-parent-graph.yaml` | Parent Graph / Design Review SubGraph |
 | `Orchestration/Contracts/TaskContracts/` | Taskごとの実行契約 |
+| `Orchestration/Contracts/design-review-artifact.schema.yaml` | Design Reviewの構造化Output Contract |
+| `Templates/DesignReview.md` | 人間が確認するDesign Review表示Template |
 | `Context/Selection/context-catalog.yaml` | Context選択 |
 | `Context/Packs/` | Domain Context Pack |
 | `Runtime/Profiles/runtime-profiles.yaml` | Runtime execution profile |
 | `.agents/skills/` | 専門Skill |
 | `SkillReferences/` | Domain共通規約 |
+| `docs/architecture/unityagent-flow.mmd` | GitHubで描画できる全体関連図 |
 | `Tools/validate_all.py` | Repository全体Validation |
 | `Tools/run_regression_gate.py` | Production Regression Gate |
 

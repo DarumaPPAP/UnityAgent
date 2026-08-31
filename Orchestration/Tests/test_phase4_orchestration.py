@@ -38,7 +38,7 @@ class Phase4OrchestrationTests(unittest.TestCase):
         graph = load_graph(GRAPH_PATH)
         schema = yaml.safe_load((ROOT / "Orchestration/Contracts/graph-definition.schema.yaml").read_text(encoding="utf-8"))
         Draft202012Validator(schema).validate(graph)
-        self.assertEqual([item["id"] for item in graph["subgraphs"]], ["planning", "investigation", "implementation", "validation", "delivery"])
+        self.assertEqual([item["id"] for item in graph["subgraphs"]], ["planning", "design_review", "investigation", "implementation", "validation", "delivery"])
         nodes = {node["id"] for sg in graph["subgraphs"] for node in sg["nodes"]}
         for loop in graph["local_loops"]:
             sg = next(item for item in graph["subgraphs"] if item["id"] == loop["subgraph_id"])
