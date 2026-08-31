@@ -54,9 +54,13 @@ REFERENCE_ONLY_PREFIXES = (
 REFERENCE_DEFINITION_FILES = {
     "Tools/DocumentationValidator/validate_documentation.py",
 }
+PHASE_PATH_EXEMPT_PREFIXES = (
+    "Eval/Rebaseline/Baselines/",
+)
 
 TEXT_SUFFIXES = {".py", ".yaml", ".yml", ".md", ".json"}
 COMPAT_IMPORT_RE = re.compile(r"(?m)^\s*(?:from|import)\s+(?:Context|Eval|Persistence)\.Compatibility\b")
+PHASE_PATH_RE = re.compile(r"(?i)(?:^|/)[^/]*phase\d+[^/]*(?:/|$)")
 
 
 def iter_active_files():
@@ -83,6 +87,10 @@ def main() -> int:
         if path.resolve() == SELF:
             continue
         relative = path.relative_to(ROOT).as_posix()
+
+        if not relative.startswith(PHASE_PATH_EXEMPT_PREFIXES) and PHASE_PATH_RE.search(relative):
+            errors.append(f"active path must use responsibility-based naming instead of development phase: {relative}")
+
         if relative.startswith(REFERENCE_ONLY_PREFIXES):
             continue
         text = path.read_text(encoding="utf-8")
