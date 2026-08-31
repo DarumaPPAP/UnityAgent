@@ -22,7 +22,7 @@ on:
       - "Eval/Behavior/run_behavior_eval.py"
       - "Eval/Datasets/Behavior/**"
       - "Eval/Rebaseline/**"
-      - "Eval/Tests/test_phase9_rebaseline.py"
+      - "Eval/Tests/test_rebaseline.py"
       - "docs/migration/phase9-production-rebaseline.md"
       - ".github/workflows/production-smoke.yml"
       - ".github/workflows/validate-production-smoke.yml"
@@ -48,7 +48,7 @@ jobs:
       - name: Validate Production Smoke and unified Rebaseline boundaries
         run: |
           python -m unittest discover -s .github/ProductionSmoke -p "test_*.py"
-          python -m unittest Eval.Tests.test_phase9_rebaseline
+          python -m unittest Eval.Tests.test_rebaseline
           python -m py_compile \
             .github/ProductionSmoke/run_one_repo_smoke.py \
             Eval/Behavior/grade_production_smoke.py \
@@ -67,7 +67,7 @@ jobs:
           grep -Fq 'BLOCKED_NOT_RUN' .github/workflows/production-smoke.yml
           grep -Fq 'Eval/Rebaseline/build_rebaseline_summary.py' .github/workflows/production-smoke.yml
           if grep -Fq 'SMOKE_CASE' .github/workflows/production-smoke.yml; then
-            echo "::error::Phase 9 baseline workflow must execute the complete four-case suite."
+            echo "::error::Baseline workflow must execute the complete four-case suite."
             exit 1
           fi
 
