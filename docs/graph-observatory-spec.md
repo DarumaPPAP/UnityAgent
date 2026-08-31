@@ -26,7 +26,7 @@ Graph Observatory UI
 
 現在のContext Explorerは主に `Context/Packs/*.yaml` のMetadataを読み取り専用でProjectionします。
 
-旧 `.ai/*.yaml` はsingle-repo cutoverで廃止されており、Current Inputとして使用しません。
+single-repo cutover前の旧dot-ai設定Treeは廃止済みであり、Current Inputとして使用しません。
 
 ## View
 
