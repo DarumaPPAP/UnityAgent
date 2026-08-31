@@ -1,4 +1,4 @@
-# UnityAgent Architecture v3.1
+# UnityAgent Architecture
 
 Status: **Canonical Architecture Contract / Regression Gate operational**
 
@@ -107,6 +107,24 @@ Runtime/Harnesses/
 ```
 
 Semantic Route / Graph / replan は Runtime のAuthorityではありません。
+
+### Unity Tool Runtime
+
+Unity Editor、Build/Test、Player Runtime、MCP Tool等の具体的な実行先はRuntime Toolingへ集約します。
+
+OrchestrationはProvider固有Tool名を選ばず、`scene.inspect`、`project.test`、`player.observe`のようなCapabilityをRuntimeへ要求します。RuntimeがPolicy、Project binding、Provider health、現在のTool discoveryからUnity CLI、MyUnityMCP、File Provider等へ解決します。
+
+```text
+Skill      = どう使うか
+Capability = 何をしたいか
+Provider   = 誰が実行できるか
+Transport  = どう接続するか
+Evidence   = 実際に何を観測したか
+```
+
+Provider failure時に、より弱いSafety Contractへsilent fallbackしません。特にMyUnityMCPのApproval付きMutationが利用不能な場合、raw `eval`等へ自動downgradeしません。
+
+詳細なDesign Review / Target Contractは [`Specs/UnityToolRuntime.md`](../../Specs/UnityToolRuntime.md) を参照してください。
 
 ### Persistence
 
@@ -273,23 +291,22 @@ GitHub-hosted Regression Gateはoptional CI pathです。
 
 Source revision、Runtime identity、Codex versionもprovenanceとして保持します。
 
-## Migration history
+## Historical architecture migrations
 
-```text
-Phase 0   Architecture contract                       complete
-Phase 1   Canonical contracts                         complete
-Phase 2   Policy + Context                            complete
-Phase 3   Runtime / Harness                           complete
-Phase 4   Orchestration                               complete
-Phase 5   Persistence                                 complete
-Phase 6   Eval consolidation                          complete
-Phase 7   Operations                                  complete
-Phase 8   Single-repo cutover / legacy removal        complete
-Phase 9   Production re-baseline / baseline freeze    complete
-Phase 10  Baseline comparator / regression gate       complete
-```
+過去のArchitecture移行は次の意味単位で監査できます。
 
-この表はMigration履歴です。過去Phaseの詳細は `docs/migration/` に残し、historical pathをcurrent authorityとして読み替えません。
+- Canonical contracts
+- Policy + Context migration
+- Runtime / Harness migration
+- Orchestration migration
+- Persistence migration
+- Eval consolidation
+- Operations migration
+- Single-repository cutover / legacy removal
+- Production rebaseline / baseline freeze
+- Baseline comparator / regression gate
+
+詳細は `docs/migration/` に残します。Historical recordはcurrent authorityとして読み替えません。
 
 ## Protected user-specific behavior
 
