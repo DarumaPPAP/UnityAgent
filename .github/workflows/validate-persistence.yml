@@ -6,7 +6,7 @@ on:
       - "Persistence/**"
       - "Context/Retrieval/Memory/**"
       - "AGENTS.md"
-      - "docs/migration/phase5-persistence.md"
+      - "docs/migration/persistence.md"
       - ".github/workflows/validate-persistence.yml"
   push:
     branches: [main]
