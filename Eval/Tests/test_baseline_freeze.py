@@ -20,8 +20,8 @@ def frozen_baseline() -> dict:
     return value
 
 
-class Phase9BaselineFreezeTests(unittest.TestCase):
-    def test_checked_in_phase9_baseline_is_valid(self):
+class BaselineFreezeTests(unittest.TestCase):
+    def test_checked_in_frozen_baseline_is_valid(self):
         value = frozen_baseline()
         validate_baseline_freeze(value)
         self.assertEqual(value["accepted_run"]["run_id"], "phase9-baseline-20260830-09")
