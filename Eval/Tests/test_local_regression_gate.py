@@ -7,15 +7,15 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / "Tools/Phase10/run_local_regression_gate.py"
-SPEC = importlib.util.spec_from_file_location("phase10_local_gate", SCRIPT)
+SCRIPT = ROOT / "Tools/run_regression_gate.py"
+SPEC = importlib.util.spec_from_file_location("local_regression_gate", SCRIPT)
 assert SPEC is not None and SPEC.loader is not None
 MODULE = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = MODULE
 SPEC.loader.exec_module(MODULE)
 
 
-class Phase10LocalRegressionGateTests(unittest.TestCase):
+class LocalRegressionGateTests(unittest.TestCase):
     def test_default_runtime_identity_matches_frozen_baseline(self):
         self.assertEqual(MODULE.DEFAULT_MODEL, "gpt-5.6-luna")
         self.assertEqual(MODULE.DEFAULT_REASONING_EFFORT, "xhigh")
@@ -33,9 +33,9 @@ class Phase10LocalRegressionGateTests(unittest.TestCase):
         self.assertFalse(removed)
         self.assertEqual(env["PATH"], "example")
 
-    def test_command_pipeline_reuses_canonical_phase10_authorities(self):
+    def test_command_pipeline_reuses_canonical_authorities(self):
         commands = MODULE.build_commands(
-            run_id="phase10-local-test",
+            run_id="regression-local-test",
             source_revision="b" * 40,
             model="gpt-5.6-luna",
             reasoning_effort="xhigh",
