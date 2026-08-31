@@ -1,14 +1,14 @@
-# Phase 9 — Production Re-baseline
+# Production Re-baseline
 
 Status: specification + integration implementation  
-Base: Phase 8 merge `5345dfb1238abd7ed84f1eb9eea60f79e4a1e2e0`  
+Base: canonical cutover merge `5345dfb1238abd7ed84f1eb9eea60f79e4a1e2e0`  
 Canonical repository: `DarumaPPAP/UnityAgent`
 
 ## Goal
 
-Phase 9 does not redesign the architecture. It measures the post-cutover UnityAgent through real Codex-backed production execution and freezes a new quality baseline only from observed, attributable evidence.
+This migration does not redesign the architecture. It measures the post-cutover UnityAgent through real Codex-backed production execution and freezes a new quality baseline only from observed, attributable evidence.
 
-Phase 9 turns the Phase 8 single-repository architecture into a measurable production baseline:
+It turns the canonical single-repository architecture into a measurable production baseline:
 
 ```text
 Production Smoke cases
@@ -59,7 +59,7 @@ The canonical Production Smoke suite remains:
 - `GOLDEN-MUTATION-001`
 - `GOLDEN-EVIDENCE-001`
 
-The suite must use real Runtime execution. Fake Runtime, fake Codex, replay-only evidence, or Golden-derived answers cannot satisfy Phase 9 production observation.
+The suite must use real Runtime execution. Fake Runtime, fake Codex, replay-only evidence, or Golden-derived answers cannot satisfy production observation.
 
 ### ARCH
 
@@ -79,7 +79,7 @@ Measures evidence honesty. Compile evidence must not be expanded into claims abo
 
 ## Execution ownership
 
-Authority does not change in Phase 9.
+Authority does not change during rebaseline.
 
 ```text
 Orchestration selects semantic route/profile
@@ -107,7 +107,7 @@ Production prompts remain user-realistic. Golden content enters only after execu
 
 `Eval/Attribution/failure-taxonomy.yaml` remains the taxonomy authority.
 
-Phase 9 distinguishes two layers:
+The rebaseline distinguishes two layers:
 
 ### Canonical attribution taxonomy
 
@@ -139,9 +139,9 @@ Examples:
 
 Diagnostic details explain the failure but do not become competing top-level baseline taxonomies.
 
-For an observed, denominator-eligible failed case, Phase 9 records `agent_behavior_regression` once and keeps the detailed causes separately.
+For an observed, denominator-eligible failed case, the rebaseline records `agent_behavior_regression` once and keeps the detailed causes separately.
 
-For a `not_observed` case, Phase 9 requires a typed infrastructure / permission / fixture / unavailable-evidence class. It must not infer failure attribution from response prose or stderr wording.
+For a `not_observed` case, the rebaseline requires a typed infrastructure / permission / fixture / unavailable-evidence class. It must not infer failure attribution from response prose or stderr wording.
 
 ## Quality denominator
 
@@ -161,7 +161,7 @@ Infrastructure defects must never silently reduce Agent quality metrics.
 
 ## RebaselineSummary
 
-Phase 9 introduces one canonical aggregate artifact:
+The migration introduces one canonical aggregate artifact:
 
 `Eval/Rebaseline/rebaseline-summary.schema.yaml`
 
@@ -207,7 +207,7 @@ This avoids duplicating taxonomy while keeping historical provenance explicit.
 
 ## Baseline eligibility
 
-A Phase 9 baseline is eligible only when all of the following are true:
+A baseline is eligible only when all of the following are true:
 
 1. Exactly the four canonical Production Smoke cases are present.
 2. All four cases are `observed`.
@@ -247,7 +247,7 @@ Do not retry until a convenient result appears and then call that the baseline. 
 
 ## Stop conditions
 
-Stop Phase 9 and review before baseline freeze if:
+Stop and review before baseline freeze if:
 
 - an unexplained Agent regression appears;
 - any Golden expectation reaches Runtime/Context;
@@ -261,7 +261,7 @@ Stop Phase 9 and review before baseline freeze if:
 
 ## Definition of Done
 
-Phase 9 is complete only when:
+The production rebaseline is complete only when:
 
 - real Codex-backed Production Smoke has executed all four cases;
 - one unified taxonomy/evaluation summary exists;

@@ -9,7 +9,7 @@ on:
       - "Orchestration/Control/**"
       - "Policy/Approval/**"
       - "AGENTS.md"
-      - "docs/migration/phase7-operations.md"
+      - "docs/migration/operations.md"
       - ".github/workflows/validate-operations.yml"
   push:
     branches: [main]

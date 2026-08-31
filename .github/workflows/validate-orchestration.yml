@@ -6,7 +6,7 @@ on:
       - "Orchestration/**"
       - "Context/Selection/context-catalog.yaml"
       - "AGENTS.md"
-      - "docs/migration/phase4-orchestration.md"
+      - "docs/migration/orchestration.md"
       - ".github/workflows/validate-orchestration.yml"
   push:
     branches: [main]

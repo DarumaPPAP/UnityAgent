@@ -1,5 +1,5 @@
 schema_version: '1.0'
-source: docs/migration/phase1-canonical-contracts.md
+source: docs/migration/canonical-contracts.md
 historical_archives:
   - phase11-naming-04.zip
   - phase11-mutation-03.zip

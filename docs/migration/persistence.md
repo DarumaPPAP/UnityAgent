@@ -1,4 +1,4 @@
-# Phase 5 — Persistence
+# Persistence Migration
 
 Status: implemented on `refactor/architecture-phase5-persistence`.
 

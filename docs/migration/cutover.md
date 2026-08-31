@@ -1,4 +1,4 @@
-# Phase 8 — Cutover / Human Gate
+# Canonical Cutover / Human Gate
 
 ## Goal
 
@@ -10,7 +10,7 @@ UnityAgentをcanonical single-repo authorityへ切り替え、旧 `.ai` authorit
 2. Active referencesをcanonical pathへ切り替える。
 3. Canonical Policy/Context/Runtime/Orchestration/Persistence/Eval/Operations regressionを通す。
 4. Legacy/compatibility treeを削除する。
-5. `Eval/Behavior/validate_phase8_cutover.py` でactive fallback/shim/dependencyがゼロであることを確認する。
+5. `Eval/Behavior/validate_cutover.py` でactive fallback/shim/dependencyがゼロであることを確認する。
 6. ARCH/NAMING/MUTATION/EVIDENCE historical replayを実行する。
 7. UnityAgent単体のcontrolled Production Smokeを実行する。
 8. Human Gateでcutover結果を確認してからmainへmergeする。

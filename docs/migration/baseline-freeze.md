@@ -1,11 +1,11 @@
-# Phase 9 — Baseline Freeze
+# Baseline Freeze
 
 Status: freeze candidate for reviewed merge  
 Canonical repository: `DarumaPPAP/UnityAgent`
 
 ## Purpose
 
-This document records how a `baseline_ready` Phase 9 result becomes a repository-reviewed baseline without rewriting or copying mutable execution evidence into the baseline definition.
+This document records how a `baseline_ready` rebaseline result becomes a repository-reviewed baseline without rewriting or copying mutable execution evidence into the baseline definition.
 
 The freeze is a reference contract, not a new Production Smoke run and not a second evaluator.
 
@@ -48,7 +48,7 @@ The accepted historical replay has:
 
 This value is retained explicitly rather than hidden or rewritten.
 
-Under the Phase 9 contract, Historical Replay is a compatibility/provenance coverage requirement. Its baseline gate is coverage of all four namespaces:
+Under the rebaseline contract, Historical Replay is a compatibility/provenance coverage requirement. Its baseline gate is coverage of all four namespaces:
 
 - ARCH
 - NAMING
@@ -61,7 +61,7 @@ Therefore the frozen manifest declares:
 
 This does not upgrade legacy `not_observed` cases into quality evidence and does not change the current Production quality denominator. The Production quality claim remains the independently observed 4/4 `phase9-baseline-20260830-09` run.
 
-Any future phase that wants historical replay quality eligibility to become a baseline gate must introduce that as a reviewed contract change rather than silently reinterpret this Phase 9 freeze.
+Any future contract change that wants historical replay quality eligibility to become a baseline gate must introduce that as a reviewed change rather than silently reinterpret this freeze.
 
 ## Freeze invariants
 
@@ -76,7 +76,7 @@ The BaselineFreeze contract requires:
 7. Execution evidence remains immutable.
 8. Freeze is performed only as a reviewed repository change.
 
-`Eval/Rebaseline/validate_baseline_freeze.py` and `Eval/Tests/test_phase9_baseline_freeze.py` enforce these invariants.
+`Eval/Rebaseline/validate_baseline_freeze.py` and `Eval/Tests/test_baseline_freeze.py` enforce these invariants.
 
 ## Evidence boundary
 
@@ -110,4 +110,4 @@ Before merge, verify:
 - no Production Smoke evidence was rewritten;
 - CI validates the checked-in freeze manifest.
 
-After merge, the manifest becomes the Phase 9 comparison anchor. A future baseline must be added as a new reviewed freeze rather than rewriting this accepted record in place.
+After merge, the manifest becomes the comparison anchor. A future baseline must be added as a new reviewed freeze rather than rewriting this accepted record in place.

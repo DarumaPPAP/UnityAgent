@@ -23,7 +23,7 @@ on:
       - "Eval/Datasets/Behavior/**"
       - "Eval/Rebaseline/**"
       - "Eval/Tests/test_rebaseline.py"
-      - "docs/migration/phase9-production-rebaseline.md"
+      - "docs/migration/production-rebaseline.md"
       - ".github/workflows/production-smoke.yml"
       - ".github/workflows/validate-production-smoke.yml"
 

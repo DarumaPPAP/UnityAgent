@@ -1,4 +1,4 @@
-# Phase 2 — Policy + Context
+# Policy + Context Migration
 
 Status: implemented on `refactor/architecture-phase2-policy-context`
 
