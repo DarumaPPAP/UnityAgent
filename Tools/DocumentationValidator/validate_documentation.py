@@ -20,6 +20,8 @@ ACTIVE_DOC_PATHS = (
 )
 
 README_GLOB = "README.md"
+MIGRATION_DIR = ROOT / "docs/migration"
+PHASE_NAMED_MIGRATION = re.compile(r"^phase\d+(?:[-_.]|$)", re.IGNORECASE)
 
 EXCLUDED_PREFIXES = (Path("docs/migration"),)
 
@@ -122,6 +124,20 @@ def _validate_readme_stability(errors: list[str]) -> None:
             errors.append(f"README user entry point is missing: {entrypoint.as_posix()}")
 
 
+def _validate_migration_naming(errors: list[str]) -> None:
+    if not MIGRATION_DIR.is_dir():
+        return
+
+    for path in sorted(MIGRATION_DIR.rglob("*")):
+        if not path.is_file():
+            continue
+        if PHASE_NAMED_MIGRATION.match(path.name):
+            relative = path.relative_to(ROOT).as_posix()
+            errors.append(
+                f"migration document must use a semantic name instead of a development phase number: {relative}"
+            )
+
+
 def main() -> int:
     errors: list[str] = []
     docs = list(_iter_docs())
@@ -129,6 +145,7 @@ def main() -> int:
         errors.append("no active documentation files discovered")
 
     _validate_readme_stability(errors)
+    _validate_migration_naming(errors)
 
     for path in docs:
         relative = path.relative_to(ROOT).as_posix()
