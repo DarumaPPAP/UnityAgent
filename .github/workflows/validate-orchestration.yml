@@ -17,7 +17,7 @@ on:
       - ".github/workflows/validate-orchestration.yml"
 
 jobs:
-  phase4:
+  orchestration:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
