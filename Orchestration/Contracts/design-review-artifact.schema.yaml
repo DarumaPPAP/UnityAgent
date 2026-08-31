@@ -1,0 +1,98 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:orchestration:design-review-artifact
+title: DesignReviewArtifact
+type: object
+additionalProperties: false
+required:
+  - schema_version
+  - kind
+  - goal
+  - route
+  - execution_graph
+  - checklist
+  - final_image_spec
+  - approval
+properties:
+  schema_version: {const: '1.0'}
+  kind: {const: design_review}
+  goal: {type: string, minLength: 1}
+  route:
+    type: object
+    additionalProperties: false
+    required: [route_id, design_review_requirement, intended_action]
+    properties:
+      route_id: {type: string, minLength: 1}
+      design_review_requirement: {enum: [required, conditional]}
+      intended_action: {enum: [investigate, implement, verify_only, answer_only]}
+  execution_graph:
+    type: object
+    additionalProperties: false
+    required: [mermaid, stages]
+    properties:
+      mermaid: {type: string, minLength: 1}
+      stages:
+        type: array
+        minItems: 1
+        items:
+          type: object
+          additionalProperties: false
+          required: [id, purpose]
+          properties:
+            id: {type: string, minLength: 1}
+            purpose: {type: string, minLength: 1}
+            owner: {type: string, minLength: 1}
+  checklist:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      additionalProperties: false
+      required: [id, item, status]
+      properties:
+        id: {type: string, minLength: 1}
+        item: {type: string, minLength: 1}
+        status: {enum: [confirmed, open, not_applicable]}
+        note: {type: string}
+  final_image_spec:
+    type: object
+    additionalProperties: false
+    required:
+      - summary
+      - user_visible_behavior
+      - major_components
+      - acceptance_criteria
+      - non_goals
+    properties:
+      summary: {type: string, minLength: 1}
+      user_visible_behavior:
+        type: array
+        minItems: 1
+        items: {type: string, minLength: 1}
+      major_components:
+        type: array
+        minItems: 1
+        items: {type: string, minLength: 1}
+      data_or_control_flow:
+        type: array
+        items: {type: string, minLength: 1}
+      acceptance_criteria:
+        type: array
+        minItems: 1
+        items: {type: string, minLength: 1}
+      non_goals:
+        type: array
+        items: {type: string, minLength: 1}
+      unresolved:
+        type: array
+        items: {type: string, minLength: 1}
+  approval:
+    type: object
+    additionalProperties: false
+    required: [status, allowed_decisions]
+    properties:
+      status: {enum: [pending, approved, revision_requested, rejected]}
+      allowed_decisions:
+        type: array
+        minItems: 3
+        uniqueItems: true
+        items: {enum: [approve, revise, reject]}
