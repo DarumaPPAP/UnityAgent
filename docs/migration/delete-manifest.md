@@ -1,4 +1,4 @@
-# Phase 8 destructive delete manifest
+# Destructive Delete Manifest
 
 The following paths are removed only after canonical replacements were established and validated:
 
