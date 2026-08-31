@@ -26,7 +26,7 @@ def fingerprint() -> dict:
     return {"schema_version": "1.0", "architecture_version": "3.1", "policy_revision": "p", "prompt_revision": "q", "context_revision": "c", "graph_revision": "g", "runtime_profile_revision": "r", "tool_schema_revision": "t", "checkpoint_schema_revision": "cp", "evidence_schema_revision": "e", "eval_contract_revision": "v"}
 
 
-class Phase3RuntimeTests(unittest.TestCase):
+class RuntimeTests(unittest.TestCase):
     def test_dispatch_timeout_is_typed_and_kills_process(self):
         with tempfile.TemporaryDirectory() as temp:
             result = dispatch(DispatchRequest([sys.executable, "-S", "-c", "import time; time.sleep(2)"], Path(temp), 0.1))
