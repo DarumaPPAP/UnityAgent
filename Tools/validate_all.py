@@ -46,6 +46,13 @@ VALIDATORS = (
     Path("Eval/Behavior/validate_phase8_cutover.py"),
 )
 
+CHECK_COMMANDS = (
+    (
+        "parent-graph-mermaid",
+        [sys.executable, str(ROOT / "Tools/GraphVisualization/generate_parent_graph_mermaid.py"), "--check"],
+    ),
+)
+
 TEST_SUITES = (
     Path("Policy/Tests"),
     Path("Context/Tests"),
@@ -95,6 +102,10 @@ def main() -> int:
             continue
         if run_command(str(validator), [sys.executable, str(full_path)]) != 0:
             failed.append(str(validator))
+
+    for label, command in CHECK_COMMANDS:
+        if run_command(label, command) != 0:
+            failed.append(label)
 
     for suite in TEST_SUITES:
         full_path = ROOT / suite
