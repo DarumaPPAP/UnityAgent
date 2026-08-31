@@ -1,44 +1,70 @@
-flowchart LR
-    U[User Request]
-
-    subgraph UA[UnityAgent]
-        P[Policy]
-        R[Routing]
-        TC[Task Contract]
-        C[Context Materialization]
-        DR{Design Review Required?}
-        DP[Design Preview\nDiagram + Checklist + Final Image Spec]
-        HG{Human Approval}
-        I[Investigation]
-        M[Implementation]
-        V[Validation]
-        PE[Persistence / Evidence]
-        E[Eval]
-        O[Operations]
-        D[User Report]
+flowchart TD
+    subgraph sg_planning["planning"]
+        classify_task["classify_task<br/>orchestration / semantic"]
+        select_route["select_route<br/>orchestration / semantic"]
+        materialize_context["materialize_context<br/>context / context_handoff"]
+        plan_scope["plan_scope<br/>orchestration / semantic"]
     end
 
-    subgraph EXT[External Execution Surface]
-        MCP[MyUnityMCP / Tools]
-        UP[Unity Project]
+    subgraph sg_design_review["design_review"]
+        compose_design_preview["compose_design_preview<br/>orchestration / semantic"]
+        present_design_preview["present_design_preview<br/>orchestration / delivery"]
+        await_design_approval{"await_design_approval<br/>orchestration / semantic<br/>HUMAN GATE"}
     end
 
-    U --> P --> R --> TC --> C --> DR
-    DR -->|required / selected conditional| DP --> HG
-    HG -->|revise| DP
-    HG -->|reject| D
-    HG -->|approve investigate| I
-    HG -->|approve implement| M
-    DR -->|not required| I
-    DR -->|not required| M
+    subgraph sg_investigation["investigation"]
+        environment_check["environment_check<br/>runtime / health_check"]
+        inspect_sources["inspect_sources<br/>runtime / runtime_action"]
+        assess_evidence["assess_evidence<br/>orchestration / semantic"]
+    end
 
-    I -->|evidence changes design| DP
-    I -->|implementation ready| M
-    M --> MCP --> UP
-    M --> V
-    UP --> V
-    V --> PE --> E --> D
-    O -. observes / controls .-> I
-    O -. observes / controls .-> M
-    O -. observes / controls .-> V
-    E -. regression signal .-> O
+    subgraph sg_implementation["implementation"]
+        mutation_precheck["mutation_precheck<br/>orchestration / semantic"]
+        execute_change["execute_change<br/>runtime / runtime_action"]
+        assess_change["assess_change<br/>orchestration / semantic"]
+    end
+
+    subgraph sg_validation["validation"]
+        validation_health_check["validation_health_check<br/>runtime / health_check"]
+        verify["verify<br/>runtime / verification"]
+        assess_validation["assess_validation<br/>orchestration / semantic"]
+    end
+
+    subgraph sg_delivery["delivery"]
+        compose_result["compose_result<br/>orchestration / delivery"]
+        complete["complete<br/>orchestration / delivery"]
+    end
+
+    classify_task -->|"classified"| select_route
+    select_route -->|"selected"| materialize_context
+    materialize_context -->|"context_ready"| plan_scope
+    plan_scope -->|"design_review"| compose_design_preview
+    plan_scope -->|"investigate"| environment_check
+    plan_scope -->|"implement"| mutation_precheck
+    plan_scope -->|"verify_only"| validation_health_check
+    plan_scope -->|"answer_only"| compose_result
+    compose_design_preview -->|"preview_ready"| present_design_preview
+    present_design_preview -->|"presented"| await_design_approval
+    await_design_approval -->|"revision_requested"| compose_design_preview
+    await_design_approval -->|"approved_investigate"| environment_check
+    await_design_approval -->|"approved_implement"| mutation_precheck
+    await_design_approval -->|"approved_verify_only"| validation_health_check
+    await_design_approval -->|"approved_answer_only"| compose_result
+    await_design_approval -->|"rejected"| compose_result
+    environment_check -->|"healthy"| inspect_sources
+    environment_check -->|"unavailable"| assess_evidence
+    inspect_sources -->|"observed"| assess_evidence
+    assess_evidence -->|"design_review"| compose_design_preview
+    assess_evidence -->|"implementation_ready"| mutation_precheck
+    assess_evidence -->|"answer_ready"| compose_result
+    mutation_precheck -->|"approved"| execute_change
+    mutation_precheck -->|"blocked"| compose_result
+    execute_change -->|"observed"| assess_change
+    assess_change -->|"validation_required"| validation_health_check
+    assess_change -->|"validation_not_required"| compose_result
+    validation_health_check -->|"healthy"| verify
+    validation_health_check -->|"unavailable"| assess_validation
+    verify -->|"observed"| assess_validation
+    assess_validation -->|"sufficient"| compose_result
+    assess_validation -->|"unavailable_but_reportable"| compose_result
+    compose_result -->|"delivered"| complete
