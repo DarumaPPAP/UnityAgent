@@ -5,7 +5,7 @@ on:
     paths:
       - "Runtime/**"
       - "AGENTS.md"
-      - "docs/migration/phase3-runtime-harness.md"
+      - "docs/migration/runtime-harness.md"
       - ".github/workflows/validate-runtime-harness.yml"
   push:
     branches: [main]
