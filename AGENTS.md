@@ -19,7 +19,7 @@
 4. `Context/Assembly/materialize_context.py` で current-call `MaterializedContextView` を構築しContext Budgetを評価する。Memoryは `Context/Retrieval/Memory/` が `Persistence/Memory` からread-only projectionだけを取得する。
 5. bounded Taskは `Policy -> Orchestration Route -> Context -> Runtime -> Verification -> Result` のFast Pathを優先し、semantic coordinationが必要な場合だけ `Orchestration/Definitions/development-parent-graph.yaml` を使う。
 6. OrchestrationはRuntime handoffを作る。actual process/tool execution、hard timeout/cancellation、mutation scope、tool dispatch、health/verification/evidence captureは `Runtime/` が実行する。
-7. MCPではContextがDescription/Manifestを選択し、Policyが許可条件を定義し、Runtimeが実Tool Groupを公開する。
+7. MCPではContextがDescription/Manifestを選択し、Policyが許可条件を定義し、Runtimeが実Tool Groupを公開する。Unity Tool RuntimeのTarget ArchitectureではOrchestrationはProvider製品名ではなくCapabilityを要求し、Provider / Transport resolutionはRuntime責務とする。Target BrokerがProduction実装へ昇格するまでは現在のMCP / Runtime契約を正本とし、設計書だけを実装済みCapabilityとして扱わない。
 8. OrchestrationはPersistence-compatible state projectionだけを返し、Persistenceが ExecutionState / WorkflowState / LoopControlState をdurable truthとしてcommitする。
 9. RuntimeのExecution Evidenceは `Persistence/Evidence` にappendされて初めてdurable Evidence truthになる。CheckpointはState snapshot refsでありMemory/Evidenceではない。
 10. Resumeは `Persistence/Resume/` がDefinitionFingerprintを比較し、compatible / migration / replan / Human Reviewをfail-closedで決定する。
@@ -45,13 +45,17 @@
 | Operations Runtime Control | `Operations/RuntimeControl/` + `Runtime/Control/` + `Orchestration/Control/` | external Policy/Approval-gated control |
 | Operations ChangeManagement | `Operations/ChangeManagement/` | VersionManifest / rollout / rollback / config change |
 | Eval | `Eval/Behavior/` + `Eval/Golden/` + `Eval/Datasets/` + `Eval/Attribution/` + `Eval/Replay/` + `Eval/ChangeProposals/` | grading / attribution / historical replay / proposals |
+| Unity Tool Runtime Design | `Specs/UnityToolRuntime.md` | Capability / Provider / Transport分離のTarget Architecture。実装済みRuntime authorityではない |
 
 ## 4. Responsibility guards
 - Policy defines; Context materializes; Orchestration decides; Runtime executes; Persistence remembers; Operations observes/controls; Eval measures/proposes.
 - ContextはRoute authorityでもdurable Memory/Checkpoint/Evidence storeでもない。
 - Local LoopはSubGraph内edge/cycleでありtop-level control planeではない。
 - Orchestrationのsemantic continue/replanとRuntimeのhard retry/timeout/process killを混同しない。Orchestrationはdurable Stateを書かない。
+- Orchestrationは`MyUnityMCPを使う`、`Unity CLIを使う`等のProvider製品選択をsemantic Goalとして固定しない。Taskが必要とするCapabilityを表現し、Provider / Transportの実行解決はRuntime側へ委譲する。
 - RuntimeはAgent品質を採点せず、semantic Graph/TODO/replan authorityやdurable Evidence/Memory/Checkpoint truthを持たない。
+- RuntimeがProviderを変更する場合もPolicy / Approval / Mutation Scope / Evidence Contractを維持する。Provider unavailableを理由にSafety Contractを下げるsilent semantic fallbackを行わない。
+- MyUnityMCPの承認付きMutationが必要なTaskを、接続失敗だけを理由にraw `eval`やgeneric mutationへ迂回しない。
 - `Checkpoint != Memory != Evidence`。Checkpoint restoreはStateだけを復元しMemory/Evidenceを巻き戻さない。
 - Runtime Evidence captureはPersistence append後にのみhistorical Evidenceとなり、EvidenceはResume都合で書き換えない。
 - Operations observability recordはPersistence Evidence/ExecutionStateの代替truthではない。
@@ -68,7 +72,8 @@
 - actual execution=`Runtime/`、semantic Graph/Route/Task Contract=`Orchestration/`、durable truth=`Persistence/`、grading/replay=`Eval/`、observability/control/change management=`Operations/` がcanonical owner。
 - legacy `.ai` authority、Context/Eval/Persistence compatibility layer、old Eval shims、old LoopIntegration control planeをproduction bootstrapへ戻さない。
 - `DarumaPPAP/Unity-Graph-Engineering` はUnityAgent production execution dependencyではない。過去migration provenanceのみ保持できる。
-- `DarumaPPAP/MyUnityMCP` はMCP manifest / tool schema / package implementationの外部owner。
+- `DarumaPPAP/MyUnityMCP` はMCP manifest / tool schema / package implementationの外部owner。UnityAgentのPolicy / Orchestration authorityではない。
+- Unity公式CLI / `com.unity.pipeline` はProject / Editor / Build / Test / Player transportの外部Provider候補であり、UnityAgentのsemantic authorityではない。
 
 ## 6. User-specific entrypoints
 - Comments: `Policy/User/user-policy.yaml#comment_system`
@@ -79,21 +84,26 @@
 - Route / Graph: `Orchestration/Routing/task-routes.yaml` + `Orchestration/Definitions/development-parent-graph.yaml`
 - Context Budget / Prompt: `Context/Budget/context-budget.yaml` + `Context/Prompt/Templates/`
 - Runtime Execution: `Runtime/Runner/` + `Runtime/Harnesses/`
+- Unity Tool Runtime Design: `Specs/UnityToolRuntime.md`
+- Local Unity Project usage: `docs/local-project-development.md` + `Templates/DevelopmentRequest.md`
 - Persistence: `Persistence/persistence-layout.yaml` + `Persistence/State/` + `Persistence/Checkpoint/` + `Persistence/Resume/` + `Persistence/Memory/` + `Persistence/Evidence/`
 - Operations: `Operations/Observability/` + `Operations/Detection/` + `Operations/Incidents/` + `Operations/RuntimeControl/` + `Operations/ChangeManagement/`
 - Eval: `Eval/Golden/` + `Eval/Behavior/` + `Eval/Datasets/` + `Eval/Attribution/` + `Eval/Replay/`
 
 ## 7. Completion handoff
-Orchestration→Runtime: Policy revision / Route / Context ID/Fingerprint / Execution Profile / runtime projection / mutation scope / validation requirements。Runtime→Persistence: ExecutionResult / RuntimeFailure / MutationEvidence / captured Evidence / Telemetryのうちdurable truth。Evalはstructured factsとGoldenContract/Datasetからmeasurement / attribution / regression report / ChangeProposalを生成する。Operationsはtelemetryを観測してDetection / Incident / Runbookを生成し、必要な運用actionだけをPolicy/Approval済みapproved commandとしてcontrol APIへ渡す。rollout/rollbackはVersionManifest付きChangeManagementで管理する。
+Orchestration→Runtime: Policy revision / Route / Context ID/Fingerprint / Execution Profile / runtime projection / mutation scope / validation requirements / requested Capability。Runtime→Persistence: ExecutionResult / RuntimeFailure / MutationEvidence / captured Evidence / Telemetryのうちdurable truth。Evalはstructured factsとGoldenContract/Datasetからmeasurement / attribution / regression report / ChangeProposalを生成する。Operationsはtelemetryを観測してDetection / Incident / Runbookを生成し、必要な運用actionだけをPolicy/Approval済みapproved commandとしてcontrol APIへ渡す。rollout/rollbackはVersionManifest付きChangeManagementで管理する。
 
 ## 8. Anti-regression
 - `AGENTS.md`へ詳細規約本文を戻さない。Policy canonical sourceを旧Sourceで上書きしない。
 - ContextからRoute/Graph/Retry authorityやdurable storeを新設しない。
 - Orchestrationからsubprocess/Unity/tool execution、hard Runtime enforcement、durable State storeを実装しない。
+- Orchestration Graphへ特定Provider / Transport製品名を恒久的なsemantic authorityとして埋め込まない。
 - Runtimeからsemantic Graph/TODO/replan authority、durable Evidence/Memory/Checkpoint truth、Agent quality gradingを新設しない。
+- Provider fallbackでApproval / Revision / Exact Diff / Mutation Scope等のSafety Contractを弱めない。
 - PersistenceからRoute/semantic decision/Runtime execution/Eval grading authorityを新設しない。
 - Operationsから`Runtime/ExecutionControl`内部control、Policy/Approval bypass、Detection/Incident/Runbook直結production mutationを実装しない。
 - EvalからRuntime/process/tool/Unity executionやproduction definition変更を実装しない。
 - `not_observed`をAgent品質regressionとして数えず、Runtime structured factsをdiff/text parserで再構築しない。
 - Checkpoint/Memory/Evidenceを同じrecordとして扱わず、Resume migrationでoriginal checkpoint/evidenceを上書きしない。
 - legacy fallback/shimを復活させず、Golden expectationをPromptへ混入させない。
+- `Specs/UnityToolRuntime.md`のTarget Architectureを、Runtime実装・Contract Test・EvidenceなしにProduction Capabilityへ昇格しない。
