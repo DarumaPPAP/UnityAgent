@@ -1,4 +1,4 @@
-# Phase 6 — Eval Consolidation
+# Eval Consolidation
 
 Status: implemented on `refactor/architecture-phase6-eval`
 
