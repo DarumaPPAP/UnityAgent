@@ -1,10 +1,10 @@
 # UnityAgent
 
-UnityAgent は、**個人の Unity 開発に特化した AI 開発エージェント基盤**です。
+UnityAgentは、**個人のUnity開発に特化したAI開発エージェント基盤**です。
 
-単なる Coding Rule 集ではなく、ユーザーの依頼を受け取ってから、Policy確認、Task分類、Context選択、設計確認、実行、検証、Evidence保存、品質評価までを一貫した責務分離で扱います。
+単なるCoding Rule集ではなく、ユーザーの依頼を受け取ってから、Policy確認、Task分類、Context選択、設計確認、実行、検証、Evidence保存、品質評価までを一貫した責務分離で扱います。
 
-この Repository の目的は、AIに「何でもそれっぽくやらせる」ことではありません。
+このRepositoryの目的は、AIに「何でもそれっぽくやらせる」ことではありません。
 
 - ユーザー固有の開発方針を最優先する
 - 必要なContextだけを選ぶ
@@ -18,27 +18,27 @@ UnityAgent は、**個人の Unity 開発に特化した AI 開発エージェ�
 
 ---
 
-## UnityAgent がどのように動くか
+## UnityAgentがどのように動くか
 
 UnityAgentは、ユーザーの依頼をそのまま直接実行するのではなく、依頼の意味、設計、実行範囲、検証方法を順番に整理してから処理します。
 
 ```mermaid
 flowchart LR
-    U[User Request] --> P[Policy]
+    U[ユーザー依頼] --> P[Policy確認]
     P --> R[Routing]
     R --> T[Task Contract]
-    T --> C[Context / Skill]
-    C --> G{Design Review?}
+    T --> C[Context / Skill選択]
+    C --> G{Design Reviewが必要?}
 
-    G -->|必要| D[Design Preview]
-    D --> H{Human Approval}
-    H -->|Revise| D
-    H -->|Approve| X[Investigation / Implementation]
-    H -->|Reject| O[User Report]
+    G -->|必要| D[設計プレビュー]
+    D --> H{ユーザー承認}
+    H -->|修正| D
+    H -->|承認| X[調査 / 実装]
+    H -->|却下| O[ユーザー報告]
 
     G -->|不要| X
-    X --> V[Verification]
-    V --> E[Evidence / Persistence]
+    X --> V[検証]
+    V --> E[Evidence / 永続化]
     E --> Q[Eval]
     Q --> O
 ```
@@ -58,15 +58,15 @@ UnityAgentは汎用的なUnity Best Practiceよりも、ユーザーが明示し
 ```text
 今回のユーザー明示指示
     ↓
-User Policy
+User Policy（ユーザー方針）
     ↓
 検証済みProject Fact / Project固有条件
     ↓
-UnityAgent Domain Standards / Skill
+UnityAgent Domain Standard / Skill
     ↓
-External Reference
+外部Reference
     ↓
-Generic Best Practice
+一般的なBest Practice
 ```
 
 一般論だけを理由に、ユーザーが決めた設計方針や命名、作業方法を勝手に置き換えません。
@@ -103,12 +103,12 @@ Editor成功はPlayer成功ではありません。
 
 UnityAgentは責務ごとに次の領域へ分かれています。
 
-| Area | Responsibility |
+| 領域 | 責務 |
 | --- | --- |
 | `Policy/` | ユーザー方針、安全、Approval、Risk、Evidence境界 |
-| `Orchestration/` | Task分類、Routing、Graph、Gate、semantic replan |
+| `Orchestration/` | Task分類、Routing、Graph、Gate、Semantic Replan |
 | `Context/` | 必要なContextの選択、Retrieval、Budget、Materialization |
-| `Runtime/` | 実process / tool実行、Permission、Mutation制御、Harness |
+| `Runtime/` | 実Process / Tool実行、Permission、Mutation制御、Harness |
 | `Persistence/` | State、Checkpoint、Memory、Evidence、Sessionの永続化 |
 | `Operations/` | Observability、Incident、Runbook、Runtime Control |
 | `Eval/` | Golden / Behavior Eval、Regression、Attribution、品質判定 |
@@ -120,24 +120,24 @@ UnityAgentは責務ごとに次の領域へ分かれています。
 基本的な責務関係は次です。
 
 ```text
-Policy defines
-Orchestration decides
-Context materializes
-Runtime executes
-Persistence remembers
-Operations observes / controls
-Eval measures / proposes
+Policy        : 判断基準と許可境界を定義する
+Orchestration : Taskの進め方を決定する
+Context       : 必要な情報を構成する
+Runtime       : 実際の処理を実行する
+Persistence   : State / Memory / Evidenceを保持する
+Operations    : 実行状態を観測・制御する
+Eval          : Behaviorと品質を測定する
 ```
 
 ---
 
-## Task が処理される順番
+## Taskが処理される順番
 
 ### 1. Policy
 
 最初に、ユーザー固有Policy、安全境界、変更許可、Approval要件を確認します。
 
-Policyは「どう判断してよいか」を定義しますが、実際のprocess実行は行いません。
+Policyは「どう判断してよいか」を定義しますが、実際のProcess実行は行いません。
 
 ### 2. Routing
 
@@ -147,7 +147,7 @@ Routingの正本は次です。
 
 `Orchestration/Routing/task-routes.yaml`
 
-Technology keywordだけではなく、依頼の目的、対象、Risk、必要Evidence、Mutation範囲を使って分類します。
+Technology Keywordだけではなく、依頼の目的、対象、Risk、必要Evidence、Mutation範囲を使って分類します。
 
 Routeは、Design Reviewを `required / conditional / not_required` のどれとして扱うかも定義します。
 
@@ -159,34 +159,34 @@ Routeは、Design Reviewを `required / conditional / not_required` のどれと
 
 Task Contractは主に次を定義します。
 
-- Required Input
-- Allowed Mutation
-- Prohibited Mutation
-- Required Gate
-- Completion Condition
-- Stop Condition
+- 必須Input
+- 許可するMutation
+- 禁止するMutation
+- 必須Gate
+- 完了条件
+- 停止条件
 
 ### 4. Context Materialization
 
 Taskに必要なPolicy、Context Pack、Primary Skill、Source、Referenceだけを選びます。
 
 ```text
-Selected Route
+選択されたRoute
     ↓
 Context Catalog
     ↓
 Context Pack
     + Primary Skill
     + Task Contract
-    + Required Policy
-    + Required Source / Reference
+    + 必須Policy
+    + 必須Source / Reference
     ↓
-Budget Check
+Budget確認
     ↓
 Materialized Context
 ```
 
-Context selectionの入口は次です。
+Context Selectionの入口は次です。
 
 `Context/Selection/context-catalog.yaml`
 
@@ -194,7 +194,7 @@ Contextを大量に読み込むこと自体を品質とはみなしません。�
 
 ### 5. Design Review
 
-設計確認が必要なTaskでは、Mutationへ進む前にDesign Previewをユーザーへ提示します。
+設計確認が必要なTaskでは、Mutationへ進む前に設計プレビューをユーザーへ提示します。
 
 主なOutputは次の3つです。
 
@@ -202,26 +202,26 @@ Contextを大量に読み込むこと自体を品質とはみなしません。�
 2. **チェック項目** — Scope、責務、Mutation範囲、必要Context、Validation、Stop条件などを確認
 3. **最終イメージ仕様書** — 完成後に何がどう動くか、主要Component、Control Flow、Acceptance Criteria、Non-goalを自然言語で固定
 
-表示形式の基本テンプレートは `Templates/DesignReview.md`、構造化Output Contractは `Orchestration/Contracts/design-review-artifact.schema.yaml` です。
+表示形式の基本Templateは `Templates/DesignReview.md`、構造化Output Contractは `Orchestration/Contracts/design-review-artifact.schema.yaml` です。
 
 ```mermaid
 flowchart TD
-    A[Design Preview生成] --> B[関連図]
+    A[設計プレビュー生成] --> B[関連図]
     A --> C[チェック項目]
     A --> D[最終イメージ仕様書]
-    B --> E{Human Review}
+    B --> E{ユーザー確認}
     C --> E
     D --> E
-    E -->|Approve| F[次のSubGraphへ]
-    E -->|Revise| A
-    E -->|Reject| G[実装せず終了]
+    E -->|承認| F[次のSubGraphへ]
+    E -->|修正| A
+    E -->|却下| G[実装せず終了]
 ```
 
-Design Reviewが必須のTaskでは、Approveされるまで実装Mutationへ進みません。
+Design Reviewが必須のTaskでは、承認されるまで実装Mutationへ進みません。
 
 ### 6. Investigation
 
-既存Projectの事実確認や、原因特定が必要なTaskではRuntimeを使って必要なEvidenceだけを調べます。
+既存Projectの事実確認や原因特定が必要なTaskでは、Runtimeを使って必要なEvidenceだけを調べます。
 
 調査結果によって設計が変わる場合は、Design Reviewへ戻して更新した関連図・チェック項目・最終イメージを再提示できます。
 
@@ -231,15 +231,15 @@ Runtimeが実際の処理を実行します。
 
 主な責務は次です。
 
-- Codex / tool / subprocessの実行
-- timeout / cancellation
-- Permission enforcement
-- workspace / mutation scope enforcement
+- Codex / Tool / subprocessの実行
+- Timeout / Cancellation
+- Permission Enforcement
+- Workspace / Mutation Scope Enforcement
 - Unity Harness
 - Test Harness
 - Performance Harness
 - SCM Harness
-- current-run Evidence capture
+- Current-run Evidence Capture
 
 RuntimeはTaskの意味を勝手に変更したり、新しいPrimary Routeを決めたりしません。
 
@@ -248,7 +248,7 @@ RuntimeはTaskの意味を勝手に変更したり、新しいPrimary Routeを�
 変更した内容を可能な範囲で検証します。
 
 ```text
-Static Review
+静的Review
     ↓
 Compile
     ↓
@@ -277,11 +277,11 @@ Checkpoint != Memory != Evidence
 
 Evalは、実行結果が期待するBehavior Contractを満たしているかを測定します。
 
-Agent自身の品質低下と、Runtime / Tool / Environment / Evaluator側の失敗を同一視しません。
+Agent自身の品質低下と、Runtime / Tool / Environment / Evaluator側のFailureを同一視しません。
 
 ---
 
-## Graph と Loop の扱い
+## GraphとLoopの扱い
 
 すべてのTaskを巨大なGraphへ通すわけではありません。
 
@@ -298,7 +298,7 @@ Runtime
   ↓
 Verification
   ↓
-Result
+結果
 ```
 
 複数の判断、分岐、設計確認、検証、再計画が必要なTaskだけOrchestration Graphを使用します。
@@ -313,15 +313,15 @@ Node / Edge / Gate
 必要な場所だけLocal Loop
 ```
 
-Design Reviewも独立した別システムではなく、Parent Graph内のSubGraphです。
+Design Reviewも独立した別Systemではなく、Parent Graph内のSubGraphです。
 
 LoopはGraphとは別の独立Control Planeではなく、限定された処理を条件付きで再試行・再評価するための構造です。
 
 ---
 
-## Skill の扱い
+## Skillの扱い
 
-Skillは巨大な知識ファイルではなく、特定の専門作業を安定して実行するための手順です。
+Skillは巨大な知識Fileではなく、特定の専門作業を安定して実行するための手順です。
 
 `.agents/skills/`
 
@@ -351,11 +351,11 @@ UnityAgentはMyUnityMCPを直接のAuthorityにはせず、自身のPolicy、Rou
 
 ```mermaid
 flowchart LR
-    U[User Request] --> A[UnityAgent]
+    U[ユーザー依頼] --> A[UnityAgent]
     A --> G[Policy / Routing / Context / Guardrail]
     G --> M[MyUnityMCP Tool]
     M --> P[Unity Project]
-    P --> V[Verification / Evidence]
+    P --> V[検証 / Evidence]
     V --> A
 ```
 
@@ -365,7 +365,7 @@ MCP Toolが利用可能だからという理由だけで、許可されていな
 
 ## 品質Regressionの確認
 
-UnityAgentには、現在のProduction behaviorをReviewed Baselineと比較するRegression Gateがあります。
+UnityAgentには、現在のProduction BehaviorをReviewed Baselineと比較するRegression Gateがあります。
 
 通常の流れは次です。
 
@@ -379,17 +379,17 @@ Candidate Summary
 Baseline Comparator
     ↓
 PASS
-or
+または
 BLOCK_REGRESSION
-or
+または
 BLOCK_INCONCLUSIVE
-or
+または
 REBASELINE_REQUIRED
 ```
 
 BaselineはCandidateがPASSしただけでは自動更新しません。
 
-ローカルでRegression Gateを実行する場合は、stable entry pointを使用します。
+ローカルでRegression Gateを実行する場合は、安定したEntry Pointを使用します。
 
 ```powershell
 python .\Tools\run_regression_gate.py
@@ -399,7 +399,7 @@ python .\Tools\run_regression_gate.py
 
 ## Repository全体のValidation
 
-UnityAgent自身のContract、Context、Skill、Eval、Documentation、Regression boundaryをまとめて確認する場合は次を実行します。
+UnityAgent自身のContract、Context、Skill、Eval、Documentation、Regression Boundaryをまとめて確認する場合は次を実行します。
 
 ```powershell
 python .\Tools\validate_all.py
@@ -407,7 +407,7 @@ python .\Tools\validate_all.py
 
 UnityAgentのText ArtifactはUTF-8です。
 
-PowerShellで内容を確認する場合はencodingを明示します。
+PowerShellで内容を確認する場合はEncodingを明示します。
 
 ```powershell
 Get-Content ".\README.md" -Raw -Encoding UTF8
@@ -417,18 +417,18 @@ Get-Content ".\README.md" -Raw -Encoding UTF8
 
 ## 入口となるファイル
 
-| File / Directory | Purpose |
+| File / Directory | 用途 |
 | --- | --- |
-| `AGENTS.md` | Agentが最初に読むbootstrap map |
+| `AGENTS.md` | Agentが最初に読むBootstrap Map |
 | `Policy/User/user-policy.yaml` | ユーザー固有Policy |
-| `Orchestration/Routing/task-routes.yaml` | Task Routing / Design Review requirement |
+| `Orchestration/Routing/task-routes.yaml` | Task Routing / Design Review Requirement |
 | `Orchestration/Definitions/development-parent-graph.yaml` | Parent Graph / Design Review SubGraph |
 | `Orchestration/Contracts/TaskContracts/` | Taskごとの実行契約 |
 | `Orchestration/Contracts/design-review-artifact.schema.yaml` | Design Reviewの構造化Output Contract |
 | `Templates/DesignReview.md` | 人間が確認するDesign Review表示Template |
 | `Context/Selection/context-catalog.yaml` | Context選択 |
 | `Context/Packs/` | Domain Context Pack |
-| `Runtime/Profiles/runtime-profiles.yaml` | Runtime execution profile |
+| `Runtime/Profiles/runtime-profiles.yaml` | Runtime実行Profile |
 | `.agents/skills/` | 専門Skill |
 | `SkillReferences/` | Domain共通規約 |
 | `docs/architecture/unityagent-flow.mmd` | GitHubで描画できる全体関連図 |
@@ -441,6 +441,6 @@ Get-Content ".\README.md" -Raw -Encoding UTF8
 
 このREADMEは、UnityAgentの**目的、構造、利用方法、処理順序、責務境界**を説明するための文書です。
 
-開発進捗、移行履歴、一時的な実行結果、特定Run ID、特定Baseline ID、モデルVersionなどの変動情報はREADMEの責務ではありません。
+開発進捗、移行履歴、一時的な実行結果、特定Run ID、特定Baseline ID、Model Versionなどの変動情報はREADMEの責務ではありません。
 
 そのような情報は、それぞれのMigration / Eval / Artifact / Git履歴で管理します。

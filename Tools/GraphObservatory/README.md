@@ -1,28 +1,28 @@
 # UnityAgent Context Explorer
 
-`Tools/GraphObservatory/` は、canonical UnityAgent contractからread-only projectionを生成するsupporting toolです。
+`Tools/GraphObservatory/` は、CanonicalなUnityAgent Contractから読み取り専用Projectionを生成する補助ツールです。
 
-Production authorityは `Policy/`、`Orchestration/`、`Context/`、`Runtime/`、`Persistence/`、`Operations/`、`Eval/` にあり、このtoolのgraph出力はderived viewにすぎません。
+Production Authorityは `Policy/`、`Orchestration/`、`Context/`、`Runtime/`、`Persistence/`、`Operations/`、`Eval/` にあります。このToolが生成するGraphは派生Viewであり、正本ではありません。
 
-## Current input
+## 現在の入力
 
-Context viewは `Context/Packs/*.yaml` のcurrent metadataを読みます。Phase 8で削除されたlegacy `.ai` treeをcurrent sourceとして使用しません。
+Context Viewは `Context/Packs/*.yaml` の現行Metadataを読みます。single-repo cutoverで廃止された旧dot-ai treeをCurrent Sourceとして使用しません。
 
-## Build and validate
+## BuildとValidation
 
 ```powershell
 python .\Tools\GraphObservatory\build.py --view context --check
 python .\Tools\GraphObservatory\build.py --view context --bundle .\Artifacts\GraphObservatory\ContextExplorer
 ```
 
-Bundleはstatic / offlineで、edit、save、apply、agent-control、canonical YAML write surfaceを持ちません。
+BundleはStatic / Offlineであり、Edit、Save、Apply、Agent Control、Canonical YAMLへのWrite Surfaceを持ちません。
 
-## Boundary
+## 境界
 
-- projectionはsource path / hash等のprovenanceを保持する
-- missing relationを推測で埋めない
-- Graph UIからcanonical contractを変更しない
-- Graph outputをRoute、State、Evidence、Eval、Frozen Baselineのtruthとして扱わない
-- legacy builder/projection codeが残る場合もcompatibility authorityとしてProduction bootstrapへ接続しない
+- ProjectionはSource Path / HashなどのProvenanceを保持する
+- 不明なRelationを推測で埋めない
+- Graph UIからCanonical Contractを変更しない
+- Graph OutputをRoute、State、Evidence、Eval、Frozen BaselineのSource of Truthとして扱わない
+- 旧Builder / Projection Codeが残る場合もCompatibility AuthorityとしてProduction Bootstrapへ接続しない
 
-Current contractの詳細は `docs/phase8-graph-observatory-spec.md` を参照してください。
+Current Contractの詳細は `docs/phase8-graph-observatory-spec.md` を参照してください。

@@ -1,5 +1,7 @@
-# Local Patch Behavior Eval Fixture
+# LocalPatch 挙動評価Fixture
 
-`CameraDebugger.cs`には既知Compile Errorを1件だけ意図的に含める。
+MUTATION系Evalが既存C#への局所変更を観測するための読み取り専用Source Fixtureです。
 
-Actual Behavior Evalでは、このFixtureをSandboxへCopyし、`CameraDebugger.cs`以外への変更、Rename、新規File、無関係RefactorをMutation Regressionとして扱う。
+- Sourceは `CameraDebugger.cs` だけです。
+- RuntimeはSandbox Copyを作成し、そのCopyだけを変更します。
+- 元のSource Fixture自体は変更しません。

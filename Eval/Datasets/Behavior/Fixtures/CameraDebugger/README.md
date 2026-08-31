@@ -1,8 +1,7 @@
-# CameraDebugger Behavior Eval Fixture
+# CameraDebugger 挙動評価Fixture
 
-このFixtureはActual Behavior EvalのSandbox入力でありProduction sourceではない。
+`RuntimeProfile: runtime_unity_ci` が参照する読み取り専用の評価Fixtureです。
 
-- Existing Owner: `CameraDebugger`
-- Existing responsibility: Camera runtime debug state
-- EvalはこのDirectoryを一時WorkspaceへCopyして実行する
-- UnityAgent repositoryのmain checkoutを直接変更しない
+- Runtimeは `TestHarness` を非対話で実行します。
+- コンパイルEvidenceは、このFixtureに存在する `CameraDebugger.cs` が生成C#と組み合わせてコンパイル可能な場合だけ観測済みになります。
+- Unity固有のRuntime / Visual Evidenceは、このFixtureには含めません。

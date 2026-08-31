@@ -19,8 +19,8 @@ ACTIVE_DOC_PATHS = (
     Path("Tests/GraphObservatory/README.md"),
 )
 
-# Historical migration documents intentionally retain legacy provenance and are
-# therefore not part of this active-document authority scan.
+README_GLOB = "README.md"
+
 EXCLUDED_PREFIXES = (Path("docs/migration"),)
 
 LEGACY_PATH_MARKERS = (
@@ -36,23 +36,10 @@ LEGACY_PATH_MARKERS = (
 )
 
 HISTORICAL_LINE_MARKERS = (
-    "legacy",
-    "historical",
-    "migration",
-    "deleted",
-    "removed",
-    "forbidden",
-    "do not use",
-    "not use",
-    "旧",
-    "削除",
-    "廃止",
-    "禁止",
-    "復活させ",
+    "legacy", "historical", "migration", "deleted", "removed", "forbidden",
+    "do not use", "not use", "旧", "削除", "廃止", "禁止", "復活させ",
 )
 
-# README is a user-facing product/operation document. Development state belongs
-# to migration, eval artifacts or Git history and must not be hard-coded here.
 README_DYNAMIC_STATE_PATTERNS = (
     (re.compile(r"\bphase\s*\d+\b", re.IGNORECASE), "development phase number"),
     (re.compile(r"フェーズ\s*\d+"), "development phase number"),
@@ -77,20 +64,21 @@ def _is_excluded(path: Path) -> bool:
 
 def _iter_docs():
     seen: set[Path] = set()
+    explicit_candidates: list[Path] = []
     for relative in ACTIVE_DOC_PATHS:
         path = ROOT / relative
         if path.is_file():
-            candidates = (path,)
+            explicit_candidates.append(path)
         elif path.is_dir():
-            candidates = tuple(sorted(path.rglob("*.md")))
-        else:
+            explicit_candidates.extend(sorted(path.rglob("*.md")))
+
+    candidates = [*explicit_candidates, *sorted(ROOT.rglob(README_GLOB))]
+    for candidate in candidates:
+        candidate = candidate.resolve()
+        if candidate in seen or _is_excluded(candidate):
             continue
-        for candidate in candidates:
-            candidate = candidate.resolve()
-            if candidate in seen or _is_excluded(candidate):
-                continue
-            seen.add(candidate)
-            yield candidate
+        seen.add(candidate)
+        yield candidate
 
 
 def _resolve_link(source: Path, target: str) -> Path | None:
@@ -120,9 +108,7 @@ def _validate_readme_stability(errors: list[str]) -> None:
     for pattern, description in README_DYNAMIC_STATE_PATTERNS:
         match = pattern.search(text)
         if match:
-            errors.append(
-                f"README must not hard-code {description}: {match.group(0)!r}"
-            )
+            errors.append(f"README must not hard-code {description}: {match.group(0)!r}")
 
     for entrypoint in REQUIRED_USER_ENTRYPOINTS:
         if not (ROOT / entrypoint).is_file():
@@ -144,9 +130,7 @@ def main() -> int:
         for line_number, line in enumerate(text.splitlines(), start=1):
             for marker in LEGACY_PATH_MARKERS:
                 if marker in line and not _legacy_reference_is_historical(line):
-                    errors.append(
-                        f"active legacy path reference {marker}: {relative}:{line_number}"
-                    )
+                    errors.append(f"active legacy path reference {marker}: {relative}:{line_number}")
 
         for target in MARKDOWN_LINK.findall(text):
             resolved = _resolve_link(path, target)
