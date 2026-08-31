@@ -25,4 +25,4 @@ BundleはStatic / Offlineであり、Edit、Save、Apply、Agent Control、Canon
 - Graph OutputをRoute、State、Evidence、Eval、Frozen BaselineのSource of Truthとして扱わない
 - 旧Builder / Projection Codeが残る場合もCompatibility AuthorityとしてProduction Bootstrapへ接続しない
 
-Current Contractの詳細は `docs/phase8-graph-observatory-spec.md` を参照してください。
+Current Contractの詳細は [`docs/graph-observatory-spec.md`](../../docs/graph-observatory-spec.md) を参照してください。
