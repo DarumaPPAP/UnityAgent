@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate every Task Contract's Effective Harness projection."""
+"""Validate every canonical Task Contract's Effective Harness projection."""
 
 from __future__ import annotations
 
@@ -10,13 +10,20 @@ from pathlib import Path
 from effective_harness import build_effective_harness, validate_effective_harness
 
 
+TASK_CONTRACT_ROOT = Path("Orchestration/Contracts/TaskContracts")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--all", action="store_true")
     parser.add_argument("--contract")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[2]
-    contracts = sorted((root / ".ai/harness/task-contracts").glob("*.yaml")) if args.all or not args.contract else [root / args.contract]
+    contracts = (
+        sorted((root / TASK_CONTRACT_ROOT).glob("*.yaml"))
+        if args.all or not args.contract
+        else [root / args.contract]
+    )
     errors: list[str] = []
     for path in contracts:
         if path.name == "task-contract.schema.yaml":
