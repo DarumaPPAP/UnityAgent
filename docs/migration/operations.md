@@ -1,4 +1,4 @@
-# Phase 7 — Operations
+# Operations Migration
 
 Status: implementation branch  
 Branch: `refactor/architecture-phase7-operations`  
