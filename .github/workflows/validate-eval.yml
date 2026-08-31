@@ -7,7 +7,6 @@ on:
       - "Context/**"
       - "Orchestration/**"
       - "Persistence/**"
-      - "Tools/Phase10/**"
       - "Tools/run_regression_gate.py"
       - "Tools/DocumentationValidator/**"
       - "Tools/GraphObservatory/**"
@@ -31,7 +30,6 @@ on:
       - "Context/**"
       - "Orchestration/**"
       - "Persistence/**"
-      - "Tools/Phase10/**"
       - "Tools/run_regression_gate.py"
       - "Tools/DocumentationValidator/**"
       - "Tools/GraphObservatory/**"
@@ -70,15 +68,14 @@ jobs:
           python Tools/GraphObservatory/validate_context_explorer.py
           python Tools/GraphVisualization/generate_parent_graph_mermaid.py --check
           python -m unittest Tests.GraphObservatory.test_context_explorer_projection
-      - name: Validate frozen Phase 9 baseline
+      - name: Validate frozen baseline
         run: python Eval/Rebaseline/validate_baseline_freeze.py Eval/Rebaseline/Baselines/phase9-baseline-20260830-09.yaml
-      - name: Validate regression comparator and local gate entry points
+      - name: Validate regression comparator and local gate entry point
         run: |
           python -m py_compile \
             Eval/Regression/baseline_comparator.py \
             Eval/Regression/compare_baseline.py \
             Eval/Regression/validate_baseline_comparison.py \
-            Tools/Phase10/run_local_regression_gate.py \
             Tools/run_regression_gate.py \
             Tools/GraphVisualization/generate_parent_graph_mermaid.py
       - name: Canonical Golden validators
@@ -97,8 +94,8 @@ jobs:
           python Eval/Behavior/validate_mutation_production_contract.py
           python Eval/Behavior/validate_production_smoke.py
           python Eval/Behavior/validate_run_integrity.py
-          python Eval/Behavior/validate_phase8_cutover.py
-      - name: Previous authority boundaries remain green
+          python Eval/Behavior/validate_cutover.py
+      - name: Validate authority boundaries
         run: |
           python -m unittest discover -s Persistence/Tests -p "test_*.py"
           python -m unittest discover -s Orchestration/Tests -p "test_*.py"
