@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from Orchestration.Orchestrator.orchestrator import load_graph, transition
+from Orchestration.Orchestrator.orchestrator import fast_path, load_graph, transition
 from Orchestration.Routing.route_selector import load_routes, select_route
 
 GRAPH_PATH = ROOT / "Orchestration/Definitions/development-parent-graph.yaml"
@@ -97,6 +97,21 @@ class DesignReviewGateTests(unittest.TestCase):
 
         approved = transition(current_node_id="await_design_approval", signal="approved_implement", **common)
         self.assertEqual(approved["node_id"], "mutation_precheck")
+
+    def test_fast_path_cannot_bypass_required_or_conditional_design_review(self):
+        common = {
+            "run_id": "run",
+            "route_id": "architecture-design",
+            "execution_profile": "personal_full_control",
+            "context_id": "ctx",
+            "context_fingerprint": "fp",
+            "simple_task": True,
+            "requires_semantic_replan": False,
+            "runtime_action_id": "execute_change",
+        }
+        self.assertIsNone(fast_path(design_review_requirement="required", **common))
+        self.assertIsNone(fast_path(design_review_requirement="conditional", **common))
+        self.assertIsNotNone(fast_path(design_review_requirement="not_required", **common))
 
     def test_design_review_artifact_contract_accepts_expected_output(self):
         schema = yaml.safe_load(DESIGN_SCHEMA_PATH.read_text(encoding="utf-8"))
