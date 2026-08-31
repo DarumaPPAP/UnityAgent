@@ -1,0 +1,185 @@
+schema_version: "1.0"
+kind: unity_tool_runtime_environment_design
+authority: Specs
+production_runtime_authority: false
+purpose: >-
+  Describe environment-adaptive capability resolution for the future Unity Tool Runtime.
+  This file does not by itself enable runtime providers.
+
+principles:
+  external_providers_are_optional: true
+  resolve_per_capability_not_global_mode: true
+  no_silent_semantic_downgrade: true
+  unavailable_is_not_success: true
+  not_observed_is_not_success: true
+  environment_unknown_is_not_false: true
+
+providers:
+  file:
+    optional: true
+    surfaces: [project]
+    capabilities:
+      - project.inspect
+      - source.read
+      - source.patch
+      - static.review
+      - git.diff
+    restrictions:
+      - no_default_scene_raw_mutation
+      - no_default_prefab_raw_mutation
+      - no_default_serialized_asset_raw_mutation
+
+  native_unity_editor:
+    optional: true
+    surfaces: [editor_process]
+    discovery:
+      - project_version
+      - editor_install_path
+      - process_detection
+    capabilities:
+      - compile.observe
+      - project.test
+      - project.build
+      - named_execute_method
+      - editor.log
+    restrictions:
+      - no_generated_arbitrary_eval
+      - execute_method_must_be_allowlisted_or_existing
+
+  unity_cli:
+    optional: true
+    surfaces: [host, editor, player]
+    capabilities:
+      - editor.discover
+      - project.open
+      - project.test
+      - project.build
+      - pipeline.discover
+      - live_editor.command
+      - player.observe
+    restrictions:
+      - absence_does_not_block_other_providers
+      - installation_is_not_automatic_requirement
+
+  myunitymcp:
+    optional: true
+    surfaces: [editor]
+    capabilities:
+      - project.inspect
+      - scene.inspect
+      - scene.mutate
+      - profiler.observe
+      - visual.capture
+      - domain.workflow
+    safety_contract:
+      - inspect
+      - prepare
+      - exact_diff
+      - revision
+      - approval
+      - apply
+
+  coplay_mcp:
+    optional: true
+    surfaces: [editor]
+    capabilities:
+      - tool.discovery
+      - scene.inspect
+      - guarded_editor_operation
+      - project.test
+      - project.build
+    safety_contract:
+      - project_binding
+      - multi_instance_binding
+      - grouped_exposure
+
+  player_runtime:
+    optional: true
+    surfaces: [player]
+    capabilities:
+      - player.observe
+      - allowlisted_player_control
+    restrictions:
+      - development_or_qa_only_by_default
+      - no_generic_remote_shell
+
+representative_profiles:
+  FULL:
+    description: Unity CLI and editor MCP providers available.
+  CLI_ONLY:
+    description: Unity CLI available, MCP unavailable.
+  MCP_ONLY:
+    description: MCP available, Unity CLI unavailable.
+  NATIVE_EDITOR:
+    description: Unity CLI and MCP unavailable, Unity Editor executable available.
+  FILES_ONLY:
+    description: Only filesystem/static project access available.
+  SAFE_MODE:
+    description: Editor exists but normal editor providers are degraded by compile errors.
+  NO_EDITOR:
+    description: Unity Editor executable unavailable; static-only work is possible.
+
+capability_resolution:
+  project.inspect:
+    candidates: [file, myunitymcp, coplay_mcp, unity_cli, native_unity_editor]
+    minimum_evidence: project_fact
+  source.patch:
+    candidates: [file]
+    minimum_evidence: source_diff
+  compile.observe:
+    candidates: [myunitymcp, coplay_mcp, unity_cli, native_unity_editor]
+    missing_result: not_observed
+  project.test:
+    candidates: [unity_cli, native_unity_editor, myunitymcp, coplay_mcp]
+    missing_result: unavailable
+  project.build:
+    candidates: [unity_cli, native_unity_editor, myunitymcp, coplay_mcp]
+    missing_result: unavailable
+  scene.inspect:
+    candidates: [myunitymcp, coplay_mcp, unity_cli]
+    weak_static_candidate: file
+    weak_static_result: static_only
+  scene.mutate:
+    candidates: [myunitymcp, coplay_mcp, unity_cli, native_unity_editor]
+    file_fallback: prohibited
+  player.observe:
+    candidates: [unity_cli, player_runtime, myunitymcp]
+    missing_result: unavailable
+
+fallback_rules:
+  automatic_fallback_requires:
+    - same_capability
+    - project_binding_matches
+    - policy_allows
+    - mutation_scope_preserved
+    - required_evidence_satisfied
+    - safety_contract_not_weaker
+  lower_evidence_strength:
+    allowed_for_partial_completion: true
+    must_be_reported: true
+    must_not_satisfy_stronger_gate: true
+  prohibited_examples:
+    - from: myunitymcp_scene_mutation
+      to: raw_scene_yaml_edit
+    - from: approved_domain_mutation
+      to: arbitrary_eval
+
+completion_classification:
+  - verified
+  - partial_verified
+  - implemented_unverified
+  - blocked_by_environment
+  - not_applicable
+
+environment_fields:
+  tri_state: [true, false, unknown]
+  required:
+    - project_root
+    - filesystem.readable
+    - filesystem.writable_in_mutation_scope
+    - unity_editor.installed
+    - unity_cli.available
+    - pipeline.reachable
+    - myunitymcp.available
+    - coplay_mcp.available
+    - player_runtime.reachable
