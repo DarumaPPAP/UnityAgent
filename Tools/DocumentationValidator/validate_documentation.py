@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate active UnityAgent documentation against post-cutover repository paths."""
+"""Validate active UnityAgent documentation against canonical repository paths."""
 from __future__ import annotations
 
 import re
@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[2]
 ACTIVE_DOC_PATHS = (
     Path("README.md"),
     Path("docs/architecture"),
-    Path("docs/phase8-graph-observatory-spec.md"),
+    Path("docs/graph-observatory-spec.md"),
     Path("Specs"),
     Path("SkillReferences"),
     Path("Tools/GraphObservatory"),
@@ -30,6 +30,13 @@ LEGACY_PATH_MARKERS = (
     "Tools/BehaviorEval/",
     "Tools/GoldenEval/",
     "Tools/LoopIntegration/",
+    "Tools/ContextManifest/",
+    "Tools/ContextBudget/",
+    "Tools/ContextCatalog/",
+    "Tools/Phase10/",
+    "Tests/ContextManifest/",
+    "Tests/ContextCatalog/",
+    "docs/phase8-graph-observatory-spec.md",
     "Context/Compatibility",
     "Eval/Compatibility",
     "Persistence/Compatibility",
