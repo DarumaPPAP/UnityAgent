@@ -25,7 +25,7 @@ permissions:
   contents: read
 
 jobs:
-  phase7:
+  operations:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -35,7 +35,7 @@ jobs:
           python-version: "3.12"
       - name: Install validation dependencies
         run: python -m pip install --disable-pip-version-check PyYAML jsonschema
-      - name: Phase 7 Operations tests
+      - name: Operations tests
         run: python -m unittest discover -s Operations/Tests -p "test_*.py"
       - name: Previous authority boundaries remain green
         run: |
