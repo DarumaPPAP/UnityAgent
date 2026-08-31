@@ -41,7 +41,7 @@ def execution_state(run_id="run-1", step="inspect_sources"):
     }
 
 
-class Phase5PersistenceHardeningTests(unittest.TestCase):
+class PersistenceHardeningTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)

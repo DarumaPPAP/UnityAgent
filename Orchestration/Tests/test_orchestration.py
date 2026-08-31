@@ -33,7 +33,7 @@ class FakeHealthPort:
         return {"schema_version": "1.0", "status": self.status, "check_id": "x", "run_id": "r", "step_id": "s", "kind": "environment", "target": "fixture", "observed_at": "2026-08-29T00:00:00+00:00", "evidence_refs": [], "details": {}, "runtime_profile_revision": "r", "tool_schema_revision": "t"}
 
 
-class Phase4OrchestrationTests(unittest.TestCase):
+class OrchestrationTests(unittest.TestCase):
     def test_graph_contract_and_topology(self):
         graph = load_graph(GRAPH_PATH)
         schema = yaml.safe_load((ROOT / "Orchestration/Contracts/graph-definition.schema.yaml").read_text(encoding="utf-8"))

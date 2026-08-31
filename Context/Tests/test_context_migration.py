@@ -18,7 +18,7 @@ def load_module(name: str, path: Path):
 class ContextCutoverTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.resolver = load_module("phase8_context_resolver", ROOT / "Context/Selection/path_resolver.py")
+        cls.resolver = load_module("context_resolver_test", ROOT / "Context/Selection/path_resolver.py")
 
     def test_prompt_templates_remain_golden_free(self):
         catalog = yaml.safe_load((ROOT / "Context/Prompt/prompt-catalog.yaml").read_text(encoding="utf-8"))
@@ -44,8 +44,8 @@ class ContextCutoverTests(unittest.TestCase):
             self.assertTrue((ROOT / contract).is_file(), route_id)
 
     def test_materialized_context_uses_direct_task_contract(self):
-        materializer = load_module("phase8_materializer_test", ROOT / "Context/Assembly/materialize_context.py")
-        view = materializer.materialize_context("phase8-test", "csharp-local-fix", "Context/Prompt/Templates/00_full_shader_audit.md", root=ROOT)
+        materializer = load_module("context_materializer_test", ROOT / "Context/Assembly/materialize_context.py")
+        view = materializer.materialize_context("context-test", "csharp-local-fix", "Context/Prompt/Templates/00_full_shader_audit.md", root=ROOT)
         self.assertEqual(view["selected_refs"]["policy"][0]["resolved_path"], "Policy/User/user-policy.yaml")
         self.assertEqual(view["selected_refs"]["context_pack"]["resolved_path"], "Context/Packs/csharp-local-fix.yaml")
         self.assertEqual(view["selected_refs"]["task_contract"]["logical_ref"], "Orchestration/Contracts/TaskContracts/csharp-local-fix.yaml")
@@ -56,8 +56,8 @@ class ContextCutoverTests(unittest.TestCase):
         self.assertNotIn("memory_store", view)
 
     def test_materialized_context_schema_and_definition_fingerprint(self):
-        materializer = load_module("phase8_materializer_schema_test", ROOT / "Context/Assembly/materialize_context.py")
-        view = materializer.materialize_context("phase8-schema", "architecture-design", root=ROOT)
+        materializer = load_module("context_materializer_schema_test", ROOT / "Context/Assembly/materialize_context.py")
+        view = materializer.materialize_context("context-schema-test", "architecture-design", root=ROOT)
         schema = yaml.safe_load((ROOT / "Context/Contracts/materialized-context-view.schema.yaml").read_text(encoding="utf-8"))
         fingerprint = yaml.safe_load((ROOT / "Context/Contracts/context-fingerprint.schema.yaml").read_text(encoding="utf-8"))
         definition = yaml.safe_load((ROOT / "Persistence/Contracts/definition-fingerprint.schema.yaml").read_text(encoding="utf-8"))
@@ -79,7 +79,7 @@ class ContextCutoverTests(unittest.TestCase):
             self.resolver.resolve_for_read(legacy_ref, ROOT)
 
     def test_canonical_budget_runtime_uses_canonical_contract(self):
-        canonical = load_module("phase8_budget_api_test", ROOT / "Context/Budget/budget_runtime.py")
+        canonical = load_module("context_budget_api_test", ROOT / "Context/Budget/budget_runtime.py")
         self.assertEqual(canonical.CONTRACT.as_posix(), "Context/Budget/context-budget.yaml")
         report = canonical.evaluate("csharp-local-fix", [100, 200], root=ROOT)
         self.assertEqual(report["decision"], "within_budget")

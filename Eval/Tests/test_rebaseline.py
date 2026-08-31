@@ -56,11 +56,11 @@ def fingerprints() -> dict:
     return {task_id: copy.deepcopy(FINGERPRINT) for task_id in EXPECTED_CASES}
 
 
-class Phase9RebaselineTests(unittest.TestCase):
+class RebaselineTests(unittest.TestCase):
     def build(self, eval_summary: dict, historical: dict | None):
         return build_rebaseline_summary(
             eval_summary,
-            run_id="phase9-test",
+            run_id="rebaseline-test",
             source_revision="deadbeef",
             model="gpt-5.6-sol",
             reasoning_effort="high",

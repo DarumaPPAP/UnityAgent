@@ -1,45 +1,45 @@
-# Graph Observatory Real Data Projection Layer
+# Graph Observatory 実データProjection Layer
 
-## Purpose
+## 目的
 
-UnityAgent canonical dataをread-only Graph Observatory projectionへ変換する。
+UnityAgentのCanonical Dataを、読み取り専用のGraph Observatory Projectionへ変換します。
 
-Source of Truth:
+Source of Truthとの関係:
 
 ```text
 Policy / Orchestration / Context / Runtime / Persistence / Eval
                          ↓
-                  Projection Layer
+                   Projection Layer
                          ↓
-                   Graph Artifact
+                    Graph Artifact
                          ↓
-                     Visualizer
+                      Visualizer
 ```
 
-このLayerはread-onlyであり、canonical configurationを変更しない。
+このLayerはRead-onlyであり、Canonical Configurationを変更しません。
 
-## Projection targets
+## Projection対象
 
-現行実装済みprojectionとlegacy/incomplete projectionを区別する。`Tools/GraphObservatory/build.py` が直接公開するviewだけをcurrent supported surfaceとして扱う。
+現行実装済みのProjectionと、旧または未完成のProjectionを区別します。`Tools/GraphObservatory/build.py` が直接公開するViewだけを現在サポートするSurfaceとして扱います。
 
-候補surface:
+候補Surface:
 
 - Context Graph
 - Harness / Verification Graph
 - Execution Graph
 - Regression Graph
 
-## Rules
+## ルール
 
-- current canonical pathから読む
-- legacy dot-ai authorityをcurrent inputへ戻さない
-- provenanceを保持する
-- node ID / typed relationを可能な範囲で保持する
-- Missing informationを推測で補わない
-- Graph outputはderived viewでありsource of truthではない
-- Graph editingからcanonical YAMLをmutationしない
-- Empty graphでschema/path mismatchを隠さない
+- 現行Canonical Pathから読み込む
+- 旧dot-ai AuthorityをCurrent Inputへ戻さない
+- Provenanceを保持する
+- Node ID / Typed Relationを可能な範囲で保持する
+- 不明な情報を推測で補完しない
+- Graph Outputは派生ViewでありSource of Truthではない
+- Graph EditingからCanonical YAMLをMutationしない
+- Empty GraphによってSchema / Pathの不一致を隠さない
 
-## Output
+## 出力
 
-Generated artifactsは `Artifacts/GraphObservatory/` 配下へ出力し、Production State / Evidence / Frozen Baselineの代替truthとして使用しない。
+生成Artifactは `Artifacts/GraphObservatory/` 配下へ出力し、Production State / Evidence / Frozen Baselineの代替Source of Truthとして使用しません。

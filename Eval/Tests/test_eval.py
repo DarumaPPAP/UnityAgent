@@ -28,7 +28,7 @@ def fingerprint():
         "tool_schema_revision": "tools-a",
         "checkpoint_schema_revision": "1.1",
         "evidence_schema_revision": "1.1",
-        "eval_contract_revision": "eval-phase6",
+        "eval_contract_revision": "eval-test",
     }
 
 
@@ -59,7 +59,7 @@ def execution_result(*, paths=None, failure=None):
     }
 
 
-class Phase6EvalTests(unittest.TestCase):
+class EvalTests(unittest.TestCase):
     def test_canonical_datasets_are_present_and_self_contained(self):
         behavior = ROOT / "Eval" / "Datasets" / "Behavior"
         golden = ROOT / "Eval" / "Datasets" / "Golden"
@@ -145,7 +145,7 @@ class Phase6EvalTests(unittest.TestCase):
     def test_golden_contract_projection_and_no_runtime_leak(self):
         case_doc = yaml.safe_load((ROOT / "Eval" / "Datasets" / "Golden" / "cases.yaml").read_text(encoding="utf-8"))
         case = next(item for item in case_doc["cases"] if item["id"] == "GOLDEN-ARCH-001")
-        contract = build_contract(case, contract_revision="eval-phase6")
+        contract = build_contract(case, contract_revision="eval-test")
         schema = yaml.safe_load((ROOT / "Eval" / "GoldenContracts" / "golden-contract.schema.yaml").read_text(encoding="utf-8"))
         jsonschema.Draft202012Validator(schema).validate(contract)
         task = runtime_task_projection(case)

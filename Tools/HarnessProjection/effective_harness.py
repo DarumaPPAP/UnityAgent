@@ -8,6 +8,14 @@ from typing import Any, Iterable
 import yaml
 
 REQUEST_BOUND = "request"
+NO_CHANNEL_BOUND = "none"
+CONTEXT_CATALOG = "Context/Selection/context-catalog.yaml"
+RUNTIME_PROFILES = "Runtime/Profiles/runtime-profiles.yaml"
+RISK_LEVELS = "Policy/Risk/risk-levels.yaml"
+QUALITY_GATES = "Policy/Evidence/quality-gates.yaml"
+MUTATION_CHANNELS = "Runtime/Guardrails/mutation-channels.yaml"
+MCP_ACTIVATION = "Runtime/Permissions/mcp-activation.yaml"
+
 APPROVAL_POLICIES = {
     "not_required",
     "conditional",
@@ -29,10 +37,10 @@ def read_yaml(root: Path, relative: str) -> dict[str, Any]:
 
 
 def route_for_contract(root: Path, contract_path: str) -> tuple[str, dict[str, Any]]:
-    index = read_yaml(root, ".ai/context-index.yaml")
-    for route_key, route in (index.get("routes", {}) or {}).items():
+    catalog = read_yaml(root, CONTEXT_CATALOG)
+    for route_id, route in (catalog.get("routes", {}) or {}).items():
         if route.get("task_contract") == contract_path:
-            return str(route.get("id", route_key)), route
+            return str(route_id), route
     raise ValueError(f"No route binds task contract: {contract_path}")
 
 
@@ -56,7 +64,7 @@ def validate_task_contract_channels(
     unknown = sorted(set(declared_channels) - known)
     if unknown:
         errors.append(f"Unknown mutation channels: {unknown}")
-    if binding not in {None, REQUEST_BOUND}:
+    if binding not in {None, REQUEST_BOUND, NO_CHANNEL_BOUND}:
         errors.append(f"Unknown mutation_channel_binding: {binding}")
 
     return errors
@@ -72,8 +80,11 @@ def resolve_mutation_channels(
     if errors:
         raise ValueError("; ".join(errors))
 
-    if contract.get("mutation_channel_binding") == REQUEST_BOUND:
+    binding = contract.get("mutation_channel_binding")
+    if binding == REQUEST_BOUND:
         channels = list(request.get("mutation_channels", []) or [])
+    elif binding == NO_CHANNEL_BOUND:
+        channels = []
     else:
         channels = list(contract.get("mutation_channels", []) or [])
 
@@ -174,13 +185,13 @@ def build_effective_harness(
     request = request or {}
     contract = read_yaml(root, contract_path)
     route_id, _ = route_for_contract(root, contract_path)
-    profiles = read_yaml(root, ".ai/execution-profiles.yaml").get("profiles", {})
+    profiles = read_yaml(root, RUNTIME_PROFILES).get("profiles", {})
     profile_id = execution_profile or contract.get("default_execution_profile")
     if profile_id not in profiles:
         raise ValueError(f"Unknown execution profile: {profile_id}")
 
     risk_id = str(contract.get("risk_level", "R0"))
-    risks = read_yaml(root, ".ai/harness/risk-levels.yaml").get("levels", {})
+    risks = read_yaml(root, RISK_LEVELS).get("levels", {})
     if risk_id not in risks:
         raise ValueError(f"Unknown risk level: {risk_id}")
 
@@ -189,8 +200,8 @@ def build_effective_harness(
     explicit_approvals = set(request.get("explicit_approvals", []) or [])
     candidate_allowed = [item for item in allowed if item in explicit_approvals or not explicit_approvals]
 
-    quality_catalog = read_yaml(root, ".ai/harness/quality-gates.yaml").get("gates", {})
-    channel_catalog = read_yaml(root, ".ai/harness/mutation-channels.yaml").get("channels", {})
+    quality_catalog = read_yaml(root, QUALITY_GATES).get("gates", {})
+    channel_catalog = read_yaml(root, MUTATION_CHANNELS).get("channels", {})
     mutation_channels = resolve_mutation_channels(contract, request, channel_catalog)
 
     direct_mutation_authorized = profile_id == "personal_full_control" and risk_id != "R0"
@@ -243,11 +254,12 @@ def build_effective_harness(
         "unresolved_bindings": list(request.get("unresolved_bindings", []) or []),
         "provenance": [
             {"source_path": contract_path, "reason": "harness_contract"},
-            {"source_path": ".ai/execution-profiles.yaml", "reason": "execution_profile"},
-            {"source_path": ".ai/harness/risk-levels.yaml", "reason": "risk_level"},
-            {"source_path": ".ai/harness/quality-gates.yaml", "reason": "quality_gate"},
-            {"source_path": ".ai/harness/mutation-channels.yaml", "reason": "mutation_channel"},
-            {"source_path": ".ai/harness/mcp-activation.yaml", "reason": "tool_access"},
+            {"source_path": CONTEXT_CATALOG, "reason": "route_binding"},
+            {"source_path": RUNTIME_PROFILES, "reason": "execution_profile"},
+            {"source_path": RISK_LEVELS, "reason": "risk_level"},
+            {"source_path": QUALITY_GATES, "reason": "quality_gate"},
+            {"source_path": MUTATION_CHANNELS, "reason": "mutation_channel"},
+            {"source_path": MCP_ACTIVATION, "reason": "tool_access"},
             {"source_path": "Tools/HarnessProjection/effective_harness.py", "reason": "harness_semantics"},
         ],
     }

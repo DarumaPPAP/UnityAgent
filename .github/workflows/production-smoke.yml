@@ -27,7 +27,7 @@ jobs:
     timeout-minutes: 35
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      SMOKE_RUN_ID: phase9-${{ github.run_id }}-${{ github.run_attempt }}
+      SMOKE_RUN_ID: production-smoke-${{ github.run_id }}-${{ github.run_attempt }}
       SMOKE_MODEL: ${{ inputs.model }}
       SMOKE_REASONING_EFFORT: ${{ inputs.reasoning_effort }}
     steps:
@@ -55,7 +55,7 @@ jobs:
       - name: Validate smoke and re-baseline integration boundaries
         run: |
           python -m unittest discover -s .github/ProductionSmoke -p "test_*.py"
-          python -m unittest Eval.Tests.test_phase9_rebaseline
+          python -m unittest Eval.Tests.test_rebaseline
           python -m py_compile \
             .github/ProductionSmoke/run_one_repo_smoke.py \
             Eval/Behavior/grade_production_smoke.py \

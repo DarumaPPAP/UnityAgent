@@ -35,7 +35,7 @@ def canonicalize_document(value: Any) -> Any:
 
 
 def legacy_fixture_shadow(value: str) -> str:
-    """Map canonical fixture path to the Phase 5 compatibility copy for old validators only."""
+    """Map canonical fixture path to the legacy compatibility copy for old validators only."""
     text = str(value or "").replace("\\", "/")
     reverse = {canonical: legacy for legacy, canonical in LEGACY_PREFIXES.items()}
     for canonical, legacy in reverse.items():

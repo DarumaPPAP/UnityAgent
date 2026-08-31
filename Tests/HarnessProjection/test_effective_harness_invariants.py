@@ -10,10 +10,16 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "Tools/HarnessProjection"))
 from effective_harness import build_effective_harness, validate_effective_harness  # noqa: E402
 
+TASK_CONTRACT_ROOT = ROOT / "Orchestration/Contracts/TaskContracts"
+
+
+def contract(name: str) -> str:
+    return f"Orchestration/Contracts/TaskContracts/{name}.yaml"
+
 
 class EffectiveHarnessInvariantTests(unittest.TestCase):
     def test_all_task_contracts_resolve_without_invariant_errors(self) -> None:
-        for path in sorted((ROOT / ".ai/harness/task-contracts").glob("*.yaml")):
+        for path in sorted(TASK_CONTRACT_ROOT.glob("*.yaml")):
             if path.name == "task-contract.schema.yaml":
                 continue
             document = build_effective_harness(ROOT, path.relative_to(ROOT).as_posix())
@@ -44,10 +50,7 @@ class EffectiveHarnessInvariantTests(unittest.TestCase):
         self.assertIn("Unresolved bindings must clear allowed mutations", validate_effective_harness(document))
 
     def test_r1_conditional_does_not_require_approval_by_default(self) -> None:
-        document = build_effective_harness(
-            ROOT,
-            ".ai/harness/task-contracts/csharp-local-fix.yaml",
-        )
+        document = build_effective_harness(ROOT, contract("csharp-local-fix"))
         self.assertEqual(document["permission"]["mutate"], "allowed")
         self.assertFalse(document["human_approval"]["required"])
         self.assertFalse(any(gate["id"] == "human_approval" for gate in document["human_gates"]))
@@ -55,7 +58,7 @@ class EffectiveHarnessInvariantTests(unittest.TestCase):
     def test_r1_conditional_blocks_when_request_triggers_approval(self) -> None:
         document = build_effective_harness(
             ROOT,
-            ".ai/harness/task-contracts/csharp-local-fix.yaml",
+            contract("csharp-local-fix"),
             request={"requires_human_approval": True},
         )
         self.assertEqual(document["permission"]["mutate"], "approval-dependent")
@@ -65,7 +68,7 @@ class EffectiveHarnessInvariantTests(unittest.TestCase):
     def test_r2_destructive_change_requires_approval(self) -> None:
         document = build_effective_harness(
             ROOT,
-            ".ai/harness/task-contracts/shader-change.yaml",
+            contract("shader-change"),
             request={"destructive_change": True},
         )
         self.assertEqual(document["permission"]["mutate"], "approval-dependent")
@@ -74,20 +77,17 @@ class EffectiveHarnessInvariantTests(unittest.TestCase):
     def test_r3_project_asset_channel_requires_approval(self) -> None:
         document = build_effective_harness(
             ROOT,
-            ".ai/harness/task-contracts/asset-data-change.yaml",
+            contract("asset-data-change"),
             request={"mutation_channels": ["material"]},
         )
         self.assertEqual(document["permission"]["mutate"], "approval-dependent")
         self.assertTrue(document["human_approval"]["required"])
 
     def test_request_bound_performance_contract_stays_non_mutating_until_channel_resolves(self) -> None:
-        unresolved = build_effective_harness(
-            ROOT,
-            ".ai/harness/task-contracts/performance-experiment.yaml",
-        )
+        unresolved = build_effective_harness(ROOT, contract("performance-experiment"))
         resolved = build_effective_harness(
             ROOT,
-            ".ai/harness/task-contracts/performance-experiment.yaml",
+            contract("performance-experiment"),
             request={"mutation_channels": ["shader"]},
         )
         self.assertEqual(unresolved["permission"]["mutate"], "approval-dependent")

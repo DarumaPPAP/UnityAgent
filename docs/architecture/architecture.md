@@ -1,6 +1,6 @@
 # UnityAgent Architecture v3.1
 
-Status: **Canonical Architecture Contract / Phase 10 operational**
+Status: **Canonical Architecture Contract / Regression Gate operational**
 
 ## Canonical repository
 
@@ -23,7 +23,7 @@ UnityAgent/
 
 `DarumaPPAP/UnityAgent` が Production execution を含む canonical single-repository authority です。
 
-Phase 8 cutover は完了済みです。legacy `.ai/` authority、Context/Eval/Persistence compatibility layer、old Eval / Loop shims、`DarumaPPAP/Unity-Graph-Engineering` への Production execution dependency を active authority として復活させません。
+single-repo cutover は完了済みです。legacy dot-ai authority、Context/Eval/Persistence compatibility layer、old Eval / Loop shims、`DarumaPPAP/Unity-Graph-Engineering` への Production execution dependency を active authority として復活させません。
 
 Migration時点の旧構造は `docs/migration/` や Historical Eval Dataset / Replay に監査証跡として残せますが、current Production bootstrap では解決しません。
 
@@ -210,7 +210,7 @@ Canonical Production qualityは4 caseで観測します。
 - `GOLDEN-MUTATION-001`
 - `GOLDEN-EVIDENCE-001`
 
-Phase 9 Frozen Baseline:
+Frozen Baseline:
 
 `Eval/Rebaseline/Baselines/phase9-baseline-20260830-09.yaml`
 
@@ -223,7 +223,7 @@ Frozen state:
 - DefinitionFingerprint 4/4
 - Historical Replay namespace coverage passed
 
-Phase 10 comparatorはcandidateをこのBaselineと比較し、次を返します。
+Baseline comparatorはcandidateをこのBaselineと比較し、次を返します。
 
 - `PASS`
 - `BLOCK_REGRESSION`
@@ -252,7 +252,7 @@ Eval/Rebaseline/build_rebaseline_summary.py
 Eval/Regression/compare_baseline.py
 ```
 
-Phase 10の標準運用は `Tools/Phase10/run_local_regression_gate.py` です。ローカルの認証済みCodex CLI sessionを使用し、Frozen Baselineと同じ `gpt-5.6-luna / xhigh` を既定比較identityとします。
+標準のローカルRegression Gateは `Tools/run_regression_gate.py` です。ローカルの認証済みCodex CLI sessionを使用し、Frozen Baselineと同じ `gpt-5.6-luna / xhigh` を既定比較identityとします。
 
 GitHub-hosted Regression Gateはoptional CI pathです。
 
@@ -273,7 +273,7 @@ GitHub-hosted Regression Gateはoptional CI pathです。
 
 Source revision、Runtime identity、Codex versionもprovenanceとして保持します。
 
-## Migration state
+## Migration history
 
 ```text
 Phase 0   Architecture contract                       complete
@@ -289,7 +289,7 @@ Phase 9   Production re-baseline / baseline freeze    complete
 Phase 10  Baseline comparator / regression gate       complete
 ```
 
-過去Phaseの詳細は `docs/migration/` に残します。Migration文書のhistorical pathをcurrent authorityとして読み替えません。
+この表はMigration履歴です。過去Phaseの詳細は `docs/migration/` に残し、historical pathをcurrent authorityとして読み替えません。
 
 ## Protected user-specific behavior
 

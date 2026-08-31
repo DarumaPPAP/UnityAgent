@@ -1,4 +1,4 @@
-name: Phase 10 Optional CI Baseline Regression Gate
+name: Optional CI Baseline Regression Gate
 
 on:
   workflow_dispatch:
@@ -32,7 +32,7 @@ jobs:
     timeout-minutes: 50
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      CANDIDATE_RUN_ID: phase10-${{ github.run_id }}-${{ github.run_attempt }}
+      CANDIDATE_RUN_ID: regression-${{ github.run_id }}-${{ github.run_attempt }}
       CANDIDATE_MODEL: ${{ inputs.model }}
       CANDIDATE_REASONING_EFFORT: ${{ inputs.reasoning_effort }}
       CANDIDATE_TIMEOUT_SECONDS: ${{ inputs.timeout_seconds }}
@@ -59,15 +59,15 @@ jobs:
       - name: Install Python validation dependencies
         run: python -m pip install --disable-pip-version-check PyYAML jsonschema
 
-      - name: Validate Phase 9 freeze and Phase 10 contracts
+      - name: Validate frozen baseline and regression contracts
         shell: bash
         run: |
           python Eval/Rebaseline/validate_baseline_freeze.py "$FROZEN_BASELINE"
-          python -m unittest Eval.Tests.test_phase10_baseline_comparator Eval.Tests.test_phase10_local_regression_gate
+          python -m unittest Eval.Tests.test_baseline_comparator Eval.Tests.test_local_regression_gate
           python -m py_compile \
             Eval/Regression/baseline_comparator.py \
             Eval/Regression/compare_baseline.py \
-            Tools/Phase10/run_local_regression_gate.py
+            Tools/run_regression_gate.py
 
       - name: Optional CI credential preflight
         shell: bash
@@ -82,7 +82,7 @@ jobs:
             "production_execution_observed": false
           }
           JSON
-            echo "::error::Optional GitHub-hosted Phase 10 gate requires OPENAI_API_KEY. Use Tools/Phase10/run_local_regression_gate.py for the standard local ChatGPT-authenticated path."
+            echo "::error::Optional GitHub-hosted regression gate requires OPENAI_API_KEY. Use Tools/run_regression_gate.py for the standard local ChatGPT-authenticated path."
             exit 1
           fi
 
@@ -142,10 +142,10 @@ jobs:
           fi
           exit 0
 
-      - name: Upload Phase 10 candidate evidence
+      - name: Upload candidate evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: phase10-baseline-regression-${{ github.run_id }}-${{ github.run_attempt }}
+          name: baseline-regression-${{ github.run_id }}-${{ github.run_attempt }}
           path: Artifacts/ProductionSmoke/${{ env.CANDIDATE_RUN_ID }}/
           if-no-files-found: error

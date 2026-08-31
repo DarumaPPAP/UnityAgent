@@ -1,13 +1,22 @@
-# Memory Retrieval Projection
+# Context側のMemory Projection
 
-Context does not own durable Memory. `Persistence/Memory/memory_store.py` is the canonical durable Memory owner; this directory defines only the read-only retrieval boundary used to select a bounded current-call projection.
+`Context/Retrieval/Memory/` は、`Persistence/Memory/` が所有する正本の永続Memoryを読み取り専用で参照するアダプターです。
 
-Rules:
+## 所有権境界
 
-- `MemoryProjection` references a durable `memory_id`.
-- Every projection retains source Evidence references.
-- Context may select or compress a projection, but it must not promote, overwrite, retain, delete, or migrate durable Memory.
-- Non-personal profiles retrieve only records admitted by Persistence's safe index; project-internal Memory is not scanned.
-- A Memory projection is model input, not a resume checkpoint and not Evidence.
-- Raw Evidence content is not included by default.
-- Retrieval must not mutate the Persistence store.
+- `Persistence/Memory/` が永続Memoryレコード、Validation、Revision、Conflict / Risk metadata、Project単位のRetrievalを所有します。
+- `Context/Retrieval/Memory/` はRequestのValidation、Persistence interfaceへのQuery、候補のRank / Reduce、`MemoryProjection` の出力だけを担当します。
+- Context配下に第二の永続Memory Storeを作成しません。
+- 廃止済みまたはTest専用のMemory RootをCurrent Stateの入力として信頼しません。
+
+## Projection契約
+
+Projection Contractは `Context/Contracts/memory-projection.schema.yaml` です。
+
+現行実装の入口:
+
+```python
+from Context.Retrieval.Memory.project_memory import build_memory_projection
+```
+
+PersistenceまたはProjectMemoryが利用できない場合、このアダプターは推測で補完せず安全側に停止します。

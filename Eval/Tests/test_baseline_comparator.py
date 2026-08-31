@@ -60,7 +60,7 @@ def _candidate(
     baseline = _baseline()
     return build_rebaseline_summary(
         eval_summary or _passed_eval_summary(),
-        run_id="phase10-candidate",
+        run_id="regression-candidate",
         source_revision="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         model=model or baseline["runtime"]["model"],
         reasoning_effort=reasoning_effort or baseline["runtime"]["reasoning_effort"],
@@ -74,7 +74,7 @@ def _candidate(
     )
 
 
-class Phase10BaselineComparatorTests(unittest.TestCase):
+class BaselineComparatorTests(unittest.TestCase):
     def test_clean_candidate_passes_without_historical_replay(self):
         baseline = _baseline()
         comparison = build_baseline_comparison(baseline, _candidate())

@@ -15,7 +15,7 @@ from validate_graph import validate_graph
 
 def build(root: Path, view: str) -> AgentGraph:
     if view != "context":
-        raise ValueError("Phase 5 supports only --view context")
+        raise ValueError("Only --view context is currently supported")
     return build_context_graph(root)
 
 

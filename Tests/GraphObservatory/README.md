@@ -1,10 +1,10 @@
-# Graph Observatory Tests
+# Graph Observatory テスト
 
-Graph Observatoryには、現在サポートするContext Explorerの回帰テストと、将来修復候補を表すlegacy foundation contract testsが混在しています。両者を同じ意味で扱いません。
+Graph Observatoryには、現在サポートしているContext Explorerの回帰テストと、将来の修復候補を表す旧Foundation Contract Testが混在しています。両者を同じ意味では扱いません。
 
-## Current supported checks
+## 現在サポートしている確認項目
 
-Context Explorerのcurrent canonical input / provenance / read-only surfaceは次で検証します。
+Context Explorerの現行Canonical Input / Provenance / Read-only Surfaceは次で検証します。
 
 ```powershell
 python .\Tools\GraphObservatory\validate_context_explorer.py
@@ -12,17 +12,17 @@ python -m unittest Tests.GraphObservatory.test_context_explorer_projection
 python -m unittest Tests.GraphObservatory.test_context_explorer_security
 ```
 
-`test_context_explorer_projection.py` は `Context/Packs/` からnon-empty projectionを生成し、旧input pathへ戻らないことを確認します。
+`test_context_explorer_projection.py` は `Context/Packs/` から空ではないProjectionを生成し、旧Input Pathへ戻らないことを確認します。
 
-## Legacy / future foundation contracts
+## 旧Foundation Contract / 将来候補
 
-`test_graph_observatory_foundation_contract.py` 等の一部は、Graph Observatoryの未統合viewや将来foundation requirementを記録するrepair-oriented contractです。
+`test_graph_observatory_foundation_contract.py` などの一部は、Graph Observatoryの未統合Viewや将来のFoundation Requirementを記録するRepair-oriented Contractです。
 
-それらは現在のUnityAgent Production quality gateではなく、全件を `Tools/validate_all.py` へ無条件接続しません。未実装requirementを意図的に保持するテストは、採用するPhaseとAuthority boundaryをレビューしてからcanonical CIへ昇格します。
+これらは現在のProduction品質判定ではありません。全件を `Tools/validate_all.py` へ無条件に接続せず、未実装Requirementを意図的に保持するTestは、採用するAuthority BoundaryをレビューしてからCanonical CIへ昇格します。
 
-## Boundary
+## 境界
 
-- Current Context Explorer regressionはgreenであること
-- Legacy/future contractのfailureをPhase 9/10 Agent quality regressionへ変換しないこと
-- Graph Observatoryをsecond routing / execution / Eval authorityにしないこと
-- Current canonical pathsを使い、legacy compatibility sourceへfallbackしないこと
+- 現行Context ExplorerのRegressionはGreenであること
+- 旧または将来向けContractのFailureをAgent品質Regressionへ変換しないこと
+- Graph Observatoryを第二のRouting / Execution / Eval Authorityにしないこと
+- 現行Canonical Pathを使用し、旧Compatibility SourceへFallbackしないこと

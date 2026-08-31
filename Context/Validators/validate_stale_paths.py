@@ -59,7 +59,7 @@ def validate_added_lines(root: Path = Path("."), base_ref: str | None = None) ->
     errors: list[str] = []
     if not (root / ".git").exists():
         return errors
-    base_ref = base_ref or os.environ.get("PHASE2_BASE_REF") or "HEAD^"
+    base_ref = base_ref or os.environ.get("CUTOVER_BASE_REF") or "HEAD^"
     try:
         diff = subprocess.check_output(
             ["git", "diff", "--unified=0", base_ref, "HEAD", "--"],
@@ -95,4 +95,4 @@ if __name__ == "__main__":
     failures = validate_static() + validate_added_lines()
     if failures:
         raise SystemExit("\n".join(failures))
-    print("Phase 2 stale legacy path guard: OK")
+    print("Stale legacy path guard: OK")
