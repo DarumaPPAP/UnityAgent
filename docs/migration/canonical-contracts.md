@@ -1,4 +1,4 @@
-# Phase 1 — Canonical Contracts
+# Canonical Contracts Migration
 
 Status: implemented on `refactor/architecture-phase1-canonical-contracts`
 
