@@ -8,6 +8,7 @@ from typing import Any, Iterable
 import yaml
 
 REQUEST_BOUND = "request"
+NO_CHANNEL_BOUND = "none"
 CONTEXT_CATALOG = "Context/Selection/context-catalog.yaml"
 RUNTIME_PROFILES = "Runtime/Profiles/runtime-profiles.yaml"
 RISK_LEVELS = "Policy/Risk/risk-levels.yaml"
@@ -63,7 +64,7 @@ def validate_task_contract_channels(
     unknown = sorted(set(declared_channels) - known)
     if unknown:
         errors.append(f"Unknown mutation channels: {unknown}")
-    if binding not in {None, REQUEST_BOUND}:
+    if binding not in {None, REQUEST_BOUND, NO_CHANNEL_BOUND}:
         errors.append(f"Unknown mutation_channel_binding: {binding}")
 
     return errors
@@ -79,8 +80,11 @@ def resolve_mutation_channels(
     if errors:
         raise ValueError("; ".join(errors))
 
-    if contract.get("mutation_channel_binding") == REQUEST_BOUND:
+    binding = contract.get("mutation_channel_binding")
+    if binding == REQUEST_BOUND:
         channels = list(request.get("mutation_channels", []) or [])
+    elif binding == NO_CHANNEL_BOUND:
+        channels = []
     else:
         channels = list(contract.get("mutation_channels", []) or [])
 
