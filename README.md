@@ -341,6 +341,17 @@ UnityAgentはそれらを変更する際の判断、Context、設計確認、実
 
 Project固有Factは可能な限り実Projectから取得し、`Specs/ProjectProfile.md` は未解決FactのFallbackとしてのみ使用します。
 
+ローカル開発では、**UnityAgentをTarget Projectの `Assets/` 配下へ配置せず、独立Repositoryとして維持した上でTarget Unity Project Rootを渡す**構成を推奨します。
+
+```text
+Read Scope     = Target Unity Project Root
+Mutation Scope = Taskに必要な最小範囲
+```
+
+`Assets/` だけを渡すと、Unity Version、Package構成、ProjectSettings等のProject Factが不足しやすくなります。一方、Project Root全体を読めることはProject Root全体の変更許可を意味しません。
+
+詳しいWorkspace構成、正本境界、`Packages/` / `ProjectSettings/` の扱い、Design Review、Verification、依頼例は [ローカルUnity Project開発ガイド](docs/local-project-development.md) を参照してください。実際の依頼には [Development Request Template](Templates/DevelopmentRequest.md) を使用できます。
+
 ---
 
 ## MyUnityMCPとの関係
@@ -426,11 +437,13 @@ Get-Content ".\README.md" -Raw -Encoding UTF8
 | `Orchestration/Contracts/TaskContracts/` | Taskごとの実行契約 |
 | `Orchestration/Contracts/design-review-artifact.schema.yaml` | Design Reviewの構造化Output Contract |
 | `Templates/DesignReview.md` | 人間が確認するDesign Review表示Template |
+| `Templates/DevelopmentRequest.md` | ローカルUnity Projectへ開発依頼を渡すTemplate |
 | `Context/Selection/context-catalog.yaml` | Context選択 |
 | `Context/Packs/` | Domain Context Pack |
 | `Runtime/Profiles/runtime-profiles.yaml` | Runtime実行Profile |
 | `.agents/skills/` | 専門Skill |
 | `SkillReferences/` | Domain共通規約 |
+| `docs/local-project-development.md` | ローカルUnity Projectの接続・権限・正本・検証ガイド |
 | `docs/architecture/unityagent-flow.mmd` | GitHubで描画できる全体関連図 |
 | `Tools/validate_all.py` | Repository全体Validation |
 | `Tools/run_regression_gate.py` | Production Regression Gate |
