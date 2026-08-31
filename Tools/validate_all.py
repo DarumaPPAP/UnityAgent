@@ -27,6 +27,7 @@ VALIDATORS = (
     Path("Context/Validators/validate_stale_paths.py"),
     Path("Tools/DocumentationValidator/validate_documentation.py"),
     Path("Tools/GraphObservatory/validate_context_explorer.py"),
+    Path("Tools/HarnessProjection/validate_effective_harness.py"),
     Path("Tools/SkillValidator/validate_skills.py"),
     Path("Tools/SkillEval/validate_skill_evals.py"),
     Path("Tools/ContractValidator/validate_contracts.py"),
@@ -61,6 +62,7 @@ TEST_SUITES = (
     Path("Persistence/Tests"),
     Path("Eval/Tests"),
     Path("Operations/Tests"),
+    Path("Tests/HarnessProjection"),
 )
 
 
