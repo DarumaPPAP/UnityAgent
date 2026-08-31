@@ -1,0 +1,44 @@
+flowchart LR
+    U[User Request]
+
+    subgraph UA[UnityAgent]
+        P[Policy]
+        R[Routing]
+        TC[Task Contract]
+        C[Context Materialization]
+        DR{Design Review Required?}
+        DP[Design Preview\nDiagram + Checklist + Final Image Spec]
+        HG{Human Approval}
+        I[Investigation]
+        M[Implementation]
+        V[Validation]
+        PE[Persistence / Evidence]
+        E[Eval]
+        O[Operations]
+        D[User Report]
+    end
+
+    subgraph EXT[External Execution Surface]
+        MCP[MyUnityMCP / Tools]
+        UP[Unity Project]
+    end
+
+    U --> P --> R --> TC --> C --> DR
+    DR -->|required / selected conditional| DP --> HG
+    HG -->|revise| DP
+    HG -->|reject| D
+    HG -->|approve investigate| I
+    HG -->|approve implement| M
+    DR -->|not required| I
+    DR -->|not required| M
+
+    I -->|evidence changes design| DP
+    I -->|implementation ready| M
+    M --> MCP --> UP
+    M --> V
+    UP --> V
+    V --> PE --> E --> D
+    O -. observes / controls .-> I
+    O -. observes / controls .-> M
+    O -. observes / controls .-> V
+    E -. regression signal .-> O
