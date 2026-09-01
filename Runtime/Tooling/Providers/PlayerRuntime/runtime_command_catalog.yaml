@@ -1,0 +1,72 @@
+schema_version: "1.0"
+kind: player_runtime_command_catalog
+catalog_revision: "1.0"
+authority: Runtime
+release_surface_enabled: false
+allowed_build_kinds: [development, qa]
+
+rules:
+  structured_results_only: true
+  arbitrary_shell_prohibited: true
+  unknown_command_fails_closed: true
+  control_requires_explicit_approval: true
+  player_evidence_is_not_editor_evidence: true
+  target_performance_requires_explicit_verification: true
+
+commands:
+  observe.runtime:
+    surface: observe
+    capability: player.observe
+    requires_approval: false
+    evidence: [player_observation]
+    evidence_class: runtime_observation
+  observe.camera:
+    surface: observe
+    capability: player.observe
+    requires_approval: false
+    evidence: [player_observation]
+    evidence_class: runtime_observation
+  observe.lod:
+    surface: observe
+    capability: player.observe
+    requires_approval: false
+    evidence: [player_observation]
+    evidence_class: runtime_observation
+  observe.renderer:
+    surface: observe
+    capability: player.observe
+    requires_approval: false
+    evidence: [player_observation]
+    evidence_class: runtime_observation
+  observe.quality:
+    surface: observe
+    capability: player.observe
+    requires_approval: false
+    evidence: [player_observation]
+    evidence_class: runtime_observation
+  observe.memory:
+    surface: observe
+    capability: player.observe
+    requires_approval: false
+    evidence: [player_observation]
+    evidence_class: target_performance_sample
+    performance_dimension: memory
+  observe.frame:
+    surface: observe
+    capability: player.observe
+    requires_approval: false
+    evidence: [player_observation]
+    evidence_class: target_performance_sample
+    performance_dimension: frame
+  control.camera:
+    surface: control
+    capability: player.mutate
+    requires_approval: true
+    evidence: [player_observation, mutation_evidence]
+    evidence_class: runtime_observation
+  control.quality:
+    surface: control
+    capability: player.mutate
+    requires_approval: true
+    evidence: [player_observation, mutation_evidence]
+    evidence_class: runtime_observation
