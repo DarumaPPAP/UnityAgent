@@ -1,0 +1,151 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:runtime:environment-snapshot
+title: EnvironmentSnapshot
+type: object
+additionalProperties: false
+required:
+  - schema_version
+  - project
+  - filesystem
+  - git
+  - unity_editor
+  - unity_cli
+  - pipeline
+  - myunitymcp
+  - coplay_mcp
+  - test_framework
+  - build
+  - player_runtime
+  - profile_hint
+  - binding_fingerprint
+properties:
+  schema_version:
+    const: "1.0"
+  project:
+    type: object
+    additionalProperties: false
+    required: [root, exists, identity_status, unity_version, required_paths]
+    properties:
+      root:
+        type: string
+        minLength: 1
+      exists:
+        $ref: "#/$defs/tri_state"
+      identity_status:
+        enum: [bound, invalid, unknown]
+      unity_version:
+        type: [string, "null"]
+        minLength: 1
+      required_paths:
+        type: object
+        additionalProperties: false
+        required: [assets, packages, project_settings]
+        properties:
+          assets: { $ref: "#/$defs/tri_state" }
+          packages: { $ref: "#/$defs/tri_state" }
+          project_settings: { $ref: "#/$defs/tri_state" }
+  filesystem:
+    type: object
+    additionalProperties: false
+    required: [readable, writable, writable_in_mutation_scope]
+    properties:
+      readable: { $ref: "#/$defs/tri_state" }
+      writable: { $ref: "#/$defs/tri_state" }
+      writable_in_mutation_scope: { $ref: "#/$defs/tri_state" }
+  git:
+    type: object
+    additionalProperties: false
+    required: [available, repository_bound]
+    properties:
+      available: { $ref: "#/$defs/tri_state" }
+      repository_bound: { $ref: "#/$defs/tri_state" }
+  unity_editor:
+    type: object
+    additionalProperties: false
+    required:
+      - installed
+      - version
+      - executable_path
+      - project_version_match
+      - running
+      - safe_mode
+      - project_bound
+      - binding_status
+      - bound_instance_id
+    properties:
+      installed: { $ref: "#/$defs/tri_state" }
+      version: { type: [string, "null"], minLength: 1 }
+      executable_path: { type: [string, "null"], minLength: 1 }
+      project_version_match: { $ref: "#/$defs/tri_state" }
+      running: { $ref: "#/$defs/tri_state" }
+      safe_mode: { $ref: "#/$defs/tri_state" }
+      project_bound: { $ref: "#/$defs/tri_state" }
+      binding_status: { $ref: "#/$defs/binding_status" }
+      bound_instance_id: { type: [string, "null"], minLength: 1 }
+  unity_cli:
+    type: object
+    additionalProperties: false
+    required: [available, version, executable_path, failure_class]
+    properties:
+      available: { $ref: "#/$defs/tri_state" }
+      version: { type: [string, "null"], minLength: 1 }
+      executable_path: { type: [string, "null"], minLength: 1 }
+      failure_class:
+        type: [string, "null"]
+        enum: [unavailable, unhealthy, timeout, unknown, null]
+  pipeline:
+    type: object
+    additionalProperties: false
+    required: [installed, reachable]
+    properties:
+      installed: { $ref: "#/$defs/tri_state" }
+      reachable: { $ref: "#/$defs/tri_state" }
+  myunitymcp:
+    $ref: "#/$defs/provider_binding"
+  coplay_mcp:
+    $ref: "#/$defs/provider_binding"
+  test_framework:
+    type: object
+    additionalProperties: false
+    required: [available]
+    properties:
+      available: { $ref: "#/$defs/tri_state" }
+  build:
+    type: object
+    additionalProperties: false
+    required: [requested_target, requested_target_module_available]
+    properties:
+      requested_target: { type: [string, "null"], minLength: 1 }
+      requested_target_module_available: { $ref: "#/$defs/tri_state" }
+  player_runtime:
+    type: object
+    additionalProperties: false
+    required: [reachable, instance_id]
+    properties:
+      reachable: { $ref: "#/$defs/tri_state" }
+      instance_id: { type: [string, "null"], minLength: 1 }
+  profile_hint:
+    type: [string, "null"]
+    enum: [FULL, CLI_ONLY, MCP_ONLY, NATIVE_EDITOR, FILES_ONLY, SAFE_MODE, NO_EDITOR, PLAYER_UNAVAILABLE, null]
+  binding_fingerprint:
+    type: string
+    minLength: 64
+    maxLength: 64
+    pattern: '^[0-9a-f]{64}$'
+$defs:
+  tri_state:
+    oneOf:
+      - type: boolean
+      - const: unknown
+  binding_status:
+    enum: [bound, unbound, ambiguous_binding, not_running, unknown]
+  provider_binding:
+    type: object
+    additionalProperties: false
+    required: [reachable, available, project_bound, binding_status, bound_instance_id]
+    properties:
+      reachable: { $ref: "#/$defs/tri_state" }
+      available: { $ref: "#/$defs/tri_state" }
+      project_bound: { $ref: "#/$defs/tri_state" }
+      binding_status: { $ref: "#/$defs/binding_status" }
+      bound_instance_id: { type: [string, "null"], minLength: 1 }
