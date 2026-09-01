@@ -1,0 +1,81 @@
+schema_version: "1.0"
+kind: capability_routing
+authority: Orchestration
+production_dispatch_authority: false
+request_contract: Runtime/Contracts/capability-request.schema.yaml
+
+conditions:
+  - always
+  - mutation_requested
+  - verification_requested
+  - editor_observation_needed
+  - visual_evidence_needed
+  - runtime_measurement_needed
+  - player_observation_needed
+  - player_mutation_requested
+  - domain_execution_requested
+
+routes:
+  generic-planning:
+    capabilities: []
+  architecture-design:
+    capabilities:
+      - {capability: project.inspect, operation_kind: read, required_evidence: [project_fact], preferred_surface: project, when: editor_observation_needed}
+      - {capability: static.review, operation_kind: read, required_evidence: [static_review], preferred_surface: project, when: always}
+  graphics-mcp:
+    capabilities:
+      - {capability: project.inspect, operation_kind: read, required_evidence: [project_fact], preferred_surface: project, when: always}
+      - {capability: scene.inspect, operation_kind: read, required_evidence: [editor_observation], preferred_surface: live_editor, when: editor_observation_needed}
+      - {capability: domain.workflow, operation_kind: editor_mutation, required_evidence: [domain_result, mutation_evidence], preferred_surface: live_editor, when: domain_execution_requested}
+  csharp-local-fix:
+    capabilities:
+      - {capability: source.read, operation_kind: read, required_evidence: [source_read], preferred_surface: project, when: always}
+      - {capability: source.patch, operation_kind: source_mutation, required_evidence: [source_diff], preferred_surface: project, when: mutation_requested}
+      - {capability: compile.observe, operation_kind: read, required_evidence: [compile_observation], preferred_surface: editor, when: verification_requested}
+  rendering-incident:
+    capabilities:
+      - {capability: project.inspect, operation_kind: read, required_evidence: [project_fact], preferred_surface: project, when: always}
+      - {capability: scene.inspect, operation_kind: read, required_evidence: [editor_observation], preferred_surface: live_editor, when: editor_observation_needed}
+      - {capability: visual.capture, operation_kind: read, required_evidence: [visual_capture], preferred_surface: live_editor, when: visual_evidence_needed}
+  shader-change:
+    capabilities:
+      - {capability: source.read, operation_kind: read, required_evidence: [source_read], preferred_surface: project, when: always}
+      - {capability: source.patch, operation_kind: source_mutation, required_evidence: [source_diff], preferred_surface: project, when: mutation_requested}
+      - {capability: compile.observe, operation_kind: read, required_evidence: [compile_observation], preferred_surface: editor, when: verification_requested}
+      - {capability: visual.capture, operation_kind: read, required_evidence: [visual_capture], preferred_surface: live_editor, when: visual_evidence_needed}
+  renderer-feature-change:
+    capabilities:
+      - {capability: source.read, operation_kind: read, required_evidence: [source_read], preferred_surface: project, when: always}
+      - {capability: source.patch, operation_kind: source_mutation, required_evidence: [source_diff], preferred_surface: project, when: mutation_requested}
+      - {capability: compile.observe, operation_kind: read, required_evidence: [compile_observation], preferred_surface: editor, when: verification_requested}
+      - {capability: scene.inspect, operation_kind: read, required_evidence: [editor_observation], preferred_surface: live_editor, when: editor_observation_needed}
+  performance-experiment:
+    capabilities:
+      - {capability: project.inspect, operation_kind: read, required_evidence: [project_fact], preferred_surface: project, when: always}
+      - {capability: profiler.observe, operation_kind: read, required_evidence: [profiler_observation], preferred_surface: live_editor, when: runtime_measurement_needed}
+      - {capability: player.observe, operation_kind: player_observe, required_evidence: [player_observation], preferred_surface: player, when: player_observation_needed}
+  asset-data-change:
+    capabilities:
+      - {capability: project.inspect, operation_kind: read, required_evidence: [project_fact], preferred_surface: project, when: always}
+      - {capability: scene.mutate, operation_kind: editor_mutation, required_evidence: [editor_observation, mutation_evidence], preferred_surface: live_editor, when: mutation_requested}
+  portable-feature:
+    capabilities:
+      - {capability: source.read, operation_kind: read, required_evidence: [source_read], preferred_surface: project, when: always}
+      - {capability: source.patch, operation_kind: source_mutation, required_evidence: [source_diff], preferred_surface: project, when: mutation_requested}
+      - {capability: static.review, operation_kind: read, required_evidence: [static_review], preferred_surface: project, when: verification_requested}
+  safe-import-integration:
+    capabilities:
+      - {capability: project.inspect, operation_kind: read, required_evidence: [project_fact], preferred_surface: project, when: always}
+      - {capability: source.patch, operation_kind: source_mutation, required_evidence: [source_diff], preferred_surface: project, when: mutation_requested}
+  visual-direction:
+    capabilities:
+      - {capability: project.inspect, operation_kind: read, required_evidence: [project_fact], preferred_surface: project, when: always}
+      - {capability: visual.capture, operation_kind: read, required_evidence: [visual_capture], preferred_surface: live_editor, when: visual_evidence_needed}
+
+rules:
+  orchestration_requests_capability_not_provider: true
+  provider_product_names_are_not_semantic_destinations: true
+  preferred_surface_is_hint_only: true
+  risk_and_approval_are_policy_authority: true
+  provider_resolution_is_runtime_authority: true
+  semantic_replan_stays_in_orchestration: true

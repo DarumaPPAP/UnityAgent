@@ -1,0 +1,117 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:runtime:capability-resolution
+title: CapabilityResolution
+type: object
+additionalProperties: false
+required:
+  - schema_version
+  - capability
+  - status
+  - provider_ref
+  - observed_surface
+  - evidence_supported
+  - failure_class
+  - reason
+properties:
+  schema_version:
+    const: "1.0"
+  capability:
+    enum:
+      - project.inspect
+      - source.read
+      - source.patch
+      - static.review
+      - git.diff
+      - compile.observe
+      - project.test
+      - project.build
+      - scene.inspect
+      - scene.mutate
+      - profiler.observe
+      - visual.capture
+      - domain.workflow
+      - player.observe
+      - player.mutate
+  status:
+    enum:
+      - resolved
+      - unavailable
+      - unknown
+      - unhealthy
+      - ambiguous_binding
+      - blocked_by_policy
+      - blocked_by_approval
+      - scope_violation
+      - unsupported
+      - backend_not_implemented
+      - precondition_failed
+      - execution_failed
+      - cancelled
+      - timeout
+      - observed_test_failure
+      - not_observed
+  provider_ref:
+    type: [string, "null"]
+    minLength: 1
+  observed_surface:
+    type: [string, "null"]
+    enum: [project, host, editor, live_editor, player, null]
+  evidence_supported:
+    type: array
+    uniqueItems: true
+    items:
+      enum:
+        - project_fact
+        - source_read
+        - source_diff
+        - static_review
+        - git_diff
+        - compile_observation
+        - test_execution
+        - build_execution
+        - editor_observation
+        - mutation_evidence
+        - profiler_observation
+        - visual_capture
+        - domain_result
+        - player_observation
+  failure_class:
+    type: [string, "null"]
+    enum:
+      - unavailable
+      - unknown
+      - unhealthy
+      - ambiguous_binding
+      - blocked_by_policy
+      - blocked_by_approval
+      - scope_violation
+      - unsupported
+      - backend_not_implemented
+      - precondition_failed
+      - execution_failed
+      - cancelled
+      - timeout
+      - observed_test_failure
+      - not_observed
+      - null
+  reason:
+    type: [string, "null"]
+    minLength: 1
+allOf:
+  - if:
+      properties:
+        status:
+          const: resolved
+      required: [status]
+    then:
+      properties:
+        provider_ref:
+          type: string
+          minLength: 1
+        failure_class:
+          type: "null"
+    else:
+      properties:
+        reason:
+          type: string
+          minLength: 1
