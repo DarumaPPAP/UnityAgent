@@ -67,8 +67,10 @@ providers:
     def test_registry_does_not_advertise_raw_scene_or_arbitrary_eval_fallback(self):
         registry = load_provider_registry()
         file_provider = registry.providers["file"]
+        native_editor = registry.providers["native_unity_editor"]
         self.assertNotIn("scene.mutate", file_provider.capabilities)
         self.assertNotIn("domain.workflow", file_provider.capabilities)
+        self.assertNotIn("scene.mutate", native_editor.capabilities)
         self.assertFalse(any(provider.transport == "arbitrary_eval" for provider in registry.providers.values()))
 
 
