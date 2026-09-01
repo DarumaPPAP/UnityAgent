@@ -24,18 +24,28 @@ def adapt_execution_result(
     parsed to recreate the fact. Mutation no-op classification is evaluator-side
     and is applied only when the caller declares that the Golden case expects a
     mutation.
+
+    ExecutionResult v1.1 adds capability outcomes. This adapter remains a
+    versioned reader and does not reconstruct or grade those outcomes from text.
     """
-    if execution_result.get("schema_version") != "1.0":
+    if execution_result.get("schema_version") not in {"1.0", "1.1"}:
         raise RuntimeEvalAdapterError("unsupported ExecutionResult schema_version")
     run_id = str(execution_result.get("run_id") or "")
     if not run_id:
         raise RuntimeEvalAdapterError("ExecutionResult.run_id is required")
     changed = execution_result.get("changed_paths")
-    if not isinstance(changed, dict) or changed.get("observation_state") not in {"observed", "not_observed"}:
+    if (
+        not isinstance(changed, dict)
+        or changed.get("observation_state") not in {"observed", "not_observed"}
+    ):
         raise RuntimeEvalAdapterError("ExecutionResult.changed_paths is incomplete")
     paths = changed.get("paths")
-    if not isinstance(paths, list) or any(not isinstance(item, str) or not item for item in paths):
-        raise RuntimeEvalAdapterError("ExecutionResult.changed_paths.paths must be a string array")
+    if not isinstance(paths, list) or any(
+        not isinstance(item, str) or not item for item in paths
+    ):
+        raise RuntimeEvalAdapterError(
+            "ExecutionResult.changed_paths.paths must be a string array"
+        )
 
     runtime_failure = execution_result.get("runtime_failure")
     failure_class = None
@@ -47,9 +57,15 @@ def adapt_execution_result(
             raise RuntimeEvalAdapterError("runtime_failure must be an object or null")
         failure_class = str(runtime_failure.get("failure_class") or "") or None
         reason = str(runtime_failure.get("reason") or "")
-        supplied_observation = str(runtime_failure.get("observation_state") or "not_observed")
+        supplied_observation = str(
+            runtime_failure.get("observation_state") or "not_observed"
+        )
         runtime_failure_ref = f"{run_id}:runtime-failure"
-    elif expect_mutation and changed.get("observation_state") == "observed" and not paths:
+    elif (
+        expect_mutation
+        and changed.get("observation_state") == "observed"
+        and not paths
+    ):
         failure_class = "agent_behavior_regression"
         reason = "expected mutation produced an observed empty changed_paths set"
 
@@ -70,6 +86,8 @@ def adapt_execution_result(
         "changed_paths": deepcopy(changed),
         "gate_outcomes": deepcopy(execution_result.get("gate_outcomes") or []),
         "tool_identity": deepcopy(execution_result.get("tool_identity") or {}),
-        "definition_fingerprint": deepcopy(execution_result.get("definition_fingerprint") or {}),
+        "definition_fingerprint": deepcopy(
+            execution_result.get("definition_fingerprint") or {}
+        ),
         "eval_record": eval_record,
     }

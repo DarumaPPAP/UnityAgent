@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Any, Mapping
 import uuid
 
 
@@ -37,7 +38,15 @@ def runtime_span(
     }
 
 
-def runtime_event(*, run_id: str, step_id: str | None, event: str, severity: str = "info", attributes: dict | None = None, evidence_refs: list[str] | None = None) -> dict:
+def runtime_event(
+    *,
+    run_id: str,
+    step_id: str | None,
+    event: str,
+    severity: str = "info",
+    attributes: dict | None = None,
+    evidence_refs: list[str] | None = None,
+) -> dict:
     """Backward-compatible TraceRecord builder."""
     return runtime_span(
         run_id=run_id,
@@ -128,3 +137,106 @@ def runtime_audit(
         "attributes": dict(attributes or {}),
         "evidence_refs": list(evidence_refs or []),
     }
+
+
+def provider_capability_metrics(evidence: Mapping[str, Any]) -> list[dict]:
+    """Project canonical Tool Runtime Evidence into observability metrics.
+
+    Telemetry is a projection, not Evidence truth. Only fixed structured fields
+    are copied; raw logs, provider payloads, approval tokens and reasons are not.
+    """
+    if evidence.get("schema_version") != "1.1":
+        raise ValueError("provider metrics require Tool Runtime Evidence v1.1")
+    required = {
+        "run_id",
+        "step_id",
+        "evidence_id",
+        "provider_ref",
+        "capability",
+        "completion",
+        "status",
+        "failure_class",
+        "observation_state",
+        "environment",
+        "latency_ms",
+        "fallback_from",
+    }
+    missing = sorted(required - set(evidence))
+    if missing:
+        raise ValueError(f"Tool Runtime Evidence missing metric fields: {missing}")
+
+    environment = evidence.get("environment")
+    if not isinstance(environment, Mapping):
+        raise ValueError("Tool Runtime Evidence environment must be structured")
+    attributes = {
+        "provider_ref": str(evidence["provider_ref"]),
+        "capability": str(evidence["capability"]),
+        "completion": str(evidence["completion"]),
+        "failure_class": evidence.get("failure_class"),
+        "observation_state": str(evidence["observation_state"]),
+        "environment_profile": environment.get("profile_hint"),
+    }
+    evidence_refs = [str(evidence["evidence_id"])]
+    run_id = str(evidence["run_id"])
+    step_id = str(evidence["step_id"])
+
+    available = 0.0 if evidence.get("completion") == "blocked_by_environment" else 1.0
+    selected = 1.0
+    fallback = 1.0 if evidence.get("fallback_from") else 0.0
+    failed = 1.0 if evidence.get("status") in {"failed", "unavailable"} else 0.0
+
+    metrics = [
+        runtime_metric(
+            run_id=run_id,
+            step_id=step_id,
+            metric_name="tool_runtime.provider.availability",
+            value=available,
+            unit="ratio",
+            attributes=attributes,
+            evidence_refs=evidence_refs,
+        ),
+        runtime_metric(
+            run_id=run_id,
+            step_id=step_id,
+            metric_name="tool_runtime.provider.selection",
+            value=selected,
+            unit="count",
+            attributes=attributes,
+            evidence_refs=evidence_refs,
+        ),
+        runtime_metric(
+            run_id=run_id,
+            step_id=step_id,
+            metric_name="tool_runtime.provider.fallback",
+            value=fallback,
+            unit="count",
+            attributes=attributes,
+            evidence_refs=evidence_refs,
+        ),
+        runtime_metric(
+            run_id=run_id,
+            step_id=step_id,
+            metric_name="tool_runtime.provider.failure",
+            value=failed,
+            unit="count",
+            attributes=attributes,
+            evidence_refs=evidence_refs,
+        ),
+    ]
+    latency = evidence.get("latency_ms")
+    if latency is not None:
+        latency_value = float(latency)
+        if latency_value < 0:
+            raise ValueError("Tool Runtime Evidence latency_ms must be non-negative")
+        metrics.append(
+            runtime_metric(
+                run_id=run_id,
+                step_id=step_id,
+                metric_name="tool_runtime.provider.latency",
+                value=latency_value,
+                unit="ms",
+                attributes=attributes,
+                evidence_refs=evidence_refs,
+            )
+        )
+    return metrics

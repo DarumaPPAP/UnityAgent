@@ -3,19 +3,46 @@ $id: urn:unityagent:eval:eval-record
 title: EvalRecord
 type: object
 additionalProperties: false
-required: [schema_version, eval_id, run_id, observation_state, failure_class, quality_denominator_eligible, runtime_failure_ref, evidence_refs, reason, source_execution_result_ref]
+required:
+- schema_version
+- eval_id
+- run_id
+- observation_state
+- failure_class
+- quality_denominator_eligible
+- runtime_failure_ref
+- evidence_refs
+- reason
+- source_execution_result_ref
 properties:
   schema_version:
-    enum: ['1.0', '1.1']
+    enum: ['1.0', '1.1', '1.2']
   eval_id: {type: string, minLength: 1}
   run_id: {type: string, minLength: 1}
   observation_state:
     enum: [observed, not_observed]
   failure_class:
     type: [string, 'null']
-    enum: [null, agent_behavior_regression, runtime_timeout, runtime_protocol_failure, evaluator_contract_failure, task_fixture_invalid, unavailable_required_evidence, runtime_cancelled, runtime_permission_denied, runtime_tool_unavailable]
+    enum:
+    - null
+    - agent_behavior_regression
+    - runtime_timeout
+    - runtime_protocol_failure
+    - evaluator_contract_failure
+    - task_fixture_invalid
+    - unavailable_required_evidence
+    - runtime_cancelled
+    - runtime_permission_denied
+    - runtime_tool_unavailable
   failure_attribution:
-    enum: [none, agent_quality, runtime_infrastructure, evaluator_infrastructure, fixture_invalid, unavailable_evidence, policy_or_permission]
+    enum:
+    - none
+    - agent_quality
+    - runtime_infrastructure
+    - evaluator_infrastructure
+    - fixture_invalid
+    - unavailable_evidence
+    - policy_or_permission
   quality_denominator_eligible: {type: boolean}
   runtime_failure_ref: {type: [string, 'null']}
   evidence_refs:
@@ -24,13 +51,69 @@ properties:
     uniqueItems: true
   reason: {type: string}
   source_execution_result_ref: {type: string, minLength: 1}
+  provider_ref: {type: string, minLength: 1}
+  capability: {type: string, minLength: 1}
+  completion:
+    enum: [verified, partial_verified, implemented_unverified, blocked_by_environment, not_applicable]
+  provider_failure_class:
+    type: [string, 'null']
+    enum:
+    - null
+    - unavailable
+    - unknown
+    - unhealthy
+    - ambiguous_binding
+    - blocked_by_policy
+    - blocked_by_approval
+    - scope_violation
+    - unsupported
+    - backend_not_implemented
+    - precondition_failed
+    - execution_failed
+    - cancelled
+    - timeout
+    - observed_test_failure
+    - not_observed
+  provider_failure_attribution:
+    enum:
+    - none
+    - environment_or_provider
+    - provider_infrastructure
+    - policy_or_permission
+    - observed_product_failure
+    - unavailable_evidence
+  environment_profile:
+    type: [string, 'null']
+  safety_strength:
+    type: integer
+    minimum: 0
+    maximum: 5
+  evidence_strength:
+    type: integer
+    minimum: 0
+    maximum: 5
 allOf:
 - if:
     properties:
-      schema_version: {const: '1.1'}
+      schema_version:
+        enum: ['1.1', '1.2']
     required: [schema_version]
   then:
     required: [failure_attribution]
+- if:
+    properties:
+      schema_version: {const: '1.2'}
+    required: [schema_version]
+  then:
+    required:
+    - provider_ref
+    - capability
+    - completion
+    - provider_failure_class
+    - provider_failure_attribution
+    - environment_profile
+    - safety_strength
+    - evidence_strength
 - if:
     properties:
       observation_state: {const: not_observed}
@@ -41,7 +124,15 @@ allOf:
 - if:
     properties:
       failure_class:
-        enum: [runtime_timeout, runtime_protocol_failure, evaluator_contract_failure, task_fixture_invalid, unavailable_required_evidence, runtime_cancelled, runtime_permission_denied, runtime_tool_unavailable]
+        enum:
+        - runtime_timeout
+        - runtime_protocol_failure
+        - evaluator_contract_failure
+        - task_fixture_invalid
+        - unavailable_required_evidence
+        - runtime_cancelled
+        - runtime_permission_denied
+        - runtime_tool_unavailable
     required: [failure_class]
   then:
     properties:
