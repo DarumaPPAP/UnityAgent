@@ -1,0 +1,113 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:runtime:capability-request
+title: CapabilityRequest
+type: object
+additionalProperties: false
+required:
+  - schema_version
+  - capability
+  - project_root
+  - operation_kind
+  - required_evidence
+  - mutation_scope
+  - approval_ref
+  - preferred_surface
+properties:
+  schema_version:
+    const: "1.0"
+  capability:
+    enum:
+      - project.inspect
+      - source.read
+      - source.patch
+      - static.review
+      - git.diff
+      - compile.observe
+      - project.test
+      - project.build
+      - scene.inspect
+      - scene.mutate
+      - profiler.observe
+      - visual.capture
+      - domain.workflow
+      - player.observe
+      - player.mutate
+  project_root:
+    type: string
+    minLength: 1
+  operation_kind:
+    enum:
+      - read
+      - source_mutation
+      - editor_mutation
+      - save
+      - build
+      - bake
+      - player_observe
+      - player_mutate
+      - arbitrary_code
+  required_evidence:
+    type: array
+    minItems: 1
+    uniqueItems: true
+    items:
+      enum:
+        - project_fact
+        - source_read
+        - source_diff
+        - static_review
+        - git_diff
+        - compile_observation
+        - test_execution
+        - build_execution
+        - editor_observation
+        - mutation_evidence
+        - profiler_observation
+        - visual_capture
+        - domain_result
+        - player_observation
+  mutation_scope:
+    anyOf:
+      - type: "null"
+      - $ref: "#/$defs/mutation_scope"
+  approval_ref:
+    type: [string, "null"]
+    minLength: 1
+  preferred_surface:
+    type: [string, "null"]
+    enum: [project, host, editor, live_editor, player, null]
+allOf:
+  - if:
+      properties:
+        operation_kind:
+          enum: [source_mutation, editor_mutation, save, bake, player_mutate, arbitrary_code]
+      required: [operation_kind]
+    then:
+      properties:
+        mutation_scope:
+          $ref: "#/$defs/mutation_scope"
+$defs:
+  relative_path:
+    type: string
+    minLength: 1
+    allOf:
+      - not:
+          pattern: '^(?:/|[A-Za-z]:[\\/])'
+      - not:
+          pattern: '(?:^|[\\/])\.\.(?:[\\/]|$)'
+  mutation_scope:
+    type: object
+    additionalProperties: false
+    required: [allowed_paths, prohibited_paths]
+    properties:
+      allowed_paths:
+        type: array
+        minItems: 1
+        uniqueItems: true
+        items:
+          $ref: "#/$defs/relative_path"
+      prohibited_paths:
+        type: array
+        uniqueItems: true
+        items:
+          $ref: "#/$defs/relative_path"

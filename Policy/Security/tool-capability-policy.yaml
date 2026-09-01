@@ -1,0 +1,111 @@
+schema_version: "1.0"
+kind: tool_capability_policy
+authority: Policy
+production_dispatch_authority: false
+risk_source: Policy/Risk/risk-levels.yaml
+approval_source: Policy/Approval/approval-policy.yaml
+evidence_source: Policy/Evidence/evidence-policy.yaml
+
+operation_kinds:
+  read:
+    risk_level: R0
+    approval_requirement: not_required
+    requires_mutation_scope: false
+    default_permission: read_only
+  source_mutation:
+    risk_level: R1
+    approval_requirement: conditional
+    requires_mutation_scope: true
+    default_permission: explicit_mutation_permission
+  editor_mutation:
+    risk_level: R3
+    approval_requirement: required_for_project_asset_or_settings_change
+    requires_mutation_scope: true
+    default_permission: explicit_mutation_permission
+  save:
+    risk_level: R3
+    approval_requirement: required_for_project_asset_or_settings_change
+    requires_mutation_scope: true
+    default_permission: separate_save_permission
+  build:
+    risk_level: R2
+    approval_requirement: before_destructive_or_contract_change
+    requires_mutation_scope: false
+    default_permission: explicit_execution_permission
+  bake:
+    risk_level: R4
+    approval_requirement: always_required
+    requires_mutation_scope: true
+    default_permission: separate_bake_permission
+  player_observe:
+    risk_level: R0
+    approval_requirement: not_required
+    requires_mutation_scope: false
+    default_permission: allowlisted_observation
+  player_mutate:
+    risk_level: R3
+    approval_requirement: required_for_project_asset_or_settings_change
+    requires_mutation_scope: true
+    default_permission: explicit_mutation_permission
+  arbitrary_code:
+    risk_level: R4
+    approval_requirement: always_required
+    requires_mutation_scope: true
+    default_permission: prohibited
+
+capabilities:
+  project.inspect:
+    operation_kind: read
+    minimum_required_evidence: [project_fact]
+  source.read:
+    operation_kind: read
+    minimum_required_evidence: [source_read]
+  source.patch:
+    operation_kind: source_mutation
+    minimum_required_evidence: [source_diff]
+  static.review:
+    operation_kind: read
+    minimum_required_evidence: [static_review]
+  git.diff:
+    operation_kind: read
+    minimum_required_evidence: [git_diff]
+  compile.observe:
+    operation_kind: read
+    minimum_required_evidence: [compile_observation]
+  project.test:
+    operation_kind: read
+    minimum_required_evidence: [test_execution]
+  project.build:
+    operation_kind: build
+    minimum_required_evidence: [build_execution]
+  scene.inspect:
+    operation_kind: read
+    minimum_required_evidence: [editor_observation]
+  scene.mutate:
+    operation_kind: editor_mutation
+    minimum_required_evidence: [editor_observation, mutation_evidence]
+  profiler.observe:
+    operation_kind: read
+    minimum_required_evidence: [profiler_observation]
+  visual.capture:
+    operation_kind: read
+    minimum_required_evidence: [visual_capture]
+  domain.workflow:
+    operation_kind: editor_mutation
+    minimum_required_evidence: [domain_result, mutation_evidence]
+  player.observe:
+    operation_kind: player_observe
+    minimum_required_evidence: [player_observation]
+  player.mutate:
+    operation_kind: player_mutate
+    minimum_required_evidence: [player_observation, mutation_evidence]
+
+rules:
+  policy_does_not_select_provider: true
+  preferred_surface_is_hint_only: true
+  unknown_capability_fails_closed: true
+  provider_unavailable_never_weakens_approval: true
+  provider_unavailable_never_expands_mutation_scope: true
+  required_evidence_is_hard_requirement: true
+  arbitrary_code_default_prohibited: true
+  scene_prefab_serialized_asset_raw_fallback_is_not_auto_allowed: true

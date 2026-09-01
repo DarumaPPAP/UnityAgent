@@ -40,27 +40,27 @@ def next_node(graph: dict[str, Any], current_node_id: str, signal: str) -> tuple
     return subgraph_id, target_id, node
 
 
-def runtime_handoff(*, run_id: str, node_id: str, route_id: str, execution_profile: str, context_id: str, context_fingerprint: str, task_contract_runtime_projection: dict[str, Any], mutation_scope: dict[str, Any], validation_requirements: list[str]) -> dict[str, Any]:
-    return {"run_id": run_id, "step_id": node_id, "action_id": f"{route_id}:{node_id}", "route_id": route_id, "execution_profile": execution_profile, "context_id": context_id, "context_fingerprint": context_fingerprint, "task_contract_runtime_projection": task_contract_runtime_projection, "mutation_scope": mutation_scope, "validation_requirements": validation_requirements}
+def runtime_handoff(*, run_id: str, node_id: str, route_id: str, execution_profile: str, context_id: str, context_fingerprint: str, task_contract_runtime_projection: dict[str, Any], mutation_scope: dict[str, Any], validation_requirements: list[str], capability_requests: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    return {"run_id": run_id, "step_id": node_id, "action_id": f"{route_id}:{node_id}", "route_id": route_id, "execution_profile": execution_profile, "context_id": context_id, "context_fingerprint": context_fingerprint, "task_contract_runtime_projection": task_contract_runtime_projection, "mutation_scope": mutation_scope, "validation_requirements": validation_requirements, "capability_contract_mode": "shadow", "capability_requests": list(capability_requests or [])}
 
 
-def transition(*, graph: dict[str, Any], run_id: str, current_node_id: str, signal: str, route_id: str, execution_profile: str, context_id: str, context_fingerprint: str, task_contract_runtime_projection: dict[str, Any] | None = None, mutation_scope: dict[str, Any] | None = None, validation_requirements: list[str] | None = None) -> dict[str, Any]:
+def transition(*, graph: dict[str, Any], run_id: str, current_node_id: str, signal: str, route_id: str, execution_profile: str, context_id: str, context_fingerprint: str, task_contract_runtime_projection: dict[str, Any] | None = None, mutation_scope: dict[str, Any] | None = None, validation_requirements: list[str] | None = None, capability_requests: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     subgraph_id, node_id, node = next_node(graph, current_node_id, signal)
     handoff = None
     decision = "continue"
     if node.get("kind") in RUNTIME_NODE_KINDS:
         decision = "run_runtime"
-        handoff = runtime_handoff(run_id=run_id, node_id=node_id, route_id=route_id, execution_profile=execution_profile, context_id=context_id, context_fingerprint=context_fingerprint, task_contract_runtime_projection=task_contract_runtime_projection or {}, mutation_scope=mutation_scope or {}, validation_requirements=validation_requirements or [])
+        handoff = runtime_handoff(run_id=run_id, node_id=node_id, route_id=route_id, execution_profile=execution_profile, context_id=context_id, context_fingerprint=context_fingerprint, task_contract_runtime_projection=task_contract_runtime_projection or {}, mutation_scope=mutation_scope or {}, validation_requirements=validation_requirements or [], capability_requests=capability_requests)
     elif node_id == "complete":
         decision = "complete"
     patch = workflow_state_patch(run_id=run_id, parent_graph_id=str(graph["parent_graph_id"]), active_subgraph_id=subgraph_id, active_node_id=node_id)
     return {"schema_version": "1.0", "decision": decision, "route_id": route_id, "subgraph_id": subgraph_id, "node_id": node_id, "reason": f"edge {current_node_id} --{signal}--> {node_id}", "runtime_handoff": handoff, "state_patch": patch}
 
 
-def fast_path(*, run_id: str, route_id: str, execution_profile: str, context_id: str, context_fingerprint: str, simple_task: bool, requires_semantic_replan: bool, runtime_action_id: str, design_review_requirement: str = "not_required", task_contract_runtime_projection: dict[str, Any] | None = None, mutation_scope: dict[str, Any] | None = None, validation_requirements: list[str] | None = None) -> dict[str, Any] | None:
+def fast_path(*, run_id: str, route_id: str, execution_profile: str, context_id: str, context_fingerprint: str, simple_task: bool, requires_semantic_replan: bool, runtime_action_id: str, design_review_requirement: str = "not_required", task_contract_runtime_projection: dict[str, Any] | None = None, mutation_scope: dict[str, Any] | None = None, validation_requirements: list[str] | None = None, capability_requests: list[dict[str, Any]] | None = None) -> dict[str, Any] | None:
     if design_review_requirement not in DESIGN_REVIEW_REQUIREMENTS:
         raise ValueError("invalid design_review_requirement")
     if not simple_task or requires_semantic_replan or design_review_requirement != "not_required":
         return None
-    handoff = runtime_handoff(run_id=run_id, node_id=runtime_action_id, route_id=route_id, execution_profile=execution_profile, context_id=context_id, context_fingerprint=context_fingerprint, task_contract_runtime_projection=task_contract_runtime_projection or {}, mutation_scope=mutation_scope or {}, validation_requirements=validation_requirements or [])
+    handoff = runtime_handoff(run_id=run_id, node_id=runtime_action_id, route_id=route_id, execution_profile=execution_profile, context_id=context_id, context_fingerprint=context_fingerprint, task_contract_runtime_projection=task_contract_runtime_projection or {}, mutation_scope=mutation_scope or {}, validation_requirements=validation_requirements or [], capability_requests=capability_requests)
     return {"schema_version": "1.0", "decision": "fast_path", "route_id": route_id, "subgraph_id": None, "node_id": runtime_action_id, "reason": "simple bounded task does not require ParentGraph coordination", "runtime_handoff": handoff, "state_patch": {}}

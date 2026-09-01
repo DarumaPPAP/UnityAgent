@@ -1,0 +1,73 @@
+schema_version: "1.0"
+kind: capability_context_catalog
+authority: Context
+production_dispatch_authority: false
+
+capabilities:
+  project.inspect:
+    description: Unity Projectの構成とProject Factを読み取り専用で観測する。
+    context_tags: [project, inspection]
+    mutation: false
+  source.read:
+    description: Project内のSource/Text Assetを読み取り専用で取得する。
+    context_tags: [source, inspection]
+    mutation: false
+  source.patch:
+    description: 明示Mutation Scope内のSource/Text Assetへ限定して差分を適用する。
+    context_tags: [source, mutation]
+    mutation: true
+  static.review:
+    description: Unity Editor実行を伴わずSourceや設定を静的にレビューする。
+    context_tags: [static, review]
+    mutation: false
+  git.diff:
+    description: 対象WorkspaceのSource差分を観測する。
+    context_tags: [git, evidence]
+    mutation: false
+  compile.observe:
+    description: 対象Unity ProjectのCompile結果を観測する。
+    context_tags: [compile, verification]
+    mutation: false
+  project.test:
+    description: 対象Unity ProjectのTest実行結果を観測する。
+    context_tags: [test, verification]
+    mutation: false
+  project.build:
+    description: 対象Unity ProjectのBuild実行結果を観測する。
+    context_tags: [build, verification]
+    mutation: false
+  scene.inspect:
+    description: Loaded SceneをEditor-awareな構造化Evidenceとして観測する。
+    context_tags: [scene, editor, inspection]
+    mutation: false
+  scene.mutate:
+    description: Exact ScopeとApproval Contractを維持してScene/Editor stateを変更する。
+    context_tags: [scene, editor, mutation]
+    mutation: true
+  profiler.observe:
+    description: Unity Profilerまたは同等のRuntime計測Evidenceを観測する。
+    context_tags: [profiler, performance, evidence]
+    mutation: false
+  visual.capture:
+    description: Visual確認用のCapture Evidenceを取得する。
+    context_tags: [visual, evidence]
+    mutation: false
+  domain.workflow:
+    description: Mutation ScopeとApprovalを要求するUnity Domain固有Workflowを実行する。
+    context_tags: [domain, workflow, mutation]
+    mutation: true
+  player.observe:
+    description: Development/QA Playerからallowlisted Runtime Evidenceを観測する。
+    context_tags: [player, runtime, evidence]
+    mutation: false
+  player.mutate:
+    description: Approval済みallowlisted Player controlだけを要求する。
+    context_tags: [player, runtime, mutation]
+    mutation: true
+
+rules:
+  materialize_selected_capabilities_only: true
+  context_does_not_select_provider: true
+  context_does_not_define_risk_or_approval: true
+  context_is_not_durable_state_or_evidence_authority: true
+  unknown_capability_fails_closed: true
