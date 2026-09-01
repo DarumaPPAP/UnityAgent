@@ -127,15 +127,6 @@ providers:
           unity_editor.safe_mode: false
           build.requested_target_module_available: true
         scope_preservation: true
-      scene.mutate:
-        priority: 40
-        surfaces: [editor]
-        evidence_supported: [editor_observation, mutation_evidence]
-        environment_requirements:
-          project.exists: true
-          unity_editor.installed: true
-          unity_editor.safe_mode: false
-        scope_preservation: true
 
   unity_cli:
     id: unity_cli
@@ -397,6 +388,7 @@ rules:
   fallback_requires_evidence_not_weaker: true
   fallback_requires_safety_equal_or_stronger: true
   no_raw_scene_prefab_serialized_asset_fallback: true
+  native_editor_scene_mutation_requires_explicit_future_allowlisted_backend: true
   no_arbitrary_eval_provider: true
   no_auto_install: true
   no_semantic_replan_in_runtime: true

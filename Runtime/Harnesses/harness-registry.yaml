@@ -9,6 +9,11 @@ harnesses:
     kind: unity_editor
     execution: implemented
     graph_semantics: asset_dependency_only
+  native_unity_editor:
+    owner: Runtime/Harnesses/Unity/native_editor_adapter.py
+    kind: unity_editor_provider_adapter
+    execution: implemented
+    capabilities: [compile.observe, project.test, project.build]
   test:
     owner: Runtime/Harnesses/command_harness.py
     kind: test
