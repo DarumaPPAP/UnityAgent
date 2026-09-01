@@ -1,0 +1,402 @@
+schema_version: "1.0"
+kind: runtime_provider_registry
+authority: Runtime
+provider_resolution_authority: true
+execution_dispatch_authority: false
+purpose: >-
+  Resolve provider identity per capability from Environment Facts without
+  changing Policy, Mutation Scope, Evidence requirements, or semantic intent.
+
+strength_scale:
+  minimum: 0
+  maximum: 5
+  meaning:
+    0: unavailable_or_untrusted
+    1: weak_static_observation
+    2: bounded_read
+    3: bounded_execution
+    4: guarded_mutation_or_runtime_evidence
+    5: strongest_declared_provider_contract
+
+capability_requirements:
+  project.inspect: { minimum_safety_strength: 2, minimum_evidence_strength: 2 }
+  source.read: { minimum_safety_strength: 2, minimum_evidence_strength: 2 }
+  source.patch: { minimum_safety_strength: 4, minimum_evidence_strength: 3 }
+  static.review: { minimum_safety_strength: 2, minimum_evidence_strength: 2 }
+  git.diff: { minimum_safety_strength: 2, minimum_evidence_strength: 2 }
+  compile.observe: { minimum_safety_strength: 3, minimum_evidence_strength: 3 }
+  project.test: { minimum_safety_strength: 3, minimum_evidence_strength: 4 }
+  project.build: { minimum_safety_strength: 3, minimum_evidence_strength: 4 }
+  scene.inspect: { minimum_safety_strength: 3, minimum_evidence_strength: 4 }
+  scene.mutate: { minimum_safety_strength: 4, minimum_evidence_strength: 4 }
+  profiler.observe: { minimum_safety_strength: 3, minimum_evidence_strength: 4 }
+  visual.capture: { minimum_safety_strength: 3, minimum_evidence_strength: 4 }
+  domain.workflow: { minimum_safety_strength: 5, minimum_evidence_strength: 5 }
+  player.observe: { minimum_safety_strength: 3, minimum_evidence_strength: 4 }
+  player.mutate: { minimum_safety_strength: 4, minimum_evidence_strength: 4 }
+
+providers:
+  file:
+    id: file
+    transport: filesystem
+    surfaces: [project]
+    health: environment_fact
+    project_binding: canonical_project_root
+    environment_key: filesystem
+    safety_strength: 5
+    evidence_strength: 5
+    capabilities:
+      project.inspect:
+        priority: 100
+        surfaces: [project]
+        evidence_supported: [project_fact]
+        environment_requirements:
+          project.exists: true
+          filesystem.readable: true
+        scope_preservation: true
+      source.read:
+        priority: 100
+        surfaces: [project]
+        evidence_supported: [source_read]
+        environment_requirements:
+          project.exists: true
+          filesystem.readable: true
+        scope_preservation: true
+      source.patch:
+        priority: 100
+        surfaces: [project]
+        evidence_supported: [source_diff]
+        environment_requirements:
+          project.exists: true
+          filesystem.readable: true
+          filesystem.writable_in_mutation_scope: true
+        scope_preservation: true
+      static.review:
+        priority: 100
+        surfaces: [project]
+        evidence_supported: [static_review]
+        environment_requirements:
+          project.exists: true
+          filesystem.readable: true
+        scope_preservation: true
+      git.diff:
+        priority: 100
+        surfaces: [project]
+        evidence_supported: [git_diff]
+        environment_requirements:
+          project.exists: true
+          git.available: true
+          git.repository_bound: true
+        scope_preservation: true
+
+  native_unity_editor:
+    id: native_unity_editor
+    transport: subprocess
+    surfaces: [host, editor]
+    health: environment_fact
+    project_binding: explicit_project_path
+    environment_key: unity_editor
+    safety_strength: 4
+    evidence_strength: 4
+    capabilities:
+      compile.observe:
+        priority: 80
+        surfaces: [editor]
+        evidence_supported: [compile_observation]
+        environment_requirements:
+          project.exists: true
+          unity_editor.installed: true
+        scope_preservation: true
+      project.test:
+        priority: 80
+        surfaces: [editor]
+        evidence_supported: [test_execution]
+        environment_requirements:
+          project.exists: true
+          unity_editor.installed: true
+          unity_editor.safe_mode: false
+          test_framework.available: true
+        scope_preservation: true
+      project.build:
+        priority: 80
+        surfaces: [editor]
+        evidence_supported: [build_execution]
+        environment_requirements:
+          project.exists: true
+          unity_editor.installed: true
+          unity_editor.safe_mode: false
+          build.requested_target_module_available: true
+        scope_preservation: true
+      scene.mutate:
+        priority: 40
+        surfaces: [editor]
+        evidence_supported: [editor_observation, mutation_evidence]
+        environment_requirements:
+          project.exists: true
+          unity_editor.installed: true
+          unity_editor.safe_mode: false
+        scope_preservation: true
+
+  unity_cli:
+    id: unity_cli
+    transport: cli
+    surfaces: [host, editor, player]
+    health: environment_fact
+    project_binding: explicit_project_path
+    environment_key: unity_cli
+    safety_strength: 4
+    evidence_strength: 4
+    capabilities:
+      project.inspect:
+        priority: 70
+        surfaces: [host]
+        evidence_supported: [project_fact]
+        environment_requirements:
+          project.exists: true
+          unity_cli.available: true
+        scope_preservation: true
+      compile.observe:
+        priority: 90
+        surfaces: [editor]
+        evidence_supported: [compile_observation]
+        environment_requirements:
+          project.exists: true
+          unity_cli.available: true
+        scope_preservation: true
+      project.test:
+        priority: 100
+        surfaces: [editor]
+        evidence_supported: [test_execution]
+        environment_requirements:
+          project.exists: true
+          unity_cli.available: true
+          test_framework.available: true
+        scope_preservation: true
+      project.build:
+        priority: 100
+        surfaces: [editor]
+        evidence_supported: [build_execution]
+        environment_requirements:
+          project.exists: true
+          unity_cli.available: true
+          build.requested_target_module_available: true
+        scope_preservation: true
+      scene.inspect:
+        priority: 60
+        surfaces: [editor]
+        evidence_supported: [editor_observation]
+        environment_requirements:
+          project.exists: true
+          unity_cli.available: true
+          pipeline.reachable: true
+        scope_preservation: true
+      scene.mutate:
+        priority: 60
+        surfaces: [editor]
+        evidence_supported: [editor_observation, mutation_evidence]
+        environment_requirements:
+          project.exists: true
+          unity_cli.available: true
+          pipeline.reachable: true
+        scope_preservation: true
+      player.observe:
+        priority: 80
+        surfaces: [player]
+        evidence_supported: [player_observation]
+        environment_requirements:
+          project.exists: true
+          unity_cli.available: true
+          player_runtime.reachable: true
+        scope_preservation: true
+      player.mutate:
+        priority: 70
+        surfaces: [player]
+        evidence_supported: [player_observation, mutation_evidence]
+        environment_requirements:
+          project.exists: true
+          unity_cli.available: true
+          player_runtime.reachable: true
+        scope_preservation: true
+
+  myunitymcp:
+    id: myunitymcp
+    transport: mcp
+    surfaces: [editor, live_editor, player]
+    health: environment_fact
+    project_binding: environment_bound
+    environment_key: myunitymcp
+    safety_strength: 5
+    evidence_strength: 5
+    capabilities:
+      project.inspect:
+        priority: 110
+        surfaces: [editor]
+        evidence_supported: [project_fact]
+        environment_requirements:
+          project.exists: true
+          myunitymcp.available: true
+          myunitymcp.project_bound: true
+        scope_preservation: true
+      compile.observe:
+        priority: 95
+        surfaces: [editor]
+        evidence_supported: [compile_observation]
+        environment_requirements:
+          project.exists: true
+          myunitymcp.available: true
+          myunitymcp.project_bound: true
+        scope_preservation: true
+      scene.inspect:
+        priority: 100
+        surfaces: [live_editor, editor]
+        evidence_supported: [editor_observation]
+        environment_requirements:
+          project.exists: true
+          myunitymcp.available: true
+          myunitymcp.project_bound: true
+        scope_preservation: true
+      scene.mutate:
+        priority: 100
+        surfaces: [live_editor, editor]
+        evidence_supported: [editor_observation, mutation_evidence]
+        environment_requirements:
+          project.exists: true
+          myunitymcp.available: true
+          myunitymcp.project_bound: true
+        scope_preservation: true
+      profiler.observe:
+        priority: 100
+        surfaces: [live_editor, editor]
+        evidence_supported: [profiler_observation]
+        environment_requirements:
+          project.exists: true
+          myunitymcp.available: true
+          myunitymcp.project_bound: true
+        scope_preservation: true
+      visual.capture:
+        priority: 100
+        surfaces: [live_editor, editor]
+        evidence_supported: [visual_capture]
+        environment_requirements:
+          project.exists: true
+          myunitymcp.available: true
+          myunitymcp.project_bound: true
+        scope_preservation: true
+      domain.workflow:
+        priority: 100
+        surfaces: [live_editor, editor]
+        evidence_supported: [domain_result, mutation_evidence]
+        environment_requirements:
+          project.exists: true
+          myunitymcp.available: true
+          myunitymcp.project_bound: true
+        scope_preservation: true
+      player.observe:
+        priority: 70
+        surfaces: [player]
+        evidence_supported: [player_observation]
+        environment_requirements:
+          project.exists: true
+          myunitymcp.available: true
+          myunitymcp.project_bound: true
+          player_runtime.reachable: true
+        scope_preservation: true
+
+  coplay_mcp:
+    id: coplay_mcp
+    transport: mcp
+    surfaces: [editor, live_editor]
+    health: environment_fact
+    project_binding: environment_bound
+    environment_key: coplay_mcp
+    safety_strength: 4
+    evidence_strength: 4
+    capabilities:
+      project.inspect:
+        priority: 75
+        surfaces: [editor]
+        evidence_supported: [project_fact]
+        environment_requirements:
+          project.exists: true
+          coplay_mcp.available: true
+          coplay_mcp.project_bound: true
+        scope_preservation: true
+      project.test:
+        priority: 70
+        surfaces: [editor]
+        evidence_supported: [test_execution]
+        environment_requirements:
+          project.exists: true
+          coplay_mcp.available: true
+          coplay_mcp.project_bound: true
+          test_framework.available: true
+        scope_preservation: true
+      project.build:
+        priority: 70
+        surfaces: [editor]
+        evidence_supported: [build_execution]
+        environment_requirements:
+          project.exists: true
+          coplay_mcp.available: true
+          coplay_mcp.project_bound: true
+          build.requested_target_module_available: true
+        scope_preservation: true
+      scene.inspect:
+        priority: 90
+        surfaces: [live_editor, editor]
+        evidence_supported: [editor_observation]
+        environment_requirements:
+          project.exists: true
+          coplay_mcp.available: true
+          coplay_mcp.project_bound: true
+        scope_preservation: true
+      scene.mutate:
+        priority: 80
+        surfaces: [live_editor, editor]
+        evidence_supported: [editor_observation, mutation_evidence]
+        environment_requirements:
+          project.exists: true
+          coplay_mcp.available: true
+          coplay_mcp.project_bound: true
+        scope_preservation: true
+
+  player_runtime:
+    id: player_runtime
+    transport: player_bridge
+    surfaces: [player]
+    health: environment_fact
+    project_binding: player_instance
+    environment_key: player_runtime
+    safety_strength: 4
+    evidence_strength: 4
+    capabilities:
+      player.observe:
+        priority: 100
+        surfaces: [player]
+        evidence_supported: [player_observation]
+        environment_requirements:
+          project.exists: true
+          player_runtime.reachable: true
+        scope_preservation: true
+      player.mutate:
+        priority: 100
+        surfaces: [player]
+        evidence_supported: [player_observation, mutation_evidence]
+        environment_requirements:
+          project.exists: true
+          player_runtime.reachable: true
+        scope_preservation: true
+
+rules:
+  capability_priority_is_local_not_global_mode: true
+  eligibility_precedes_ranking: true
+  preferred_surface_is_soft_hint: true
+  fallback_requires_same_capability: true
+  fallback_preserves_project_binding: true
+  fallback_preserves_mutation_scope: true
+  fallback_requires_evidence_not_weaker: true
+  fallback_requires_safety_equal_or_stronger: true
+  no_raw_scene_prefab_serialized_asset_fallback: true
+  no_arbitrary_eval_provider: true
+  no_auto_install: true
+  no_semantic_replan_in_runtime: true
