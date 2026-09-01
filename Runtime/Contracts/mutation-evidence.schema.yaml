@@ -17,16 +17,10 @@ required:
 - verification_refs
 properties:
   schema_version:
-    const: '1.0'
-  mutation_id:
-    type: string
-    minLength: 1
-  run_id:
-    type: string
-    minLength: 1
-  step_id:
-    type: string
-    minLength: 1
+    enum: ['1.0', '1.1']
+  mutation_id: {type: string, minLength: 1}
+  run_id: {type: string, minLength: 1}
+  step_id: {type: string, minLength: 1}
   scope:
     type: object
     additionalProperties: false
@@ -34,33 +28,54 @@ properties:
     properties:
       allowed_paths:
         type: array
-        items:
-          type: string
-          minLength: 1
+        items: {type: string, minLength: 1}
         uniqueItems: true
       prohibited_paths:
         type: array
-        items:
-          type: string
-          minLength: 1
+        items: {type: string, minLength: 1}
         uniqueItems: true
   changed_paths:
     $ref: urn:unityagent:runtime:execution-result#/$defs/changed_paths
-  diff_ref:
-    type: [string, 'null']
-  before_fingerprint:
-    type: [string, 'null']
-  after_fingerprint:
-    type: [string, 'null']
+  diff_ref: {type: [string, 'null']}
+  before_fingerprint: {type: [string, 'null']}
+  after_fingerprint: {type: [string, 'null']}
   scope_status:
     enum: [within_scope, escaped, not_observed]
   verification_refs:
     type: array
-    items:
-      type: string
-      minLength: 1
+    items: {type: string, minLength: 1}
     uniqueItems: true
+  approval_ref:
+    type: [string, 'null']
+  expected_revision:
+    type: [integer, 'null']
+  exact_diff_ref:
+    type: [string, 'null']
+  diff_digest:
+    type: [string, 'null']
+  provider_ref:
+    type: [string, 'null']
+  provider_plan_ref:
+    type: [string, 'null']
+  provider_session_ref:
+    type: [string, 'null']
+  mutation_scope_fingerprint:
+    type: [string, 'null']
 allOf:
+- if:
+    properties:
+      schema_version: {const: '1.1'}
+    required: [schema_version]
+  then:
+    required:
+    - approval_ref
+    - expected_revision
+    - exact_diff_ref
+    - diff_digest
+    - provider_ref
+    - provider_plan_ref
+    - provider_session_ref
+    - mutation_scope_fingerprint
 - if:
     properties:
       changed_paths:

@@ -3,10 +3,22 @@ $id: urn:unityagent:persistence:evidence-record
 title: EvidenceRecord
 type: object
 additionalProperties: false
-required: [schema_version, evidence_id, run_id, step_id, source_type, source_ref, timestamp, hash, producer, verification_status, provenance, definition_fingerprint]
+required:
+- schema_version
+- evidence_id
+- run_id
+- step_id
+- source_type
+- source_ref
+- timestamp
+- hash
+- producer
+- verification_status
+- provenance
+- definition_fingerprint
 properties:
   schema_version:
-    enum: ['1.0', '1.1']
+    enum: ['1.0', '1.1', '1.2']
   evidence_id: {type: string, minLength: 1}
   run_id: {type: string, minLength: 1}
   step_id: {type: string, minLength: 1}
@@ -26,3 +38,91 @@ properties:
   gate_outcome: {type: [object, 'null']}
   definition_fingerprint:
     $ref: urn:unityagent:persistence:definition-fingerprint
+  capability: {type: string, minLength: 1}
+  provider_ref: {type: string, minLength: 1}
+  project_root: {type: string, minLength: 1}
+  environment:
+    $ref: urn:unityagent:persistence:evidence-record#/$defs/environment
+  target:
+    $ref: urn:unityagent:persistence:evidence-record#/$defs/target
+  safety_strength:
+    type: integer
+    minimum: 0
+    maximum: 5
+  evidence_strength:
+    type: integer
+    minimum: 0
+    maximum: 5
+  completion:
+    enum: [verified, partial_verified, implemented_unverified, blocked_by_environment, not_applicable]
+  observation_state:
+    enum: [observed, not_observed]
+  failure_class:
+    type: [string, 'null']
+  observed_evidence:
+    type: array
+    items: {type: string, minLength: 1}
+    uniqueItems: true
+  required_evidence:
+    type: array
+    items: {type: string, minLength: 1}
+    uniqueItems: true
+  raw_refs:
+    type: array
+    items: {type: string, minLength: 1}
+    uniqueItems: true
+  mutation_provenance:
+    type: [object, 'null']
+  latency_ms:
+    type: [number, 'null']
+    minimum: 0
+  fallback_from:
+    type: [string, 'null']
+  durability:
+    enum: [durable]
+allOf:
+- if:
+    properties:
+      schema_version: {const: '1.2'}
+    required: [schema_version]
+  then:
+    required:
+    - capability
+    - provider_ref
+    - project_root
+    - environment
+    - target
+    - safety_strength
+    - evidence_strength
+    - completion
+    - observation_state
+    - failure_class
+    - observed_evidence
+    - required_evidence
+    - raw_refs
+    - mutation_provenance
+    - latency_ms
+    - fallback_from
+    - durability
+$defs:
+  environment:
+    type: object
+    additionalProperties: false
+    required: [profile_hint, binding_fingerprint, unity_version, requested_target]
+    properties:
+      profile_hint: {type: [string, 'null']}
+      binding_fingerprint: {type: string}
+      unity_version: {type: [string, 'null']}
+      requested_target: {type: [string, 'null']}
+  target:
+    type: object
+    additionalProperties: false
+    required: [surface, instance_id, device_id, artifact_id, command_ref]
+    properties:
+      surface:
+        type: [string, 'null']
+        enum: [project, host, editor, live_editor, player, null]
+      instance_id: {type: [string, 'null']}
+      device_id: {type: [string, 'null']}
+      artifact_id: {type: [string, 'null']}
+      command_ref: {type: [string, 'null']}
