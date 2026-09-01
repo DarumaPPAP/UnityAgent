@@ -3,8 +3,10 @@ from __future__ import annotations
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, Callable
 
 from Runtime.Dispatcher.subprocess_dispatcher import DispatchRequest, dispatch
+from Runtime.Tooling.Environment.discovery import EnvironmentSnapshotCache, discover_environment
 
 
 def _result(*, check_id: str, run_id: str, step_id: str, kind: str, target: str, status: str, details: dict, runtime_profile_revision: str, tool_schema_revision: str, evidence_refs: list[str] | None = None) -> dict:
@@ -62,7 +64,8 @@ def probe_tool(*, check_id: str, run_id: str, step_id: str, executable: str, run
     if health_args is not None:
         working = Path(cwd or ".").resolve()
         outcome = dispatch(DispatchRequest([resolved, *health_args], working, timeout_seconds))
-        details["health_exit_code"] = outcome["result"].returncode
+        process_result = outcome.get("result")
+        details["health_exit_code"] = getattr(process_result, "returncode", None)
         status = "healthy" if outcome["status"] == "passed" else "degraded"
     return _result(check_id=check_id, run_id=run_id, step_id=step_id, kind="tool_health", target=executable, status=status, details=details, runtime_profile_revision=runtime_profile_revision, tool_schema_revision=tool_schema_revision)
 
@@ -77,3 +80,21 @@ def probe_unity(*, check_id: str, run_id: str, step_id: str, unity_executable: s
     else:
         status = "unavailable"
     return _result(check_id=check_id, run_id=run_id, step_id=step_id, kind="unity_availability", target=unity_executable or "Unity", status=status, details={"unity_executable_observed": executable_ok, "project_path_observed": project_ok}, runtime_profile_revision=runtime_profile_revision, tool_schema_revision=tool_schema_revision)
+
+
+def rediscover_environment_snapshot(
+    *,
+    project_root: str,
+    cache: EnvironmentSnapshotCache | None = None,
+    discover_fn: Callable[..., Any] = discover_environment,
+    **discovery_kwargs: Any,
+):
+    """Invalidate cached bindings and perform one read-only Environment re-discovery."""
+    if cache is not None:
+        cache.invalidate(project_root)
+    snapshot = discover_fn(project_root, **discovery_kwargs)
+    if hasattr(snapshot, "validate"):
+        snapshot.validate()
+    if cache is not None:
+        cache.put(snapshot)
+    return snapshot
