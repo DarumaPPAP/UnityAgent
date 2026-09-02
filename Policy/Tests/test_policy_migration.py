@@ -19,14 +19,17 @@ class PolicyCutoverTests(unittest.TestCase):
         validator = load_module("policy_integrity", ROOT / "Policy/Validators/validate_user_policy_integrity.py")
         self.assertEqual(validator.validate(ROOT), [])
 
-    def test_mcp_authorities_remain_split(self):
-        selection = yaml.safe_load((ROOT / "Context/Selection/mcp-selection.yaml").read_text(encoding="utf-8"))
+    def test_capability_and_mcp_runtime_authorities_remain_split(self):
+        capability_context = yaml.safe_load(
+            (ROOT / "Context/Selection/tool-capability-catalog.yaml").read_text(encoding="utf-8")
+        )
         runtime = yaml.safe_load((ROOT / "Runtime/Permissions/mcp-activation.yaml").read_text(encoding="utf-8"))
         trust = yaml.safe_load((ROOT / "Policy/Security/tool-trust.yaml").read_text(encoding="utf-8"))
         permissions = yaml.safe_load((ROOT / "Policy/Security/permissions.yaml").read_text(encoding="utf-8"))
         ownership = yaml.safe_load((ROOT / "Policy/Contracts/repository-ownership.yaml").read_text(encoding="utf-8"))
-        self.assertTrue(selection["rules"]["runtime_owns_actual_tool_exposure"])
-        self.assertTrue(selection["rules"]["policy_owns_permission_requirements"])
+        self.assertEqual(capability_context["authority"], "Context")
+        self.assertTrue(capability_context["rules"]["context_does_not_select_provider"])
+        self.assertFalse((ROOT / "Context/Selection/mcp-selection.yaml").exists())
         for level in ("level_2", "level_3", "level_4", "level_5"):
             self.assertIn(level, runtime["tool_exposure"])
         self.assertIn("source_read_policy", trust)

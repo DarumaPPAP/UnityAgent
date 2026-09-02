@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate active UnityAgent documentation against canonical repository paths."""
+"""Validate active UnityAgent documentation against canonical repository paths/contracts."""
 from __future__ import annotations
 
 import re
@@ -9,9 +9,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 ACTIVE_DOC_PATHS = (
+    Path("AGENTS.md"),
     Path("README.md"),
     Path("docs/architecture"),
     Path("docs/graph-observatory-spec.md"),
+    Path("docs/local-project-development.md"),
+    Path("docs/unity-environment-adaptation.md"),
+    Path("Templates/DevelopmentRequest.md"),
     Path("Specs"),
     Path("SkillReferences"),
     Path("Tools/GraphObservatory"),
@@ -43,11 +47,32 @@ LEGACY_PATH_MARKERS = (
     "Context/Compatibility",
     "Eval/Compatibility",
     "Persistence/Compatibility",
+    "Context/Selection/mcp-selection.yaml",
 )
 
 HISTORICAL_LINE_MARKERS = (
     "legacy", "historical", "migration", "deleted", "removed", "forbidden",
-    "do not use", "not use", "旧", "削除", "廃止", "禁止", "復活させ",
+    "do not use", "not use", "regression", "old ", "旧", "削除", "廃止", "禁止",
+    "復活", "戻さ", "当時", "過去", "ではありません", "使用しない", "×",
+)
+
+# These names existed in pre-cutover human-facing material but are not members of
+# the canonical 15 CapabilityRequest vocabulary. A fenced migration table may
+# mention them only when the immediately preceding prose explicitly states that
+# those names are non-canonical.
+STALE_CAPABILITY_NAMES = (
+    "source.inspect",
+    "project.compile",
+    "editor.observe",
+    "editor.capture",
+    "performance.capture",
+    "player.control",
+)
+
+STALE_RUNTIME_POSITION_PATTERNS = (
+    re.compile(r"Capability-driven[^\n]*Target Architecture", re.IGNORECASE),
+    re.compile(r"Unity Tool Runtime[^\n]*Target Architecture", re.IGNORECASE),
+    re.compile(r"Tool Broker[^\n]*Production実装へ昇格する前", re.IGNORECASE),
 )
 
 README_DYNAMIC_STATE_PATTERNS = (
@@ -62,6 +87,7 @@ README_DYNAMIC_STATE_PATTERNS = (
 REQUIRED_USER_ENTRYPOINTS = (
     Path("Tools/validate_all.py"),
     Path("Tools/run_regression_gate.py"),
+    Path("Tools/ProductionToolRuntime/validate_production_tool_runtime.py"),
 )
 
 MARKDOWN_LINK = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
@@ -148,6 +174,49 @@ def _validate_migration_naming(errors: list[str]) -> None:
                 )
 
 
+def _validate_production_runtime_terms(path: Path, text: str, errors: list[str]) -> None:
+    relative = path.relative_to(ROOT).as_posix()
+    allow_next_migration_fence = False
+    migration_fence = False
+    in_fence = False
+
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        stripped = line.strip()
+        lowered = line.lower()
+
+        if "canonical capabilityではありません" in lowered or "non-canonical capability" in lowered:
+            allow_next_migration_fence = True
+
+        if stripped.startswith("```"):
+            if not in_fence:
+                in_fence = True
+                migration_fence = allow_next_migration_fence
+                allow_next_migration_fence = False
+            else:
+                in_fence = False
+                migration_fence = False
+            continue
+
+        for name in STALE_CAPABILITY_NAMES:
+            if name not in lowered:
+                continue
+            if _legacy_reference_is_historical(line):
+                continue
+            if migration_fence and "->" in line:
+                continue
+            errors.append(
+                f"stale non-canonical Capability name {name}: {relative}:{line_number}"
+            )
+
+    for pattern in STALE_RUNTIME_POSITION_PATTERNS:
+        match = pattern.search(text)
+        if match:
+            errors.append(
+                f"active documentation still describes Production Tool Runtime as a future Target Architecture: "
+                f"{relative}: {match.group(0)!r}"
+            )
+
+
 def main() -> int:
     errors: list[str] = []
     docs = list(_iter_docs())
@@ -160,6 +229,7 @@ def main() -> int:
     for path in docs:
         relative = path.relative_to(ROOT).as_posix()
         text = path.read_text(encoding="utf-8")
+        _validate_production_runtime_terms(path, text, errors)
 
         for line_number, line in enumerate(text.splitlines(), start=1):
             for marker in LEGACY_PATH_MARKERS:

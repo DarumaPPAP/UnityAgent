@@ -1,0 +1,112 @@
+schema_version: "1.0"
+kind: production_tool_runtime_environment_matrix
+authority: Eval
+routing_authority: false
+project_root: /workspace/UnityProject
+base:
+  filesystem: {readable: true, writable: true, writable_in_mutation_scope: true}
+  git: {available: true, repository_bound: true}
+  unity_editor:
+    installed: true
+    running: false
+    safe_mode: false
+    project_bound: false
+    binding_status: not_running
+  unity_cli: {available: true}
+  pipeline: {installed: true, reachable: true}
+  myunitymcp: {reachable: true, available: true, project_bound: true, binding_status: bound, bound_instance_id: my-1}
+  coplay_mcp: {reachable: false, available: false, project_bound: false, binding_status: unbound, bound_instance_id: null}
+  test_framework: {available: true}
+  build: {requested_target: StandaloneLinux64, requested_target_module_available: true}
+  player_runtime: {reachable: true, instance_id: player-1}
+profiles:
+  FULL:
+    overrides: {}
+    expectations:
+      project.inspect: {status: resolved, provider_ref: myunitymcp}
+      project.test: {status: resolved, provider_ref: unity_cli}
+      scene.inspect: {status: resolved, provider_ref: myunitymcp}
+      player.observe: {status: resolved, provider_ref: player_runtime}
+  CLI_ONLY:
+    overrides:
+      unity_editor: {installed: false}
+      myunitymcp: {reachable: false, available: false, project_bound: false, binding_status: unbound, bound_instance_id: null}
+      player_runtime: {reachable: false, instance_id: null}
+    expectations:
+      project.inspect: {status: resolved, provider_ref: file}
+      project.test: {status: resolved, provider_ref: unity_cli}
+      scene.inspect: {status: resolved, provider_ref: unity_cli}
+      player.observe: {status: unavailable, provider_ref: null}
+  MCP_ONLY:
+    overrides:
+      unity_editor: {installed: false}
+      unity_cli: {available: false}
+      player_runtime: {reachable: false, instance_id: null}
+    expectations:
+      project.inspect: {status: resolved, provider_ref: myunitymcp}
+      scene.inspect: {status: resolved, provider_ref: myunitymcp}
+      project.test: {status: unavailable, provider_ref: null}
+      player.observe: {status: unavailable, provider_ref: null}
+  NATIVE_EDITOR:
+    overrides:
+      unity_cli: {available: false}
+      pipeline: {reachable: false}
+      myunitymcp: {reachable: false, available: false, project_bound: false, binding_status: unbound, bound_instance_id: null}
+      player_runtime: {reachable: false, instance_id: null}
+    expectations:
+      project.inspect: {status: resolved, provider_ref: file}
+      compile.observe: {status: resolved, provider_ref: native_unity_editor}
+      project.test: {status: resolved, provider_ref: native_unity_editor}
+      scene.inspect: {status: unavailable, provider_ref: null}
+  FILES_ONLY:
+    overrides:
+      unity_editor: {installed: false}
+      unity_cli: {available: false}
+      pipeline: {installed: false, reachable: false}
+      myunitymcp: {reachable: false, available: false, project_bound: false, binding_status: unbound, bound_instance_id: null}
+      player_runtime: {reachable: false, instance_id: null}
+      test_framework: {available: false}
+      build: {requested_target_module_available: false}
+    expectations:
+      source.read: {status: resolved, provider_ref: file}
+      source.patch: {status: resolved, provider_ref: file}
+      compile.observe: {status: unavailable, provider_ref: null}
+      scene.inspect: {status: unavailable, provider_ref: null}
+  SAFE_MODE:
+    overrides:
+      unity_editor: {running: true, safe_mode: true, project_bound: true, binding_status: bound}
+      pipeline: {reachable: false}
+      myunitymcp: {reachable: false, available: false, project_bound: false, binding_status: unbound, bound_instance_id: null}
+      player_runtime: {reachable: false, instance_id: null}
+    expectations:
+      source.read: {status: resolved, provider_ref: file}
+      project.test: {status: resolved, provider_ref: unity_cli}
+      project.build: {status: resolved, provider_ref: unity_cli}
+    execution_expectations:
+      project.test: {status: blocked, failure_class: precondition_failed}
+      project.build: {status: blocked, failure_class: precondition_failed}
+  NO_EDITOR:
+    overrides:
+      unity_editor: {installed: false}
+      unity_cli: {available: false}
+      pipeline: {installed: false, reachable: false}
+      myunitymcp: {reachable: false, available: false, project_bound: false, binding_status: unbound, bound_instance_id: null}
+      player_runtime: {reachable: false, instance_id: null}
+    expectations:
+      project.inspect: {status: resolved, provider_ref: file}
+      source.read: {status: resolved, provider_ref: file}
+      project.test: {status: unavailable, provider_ref: null}
+  PLAYER_UNAVAILABLE:
+    overrides:
+      player_runtime: {reachable: false, instance_id: null}
+    expectations:
+      project.inspect: {status: resolved, provider_ref: myunitymcp}
+      scene.inspect: {status: resolved, provider_ref: myunitymcp}
+      player.observe: {status: unavailable, provider_ref: null}
+rules:
+  profile_hint_is_descriptive_only: true
+  same_task_may_resolve_different_provider_per_capability: true
+  unavailable_provider_does_not_stop_static_flow: true
+  safe_mode_may_resolve_but_execution_must_revalidate: true
+  no_silent_safety_or_evidence_downgrade: true
+  baseline_auto_update: prohibited

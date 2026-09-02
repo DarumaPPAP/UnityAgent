@@ -1,15 +1,21 @@
 # UnityAgent Architecture
 
-Status: **Canonical Architecture Contract / Regression Gate operational**
+Status: **Canonical Architecture Contract / Production Tool Runtime integrated**
 
-## Canonical repository
+この文書はUnityAgentの**現在Architecture**を人間向けに説明します。
+
+過去のPhase移行記録は `docs/migration/` に残しますが、current Production Authorityとしては使用しません。
+
+---
+
+## 1. Canonical Repository
 
 ```text
 UnityAgent/
 ├─ AGENTS.md
 ├─ Policy/
-├─ Context/
 ├─ Orchestration/
+├─ Context/
 ├─ Runtime/
 ├─ Persistence/
 ├─ Operations/
@@ -21,13 +27,23 @@ UnityAgent/
 └─ docs/
 ```
 
-`DarumaPPAP/UnityAgent` が Production execution を含む canonical single-repository authority です。
+`DarumaPPAP/UnityAgent` がProduction executionを含むcanonical single-repository authorityです。
 
-single-repo cutover は完了済みです。legacy dot-ai authority、Context/Eval/Persistence compatibility layer、old Eval / Loop shims、`DarumaPPAP/Unity-Graph-Engineering` への Production execution dependency を active authority として復活させません。
+`DarumaPPAP/Unity-Graph-Engineering`はProduction execution dependencyではありません。過去Migration provenanceとして参照できても、current bootstrapの正本には戻しません。
 
-Migration時点の旧構造は `docs/migration/` や Historical Eval Dataset / Replay に監査証跡として残せますが、current Production bootstrap では解決しません。
+---
 
-## Authority contract
+## 2. Authority Contract
+
+```mermaid
+flowchart LR
+    P[Policy<br/>defines] --> O[Orchestration<br/>decides]
+    O --> C[Context<br/>materializes]
+    C --> R[Runtime<br/>executes]
+    R --> S[Persistence<br/>remembers]
+    S --> OP[Operations<br/>observes / controls]
+    S --> E[Eval<br/>measures / proposes]
+```
 
 ```text
 Policy defines
@@ -35,102 +51,91 @@ Orchestration decides
 Context materializes
 Runtime executes
 Persistence remembers
-Operations observes and controls
-Eval measures and proposes
+Operations observes / controls
+Eval measures / proposes
 ```
 
-近くのComponentで実装できることと、そのComponentがAuthorityを所有することは同義ではありません。
+近くに実装できることと、そのAreaがAuthorityを持つことは同義ではありません。
 
 ### Policy
 
-`Policy/` は user/security/approval/evidence/risk rules を所有します。ユーザー固有Policyの正本は `Policy/User/user-policy.yaml` です。
+所有:
 
-Policy は execution state、tool call、graph scheduling、quality grading を所有しません。
+- User Policy
+- Risk
+- Security
+- Approval requirement
+- Evidence requirement
+
+所有しない:
+
+- Provider selection
+- Tool dispatch
+- Graph scheduling
+- quality grading
 
 ### Orchestration
 
-`Orchestration/` は semantic decision plane です。
+所有:
 
-- Primary Route selection
-- ParentGraph / SubGraph / Node / Edge
-- Branch / Join / Parallel
-- Local semantic loop
+- Primary Route
+- ParentGraph / SubGraph
+- semantic Node / Edge / Gate
 - semantic continue / replan
 - Task Contract
 - Runtime handoff
+- Design Review placement
 
-Primary Route の正本は `Orchestration/Routing/task-routes.yaml`、canonical Task Contract は `Orchestration/Contracts/TaskContracts/` にあります。
+所有しない:
 
-```text
-Parent Graph
-  -> SubGraph
-      -> Node / Edge / Gate
-          -> Local Loop when needed
-```
-
-Local Loopを独立したtop-level control planeとしてGraphの横へ置きません。
+- subprocess execution
+- Unity CLI / MCP Tool dispatch
+- hard timeout / process kill
+- durable State write
 
 ### Context
 
-`Context/` は current-call の model input を bounded に materialize します。
+所有:
 
-- Context selection catalog
+- Context selection
 - Context Pack
 - Retrieval
-- Knowledge selection
-- Context Budget / Compression
-- Prompt materialization
-- current-call Context provenance
+- Knowledge
+- Context Budget
+- current-call Materialization
 
-Route selection は Orchestration が先に行います。Context selection の正本は `Context/Selection/context-catalog.yaml`、materialization は `Context/Assembly/materialize_context.py`、Context Budget は `Context/Budget/context-budget.yaml` です。
+所有しない:
 
-Context は durable State / Memory / Checkpoint / Evidence truth ではありません。
+- Route selection
+- Provider selection
+- durable Memory / Evidence / Checkpoint
 
-### Runtime / Execution Harness Plane
+### Runtime
 
-`Runtime/` は実行可能な処理とhard safetyを所有します。
+所有:
 
-- model / Codex runner
-- dispatcher / tool execution
-- timeout / cancellation / hard retry ceiling / max turns / cost ceiling
-- sandbox / mutation scope
-- permission / guardrail enforcement
-- Unity / Test / Performance / SCM harness
-- current-run verification / evidence capture / telemetry
+- process / tool execution
+- Environment discovery
+- Provider resolution
+- Production dispatch
+- timeout / cancellation
+- bounded infrastructure retry
+- Mutation Scope enforcement
+- verification / current-run Evidence capture
 
-```text
-Runtime/Harnesses/
-├─ Unity/
-├─ Tests/
-├─ Performance/
-└─ SCM/
-```
+所有しない:
 
-Semantic Route / Graph / replan は Runtime のAuthorityではありません。
-
-### Unity Tool Runtime
-
-Unity Editor、Build/Test、Player Runtime、MCP Tool等の具体的な実行先はRuntime Toolingへ集約します。
-
-OrchestrationはProvider固有Tool名を選ばず、`scene.inspect`、`project.test`、`player.observe`のようなCapabilityをRuntimeへ要求します。RuntimeがPolicy、Project binding、Provider health、現在のTool discoveryからUnity CLI、MyUnityMCP、File Provider等へ解決します。
-
-```text
-Skill      = どう使うか
-Capability = 何をしたいか
-Provider   = 誰が実行できるか
-Transport  = どう接続するか
-Evidence   = 実際に何を観測したか
-```
-
-Provider failure時に、より弱いSafety Contractへsilent fallbackしません。特にMyUnityMCPのApproval付きMutationが利用不能な場合、raw `eval`等へ自動downgradeしません。
-
-詳細なDesign Review / Target Contractは [`Specs/UnityToolRuntime.md`](../../Specs/UnityToolRuntime.md) を参照してください。
+- semantic replan
+- durable Evidence truth
+- Agent quality grading
 
 ### Persistence
 
-`Persistence/` は durable truth layer です。
+所有:
 
-- ExecutionState / WorkflowState / LoopControlState
+- ExecutionState
+- WorkflowState
+- LoopControlState
 - Checkpoint / Resume
 - Session
 - Memory
@@ -140,49 +145,163 @@ Provider failure時に、より弱いSafety Contractへsilent fallbackしませ�
 Checkpoint != Memory != Evidence
 ```
 
-RuntimeでcaptureされたEvidenceは、`Persistence/Evidence/` へappendされて初めてhistorical durable Evidenceになります。Resume都合でoriginal Evidenceを上書きしません。
-
 ### Operations
 
-`Operations/` は production observability、detection、incident/runbook、approved runtime control、rollout/rollback/configuration change managementを所有します。
+所有:
 
-`Operations/RuntimeControl` と `Runtime/ExecutionControl` は別責務です。OperationsはPolicy/Approval済みcommandだけをauthority別control APIへ渡します。
+- Observability
+- Detection
+- Incident / Runbook
+- approved Runtime Control
+- Change Management / rollout / rollback
 
 ### Eval
 
-`Eval/` は datasets、Golden Contracts、Behavior grading、Attribution、Historical Replay、Rebaseline、Regression、ChangeProposalを所有します。
+所有:
 
-EvalはRuntime/Codex/Unity/process executionを実装せず、Production definitionを直接変更しません。canonical structured factが存在する場合、弱いprose/diffからauthority factを再構築しません。
+- Golden / Behavior Eval
+- Attribution
+- Historical Replay
+- Rebaseline
+- Regression comparison
+- ChangeProposal
 
-## Default execution flow
+EvalはProduction executionやProduction definitionの直接変更を行いません。
+
+---
+
+## 3. Default Execution Flow
 
 bounded TaskではFast Pathを優先します。
 
-```text
-User Request
-  ↓
-Policy
-  ↓
-Task Fingerprint
-  ↓
-Orchestration Route
-  ↓
-Context materialization
-  ↓
-Runtime handoff / execution
-  ↓
-Verification / Evidence capture
-  ↓
-Persistence append
-  ↓
-Eval measurement when required
-  ↓
-Result
+```mermaid
+flowchart TD
+    U[User Request] --> P[Policy]
+    P --> T[Task Fingerprint]
+    T --> R[Primary Route]
+    R --> C[Context Materialization]
+    C --> D{Design Review needed?}
+    D -->|yes| H[Human Review]
+    H -->|approve| X[Runtime Handoff]
+    H -->|revise| C
+    H -->|reject| O[Result]
+    D -->|no| X
+    X --> V[Verification / Evidence]
+    V --> S[Persistence]
+    S --> E[Eval when required]
+    E --> O
 ```
 
-Semantic coordinationが必要な場合だけ `Orchestration/Definitions/development-parent-graph.yaml` を使用します。
+Semantic coordinationが必要な場合だけ `Orchestration/Definitions/development-parent-graph.yaml` を使います。
 
-## Recovery ownership
+Local Loopは独立したtop-level control planeではなく、SubGraph内部の限定されたcycleです。
+
+---
+
+## 4. Production Tool Runtime
+
+Production Cutover後、Unity Editor / Build / Test / MCP / Player等の具体的実行先はRuntime Toolingへ集約します。
+
+OrchestrationはProvider固有Tool名ではなくCapabilityを要求します。
+
+```text
+Skill      = どう作業するか
+Capability = 何を実現したいか
+Provider   = 誰が実行できるか
+Transport  = どう接続するか
+Evidence   = 実際に何を観測したか
+```
+
+### Runtime内部
+
+```mermaid
+flowchart TD
+    H[Runtime Handoff<br/>CapabilityRequest] --> G[Last-mile Guard]
+    G --> B[ToolBroker]
+    B --> R[Capability Resolver]
+    R --> E[Environment Snapshot]
+    E --> PR[Provider Registry]
+    PR --> D[Production Dispatcher]
+    D --> P[Concrete Provider Adapter]
+    P --> X[Structured ProviderResult]
+    X --> F{Infrastructure failure?}
+    F -->|yes| FB[Same Capability Fallback]
+    FB --> B
+    F -->|no| N[Evidence Normalizer]
+```
+
+重要:
+
+- Orchestrationは`provider` / `provider_ref`を指定しない。
+- ContextはProviderを選ばない。
+- Provider RegistryはPotential capabilityを記述する。
+- 実行可能性はConcrete adapter + Environment + live discoveryで再確認する。
+- executor未登録は`backend_not_implemented`であり成功ではない。
+- Fallbackは同一CapabilityかつSafety / Evidenceが同等以上の場合だけ。
+
+詳細は [Production Tool Runtime](production-tool-runtime.md) を参照してください。
+
+---
+
+## 5. Capability Contract
+
+Canonical Capabilityは15個です。
+
+```text
+project.inspect
+source.read
+source.patch
+static.review
+git.diff
+compile.observe
+project.test
+project.build
+scene.inspect
+scene.mutate
+profiler.observe
+visual.capture
+domain.workflow
+player.observe
+player.mutate
+```
+
+Capability Request / ResolutionのSchemaは `Runtime/Contracts/` が正本です。
+
+Semantic capability requirementは `Orchestration/ToolRouting/capability-routing.yaml`、説明用Contextは `Context/Selection/tool-capability-catalog.yaml` が担当します。
+
+---
+
+## 6. Provider Resolution Boundary
+
+```mermaid
+flowchart TD
+    A[CapabilityRequest] --> B{Policy allowed?}
+    B -->|no| BP[blocked_by_policy]
+    B -->|yes| C{Approval / Scope OK?}
+    C -->|no| BA[blocked_by_approval / scope_violation]
+    C -->|yes| D[Environment / Project Binding]
+    D --> E[Safety / Evidence floors]
+    E --> F[Candidate ranking]
+    F --> G{Unique winner?}
+    G -->|no| AM[ambiguous_binding / unavailable / unknown]
+    G -->|yes| R[resolved Provider]
+```
+
+Provider availabilityはEnvironment Factです。
+
+```text
+Unity CLIなし
+MCPなし
+Playerなし
+```
+
+のどれか1つだけでAgent全体を停止しません。
+
+ただし必要Evidenceを取得できない場合は、その不足を明示します。
+
+---
+
+## 7. Safety / Recovery Ownership
 
 ```text
 Semantic Recovery    -> Orchestration
@@ -190,93 +309,63 @@ Execution Recovery   -> Runtime
 Operational Recovery -> Operations
 ```
 
-Semantic retry/replan と transient process/tool retry、timeout、process cleanup、hard retry ceiling を混同しません。
+### Runtime fallbackで変えてはいけないもの
 
-## Approval contract
+- Capability
+- Project Root
+- operation kind
+- Required Evidence
+- Mutation Scope
+- Approval provenance
 
-```text
-Policy / Approval requirement
-        ↓
-Orchestration gate placement
-        ↓
-Runtime enforcement
-        ↓
-approve / edit / reject
-        ↓
-continue / replan / stop
+MyUnityMCP Mutationが利用不能でも、raw Scene YAMLやarbitrary `eval`へsilent downgradeしません。
+
+### Safe Mode
+
+Safe ModeではSource recoveryとScene mutationを分離します。
+
+```mermaid
+flowchart TD
+    S[Safe Mode] --> D[Compiler Diagnosticを限定取得]
+    D --> P[許可されたSourceのみPatch]
+    P --> R[Environment再観測]
+    R --> N{Editor正常?}
+    N -->|yes| T[通常Tool Runtimeへ復帰]
+    N -->|no| B[blocked / partial]
 ```
 
-PolicyがRequirementを定義し、Orchestrationがsemantic stop pointを決め、Runtimeが実行境界をenforceします。
+---
 
-## Evidence contract
+## 8. Evidence Contract
 
-Compile / Runtime / Editor / Player / Target Device / Performance / Visual は別Evidence stateとして扱います。
-
-- `unavailable` を成功扱いしない
-- `not_observed` をAgent品質denominatorへ入れない
-- CompileだけでRuntime / Player / Visual / Performanceを保証しない
-- Golden expected contentをProduction Prompt / Contextへ注入しない
-
-Runtime EvidenceはPersistence append後にdurable truthとなります。
-
-## Evaluation and regression contract
-
-Canonical Production qualityは4 caseで観測します。
-
-- `GOLDEN-ARCH-001`
-- `GOLDEN-NAMING-001`
-- `GOLDEN-MUTATION-001`
-- `GOLDEN-EVIDENCE-001`
-
-Frozen Baseline:
-
-`Eval/Rebaseline/Baselines/phase9-baseline-20260830-09.yaml`
-
-Frozen state:
-
-- 4/4 observed
-- 4/4 quality-passed
-- `regression_pass_rate = 1.0`
-- canonical failure taxonomy clean
-- DefinitionFingerprint 4/4
-- Historical Replay namespace coverage passed
-
-Baseline comparatorはcandidateをこのBaselineと比較し、次を返します。
-
-- `PASS`
-- `BLOCK_REGRESSION`
-- `BLOCK_INCONCLUSIVE`
-- `REBASELINE_REQUIRED`
-
-PASS後もBaselineは自動更新しません。
-
-## Production Smoke
-
-Canonical Production path:
+Evidence stateは分離します。
 
 ```text
-.github/ProductionSmoke/run_one_repo_smoke.py
-        ↓
-Orchestration / Context materialization
-        ↓
-Runtime/Runner/Codex
-        ↓
-Persistence/Evidence
-        ↓
-Eval/Behavior/grade_production_smoke.py
-        ↓
-Eval/Rebaseline/build_rebaseline_summary.py
-        ↓
-Eval/Regression/compare_baseline.py
+Compile
+Editor
+Test
+Player
+Target Device
+Performance
+Visual
 ```
 
-標準のローカルRegression Gateは `Tools/run_regression_gate.py` です。ローカルの認証済みCodex CLI sessionを使用し、Frozen Baselineと同じ `gpt-5.6-luna / xhigh` を既定比較identityとします。
+```text
+Compile PASS
+!= Runtime PASS
+!= Player PASS
+!= Performance PASS
+```
 
-GitHub-hosted Regression Gateはoptional CI pathです。
+RuntimeでcaptureしたEvidenceは `Persistence/Evidence/` にappendされて初めてhistorical durable Evidenceになります。
 
-## Versioning / DefinitionFingerprint
+`not_observed`をAgent品質denominatorへ入れません。
 
-比較・Resume・Rebaselineで少なくとも次を追跡します。
+---
+
+## 9. DefinitionFingerprint / Regression
+
+比較・Resume・Rebaselineでは少なくとも次を追跡します。
 
 - architecture version
 - policy revision
@@ -289,36 +378,55 @@ GitHub-hosted Regression Gateはoptional CI pathです。
 - evidence schema revision
 - eval contract revision
 
-Source revision、Runtime identity、Codex versionもprovenanceとして保持します。
+Production Tool Runtime Cutoverでblocking fieldが変わった場合、既存Frozen Baselineとの比較は `REBASELINE_REQUIRED` になるのが正常です。
 
-## Historical architecture migrations
+Baselineを自動更新してdriftを隠しません。
 
-過去のArchitecture移行は次の意味単位で監査できます。
+Regression decision:
 
-- Canonical contracts
-- Policy + Context migration
-- Runtime / Harness migration
-- Orchestration migration
-- Persistence migration
-- Eval consolidation
-- Operations migration
-- Single-repository cutover / legacy removal
-- Production rebaseline / baseline freeze
-- Baseline comparator / regression gate
+- `PASS`
+- `BLOCK_REGRESSION`
+- `BLOCK_INCONCLUSIVE`
+- `REBASELINE_REQUIRED`
 
-詳細は `docs/migration/` に残します。Historical recordはcurrent authorityとして読み替えません。
+---
 
-## Protected user-specific behavior
+## 10. Canonical Source Map
 
-Architecture変更は、現在のユーザー固有Policyを保持します。
+| Area | Canonical Source |
+| --- | --- |
+| User Policy | `Policy/User/user-policy.yaml` |
+| Capability Policy | `Policy/Security/tool-capability-policy.yaml` |
+| Route | `Orchestration/Routing/task-routes.yaml` |
+| Capability routing | `Orchestration/ToolRouting/capability-routing.yaml` |
+| Context catalog | `Context/Selection/context-catalog.yaml` |
+| Capability descriptions | `Context/Selection/tool-capability-catalog.yaml` |
+| Runtime contracts | `Runtime/Contracts/` |
+| Environment discovery | `Runtime/Tooling/Environment/` |
+| Provider Registry | `Runtime/Tooling/provider_registry.yaml` |
+| Resolver | `Runtime/Tooling/capability_resolver.py` |
+| Tool Broker | `Runtime/Tooling/tool_broker.py` |
+| Production Dispatcher | `Runtime/Dispatcher/tool_runtime_dispatcher.py` |
+| Runtime Guard | `Runtime/Guardrails/tool_runtime_guard.py` |
+| Fallback | `Runtime/Tooling/fallback_policy.py` |
+| Providers | `Runtime/Tooling/Providers/` |
+| Evidence normalization | `Runtime/EvidenceCapture/provider_evidence.py` |
+| Durable Evidence | `Persistence/Evidence/` |
+| Regression | `Eval/Regression/` |
+| Production Runtime validator | `Tools/ProductionToolRuntime/validate_production_tool_runtime.py` |
 
-- minimum cohesive solution first
-- no premature abstraction / generalization
-- exact evidence honesty
-- mutation safety
-- approval boundaries
-- existing comment policy
-- naming policy
-- no unrequested implementation
+---
 
-詳細なBootstrap Mapと責務境界は `AGENTS.md` を参照してください。
+## 11. Historical Migration
+
+`docs/migration/`はMigration時点の判断・旧Path・削除対象・互換性判断を保存するHistorical recordです。
+
+Historical文書に現れる旧PathやPhase名をcurrent Production contractとして読み替えません。
+
+現在Architectureを理解する場合は次を優先します。
+
+1. `AGENTS.md`
+2. Canonical source files
+3. この文書
+4. `docs/architecture/production-tool-runtime.md`
+5. Supporting `Specs/`

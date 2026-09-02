@@ -41,7 +41,11 @@ def next_node(graph: dict[str, Any], current_node_id: str, signal: str) -> tuple
 
 
 def runtime_handoff(*, run_id: str, node_id: str, route_id: str, execution_profile: str, context_id: str, context_fingerprint: str, task_contract_runtime_projection: dict[str, Any], mutation_scope: dict[str, Any], validation_requirements: list[str], capability_requests: list[dict[str, Any]] | None = None) -> dict[str, Any]:
-    return {"run_id": run_id, "step_id": node_id, "action_id": f"{route_id}:{node_id}", "route_id": route_id, "execution_profile": execution_profile, "context_id": context_id, "context_fingerprint": context_fingerprint, "task_contract_runtime_projection": task_contract_runtime_projection, "mutation_scope": mutation_scope, "validation_requirements": validation_requirements, "capability_contract_mode": "shadow", "capability_requests": list(capability_requests or [])}
+    requests = list(capability_requests or [])
+    for request in requests:
+        if not isinstance(request, dict) or "provider_ref" in request or "provider" in request:
+            raise ValueError("Runtime handoff accepts provider-independent CapabilityRequest values only")
+    return {"run_id": run_id, "step_id": node_id, "action_id": f"{route_id}:{node_id}", "route_id": route_id, "execution_profile": execution_profile, "context_id": context_id, "context_fingerprint": context_fingerprint, "task_contract_runtime_projection": task_contract_runtime_projection, "mutation_scope": mutation_scope, "validation_requirements": validation_requirements, "capability_contract_mode": "authoritative", "capability_requests": requests}
 
 
 def transition(*, graph: dict[str, Any], run_id: str, current_node_id: str, signal: str, route_id: str, execution_profile: str, context_id: str, context_fingerprint: str, task_contract_runtime_projection: dict[str, Any] | None = None, mutation_scope: dict[str, Any] | None = None, validation_requirements: list[str] | None = None, capability_requests: list[dict[str, Any]] | None = None) -> dict[str, Any]:

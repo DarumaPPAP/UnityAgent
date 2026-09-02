@@ -1,0 +1,48 @@
+name: Validate Production Tool Runtime
+
+on:
+  pull_request:
+    paths:
+      - "AGENTS.md"
+      - "Policy/**"
+      - "Context/**"
+      - "Orchestration/**"
+      - "Runtime/**"
+      - "Persistence/**"
+      - "Eval/**"
+      - "Specs/UnityToolRuntime*.md"
+      - "Tools/ProductionToolRuntime/**"
+      - "Tools/validate_all.py"
+      - ".github/workflows/validate-production-tool-runtime.yml"
+  push:
+    branches: [main]
+    paths:
+      - "AGENTS.md"
+      - "Policy/**"
+      - "Context/**"
+      - "Orchestration/**"
+      - "Runtime/**"
+      - "Persistence/**"
+      - "Eval/**"
+      - "Specs/UnityToolRuntime*.md"
+      - "Tools/ProductionToolRuntime/**"
+      - "Tools/validate_all.py"
+      - ".github/workflows/validate-production-tool-runtime.yml"
+
+jobs:
+  production-tool-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install validation dependencies
+        run: python -m pip install --disable-pip-version-check PyYAML jsonschema
+      - name: Validate Production Tool Runtime authority and cutover
+        run: python Tools/ProductionToolRuntime/validate_production_tool_runtime.py
+      - name: Production Tool Runtime matrix and negative tests
+        run: python -m unittest Runtime.Tests.test_production_tool_runtime Runtime.Tests.test_capability_contracts Runtime.Tests.test_fallback_policy
+      - name: Regression comparator remains fail-closed
+        run: python -m unittest Eval.Tests.test_baseline_comparator

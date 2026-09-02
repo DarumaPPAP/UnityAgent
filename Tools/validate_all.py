@@ -26,6 +26,7 @@ VALIDATORS = (
     Path("Policy/Validators/validate_user_policy_integrity.py"),
     Path("Context/Validators/validate_stale_paths.py"),
     Path("Runtime/Contracts/capability_contract.py"),
+    Path("Tools/ProductionToolRuntime/validate_production_tool_runtime.py"),
     Path("Tools/DocumentationValidator/validate_documentation.py"),
     Path("Tools/GraphObservatory/validate_context_explorer.py"),
     Path("Tools/HarnessProjection/validate_effective_harness.py"),
@@ -77,7 +78,7 @@ def validate_yaml() -> list[str]:
             try:
                 with path.open(encoding="utf-8") as stream:
                     yaml.safe_load(stream)
-            except Exception as exc:  # noqa: BLE001 - report parser failure with file path.
+            except Exception as exc:
                 errors.append(f"{path.relative_to(ROOT)}: {exc}")
     return errors
 
