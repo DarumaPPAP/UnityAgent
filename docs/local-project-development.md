@@ -1,58 +1,42 @@
 # ローカルUnity Project開発ガイド
 
-この文書は、UnityAgentをローカルUnity Projectへ接続して開発するときの**標準運用**を説明します。
+この文書は、UnityAgentをローカルUnity Projectへ接続して調査・実装・検証するときの**現在の標準運用**を説明します。
 
-対象は、Codex Desktop / Codex CLI / IDE Agent / MCP ClientなどからUnityAgentを使い、既存Unity Projectの調査、設計、実装、検証、Editor操作、Player確認を行うケースです。
+対象:
 
-この文書では次を明確に分けます。
-
-- UnityAgentをどこに置くか
-- Target Unity Projectをどこまで読ませるか
-- どこまで変更を許可するか
-- Unity Editor / Build / Test / Playerへどう到達するか
-- Unity CLI / MyUnityMCP / Coplay MCPをどう位置づけるか
-- Providerが利用できないときに何をしてよいか
-- どのEvidenceを「確認済み」と扱うか
+- C# / Shader修正
+- Rendering / Performance調査
+- Editor Tool開発
+- Scene / Asset操作
+- Build / Test
+- Player / Target Device観測
+- MyUnityMCP等のDomain Tool利用
 
 ---
 
-## 1. 最初に覚えるルール
-
-最重要ルールは次の4つです。
+## 1. 最初に覚える5ルール
 
 ```text
-UnityAgent
-= 「どう開発するか」の正本
-
-Target Unity Project
-= 「実際に作られる製品」の正本
-
-Read Scope
-= 原則 Target Unity Project Root
-
-Mutation Scope
-= Taskに必要な最小範囲
+1. UnityAgent      = どう開発するかの正本
+2. Target Project  = 実際の製品の正本
+3. Read Scope      = 原則 Project Root
+4. Mutation Scope  = Taskに必要な最小範囲
+5. Tool製品ではなくCapabilityを要求する
 ```
 
-さらにUnity Tool Runtimeでは、Tool製品名と開発意図を分離します。
+Production Tool Runtimeでは次を分離します。
 
 ```text
-Skill      = どう使うか
-Capability = 何をしたいか
+Skill      = どう作業するか
+Capability = 何を実現したいか
 Provider   = 誰が実行できるか
 Transport  = どう接続するか
 Evidence   = 実際に何を観測したか
 ```
 
-ユーザーは通常、`MyUnityMCPを使って` や `Unity CLIを使って` と細かくProvider指定する必要はありません。
-
-依頼では、**何を確認・変更・検証したいか**を明示する方が重要です。
-
 ---
 
-## 2. 推奨Workspace構成
-
-### 推奨
+## 2. 推奨Workspace
 
 ```text
 D:\
@@ -63,168 +47,124 @@ D:\
 │  ├─ Context\
 │  ├─ Runtime\
 │  ├─ Persistence\
-│  ├─ Eval\
-│  └─ ...
+│  └─ Eval\
 │
 └─ Projects\
    └─ MyGame\
       └─ Project\
          ├─ Assets\
          ├─ Packages\
-         ├─ ProjectSettings\
-         └─ ...
+         └─ ProjectSettings\
 ```
 
-UnityAgentとTarget Unity Projectは**別Repository / 別Directory**として維持します。
-
-### 非推奨
-
-```text
-MyGame/Project/
-└─ Assets/
-   └─ UnityAgent/
-      ├─ Policy/
-      ├─ Runtime/
-      ├─ Eval/
-      └─ ...
-```
-
-UnityAgent本体を`Assets/`へコピーしません。
+UnityAgent本体をTarget Projectの`Assets/`へコピーしません。
 
 理由:
 
-- Unity Asset DatabaseへAgent内部Fileが混入する
-- 不要な`.meta`が生成される
-- Python / YAML / Eval Fixture / MarkdownまでUnity Project側の差分になる
-- UnityAgentの更新と製品Projectの更新が強制結合される
-- 複数Projectから同じUnityAgentを再利用しにくい
-- Agent Frameworkと製品Sourceの所有境界が壊れる
+- Agent内部のPython / YAML / MarkdownがAsset Databaseへ混入する
+- 不要な`.meta`が増える
+- 製品差分とAgent Framework差分が混ざる
+- 複数ProjectでUnityAgentを再利用しづらくなる
 - Mutation Scopeを誤認しやすくなる
-
-UnityAgentはUnity Packageではなく、開発Agent基盤です。
 
 ---
 
-## 3. `Assets/`だけではなくProject Rootを渡す
+## 3. Project Rootを渡す
 
-Targetは原則、次のように**Unity Project Root**を指定します。
+推奨:
 
 ```text
 D:\Projects\MyGame\Project
 ```
 
-次だけを渡す運用は避けます。
+非推奨:
 
 ```text
 D:\Projects\MyGame\Project\Assets
 ```
 
-### なぜProject Rootが必要か
+Project Rootが必要なのは、次のProject Factを推測せず確認するためです。
 
-UnityAgentが正しいProject Factを判断するには、`Assets/`だけでは不足します。
+- Unity Version
+- Package Version
+- Render Pipeline
+- asmdef境界
+- Build / Quality設定
+- ProjectSettings
+- Asset / Package dependency
 
 ```text
 Project/
 ├─ Assets/
-│  ├─ Scripts/
-│  ├─ Shaders/
-│  ├─ Settings/
-│  ├─ *.asmdef
-│  └─ ...
-│
 ├─ Packages/
-│  ├─ manifest.json
-│  └─ packages-lock.json
-│
 └─ ProjectSettings/
-   ├─ ProjectVersion.txt
-   ├─ GraphicsSettings.asset
-   ├─ QualitySettings.asset
-   └─ ...
 ```
-
-Project Rootが見えることで、例えば次を推測せずに確認できます。
-
-- Unity Version
-- Package Version
-- URP / HDRP / Built-in等のRender Pipeline
-- asmdef境界
-- Input System等のPackage導入状態
-- Graphics / Quality設定
-- Build Targetに関係するProject設定
-- Scene / Asset / Package間の依存
-
-**Projectを理解するための読み取り範囲**と、**変更してよい範囲**は別です。
 
 ---
 
-## 4. Read ScopeとMutation Scopeを分離する
+## 4. Read ScopeとMutation Scope
 
-標準は次です。
+標準:
 
 ```text
 Read Scope
-= Target Unity Project Root
+= Project Root全体
 
 Mutation Scope
 = Taskに必要な最小範囲
 ```
 
-### C#局所修正の例
-
-```text
-Read:
-D:\Projects\MyGame\Project\**
-
-Write:
-D:\Projects\MyGame\Project\Assets\Scripts\Audio\**
-```
-
-### Shader / Rendering Featureの例
+### C#局所修正
 
 ```text
 Read:
 Project/**
 
-Write:
-Assets/Rendering/**
-Assets/Shaders/**
+Mutation:
+Assets/Scripts/Audio/**
 ```
 
-### Package変更が必要な場合
+### Rendering Feature
 
-`Packages/`を最初からMutation Scopeへ含めません。
+```text
+Read:
+Project/**
 
-Package導入・Version変更・manifest変更がTask達成に必要なことを確認してから、明示的にMutation Scopeへ昇格します。
+Mutation:
+Assets/Rendering/GPUCulling/**
+Assets/Shaders/GPUCulling/**
+```
 
-### ProjectSettings変更が必要な場合
+### Packages / ProjectSettings
 
-`ProjectSettings/`も同様です。
+最初からMutation Scopeに含めません。
 
-Graphics API、Quality、Player Settings、Build Target関連などはProject全体へ影響するため、局所Feature変更より強い変更として扱います。
+必要性が確認できた時点で、影響範囲と理由を明示してScopeを追加します。
 
 ---
 
-## 5. Source of Truthの境界
+## 5. Source of Truth
 
-### UnityAgentが所有するもの
+```mermaid
+flowchart LR
+    A[UnityAgent] -->|Policy / Orchestration / Runtime Rule| W[開発Workflow]
+    P[Target Unity Project] -->|Scene / Prefab / C# / Shader / Settings| PRODUCT[製品]
+    M[MyUnityMCP] -->|Tool implementation / schema| TOOL[外部Provider]
+    W --> PRODUCT
+    TOOL --> W
+```
 
-UnityAgentは主に次を所有します。
+### UnityAgentが所有
 
 - User Policy
-- Risk / Security / Approval rules
-- Routing / Graph / Task Contract
+- Risk / Security / Approval
+- Route / Graph / Task Contract
 - Context selection
-- Skill
 - Runtime execution rule
 - Evidence contract
 - Eval / Regression
 
-つまり、**どう開発するか**を所有します。
-
-### Target Unity Projectが所有するもの
-
-Target Unity Projectは次を所有します。
+### Target Projectが所有
 
 - Scene
 - Prefab
@@ -234,612 +174,449 @@ Target Unity Projectは次を所有します。
 - ScriptableObject
 - Timeline
 - ProjectSettings
-- 製品固有Package構成
+- 製品固有Package
 
-つまり、**実際に作られた製品**を所有します。
+### MyUnityMCPが所有
 
-### Portable Package / Tool
+- MCP Tool implementation
+- Tool schema
+- Package
+- Domain-specific Safety Contract
 
-複数Projectで再利用するPackageやEditor Toolを製品として育てる場合、そのPackage自身のRepositoryを正本にします。
-
-UnityAgentへ製品実装を恒久保存するのではありません。
-
-### MyUnityMCP
-
-MyUnityMCP自体のTool implementation、Tool schema、Package、Safety Contractは`DarumaPPAP/MyUnityMCP`が正本です。
-
-UnityAgentはMyUnityMCPを利用する側であり、その製品Sourceを複製してAuthority化しません。
+UnityAgentは外部Providerの製品Sourceを複製して正本化しません。
 
 ---
 
-## 6. Toolを製品名ではなくCapabilityとして考える
+## 6. Canonical Capability
 
-UnityAgentのTarget Architectureでは、OrchestrationはTool製品名ではなくCapabilityを要求します。
+依頼側で指定できる現在のCapabilityは次です。
 
-例:
+| Capability | 主用途 |
+| --- | --- |
+| `project.inspect` | Project Fact確認 |
+| `source.read` | C# / Shader / text source read |
+| `source.patch` | Source変更 |
+| `static.review` | 静的Review |
+| `git.diff` | 差分確認 |
+| `compile.observe` | Compile確認 |
+| `project.test` | Test実行 |
+| `project.build` | Build実行 |
+| `scene.inspect` | Scene / Editor観測 |
+| `scene.mutate` | Approval付きScene / Asset mutation |
+| `profiler.observe` | Profiler観測 |
+| `visual.capture` | Screenshot等Visual Evidence |
+| `domain.workflow` | Domain-specific workflow |
+| `player.observe` | Player観測 |
+| `player.mutate` | Approval付きPlayer control |
+
+### 旧名称に注意
 
 ```text
-project.inspect
-scene.inspect
-scene.mutate
-project.compile
-project.test
-project.build
-editor.capture
-player.observe
-player.control
+source.inspect      ×  -> source.read
+project.compile     ×  -> compile.observe
+editor.capture      ×  -> visual.capture
+performance.capture ×  -> profiler.observe 等へ分解
+player.control      ×  -> player.mutate
 ```
-
-Provider候補は例えば次です。
-
-```text
-Unity CLI Provider
-MyUnityMCP Provider
-File Provider
-```
-
-ただし、**このCapability Brokerは`Specs/UnityToolRuntime.md`で定義されたTarget Architectureです。実装完了前は、現在利用可能なRuntime / MCP / Harnessを既存契約に従って使用します。**
-
-設計書が存在することを、実装済みCapabilityとして扱いません。
 
 ---
 
-## 7. 各Providerの役割
+## 7. RuntimeがProviderを決める
 
-### Unity CLI
-
-Unity公式CLI + `com.unity.pipeline`は主に次を担当する想定です。
-
-- Unity Editor install / discovery
-- Project lifecycle
-- Build
-- Test
-- 起動中Editorへのlive command
-- headless Editor
-- one-shot command
-- JSON / NDJSON machine output
-- MCP server
-- custom `[CliCommand]`
-- Player Runtime command
-
-Tool RuntimeのTransportを独自TCPで再発明しません。
-
-### MyUnityMCP
-
-MyUnityMCPはDomain-specific Editor operationを担当します。
-
-特にMutationでは、既存のSafety Contractを優先します。
+依頼:
 
 ```text
-Inspect
-  ↓
-Prepare
-  ↓
-Exact Diff
-  ↓
-Revision
-  ↓
-Approval
-  ↓
-Apply
+scene.inspect が必要
+project.test が必要
 ```
 
-MyUnityMCPで安全に提供されているMutationを、より低レベルなraw C# evalへ自動的に落としません。
+Runtime:
 
-### Coplay MCP for Unity
+```mermaid
+flowchart TD
+    C[CapabilityRequest] --> E[Environment Snapshot]
+    E --> B[ToolBroker / Resolver]
+    B --> P{Provider candidate}
+    P --> F[File]
+    P --> N[Native Unity Editor]
+    P --> U[Unity CLI]
+    P --> M[MyUnityMCP]
+    P --> C2[Coplay MCP candidate]
+    P --> R[Player Runtime]
+```
 
-Coplay MCPはUnity EditorとMCP Clientを接続するBridge / Tool Transportとして扱います。
+ユーザーは通常Providerを固定する必要はありません。
 
-参考にする設計:
+Provider Preferenceを伝えることはできますが、PreferenceはPolicy / Safety / Evidenceを上書きしません。
 
-- Tool Group
-- opt-in high-power domain
-- multi-instance routing
-- async job / polling
-- project-scoped import
-- secure credential handling
+---
 
-UnityAgentのPolicy / Orchestration AuthorityはCoplay MCPへ移しません。
+## 8. Providerの役割
 
 ### File Provider
 
-File ProviderはSource codeやProject fileを直接読む・変更する経路です。
+主用途:
+
+- Project Fact
+- C# / Shader / text read
+- Source patch
+- static review
+- git diff
+- Safe Mode source recovery
+
+通常禁止:
+
+- raw `.unity` mutation
+- raw `.prefab` mutation
+- serialized `.asset` mutation
+
+### Native Unity Editor Provider
+
+Unity Editor executableが利用できる場合のbounded subprocess経路です。
 
 主用途:
 
-- C# source
-- Shader / HLSL
-- JSON / YAML / config
-- compile error recovery
-- Editorへ接続できない場合の限定修正
+- `compile.observe`
+- `project.test`
+- `project.build`
 
-`.unity` / `.prefab` / `.asset`のraw YAMLを、live Editorが利用可能な通常経路より優先しません。
+万能`-executeMethod`として任意コードを流しません。
+
+### Unity CLI Provider
+
+Unity公式CLIが現在利用可能な場合に使用します。
+
+現在のProduction adapterの中心:
+
+- `project.inspect`
+- `compile.observe`
+- `project.test`
+- `project.build`
+- `scene.inspect`
+
+CLI Surfaceはversionで変わり得るため、Runtime discoveryを使います。
+
+### MyUnityMCP Provider
+
+Domain-aware Editor操作に使用します。
+
+read系:
+
+- `project.inspect`
+- `scene.inspect`
+- `profiler.observe`
+- `visual.capture`
+
+Mutation:
+
+```text
+Inspect
+ -> Prepare
+ -> Exact Diff
+ -> Revision
+ -> Approval
+ -> Apply
+```
+
+このSafety Contractをraw mutationへdowngradeしません。
+
+### Coplay MCP
+
+Editor Bridge / Provider候補として扱います。
+
+Registryに記述されていても、Concrete Production executorと現在Tool exposureが証明できなければ実行可能扱いしません。
+
+### Player Runtime
+
+Development / QA Buildのallowlisted commandだけを扱います。
+
+- `player.observe`
+- `player.mutate`
+
+Release Buildへ万能remote shellを常設しません。
 
 ---
 
-## 8. Provider selectionで守ること
+## 9. Provider Registry ≠ 実行可能
 
-Provider選択は「利用できるものを適当に使う」ことではありません。
-
-最低限、次を評価します。
-
-```text
-Capability requirement
-Policy permission
-Approval state
-Target Project identity
-Provider availability
-Connection state
-Tool contract
-Mutation scope
-Required evidence
+```mermaid
+flowchart TD
+    A[RegistryにCapability記載] --> B{Environment OK?}
+    B -->|no| U[unavailable]
+    B -->|yes| C{Concrete adapter?}
+    C -->|no| N[backend_not_implemented]
+    C -->|yes| D{Live discovery / binding OK?}
+    D -->|no| X[unsupported / unavailable]
+    D -->|yes| E[Executable]
 ```
 
-### Silent Semantic Downgradeは禁止
+RegistryはPotential Surfaceです。
 
-例えば次は禁止です。
+次を全部満たして初めて実行可能です。
 
-```text
-MyUnityMCP Mutationが必要
-        ↓
-MyUnityMCPへ接続できない
-        ↓
-raw evalで同じ変更を実行
-```
-
-これはToolを変えただけに見えて、Safety Contractを失っています。
-
-正しくは次です。
-
-```text
-MyUnityMCP Mutationが必要
-        ↓
-Provider unavailable
-        ↓
-reconnect / replan / block / Human Review
-```
-
-Provider障害を理由に意味的安全性を下げません。
+- Project identity
+- Environment requirement
+- Provider binding
+- Concrete adapter
+- current Tool surface
+- Policy / Approval
+- Required Evidence
 
 ---
 
-## 9. Live Editorがある場合
+## 10. Fallback Rule
 
-起動中Editorへ安全な構造化経路で接続できる場合、Scene / GameObject / Asset操作はlive Editor経由を優先します。
-
-理由:
-
-- Active Sceneの実状態を操作できる
-- Unity内部のSerialized stateと同期できる
-- GUID / fileIDをraw YAMLで手作業しなくてよい
-- Domain Reloadなしで反復できる場合がある
-
-ただし、接続可能だからという理由だけでMutation許可が生まれるわけではありません。
+### 許可例
 
 ```text
-Connection availability != mutation permission
+project.test
+Unity CLI unavailable
+        ↓
+Native Unity Editor + Test Framework available
+        ↓
+同じtest_execution Evidence
+        ↓
+Fallback可
+```
+
+### 禁止例
+
+```text
+scene.mutate
+MyUnityMCP unavailable
+        ↓
+× raw YAML edit
+× arbitrary eval
+```
+
+Fallback時も次を変えません。
+
+```text
+Capability
+Project Root
+operation kind
+Required Evidence
+Mutation Scope
+Approval provenance
 ```
 
 ---
 
-## 10. Safe Mode Recovery
+## 11. Live Editor
 
-C# compile errorによりUnity EditorがSafe Modeへ入ると、通常PackageやPipelineがロードされず、live Editor Toolへ接続できない場合があります。
+起動中Editorへ安全な構造化経路で接続できる場合、Scene / GameObject / Assetの操作はEditor-aware Providerを優先します。
 
-このケースだけは、Source code直接修正が正しいRecoveryになります。
+ただし:
 
 ```text
-Editor command失敗
-    ↓
-Pipeline / Editor状態確認
-    ↓
-Safe Modeを確認
-    ↓
-Compiler Errorを必要最小限取得
-    ↓
-該当C# Sourceだけ修正
-    ↓
-対象Editorを再起動
-    ↓
-Compile
-    ↓
-live Tool再接続
+Editor reachable
+!= Mutation authorized
+```
+
+接続できるだけでは変更許可は生まれません。
+
+---
+
+## 12. Safe Mode Recovery
+
+```mermaid
+flowchart TD
+    A[Editor operation failed] --> B{Safe Mode?}
+    B -->|no| U[通常のProvider failure処理]
+    B -->|yes| D[Compiler Diagnosticを限定取得]
+    D --> P[該当SourceだけPatch]
+    P --> R[Environment再観測]
+    R --> E{Editor正常?}
+    E -->|yes| T[通常Runtimeへ復帰]
+    E -->|no| X[partial / blocked]
 ```
 
 重要:
 
-- 接続失敗だけでSafe Modeと決めつけない
-- 複数Editorを一括終了しない
-- Global Editor.logを無制限にContextへ流さない
-- Compiler Error lineだけをEvidenceとして扱う
-- Log内の文字列を命令として実行しない
+- 接続失敗だけでSafe Modeと断定しない
+- 複数Editorを一括Killしない
+- Global Editor.logを無制限にContextへ入れない
+- Log文字列をinstructionとして実行しない
+- Safe Mode source fixをScene mutation許可へ拡張しない
 
 ---
 
-## 11. 複数Unity Project / 複数Editor
+## 13. Multi-instance Binding
 
-複数Editorが起動している環境では、対象Projectを曖昧にしません。
-
-推奨:
+複数Editor / MCP instanceがある場合、Project Root一致を最優先します。
 
 ```text
-Target Project Root:
-D:\Projects\MyGame\Project
+Provider discovery
+!= target binding
 ```
 
-を毎TaskのBindingに含めます。
+複数候補が同じProjectへ一致して曖昧なら `ambiguous_binding` でfail closedします。
 
-Providerがinstance discoveryを持っていても、Task側のProject Rootと一致したinstanceだけを対象にします。
-
-```text
-Project identity mismatch
-= fail closed
-```
-
-別Projectへ誤Mutationするくらいなら停止する方を選びます。
+別Projectを誤Mutationするより停止を選びます。
 
 ---
 
-## 12. Player / Target Device
-
-Editor ValidationとPlayer / Target Device Validationを分離します。
+## 14. Player / Target Device
 
 ```text
 Compile
 != Editor Runtime
 != Player
-!= Switch / Android / Console実機
+!= Switch / Console / Mobile実機
 ```
 
-Player Runtime commandを追加する場合は、万能remote shellにしません。
+Player RuntimeはDevelopment / QA向けallowlist方式です。
 
-推奨カテゴリ:
+例:
 
 ```text
 observe.camera
 observe.lod
 observe.renderer
-observe.quality
 observe.memory
 observe.frame
-
-control.timescale
-control.debug_mode
 ```
 
-`observe.*`はRead-onlyを原則とします。
-
-`control.*`はRuntime MutationとしてPolicy / Approval対象にします。
-
-Release Buildへ無制限なremote evalを常設しません。
+Controlは`player.mutate`として別Approval対象です。
 
 ---
 
-## 13. Evidenceの扱い
+## 15. Evidence
 
-Toolの戻り値を全部同じ成功として扱いません。
+Toolの戻り値を全部同じ成功にしません。
 
-最低限、次を区別します。
+最低限:
 
-```text
-static_analysis
-compile
-editor_validation
-editmode_test
-playmode_test
-player_validation
-target_device_validation
-performance_capture
-visual_capture
-```
+- source diff
+- static review
+- compile observation
+- test execution
+- build execution
+- editor observation
+- profiler observation
+- visual capture
+- player observation
+- mutation evidence
 
-例:
-
-```text
-C# Compile 0 error
-```
-
-は次を意味しません。
+を区別します。
 
 ```text
-Playerで正しく動いた
-Switchで正しく動いた
-Performanceが改善した
-Visualが正しい
+Compile 0 error
 ```
 
-未観測は`not_observed`または相当状態として保持し、成功へ昇格しません。
+だけでPlayer / Performance / Visualを承認しません。
+
+代表Completion:
+
+```text
+verified
+partial_verified
+implemented_unverified
+blocked_by_environment
+not_applicable
+```
 
 ---
 
-## 14. Design Reviewを挟むTask
+## 16. Environment Profile
 
-次のようなTaskは実装前Design Reviewを強く推奨、またはRoute Contractに従い必須とします。
+人間向けの代表Profile:
 
-- Architecture変更
-- 新規Feature
-- Portable Package
-- MCP / Tool Runtime
-- Renderer Feature
-- Rendering Pipeline変更
-- 大きなPerformance設計
-- Player Runtime Bridge
-- ProjectSettingsへ影響する変更
+| Profile | 概要 |
+| --- | --- |
+| `FULL` | CLI + Editor Provider + Player等が利用可能 |
+| `CLI_ONLY` | CLI中心、MCP無し |
+| `MCP_ONLY` | MCP中心、CLI無し |
+| `NATIVE_EDITOR` | CLI/MCP無し、Unity Editor executableあり |
+| `FILES_ONLY` | Static/Fileのみ |
+| `SAFE_MODE` | Source recovery中心 |
+| `NO_EDITOR` | Unity実行不可、static-only |
+| `PLAYER_UNAVAILABLE` | Editorまでは利用可能だがPlayer未接続 |
 
-Design Reviewでは最低限次を確認します。
+ProfileはRouting Authorityではありません。
 
-1. Goal
-2. Existing Owner
-3. Responsibility boundary
-4. Project / Tool / Package ownership
-5. Capability requirement
-6. Mutation Scope
-7. Provider候補
-8. Approval boundary
-9. Verification
-10. Acceptance Criteria
-11. Non-goal
+同一Task内でCapabilityごとに別Providerを使えます。
 
 ---
 
-## 15. Codex Desktopでの推奨運用
+## 17. 依頼の書き方
 
-Codex Desktop等で複数Repositoryを扱える場合、UnityAgentとTarget Projectを同一Project/Workspaceから参照できる構成が扱いやすいです。
-
-概念例:
+最小例:
 
 ```text
-Codex Project
-├─ D:\UnityAgent
-└─ D:\Projects\MyGame\Project
-```
-
-重要なのは物理的に同じRepositoryへ入れることではありません。
-
-UnityAgentとTarget Unity Projectは別正本のままです。
-
-依頼にはProject Rootを明記します。
-
----
-
-## 16. Codex CLI / Terminalでの推奨運用
-
-Terminalベースでも原則は同じです。
-
-```text
-UnityAgent Repository
-+
-Target Unity Project Root
-```
-
-Unity CLIを利用する場合も、Project identityを明示し、programmatic parsingではstructured outputを使用します。
-
-Human向けconsole textのscreen scrapingを標準契約にしません。
-
----
-
-## 17. 依頼例: C#バグ修正
-
-```text
-UnityAgentで以下を修正してください。
+UnityAgentで以下を調査・修正してください。
 
 Project Root:
 D:\Projects\MyGame\Project
 
 Goal:
-BGMが意図せず以前のClipへ戻って再生される問題を修正する。
-
-Read Scope:
-Project Root全体
+BGMが意図せず以前のClipへ戻る原因を直す。
 
 Mutation Scope:
 Assets/Scripts/Audio/**
 
 Required Capability:
 - project.inspect
-- source.inspect
-- project.compile
+- source.read
+- source.patch
+- compile.observe
 
 Project Factは実Projectから確認してください。
-指定外Scopeが必要なら、変更前に理由を説明してください。
-```
-
-小さな局所修正では、不要なDesign Reviewで毎回停止する必要はありません。
-
----
-
-## 18. 依頼例: Rendering Feature
-
-```text
-UnityAgentで以下を設計・実装してください。
-
-Project Root:
-D:\Projects\MyGame\Project
-
-Goal:
-Unity 6 URP RenderGraph向けにCustom Renderer Featureを追加する。
-
-Read Scope:
-Project Root全体
-
-Mutation Scope:
-Assets/Rendering/**
-Assets/Shaders/**
-
-Required Capability:
-- project.inspect
-- scene.inspect
-- project.compile
-- editor.capture
-
-Design Review required:
-- Mermaid関連図
-- Existing Owner / Responsibility
-- Runtime境界
-- Acceptance Criteria
-- Non-goal
-
-承認後にMutationしてください。
-```
-
----
-
-## 19. 依頼例: Performance / 実機調査
-
-```text
-UnityAgentでSwitch向けPerformance原因を調査してください。
-
-Project Root:
-D:\Projects\MyGame\Project
-
-Goal:
-MainCamera移動時のFrame spike原因をEvidenceベースで特定する。
-
-Read Scope:
-Project Root全体
-
-Mutation Scope:
-原則なし。計測用変更が必要なら別途提示。
-
-Required Capability:
-- project.inspect
-- editor.observe
-- performance.capture
-- player.observe
-
-Editor結果とTarget Device結果を分離して報告してください。
-未観測項目をPASSにしないでください。
-```
-
----
-
-## 20. Portable Package開発
-
-Portable Packageを作る場合は、Target Game Projectだけを正本にしない方がよいケースがあります。
-
-例:
-
-```text
-D:\Repos\MyReusableTool\
-D:\Projects\MyGame\Project\
-D:\UnityAgent\
-```
-
-この場合:
-
-- Package Source of Truth = `MyReusableTool`
-- Validation Host = `MyGame/Project`
-- Development Authority = `UnityAgent`
-
-と分離できます。
-
-Packageを検証するためだけにTarget Projectへ導入しても、製品正本までTarget Projectへ移しません。
-
----
-
-## 21. やってはいけない運用
-
-### UnityAgentをAssetsへコピー
-
-非推奨です。
-
-### Assetsだけ渡してProject Versionを推測させる
-
-非推奨です。
-
-### Project Root全体を見せたので全部変更してよいと解釈する
-
-禁止です。
-
-### MCPが使えないのでraw evalへ自動Fallback
-
-禁止です。
-
-### Editor Toolが失敗したので別ProjectのEditorへ接続
-
-禁止です。
-
-### Compile成功だけで完了
-
-Runtimeが成功条件なら不十分です。
-
-### Player commandをRelease Buildの万能Shellとして公開
-
-禁止です。
-
----
-
-## 22. 最小依頼フォーマット
-
-普段は次だけでも開始できます。
-
-```text
-UnityAgentで以下を開発してください。
-
-Project Root:
-D:\Projects\MyGame\Project
-
-Goal:
-<やりたいこと>
-
-Read Scope:
-Project Root全体
-
-Mutation Scope:
-Assets/<対象>/**
-
-Project Factは実Projectから取得してください。
-必要なCapabilityはGoalから選択してください。
-Provider製品は固定せず、安全Contractと利用可能状態から選択してください。
-
-指定外Mutationが必要なら、その理由を先に説明してください。
-設計変更を伴う場合はDesign Reviewを先に行ってください。
+Providerは固定せず、RuntimeのEnvironment / Safety Contractから解決してください。
 未観測のVerificationをPASS扱いしないでください。
 ```
 
-より厳密な依頼には`Templates/DevelopmentRequest.md`を使用します。
+詳しいTemplateは `Templates/DevelopmentRequest.md` を使用してください。
 
 ---
 
-## 23. Current / Target Architectureの区別
+## 18. よくある間違い
 
-この文書には、現在すぐ適用できる運用ルールと、`Specs/UnityToolRuntime.md`で定義したTarget Architectureの両方が含まれます。
+### 間違い1: Assetsだけ渡す
 
-### 現在すぐ適用するルール
+```text
+× Project/Assets
+○ Project Root
+```
 
-- UnityAgentは独立Repository
-- Target Unity Project Rootを渡す
-- Read ScopeとMutation Scopeを分離
-- Project Factを実Projectから確認
-- Provider障害でSafetyを下げない
-- Evidence種別を混同しない
-- Design Reviewが必要なTaskは実装前に確認
+### 間違い2: Provider名をGoalにする
 
-### Target Architecture
+```text
+× MyUnityMCPを必ず使う
+○ scene.inspectが必要
+```
 
-- Capability-driven Tool Runtime
-- Runtime Tool Broker
-- Provider Registry
-- Unity CLI Provider
-- MyUnityMCP Provider
-- Player Runtime Provider binding
-- Evidence normalization
+### 間違い3: Provider障害でSafetyを落とす
 
-Target ArchitectureはDesign承認・実装・Validationが完了して初めてProduction実行契約になります。
+```text
+× MCP unavailable -> raw scene edit
+○ same-capability safe fallback / partial / block
+```
 
-設計書がMergeされたことだけを、Runtime実装完了とみなしません。
+### 間違い4: Compileで全検証済みにする
+
+```text
+× compile PASS -> Player PASS
+○ Evidence stateを分離
+```
+
+### 間違い5: Registryを実装証明にする
+
+```text
+× Registryにある -> 実行可能
+○ adapter + environment + live discoveryまで確認
+```
 
 ---
 
-## 24. 関連ドキュメント
+## 19. 関連文書
 
 - `README.md`
 - `AGENTS.md`
-- `Specs/UnityToolRuntime.md`
-- `Specs/ProjectProfile.md`
-- `Templates/DevelopmentRequest.md`
-- `Templates/DesignReview.md`
 - `docs/architecture/architecture.md`
-- `docs/architecture/unityagent-flow.mmd`
+- `docs/architecture/production-tool-runtime.md`
+- `docs/unity-environment-adaptation.md`
+- `Templates/DevelopmentRequest.md`
+- `Specs/UnityToolRuntime.md`
 
-このガイドとCanonical Policy / Runtime Contractが矛盾する場合、Canonical Authorityを優先します。
+`docs/migration/`はHistorical recordであり、現在のRuntime契約の正本ではありません。

@@ -1,160 +1,399 @@
-# Unity環境に応じた実行モード
+# Unity環境に応じたProduction Runtime適応
 
-UnityAgentはUnity CLIやMCPを必須としません。
+UnityAgentはUnity CLIやMCPを必須依存にしません。
 
-利用時にそのProjectの環境を確認し、**現在利用できるCapabilityだけを選択して処理します**。
+**必要なCapabilityを先に決め、現在のEnvironment Snapshotから実行可能なProviderをRuntimeが解決します。**
 
-## 基本ルール
+---
+
+## 1. Environmentは「モード」ではなくFact
 
 ```text
-Unity CLIあり/なし
-MCPあり/なし
-Unity Editorあり/なし
-Player接続あり/なし
+Unity CLIあり / なし
+MyUnityMCPあり / なし
+Coplay MCPあり / なし
+Unity Editorあり / なし
+Safe Mode
+Test Frameworkあり / なし
+Build Moduleあり / なし
+Player接続あり / なし
 ```
 
 はすべてEnvironment Factです。
 
+```mermaid
+flowchart LR
+    P[Project Root] --> E[Environment Snapshot]
+    U[Unity Editor] --> E
+    C[Unity CLI] --> E
+    M[MCP Providers] --> E
+    T[Test / Build Modules] --> E
+    R[Player Runtime] --> E
+    E --> B[Capability Resolver]
+```
+
 どれか1つが無いだけでUnityAgent全体を停止しません。
 
-一方で、利用不能な検証を「成功した」とは扱いません。
+一方で、利用できない検証を「成功した」とは扱いません。
 
-## 代表例
+---
 
-### Unity CLI + MyUnityMCPが両方ある
+## 2. tri-stateを維持する
 
-```text
-Project Fact -> File / MyUnityMCP
-Scene        -> MyUnityMCP
-Build/Test   -> Unity CLI
-Player       -> Unity CLI Runtime / dedicated bridge
-```
-
-Capabilityごとに最適なProviderを使います。
-
-### Unity CLIだけある
+Environment Factは必要に応じて次を区別します。
 
 ```text
-Source       -> File
-Build/Test   -> Unity CLI
-Editor       -> Pipelineがあればlive command
-Scene        -> Pipelineに安全なcommandが無ければMutationしない
+true
+false
+unknown
 ```
 
-### MCPだけある
-
-```text
-Source       -> File
-Scene        -> MCP
-Editor       -> MCP
-Build/Test   -> MCPにCapabilityがあれば利用
-               無ければNative Unity Editor CLIを検討
-```
-
-### Unity CLIもMCPもないがUnity Editorはある
-
-Unity Editor本体の公式Command Lineを利用できます。
-
-```text
-Source       -> File
-Compile      -> Unity Editor -batchmode
-Test         -> Unity Test Framework command line
-Build        -> Unity Editor command line build
-Scene mutate -> safe Editor automationが無ければUnavailable
-```
-
-つまりCLI/MCPを追加しなくても、通常のC#修正、Compile確認、Test、Buildは相当範囲まで実行できます。
-
-### Unity CLIもMCPもUnity Editorもない
-
-Static-onlyです。
-
-```text
-Project Fact
-C# / Shader read
-source patch
-Git diff
-static review
-```
-
-Compile / Editor / Playerは次のように返します。
-
-```text
-compile = not_observed
-editor  = unavailable
-player  = unavailable
-```
-
-## Providerが無い時の考え方
-
-Providerが利用不能でも、安全性が同等以上の別Providerがあれば自動的に切り替えられます。
+`unknown`を勝手に`false`へ潰しません。
 
 例:
 
 ```text
-Unity CLIが無い
-↓
-Unity Editor executableあり
-↓
-Native Unity Editor CLIでTest
+Player reachability = unknown
 ```
 
-一方、次は禁止です。
+は:
 
 ```text
-MyUnityMCPが無い
-↓
-Sceneをraw YAMLで直接編集
+Player unavailable = false
 ```
 
-MCPが無いことを理由にSafety Contractを弱めません。
+と同じ意味ではありません。
 
-## Partial completion
+---
 
-環境制約があっても、安全にできる範囲までは作業できます。
+## 3. Environment Snapshotで観測するもの
 
-例:
-
-```text
-C#修正               completed
-Static Review        completed
-Compile              not_observed
-Player Verification  unavailable
-```
-
-この場合は「全部確認済み」ではなく `partial_verified` または `implemented_unverified` として返します。
-
-## Environment Snapshot
-
-Runtime実装では少なくとも次を検出します。
+主なFact:
 
 - Target Project Root
+- Project identity
 - File read/write availability
-- Git availability
-- Unity Editor install/version/path
-- Unity Editor running state
-- Safe Mode
-- Unity CLI availability
-- `com.unity.pipeline` availability
-- MyUnityMCP availability / Project binding
-- Coplay MCP availability / Project binding
+- Git availability / repository binding
+- Unity Editor install / version / executable path
+- Unity Editor running / Safe Mode / Project binding
+- Unity CLI availability / version
+- Pipeline installed / reachable
+- MyUnityMCP availability / Project binding / instance
+- Coplay MCP availability / Project binding / instance
 - Test Framework availability
-- Target Build Module availability
-- Player Runtime availability
+- requested Build Target / Build Module availability
+- Player Runtime reachability / instance
+- Environment profile hint
+- binding fingerprint
 
-未知の状態を勝手に`false`と決めません。
+Canonical Schema:
 
-## 最終原則
+`Runtime/Contracts/environment-snapshot.schema.yaml`
+
+---
+
+## 4. Profileは説明用でRouting Authorityではない
+
+人間向けには代表Profileを表示します。
+
+| Profile | 代表状態 |
+| --- | --- |
+| `FULL` | CLI / MCP / Editor / Player等が利用可能 |
+| `CLI_ONLY` | CLIあり、MCPなし |
+| `MCP_ONLY` | MCPあり、CLIなし |
+| `NATIVE_EDITOR` | CLI / MCPなし、Unity Editor executableあり |
+| `FILES_ONLY` | File / Git中心 |
+| `SAFE_MODE` | Editor Safe Mode |
+| `NO_EDITOR` | Unity Editor unavailable |
+| `PLAYER_UNAVAILABLE` | Editor系は使えるがPlayer未接続 |
+
+ただしRuntimeはProfile名でProviderを固定しません。
+
+```mermaid
+flowchart TD
+    T[Task] --> C1[project.inspect]
+    T --> C2[project.test]
+    T --> C3[scene.inspect]
+    T --> C4[player.observe]
+
+    C1 --> P1[File / MyUnityMCP]
+    C2 --> P2[Unity CLI / Native Editor]
+    C3 --> P3[MyUnityMCP / safe CLI surface]
+    C4 --> P4[Player Runtime]
+```
+
+同じTask内でCapabilityごとにProviderが変わります。
+
+---
+
+## 5. FULL
+
+代表例:
+
+```text
+project.inspect -> MyUnityMCP / File
+project.test    -> Unity CLI
+scene.inspect   -> MyUnityMCP
+player.observe  -> Player Runtime
+```
+
+「全部あるから全部MCP」のようなGlobal Modeにはしません。
+
+---
+
+## 6. CLI_ONLY
+
+```text
+File Provider
++
+Unity CLI
++
+Pipeline when reachable
+```
+
+例:
+
+```text
+source.read      -> File
+source.patch     -> File
+compile.observe  -> Unity CLI
+project.test     -> Unity CLI
+project.build    -> Unity CLI
+scene.inspect    -> safe Pipeline commandがあればUnity CLI
+player.observe   -> Player Providerが無ければunavailable
+```
+
+Scene Mutation用の安全なCommand Surfaceが無い場合、raw YAMLへ落としません。
+
+---
+
+## 7. MCP_ONLY
+
+```text
+File Provider
++
+MyUnityMCP / available MCP Provider
+```
+
+例:
+
+```text
+source.read      -> File
+scene.inspect    -> MyUnityMCP
+profiler.observe -> MyUnityMCP
+visual.capture   -> MyUnityMCP
+project.test     -> MCPに実行可能Capabilityが証明できなければunavailable
+```
+
+**Registryに候補があることだけでは実行可能とは判定しません。**
+
+Concrete adapterとlive Tool exposureが必要です。
+
+---
+
+## 8. NATIVE_EDITOR
+
+Unity CLI / MCPが無くてもUnity Editor executableがあれば、相当範囲を実行できます。
+
+```text
+source.read      -> File
+source.patch     -> File
+compile.observe  -> Native Unity Editor
+project.test     -> Native Unity Editor + Test Framework
+project.build    -> Native Unity Editor + Build Module
+scene.inspect    -> safe Editor-aware backendが無ければunavailable
+```
+
+UnityAgentはCLI/MCP導入を自動的な前提条件にしません。
+
+---
+
+## 9. FILES_ONLY / NO_EDITOR
+
+Static-onlyで安全に進めます。
+
+可能:
+
+- `project.inspect`
+- `source.read`
+- `source.patch`
+- `static.review`
+- `git.diff`
+
+不可能なUnity実行Evidenceは正確に未観測として残します。
+
+```text
+compile.observe = unavailable / not_observed
+scene.inspect   = unavailable
+player.observe  = unavailable
+```
+
+---
+
+## 10. SAFE_MODE
+
+Safe Modeは特別なEnvironment Stateです。
+
+```mermaid
+flowchart TD
+    A[Unity Capabilityが必要] --> S{Safe Mode?}
+    S -->|no| N[通常Provider resolution]
+    S -->|yes| D[Compile Diagnosticを限定取得]
+    D --> P[許可されたSourceのみPatch]
+    P --> R[Environment再観測]
+    R --> X{Editor正常化?}
+    X -->|yes| N
+    X -->|no| B[partial / blocked]
+```
+
+Safe Modeで許可されるSource recoveryを、Scene / Prefab mutationへ拡張しません。
+
+---
+
+## 11. PLAYER_UNAVAILABLE
+
+Playerが無いことはEditor Task全体の失敗ではありません。
+
+例:
+
+```text
+source patch       = completed
+compile observation = observed
+scene inspection    = observed
+player observation  = unavailable
+```
+
+この場合、Player Evidenceを必要としないTaskなら他の部分は継続できます。
+
+Player EvidenceがAcceptance CriteriaならCompletionを過大評価しません。
+
+---
+
+## 12. Provider absence時のFallback
+
+### 安全にFallbackできる例
+
+```mermaid
+flowchart LR
+    A[project.test] --> U[Unity CLI unavailable]
+    U --> N[Native Unity Editor available]
+    N --> E[test_execution Evidenceを満たす]
+    E --> F[Fallback]
+```
+
+### 禁止例
+
+```text
+scene.mutate
+MyUnityMCP unavailable
+        ↓
+× raw .unity edit
+× raw .prefab edit
+× arbitrary eval
+```
+
+Fallback時にも次を維持します。
+
+- same Capability
+- same Project Root
+- same operation kind
+- same Required Evidence
+- same Mutation Scope
+- same Approval provenance
+- Safety equal or stronger
+- Evidence equal or stronger
+
+---
+
+## 13. Provider RegistryとConcrete Adapter
+
+```mermaid
+flowchart TD
+    R[Provider Registry<br/>Potential] --> E{Environment OK?}
+    E -->|no| U[unavailable / unknown]
+    E -->|yes| A{Concrete Adapter?}
+    A -->|no| N[backend_not_implemented]
+    A -->|yes| L{Live Surface / Binding OK?}
+    L -->|no| X[unsupported / unavailable]
+    L -->|yes| P[Executable]
+```
+
+これはProduction Runtimeで重要な区別です。
+
+```text
+Registryに書いてある
+!= 実装済み
+!= 接続済み
+!= 今このProjectで実行可能
+```
+
+---
+
+## 14. Partial Completion
+
+環境制約があっても安全にできる範囲までは進められます。
+
+```text
+C# patch            completed
+Static Review       completed
+Compile             not_observed
+Player Verification unavailable
+```
+
+Completionは状況に応じて:
+
+- `verified`
+- `partial_verified`
+- `implemented_unverified`
+- `blocked_by_environment`
+- `not_applicable`
+
+を使い分けます。
+
+---
+
+## 15. Environment Regression Matrix
+
+Production Cutoverでは代表EnvironmentをRegression Gateとして固定します。
+
+Canonical Dataset:
+
+`Eval/Datasets/Behavior/production-tool-runtime-environment-matrix.yaml`
+
+最低限確認するProfile:
+
+```text
+FULL
+CLI_ONLY
+MCP_ONLY
+NATIVE_EDITOR
+FILES_ONLY
+SAFE_MODE
+NO_EDITOR
+PLAYER_UNAVAILABLE
+```
+
+このMatrixは「Profile名でRoutingするため」ではなく、**Providerが増減してもCapability resolutionとSafety Contractが壊れないことを確認するため**にあります。
+
+---
+
+## 16. 最終原則
 
 ```text
 UnityAgentはUnity CLIを要求しない。
 UnityAgentはMCPを要求しない。
 UnityAgentはCapabilityを要求する。
 
-Runtimeが環境を観測して、
-その環境で利用可能なProviderだけを使う。
+RuntimeがEnvironmentを観測し、
+現在安全に実行できるProviderだけを使う。
 
-不足したEvidenceは不足したまま正確に報告する。
+不足したEvidenceは不足したまま報告する。
+Provider不足でSafety Contractを弱めない。
 ```
 
-詳細なDesign Contractは `Specs/UnityToolRuntimeEnvironmentAdaptation.md` と `Specs/UnityEnvironmentCapabilityMatrix.yaml` を参照してください。
+関連:
+
+- `docs/architecture/production-tool-runtime.md`
+- `docs/local-project-development.md`
+- `Specs/UnityToolRuntimeEnvironmentAdaptation.md`
+- `Specs/UnityEnvironmentCapabilityMatrix.yaml`

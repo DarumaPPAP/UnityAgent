@@ -1,14 +1,39 @@
-schema_version: "1.0"
-kind: unity_tool_runtime_environment_design
+schema_version: "1.1"
+kind: unity_tool_runtime_environment_supporting_matrix
 authority: Specs
 production_runtime_authority: false
+production_execution_owner: Runtime/Dispatcher/tool_runtime_dispatcher.py
+resolution_owner: Runtime/Tooling/capability_resolver.py
+registry_owner: Runtime/Tooling/provider_registry.yaml
+regression_fixture: Eval/Datasets/Behavior/production-tool-runtime-environment-matrix.yaml
 purpose: >-
-  Describe environment-adaptive capability resolution for the future Unity Tool Runtime.
-  This file does not by itself enable runtime providers.
+  Explain the Production Tool Runtime environment-adaptive model without claiming
+  that a registry candidate or provider-native command is a currently executable
+  canonical UnityAgent Capability. Routing and dispatch remain Runtime authority.
+
+canonical_capabilities:
+  - project.inspect
+  - source.read
+  - source.patch
+  - static.review
+  - git.diff
+  - compile.observe
+  - project.test
+  - project.build
+  - scene.inspect
+  - scene.mutate
+  - profiler.observe
+  - visual.capture
+  - domain.workflow
+  - player.observe
+  - player.mutate
 
 principles:
   external_providers_are_optional: true
   resolve_per_capability_not_global_mode: true
+  profile_hint_is_descriptive_only: true
+  registry_surface_is_potential_not_execution_proof: true
+  concrete_adapter_and_live_binding_are_required_where_applicable: true
   no_silent_semantic_downgrade: true
   unavailable_is_not_success: true
   not_observed_is_not_success: true
@@ -18,12 +43,13 @@ providers:
   file:
     optional: true
     surfaces: [project]
-    capabilities:
+    canonical_potential_capabilities:
       - project.inspect
       - source.read
       - source.patch
       - static.review
       - git.diff
+    concrete_adapter_status: implemented
     restrictions:
       - no_default_scene_raw_mutation
       - no_default_prefab_raw_mutation
@@ -31,133 +57,202 @@ providers:
 
   native_unity_editor:
     optional: true
-    surfaces: [editor_process]
-    discovery:
-      - project_version
-      - editor_install_path
-      - process_detection
-    capabilities:
+    surfaces: [host, editor]
+    provider_native_surface:
+      - editor_process_discovery
+      - bounded_batchmode
+      - allowlisted_named_execute_method
+      - editor_log
+    canonical_potential_capabilities:
       - compile.observe
       - project.test
       - project.build
-      - named_execute_method
-      - editor.log
+    concrete_adapter_status: implemented_for_listed_canonical_capabilities
     restrictions:
+      - exact_project_and_editor_binding
       - no_generated_arbitrary_eval
       - execute_method_must_be_allowlisted_or_existing
 
   unity_cli:
     optional: true
     surfaces: [host, editor, player]
-    capabilities:
-      - editor.discover
-      - project.open
+    provider_native_surface:
+      - editor_discovery
+      - project_lifecycle
+      - pipeline_discovery
+      - live_editor_command
+      - player_command_transport
+    registry_potential_capabilities:
+      - project.inspect
+      - compile.observe
       - project.test
       - project.build
-      - pipeline.discover
-      - live_editor.command
+      - scene.inspect
+      - scene.mutate
       - player.observe
+      - player.mutate
+    concrete_adapter_capabilities:
+      - project.inspect
+      - compile.observe
+      - project.test
+      - project.build
+      - scene.inspect
+    concrete_adapter_status: partial_relative_to_registry_potential
     restrictions:
+      - dynamic_command_surface_discovery
       - absence_does_not_block_other_providers
       - installation_is_not_automatic_requirement
+      - no_arbitrary_eval_default
 
   myunitymcp:
     optional: true
-    surfaces: [editor]
-    capabilities:
+    surfaces: [editor, live_editor]
+    registry_potential_capabilities:
       - project.inspect
+      - compile.observe
       - scene.inspect
       - scene.mutate
       - profiler.observe
       - visual.capture
       - domain.workflow
+      - player.observe
+    concrete_read_capabilities:
+      - project.inspect
+      - scene.inspect
+      - profiler.observe
+      - visual.capture
+    concrete_guarded_mutation_capability:
+      - scene.mutate
+    concrete_not_generalized:
+      - domain.workflow
+    concrete_adapter_status: guarded_partial_relative_to_registry_potential
     safety_contract:
       - inspect
       - prepare
       - exact_diff
       - revision
-      - approval
+      - unityagent_approval
       - apply
+    notes:
+      - domain_workflow_one_shot_is_fail_closed_until_canonical_preapproval_provenance_is_expressible
+      - save_and_bake_are_separate_approval_boundaries
 
   coplay_mcp:
     optional: true
-    surfaces: [editor]
-    capabilities:
-      - tool.discovery
-      - scene.inspect
+    surfaces: [editor, live_editor]
+    provider_native_surface:
+      - tool_discovery
+      - grouped_exposure
+      - multi_instance_routing
       - guarded_editor_operation
+      - async_job
+    registry_potential_capabilities:
+      - project.inspect
       - project.test
       - project.build
-    safety_contract:
-      - project_binding
-      - multi_instance_binding
-      - grouped_exposure
+      - scene.inspect
+      - scene.mutate
+    concrete_adapter_status: candidate_not_execution_proof
+    restrictions:
+      - registry_presence_does_not_mean_production_executor_registered
 
   player_runtime:
     optional: true
     surfaces: [player]
-    capabilities:
+    canonical_potential_capabilities:
       - player.observe
-      - allowlisted_player_control
+      - player.mutate
+    concrete_adapter_status: implemented_for_development_or_qa_allowlist
     restrictions:
       - development_or_qa_only_by_default
+      - release_command_surface_disabled
       - no_generic_remote_shell
 
 representative_profiles:
   FULL:
-    description: Unity CLI and editor MCP providers available.
+    description: Multiple Editor/CLI/Player providers are observable.
   CLI_ONLY:
-    description: Unity CLI available, MCP unavailable.
+    description: Unity CLI available while MCP providers are unavailable.
   MCP_ONLY:
-    description: MCP available, Unity CLI unavailable.
+    description: MCP provider available while Unity CLI is unavailable.
   NATIVE_EDITOR:
-    description: Unity CLI and MCP unavailable, Unity Editor executable available.
+    description: Unity CLI/MCP unavailable while matching Unity Editor executable exists.
   FILES_ONLY:
-    description: Only filesystem/static project access available.
+    description: Only filesystem/static project access is available.
   SAFE_MODE:
-    description: Editor exists but normal editor providers are degraded by compile errors.
+    description: Editor exists but normal editor execution is degraded by compile errors.
   NO_EDITOR:
-    description: Unity Editor executable unavailable; static-only work is possible.
+    description: Unity Editor executable is unavailable; static-only work is possible.
+  PLAYER_UNAVAILABLE:
+    description: Editor/project work remains possible while Player Runtime evidence is unavailable.
 
-capability_resolution:
+resolution_examples:
   project.inspect:
-    candidates: [file, myunitymcp, coplay_mcp, unity_cli, native_unity_editor]
+    canonical_capability: project.inspect
+    likely_candidates: [file, myunitymcp, coplay_mcp, unity_cli]
     minimum_evidence: project_fact
-  source.patch:
-    candidates: [file]
-    minimum_evidence: source_diff
+    note: final eligibility comes from Runtime Provider Registry and current Environment Snapshot
+
   compile.observe:
-    candidates: [myunitymcp, coplay_mcp, unity_cli, native_unity_editor]
-    missing_result: not_observed
+    canonical_capability: compile.observe
+    likely_candidates: [unity_cli, native_unity_editor]
+    minimum_evidence: compile_observation
+    note: do not infer executable MyUnityMCP compile support from registry potential alone
+
   project.test:
-    candidates: [unity_cli, native_unity_editor, myunitymcp, coplay_mcp]
-    missing_result: unavailable
+    canonical_capability: project.test
+    likely_candidates: [unity_cli, native_unity_editor]
+    minimum_evidence: test_execution
+
   project.build:
-    candidates: [unity_cli, native_unity_editor, myunitymcp, coplay_mcp]
-    missing_result: unavailable
+    canonical_capability: project.build
+    likely_candidates: [unity_cli, native_unity_editor]
+    minimum_evidence: build_execution
+
   scene.inspect:
-    candidates: [myunitymcp, coplay_mcp, unity_cli]
-    weak_static_candidate: file
-    weak_static_result: static_only
+    canonical_capability: scene.inspect
+    likely_candidates: [myunitymcp, unity_cli, coplay_mcp]
+    minimum_evidence: editor_observation
+    note: candidate requires concrete adapter/current live surface before execution
+
   scene.mutate:
-    candidates: [myunitymcp, coplay_mcp, unity_cli, native_unity_editor]
+    canonical_capability: scene.mutate
+    likely_candidates: [myunitymcp]
+    minimum_evidence: [editor_observation, mutation_evidence]
     file_fallback: prohibited
+    note: lower-level provider paths are not automatically equivalent to MyUnityMCP guarded mutation
+
+  profiler.observe:
+    canonical_capability: profiler.observe
+    likely_candidates: [myunitymcp]
+    minimum_evidence: profiler_observation
+
+  visual.capture:
+    canonical_capability: visual.capture
+    likely_candidates: [myunitymcp]
+    minimum_evidence: visual_capture
+
   player.observe:
-    candidates: [unity_cli, player_runtime, myunitymcp]
-    missing_result: unavailable
+    canonical_capability: player.observe
+    likely_candidates: [player_runtime]
+    minimum_evidence: player_observation
+    note: other registry potential entries require concrete executable proof before use
+
+  player.mutate:
+    canonical_capability: player.mutate
+    likely_candidates: [player_runtime]
+    minimum_evidence: [player_observation, mutation_evidence]
 
 fallback_rules:
   automatic_fallback_requires:
     - same_capability
     - project_binding_matches
     - policy_allows
+    - approval_provenance_preserved
     - mutation_scope_preserved
-    - required_evidence_satisfied
+    - required_evidence_preserved
+    - evidence_strength_not_weaker
     - safety_contract_not_weaker
-  lower_evidence_strength:
-    allowed_for_partial_completion: true
-    must_be_reported: true
-    must_not_satisfy_stronger_gate: true
   prohibited_examples:
     - from: myunitymcp_scene_mutation
       to: raw_scene_yaml_edit
@@ -173,13 +268,17 @@ completion_classification:
 
 environment_fields:
   tri_state: [true, false, unknown]
-  required:
-    - project_root
-    - filesystem.readable
-    - filesystem.writable_in_mutation_scope
-    - unity_editor.installed
-    - unity_cli.available
-    - pipeline.reachable
-    - myunitymcp.available
-    - coplay_mcp.available
-    - player_runtime.reachable
+  canonical_snapshot:
+    - project
+    - filesystem
+    - git
+    - unity_editor
+    - unity_cli
+    - pipeline
+    - myunitymcp
+    - coplay_mcp
+    - test_framework
+    - build
+    - player_runtime
+    - profile_hint
+    - binding_fingerprint

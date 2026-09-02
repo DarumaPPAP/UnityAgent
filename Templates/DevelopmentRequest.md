@@ -2,15 +2,13 @@
 
 このTemplateは、UnityAgentへローカルUnity開発を依頼するときの標準入力です。
 
-全部を埋める必要はありません。Projectから検出できるFactは空欄でも構いません。
+全部を埋める必要はありません。Projectから観測できるFactは空欄でも構いません。
 
-ただし、**Goal / Project Root / Mutation Scope / 完了条件**は可能な限り明示してください。
+ただし、**Goal / Project Root / Mutation Scope / Acceptance Criteria**は可能な限り明示してください。
 
 ---
 
 ## 1. Goal
-
-何を作る、直す、調査する、改善するのかを記載します。
 
 ```text
 Goal:
@@ -32,7 +30,7 @@ Project Root:
 D:\Projects\MyGame\Project
 ```
 
-原則、`Assets/`ではなくUnity Project Rootを指定します。
+`Assets/`だけではなくUnity Project Rootを指定します。
 
 ```text
 Project/
@@ -72,13 +70,13 @@ Read Scope:
 Project Root全体
 ```
 
-Project Fact確認のため、必要に応じて次を読み取って構いません。
+Project Fact確認のため、必要に応じて次を読み取ります。
 
 - `Assets/`
 - `Packages/`
 - `ProjectSettings/`
 - asmdef
-- package manifest / lock
+- Package manifest / lock
 - Unity Version
 - Render Pipeline設定
 - Build / Quality設定
@@ -88,8 +86,6 @@ Project Fact確認のため、必要に応じて次を読み取って構いま�
 ---
 
 ## 5. Mutation Scope
-
-変更を許可する範囲を記載します。
 
 ```text
 Mutation Scope:
@@ -104,16 +100,16 @@ Assets/Rendering/GPUCulling/**
 Assets/Shaders/GPUCulling/**
 ```
 
-必要になるまで、次はMutation Scopeへ含めないことを推奨します。
+必要になるまで、次は含めないことを推奨します。
 
 - `Packages/`
 - `ProjectSettings/`
 - 他FeatureのDirectory
 
-Mutation Scope外へ変更が必要な場合:
+Scope外変更が必要になった場合:
 
 ```text
-勝手に変更せず、必要理由・変更先・影響・代替案を先に提示する。
+勝手に変更せず、必要理由・変更先・影響・代替案を提示する。
 ```
 
 ---
@@ -142,15 +138,13 @@ Relevant Existing Systems:
 Do Not Change:
 ```
 
-未記入項目は、実Projectから取得できる場合はProject Factを使用します。
+未記入項目は実Projectから取得できる場合、Project Factを優先します。
 
 推測で固定しません。
 
 ---
 
 ## 7. User Constraints
-
-ユーザー固有の優先事項、禁止事項、品質条件を記載します。
 
 ```text
 Constraints:
@@ -164,32 +158,66 @@ Constraints:
 ```text
 - Switchを最優先する
 - staticを不要に増やさない
-- 新Managerを追加する前にExisting Ownerで解決できないか確認する
-- ProjectSettingsを変更する場合は先にDesign Reviewへ戻す
+- 新Manager追加前にExisting Ownerで解決できないか確認する
+- ProjectSettings変更は事前Reviewする
 ```
 
 ---
 
 ## 8. Required Capability
 
-Tool製品名ではなく、必要な能力を記載できます。
+Tool製品名ではなく、必要なCapabilityを書けます。
 
 未記入でもGoalから選択可能です。
+
+### Canonical Capability
+
+```text
+project.inspect
+source.read
+source.patch
+static.review
+git.diff
+compile.observe
+project.test
+project.build
+scene.inspect
+scene.mutate
+profiler.observe
+visual.capture
+domain.workflow
+player.observe
+player.mutate
+```
 
 例:
 
 ```text
 Required Capability:
 - project.inspect
-- source.inspect
+- source.read
+- source.patch
+- compile.observe
+```
+
+またはRendering調査なら:
+
+```text
+Required Capability:
+- project.inspect
 - scene.inspect
-- scene.mutate
-- project.compile
-- project.test
-- project.build
-- editor.capture
-- performance.capture
-- player.observe
+- profiler.observe
+- visual.capture
+```
+
+### 旧名称は使用しない
+
+```text
+source.inspect      ×  -> source.read
+project.compile     ×  -> compile.observe
+editor.capture      ×  -> visual.capture
+performance.capture ×  -> profiler.observe 等へ分解
+player.control      ×  -> player.mutate
 ```
 
 重要:
@@ -198,35 +226,57 @@ Required Capability:
 Capability != Provider
 ```
 
-`scene.inspect`が必要だからといって、依頼側で必ずMyUnityMCPやUnity CLIへ固定する必要はありません。
-
-Provider選択は、現在利用可能なRuntime実装、Policy、Approval、接続状態、Project identity、安全Contractに従います。
-
 ---
 
 ## 9. Provider Preference
 
 通常は空欄で構いません。
 
-特定Providerを使う理由がある場合だけ指定します。
-
 ```text
 Provider Preference:
 
 ```
+
+特定Providerを希望する理由がある場合だけ記載します。
 
 例:
 
 ```text
 Provider Preference:
-MyUnityMCPで取得可能なGraphics inspectionはMyUnityMCPを優先する。
+Graphics inspectionでMyUnityMCPが安全に利用可能なら優先してよい。
 ```
 
-ただしProvider PreferenceはPolicy / Safety Contractを上書きしません。
+ただしPreferenceは次を上書きしません。
+
+- Policy
+- Approval
+- Project binding
+- Mutation Scope
+- Required Evidence
+- Safety Contract
+
+Providerの最終ResolutionはRuntimeが行います。
 
 ---
 
-## 10. Provider Fallback Rule
+## 10. Production Runtimeの考え方
+
+```mermaid
+flowchart LR
+    R[Required Capability] --> E[Environment Snapshot]
+    E --> B[ToolBroker / Resolver]
+    B --> P[Provider]
+    P --> X[Structured Result]
+    X --> V[Evidence]
+```
+
+依頼側でProviderを固定しなくても、Runtimeが現在のProject環境から解決します。
+
+Provider Registryへ候補が記載されていても、Concrete adapterやlive Tool surfaceが無ければ実行可能扱いしません。
+
+---
+
+## 11. Provider Fallback Rule
 
 標準Rule:
 
@@ -234,23 +284,38 @@ MyUnityMCPで取得可能なGraphics inspectionはMyUnityMCPを優先する。
 Provider unavailableを理由に、より弱いSafety Contractへ自動Fallbackしない。
 ```
 
-特に、承認付きMyUnityMCP Mutationが必要なTaskで、接続失敗を理由にraw `eval`へ切り替えません。
+許可例:
 
-必要なら:
+```text
+project.test
+Unity CLI unavailable
+Native Unity Editorで同じEvidenceを満たせる
+-> same-capability fallback
+```
+
+禁止例:
+
+```text
+scene.mutate
+MyUnityMCP unavailable
+-> raw .unity edit
+-> arbitrary eval
+```
+
+必要に応じて:
 
 - reconnect
-- replan
--別Providerの同等Safety Contract確認
+- same-capability fallback
+- semantic replan
 - Human Review
-- BLOCK / INCONCLUSIVE
+- partial completion
+- block
 
 を選択します。
 
 ---
 
-## 11. Design Review
-
-設計変更を伴う場合に指定します。
+## 12. Design Review
 
 ```text
 Design Review:
@@ -259,7 +324,7 @@ required / conditional / not_required
 
 `required`の場合、実装前に最低限次を提示します。
 
-### Mermaid関連図
+### 関連図
 
 - Existing System
 - New / Modified Component
@@ -284,7 +349,7 @@ required / conditional / not_required
 - Validation
 - Non-goal
 
-### 最終イメージ仕様書
+### 最終イメージ
 
 - Summary
 - User-visible behavior
@@ -295,13 +360,11 @@ required / conditional / not_required
 - Non-goal
 - Unresolved
 
-Design Reviewが必須の場合はApprove前にImplementation Mutationへ進みません。
+Design Reviewが必須ならApprove前にImplementation Mutationへ進みません。
 
 ---
 
-## 12. Required Verification
-
-必要な検証を指定します。
+## 13. Required Verification
 
 ```text
 Verification:
@@ -312,31 +375,33 @@ Verification:
 - Direct Editor Validation
 - Player Validation
 - Target Device Validation
-- Performance Capture
+- Performance Observation
 - Visual Capture
 ```
 
 すべて必要とは限りません。
 
-ただし、実行していない検証をPASS扱いしません。
+ただし:
 
 ```text
 Compile PASS
 != Runtime PASS
 != Player PASS
 != Target Device PASS
+!= Performance PASS
 ```
+
+未実施のVerificationをPASS扱いしません。
 
 ---
 
-## 13. Live Editor Rule
-
-必要に応じて使用します。
+## 14. Live Editor Rule
 
 標準:
 
 ```text
-live Editorへ安全な構造化接続が可能な場合、Scene / Prefab / Assetのraw YAML直接編集よりEditor経由を優先する。
+live Editorへ安全な構造化接続が可能なら、
+Scene / Prefab / Assetのraw serialized mutationよりEditor-aware Providerを優先する。
 ```
 
 ただし:
@@ -350,26 +415,25 @@ Editor reachable
 
 ---
 
-## 14. Safe Mode Rule
+## 15. Safe Mode Rule
 
-C# compile errorによりPipeline / MCP等へ接続できない場合:
+C# compile error等でSafe Modeの場合:
 
-```text
-1. Safe Modeか確認
-2. Compiler Errorを必要最小限取得
-3. 該当C# Sourceだけ修正
-4. 対象Editorだけ再起動
-5. Compile再確認
-6. Tool connectionを復旧
+```mermaid
+flowchart TD
+    A[Safe Mode] --> B[必要最小のCompiler Diagnostic]
+    B --> C[該当Sourceだけ修正]
+    C --> D[Environment再観測]
+    D --> E{正常化?}
+    E -->|yes| F[通常Runtimeへ復帰]
+    E -->|no| G[partial / blocked]
 ```
 
-接続失敗だけでraw file mutationへ移行しません。
+Safe Mode recoveryをScene Mutation許可へ拡張しません。
 
 ---
 
-## 15. Player / Runtime Rule
-
-Player / Target Device検証が必要な場合:
+## 16. Player / Runtime Rule
 
 ```text
 Player Requirement:
@@ -383,23 +447,13 @@ Player Requirement:
 Switch実機でLOD stateとCamera Far ClipをRead-only観測したい。
 ```
 
-Player Runtime commandはallowlist方式を基本とします。
+Player observationは`player.observe`、Runtime controlは`player.mutate`です。
 
-例:
-
-```text
-observe.camera
-observe.lod
-observe.renderer
-observe.memory
-observe.frame
-```
-
-Runtime Mutation commandは別Approval対象です。
+Runtime Mutationは別Approval対象です。
 
 ---
 
-## 16. Evidence Requirement
+## 17. Evidence Requirement
 
 ```text
 Evidence:
@@ -410,68 +464,47 @@ Evidence:
 例:
 
 ```text
-- Unity compile error 0
-- 対象Sceneのbefore / after
-- Profiler capture
+- Compile error 0
+- Scene before / after observation
+- Profiler observation
 - Switch実機Frame Time
 ```
 
-Evidenceは観測Sourceを区別します。
+Evidence Sourceを区別します。
 
 ```text
-static_analysis
-compile
-editor_validation
-player_validation
-target_device_validation
-performance_capture
+source_diff
+static_review
+compile_observation
+test_execution
+build_execution
+editor_observation
+profiler_observation
 visual_capture
+player_observation
+mutation_evidence
 ```
 
 ---
 
-## 17. Required
-
-必須要求:
+## 18. Required / Optional / Non-goal
 
 ```text
 Required:
 - 
-- 
-- 
-```
 
----
-
-## 18. Optional
-
-できれば欲しいが、完了条件にはしない項目:
-
-```text
 Optional:
 - 
-- 
-```
 
----
-
-## 19. Non-goal
-
-今回やらないことを明記します。
-
-```text
 Non-goal:
 - 
-- 
 ```
 
-Scope creep防止に重要です。
+Scope creep防止のためNon-goalも重要です。
 
 ---
 
-## 20. Acceptance Criteria
-
-Task完了条件を具体化します。
+## 19. Acceptance Criteria
 
 ```text
 Acceptance Criteria:
@@ -491,14 +524,14 @@ Acceptance Criteria:
 
 ---
 
-## 21. Completion Report
+## 20. Completion Report
 
 完了時には最低限次を報告します。
 
 - Root cause / 実装内容
 - 変更File
 - Mutation Scope逸脱の有無
-- Provider / Toolを使った場合の実行経路
+- 実際にResolvedされたProvider / Tool経路
 - 実施したVerification
 - Evidence
 - 未観測項目
@@ -540,11 +573,11 @@ Constraints:
 
 Required Capability:
 - project.inspect
+- source.read
+- source.patch
+- compile.observe
 - scene.inspect
-- source.inspect
-- project.compile
-- editor.capture
-- performance.capture
+- profiler.observe
 
 Design Review:
 required
@@ -553,7 +586,7 @@ Verification:
 - Static Review
 - Compile
 - Direct Editor Validation
-- Performance Capture
+- Performance Observation
 
 Acceptance Criteria:
 - 対象RendererのCPU Culling Costを観測可能
@@ -565,8 +598,6 @@ Acceptance Criteria:
 ---
 
 # 最小依頼版
-
-普段は次だけでも開始できます。
 
 ```text
 UnityAgentで以下を開発してください。
@@ -585,7 +616,7 @@ Assets/<対象>/**
 
 Project Factは実Projectから取得してください。
 必要CapabilityはGoalから選択してください。
-Providerは固定せず、安全Contractと利用可能状態から選択してください。
+Providerは固定せず、RuntimeのEnvironment / Safety Contractから解決してください。
 
 指定外Mutationが必要なら理由を先に説明してください。
 設計変更を伴う場合はDesign Reviewを先に行ってください。
@@ -594,10 +625,23 @@ Providerは固定せず、安全Contractと利用可能状態から選択して�
 
 ---
 
-# Target Architectureについて
+# Production Runtimeについて
 
-`Specs/UnityToolRuntime.md`に定義されるCapability-driven Tool RuntimeはTarget Architectureです。
+Capability-driven Tool RuntimeはProduction Architectureです。
 
-Runtime Tool Broker / Provider Registry等がProduction実装へ昇格する前は、既存のRuntime / MCP / Harness契約を使用します。
+人間向け解説:
 
-このTemplateはTarget Architectureの語彙を先行して使えますが、存在しないProviderを実装済みとして要求しません。
+- `docs/architecture/production-tool-runtime.md`
+- `docs/unity-environment-adaptation.md`
+- `docs/local-project-development.md`
+
+Canonical Runtime source:
+
+- `Runtime/Contracts/`
+- `Runtime/Tooling/provider_registry.yaml`
+- `Runtime/Tooling/capability_resolver.py`
+- `Runtime/Tooling/tool_broker.py`
+- `Runtime/Dispatcher/tool_runtime_dispatcher.py`
+- `Runtime/Tooling/Providers/`
+
+`Specs/`は補助仕様であり、Production execution authorityの代替ではありません。

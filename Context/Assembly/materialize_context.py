@@ -10,6 +10,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 CATALOG = Path("Context/Selection/context-catalog.yaml")
 
+
 def _load_module(name: str, path: Path):
     spec = importlib.util.spec_from_file_location(name, path)
     if spec is None or spec.loader is None:
@@ -18,8 +19,13 @@ def _load_module(name: str, path: Path):
     spec.loader.exec_module(module)
     return module
 
+
 resolver = _load_module("context_path_resolver", ROOT / "Context/Selection/path_resolver.py")
 budget = _load_module("context_budget_runtime", ROOT / "Context/Budget/budget_runtime.py")
+capability_selector = _load_module(
+    "context_capability_selector", ROOT / "Context/Selection/capability_selector.py"
+)
+
 
 def _yaml(path: Path) -> dict[str, Any]:
     value = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
@@ -27,9 +33,11 @@ def _yaml(path: Path) -> dict[str, Any]:
         raise ValueError(f"Expected YAML mapping: {path}")
     return value
 
+
 def _revision(path: Path) -> tuple[str, int]:
     data = path.read_bytes()
     return f"sha256:{hashlib.sha256(data).hexdigest()}", len(data)
+
 
 def _selected_ref(logical_ref: str, role: str, root: Path) -> dict[str, Any]:
     path = resolver.resolve_for_read(logical_ref, root)
@@ -44,12 +52,27 @@ def _selected_ref(logical_ref: str, role: str, root: Path) -> dict[str, Any]:
         "role": role,
     }
 
+
 def _append_unique(items: list[dict[str, Any]], value: dict[str, Any]) -> None:
     key = value["resolved_path"]
     if all(item["resolved_path"] != key for item in items):
         items.append(value)
 
-def _process_entry(entry: Any, *, requirement: str, condition: str | None, root: Path, bindings: dict[str, Any], required_context: list[dict[str, Any]], conditional_context: list[dict[str, Any]], context_includes: list[dict[str, Any]], external_references: list[dict[str, Any]], unresolved: list[str], missing_observations: list[str]) -> None:
+
+def _process_entry(
+    entry: Any,
+    *,
+    requirement: str,
+    condition: str | None,
+    root: Path,
+    bindings: dict[str, Any],
+    required_context: list[dict[str, Any]],
+    conditional_context: list[dict[str, Any]],
+    context_includes: list[dict[str, Any]],
+    external_references: list[dict[str, Any]],
+    unresolved: list[str],
+    missing_observations: list[str],
+) -> None:
     if not isinstance(entry, dict):
         raise ValueError("Context Pack typed entries must be mappings")
     kind = str(entry.get("type", "")).strip()
@@ -90,7 +113,9 @@ def _process_entry(entry: Any, *, requirement: str, condition: str | None, root:
         path = str(entry.get("path", "")).strip()
         if not repository or not path:
             raise ValueError("external_reference requires repository and path")
-        external_references.append({"repository": repository, "path": path, "requirement": requirement, "condition": condition})
+        external_references.append(
+            {"repository": repository, "path": path, "requirement": requirement, "condition": condition}
+        )
         if requirement == "required":
             missing_observations.append(f"external:{repository}:{path}")
         return
@@ -115,6 +140,7 @@ def _process_entry(entry: Any, *, requirement: str, condition: str | None, root:
         return
     raise ValueError(f"Unsupported Context Pack entry type: {kind}")
 
+
 def _policy_revision(policy_refs: list[dict[str, Any]]) -> str:
     h = hashlib.sha256()
     for item in sorted(policy_refs, key=lambda x: x["resolved_path"]):
@@ -122,7 +148,19 @@ def _policy_revision(policy_refs: list[dict[str, Any]]) -> str:
         h.update(item["revision"].encode())
     return f"sha256:{h.hexdigest()}"
 
-def materialize_context(run_id: str, route_id: str, prompt_spec_ref: str | None = None, bindings: dict[str, Any] | None = None, active_conditions: set[str] | None = None, knowledge_refs: list[str] | None = None, memory_projection_refs: list[str] | None = None, tool_schema_refs: list[str] | None = None, root: Path = ROOT) -> dict[str, Any]:
+
+def materialize_context(
+    run_id: str,
+    route_id: str,
+    prompt_spec_ref: str | None = None,
+    bindings: dict[str, Any] | None = None,
+    active_conditions: set[str] | None = None,
+    knowledge_refs: list[str] | None = None,
+    memory_projection_refs: list[str] | None = None,
+    capability_ids: list[str] | None = None,
+    tool_schema_refs: list[str] | None = None,
+    root: Path = ROOT,
+) -> dict[str, Any]:
     root = root.resolve()
     bindings = dict(bindings or {})
     conditions = set(active_conditions or set())
@@ -133,24 +171,41 @@ def materialize_context(run_id: str, route_id: str, prompt_spec_ref: str | None 
     route = routes[route_id]
     if not isinstance(route, dict):
         raise ValueError(f"Invalid route materialization entry: {route_id}")
+
     policy_refs = [_selected_ref(str(catalog["user_policy"]), "user_policy", root)]
+    capability_catalog = _selected_ref(str(catalog["capability_catalog"]), "capability_catalog", root)
     pack = _selected_ref(str(route["context_pack"]), "context_pack", root)
     skill = _selected_ref(str(route["primary_skill"]), "primary_skill", root)
     task = _selected_ref(str(route["task_contract"]), "task_contract", root)
     pack_document = _yaml(root / pack["resolved_path"])
+
     prompt_ref = None
     prompt_revision = "unbound"
     if prompt_spec_ref:
         prompt_ref = _selected_ref(prompt_spec_ref, "prompt_spec", root)
         prompt_revision = prompt_ref["revision"]
+
     required_context: list[dict[str, Any]] = []
     conditional_context: list[dict[str, Any]] = []
     context_includes: list[dict[str, Any]] = []
     external_references: list[dict[str, Any]] = []
     unresolved: list[str] = []
     missing_observations: list[str] = []
+
     for entry in pack_document.get("required", []) or []:
-        _process_entry(entry, requirement="required", condition=None, root=root, bindings=bindings, required_context=required_context, conditional_context=conditional_context, context_includes=context_includes, external_references=external_references, unresolved=unresolved, missing_observations=missing_observations)
+        _process_entry(
+            entry,
+            requirement="required",
+            condition=None,
+            root=root,
+            bindings=bindings,
+            required_context=required_context,
+            conditional_context=conditional_context,
+            context_includes=context_includes,
+            external_references=external_references,
+            unresolved=unresolved,
+            missing_observations=missing_observations,
+        )
     conditional = pack_document.get("conditional", {}) or {}
     if not isinstance(conditional, dict):
         raise ValueError("Context Pack conditional section must be a mapping")
@@ -159,16 +214,32 @@ def materialize_context(run_id: str, route_id: str, prompt_spec_ref: str | None 
         if not isinstance(entries, list):
             raise ValueError(f"Context Pack condition must contain a list: {condition}")
         for entry in entries:
-            _process_entry(entry, requirement="conditional", condition=condition, root=root, bindings=bindings, required_context=required_context, conditional_context=conditional_context, context_includes=context_includes, external_references=external_references, unresolved=unresolved, missing_observations=missing_observations)
+            _process_entry(
+                entry,
+                requirement="conditional",
+                condition=condition,
+                root=root,
+                bindings=bindings,
+                required_context=required_context,
+                conditional_context=conditional_context,
+                context_includes=context_includes,
+                external_references=external_references,
+                unresolved=unresolved,
+                missing_observations=missing_observations,
+            )
+
     knowledge: list[dict[str, Any]] = []
     for logical in knowledge_refs or []:
         _append_unique(knowledge, _selected_ref(logical, "knowledge", root))
     if route.get("knowledge_selection") == "required_when_domain_matches" and not knowledge:
         unresolved.append("knowledge_selection")
         missing_observations.append("knowledge_selection")
-    if route.get("mcp_selection") == "required" and not (tool_schema_refs or []):
-        unresolved.append("mcp_selection")
-        missing_observations.append("mcp_selection")
+
+    capabilities = capability_selector.select_capability_context(capability_ids or [], root=root)
+    if route.get("capability_selection") == "required" and not capabilities:
+        unresolved.append("capability_selection")
+        missing_observations.append("capability_selection")
+
     selected_tool_refs: list[str] = []
     for logical in tool_schema_refs or []:
         path = resolver.resolve_for_read(logical, root)
@@ -177,20 +248,96 @@ def materialize_context(run_id: str, route_id: str, prompt_spec_ref: str | None 
             missing_observations.append(f"tool_schema:{logical}")
         else:
             selected_tool_refs.append(path.relative_to(root).as_posix())
-    local_refs: list[dict[str, Any]] = [*policy_refs, pack, skill, task, *required_context, *conditional_context, *context_includes, *knowledge]
+
+    local_refs: list[dict[str, Any]] = [
+        *policy_refs,
+        capability_catalog,
+        pack,
+        skill,
+        task,
+        *required_context,
+        *conditional_context,
+        *context_includes,
+        *knowledge,
+    ]
     if prompt_ref is not None:
         local_refs.append(prompt_ref)
+
     expansion_hops = int((pack_document.get("limits") or {}).get("context_expansion_hops", 0) or 0)
-    budget_report = budget.evaluate(route_id, [int(item["selected_utf8_bytes"]) for item in local_refs], missing_observations=missing_observations, external_fetches=len(external_references), context_includes=len(context_includes), expansion_hops=expansion_hops, root=root)
+    budget_report = budget.evaluate(
+        route_id,
+        [int(item["selected_utf8_bytes"]) for item in local_refs],
+        missing_observations=missing_observations,
+        external_fetches=len(external_references),
+        context_includes=len(context_includes),
+        expansion_hops=expansion_hops,
+        root=root,
+    )
     if budget_report["decision"] == "blocked":
         raise ValueError(f"Context budget blocked materialization for {route_id}")
+
     source_revisions = [{"ref": item["resolved_path"], "revision": item["revision"]} for item in local_refs]
-    state_payload = {"route_id": route_id, "resolved_bindings": bindings, "unresolved_bindings": sorted(set(unresolved)), "active_conditions": sorted(conditions), "external_references": external_references, "memory_projection_refs": sorted(set(memory_projection_refs or [])), "tool_schema_refs": sorted(set(selected_tool_refs))}
+    state_payload = {
+        "route_id": route_id,
+        "resolved_bindings": bindings,
+        "unresolved_bindings": sorted(set(unresolved)),
+        "active_conditions": sorted(conditions),
+        "external_references": external_references,
+        "memory_projection_refs": sorted(set(memory_projection_refs or [])),
+        "capability_ids": sorted({str(item["capability"]) for item in capabilities}),
+        "tool_schema_refs": sorted(set(selected_tool_refs)),
+    }
     hash_lines = [f'{x["ref"]}:{x["revision"]}' for x in sorted(source_revisions, key=lambda x: x["ref"])]
     hash_lines.append(yaml.safe_dump(state_payload, sort_keys=True, allow_unicode=True))
     context_hash = f"sha256:{hashlib.sha256(chr(10).join(hash_lines).encode()).hexdigest()}"
     context_id = f"ctx-{context_hash.split(':', 1)[1][:16]}"
-    return {"schema_version": "1.0", "context_id": context_id, "run_id": run_id, "route_id": route_id, "prompt_spec_ref": prompt_spec_ref, "selected_refs": {"policy": policy_refs, "prompt_spec": prompt_ref, "context_pack": pack, "primary_skill": skill, "task_contract": task, "required_context": required_context, "conditional_context": conditional_context, "context_includes": context_includes, "external_references": external_references, "knowledge": knowledge, "memory_projections": sorted(set(memory_projection_refs or [])), "tool_schema_refs": sorted(set(selected_tool_refs))}, "resolved_bindings": bindings, "unresolved_bindings": sorted(set(unresolved)), "active_conditions": sorted(conditions), "budget_report": budget_report, "context_fingerprint": {"schema_version": "1.0", "algorithm": "sha256", "value": context_hash, "selected_source_revisions": sorted(source_revisions, key=lambda x: x["ref"])}, "definition_fingerprint": {"schema_version": "1.0", "architecture_version": "v3.1", "policy_revision": _policy_revision(policy_refs), "prompt_revision": prompt_revision, "context_revision": context_hash, "graph_revision": "orchestration-phase4-canonical", "runtime_profile_revision": "runtime-phase3-canonical", "tool_schema_revision": "unbound-runtime", "checkpoint_schema_revision": "1.1", "evidence_schema_revision": "1.1", "eval_contract_revision": "eval-phase6-canonical"}}
+
+    return {
+        "schema_version": "1.0",
+        "context_id": context_id,
+        "run_id": run_id,
+        "route_id": route_id,
+        "prompt_spec_ref": prompt_spec_ref,
+        "selected_refs": {
+            "policy": policy_refs,
+            "prompt_spec": prompt_ref,
+            "context_pack": pack,
+            "primary_skill": skill,
+            "task_contract": task,
+            "required_context": required_context,
+            "conditional_context": conditional_context,
+            "context_includes": context_includes,
+            "external_references": external_references,
+            "knowledge": knowledge,
+            "memory_projections": sorted(set(memory_projection_refs or [])),
+            "capabilities": capabilities,
+            "tool_schema_refs": sorted(set(selected_tool_refs)),
+        },
+        "resolved_bindings": bindings,
+        "unresolved_bindings": sorted(set(unresolved)),
+        "active_conditions": sorted(conditions),
+        "budget_report": budget_report,
+        "context_fingerprint": {
+            "schema_version": "1.0",
+            "algorithm": "sha256",
+            "value": context_hash,
+            "selected_source_revisions": sorted(source_revisions, key=lambda x: x["ref"]),
+        },
+        "definition_fingerprint": {
+            "schema_version": "1.0",
+            "architecture_version": "v4.0",
+            "policy_revision": _policy_revision(policy_refs),
+            "prompt_revision": prompt_revision,
+            "context_revision": context_hash,
+            "graph_revision": "development-graph-v1",
+            "runtime_profile_revision": "runtime-profiles-v1",
+            "tool_schema_revision": "production-tool-runtime-v1",
+            "checkpoint_schema_revision": "1.1",
+            "evidence_schema_revision": "1.2",
+            "eval_contract_revision": "1.2",
+        },
+    }
+
 
 def main() -> int:
     parser = argparse.ArgumentParser()
@@ -199,6 +346,7 @@ def main() -> int:
     parser.add_argument("--prompt-spec-ref")
     parser.add_argument("--binding", action="append", default=[], help="name=value")
     parser.add_argument("--condition", action="append", default=[])
+    parser.add_argument("--capability", action="append", default=[])
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     bindings: dict[str, str] = {}
@@ -207,7 +355,14 @@ def main() -> int:
             raise SystemExit(f"invalid --binding (expected name=value): {raw}")
         name, value = raw.split("=", 1)
         bindings[name] = value
-    view = materialize_context(args.run_id, args.route, args.prompt_spec_ref, bindings=bindings, active_conditions=set(args.condition))
+    view = materialize_context(
+        args.run_id,
+        args.route,
+        args.prompt_spec_ref,
+        bindings=bindings,
+        active_conditions=set(args.condition),
+        capability_ids=list(args.capability),
+    )
     text = yaml.safe_dump(view, sort_keys=False, allow_unicode=True)
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -215,6 +370,7 @@ def main() -> int:
     else:
         print(text, end="")
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

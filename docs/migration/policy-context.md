@@ -1,65 +1,156 @@
 # Policy + Context Migration
 
-Status: implemented on `refactor/architecture-phase2-policy-context`
+> **Historical Record**
+>
+> この文書は旧Architecture移行時点の記録です。本文に現れる `Context/Selection/mcp-selection.yaml`、`Context/Compatibility/`、`compatibility://` 等は当時の構造を示しており、現在のProduction Authorityではありません。
+>
+> Production Tool Runtime Cutover後、`Context/Selection/mcp-selection.yaml` は削除済みです。現在は:
+>
+> - Capability description -> `Context/Selection/tool-capability-catalog.yaml`
+> - Provider resolution -> `Runtime/Tooling/provider_registry.yaml` + `Runtime/Tooling/capability_resolver.py`
+> - Production dispatch -> `Runtime/Dispatcher/tool_runtime_dispatcher.py`
+>
+> を使用します。
 
-Base: Phase 1 merge `e141bcf5c13d98f8caa7a203046670a73d28dbf9`
+Status at the time: implemented on `refactor/architecture-phase2-policy-context`
+
+Base at the time: Phase 1 merge `e141bcf5c13d98f8caa7a203046670a73d28dbf9`
+
+---
+
+## 当時のAuthority分離
+
+```mermaid
+flowchart LR
+    P[Policy] -->|permission / approval| R[Runtime]
+    C[Context] -->|description selection| R
+    R --> T[Tool exposure]
+```
+
+当時はMCP activationを次のように分割しました。
+
+- context description/catalog loading -> `Context/Selection/mcp-selection.yaml`
+- permission/trust/approval requirements -> `Policy/`
+- actual tool exposure -> `Runtime/Permissions/mcp-activation.yaml`
+
+このうち`mcp-selection.yaml`は後のProduction Tool Runtime Cutoverで役割を終えています。
+
+---
 
 ## Policy migration
 
-- `.ai/user-policy.yaml` is copied byte-for-byte to `Policy/User/user-policy.yaml`.
-- `.ai/harness/risk-levels.yaml` is copied byte-for-byte to `Policy/Risk/risk-levels.yaml`.
-- MCP activation is split by authority without dropping repository/ownership facts; those are preserved in `Policy/Contracts/repository-ownership.yaml`.
-- MCP activation is split by authority:
-  - context description/catalog loading -> `Context/Selection/mcp-selection.yaml`
-  - permission/trust/approval requirements -> `Policy/`
-  - actual tool exposure -> `Runtime/Permissions/mcp-activation.yaml`
-- Existing legacy sources are retained for compatibility and are not deleted in Phase 2.
+当時行った内容:
+
+- `.ai/user-policy.yaml` を `Policy/User/user-policy.yaml` へlossless移行。
+- `.ai/harness/risk-levels.yaml` を `Policy/Risk/risk-levels.yaml` へlossless移行。
+- repository / ownership factを `Policy/Contracts/repository-ownership.yaml` へ分離。
+- permission / trust / approvalをPolicy Authorityへ移行。
+- legacy sourceは当時まだCompatibilityのため残した。
+
+現在はlegacy `.ai` authorityをProduction bootstrapへ戻しません。
+
+---
 
 ## Context migration
 
-- Context Packs are copied losslessly to `Context/Packs/`.
-- compressed Knowledge is copied losslessly to `Context/Retrieval/Knowledge/`.
-- Context Budget is canonical at `Context/Budget/context-budget.yaml`. The mature budget engine is migrated byte-exact as an audited compatibility engine and exposed through `Context/Budget/context_budget_runtime.py`, which overrides the contract path to the canonical Context location.
-- Prompt templates are copied losslessly to `Context/Prompt/Templates/`.
-- Prompt catalog records the no-Golden-leak review.
-- `Context/Selection/context-catalog.yaml` is a materialization catalog only; it does not claim route-decision authority.
-- `MaterializedContextView`, `ContextFingerprint`, and `MemoryProjection` contracts are first-class Context contracts.
-- `Context/Assembly/materialize_context.py` requires an explicit Route ID, resolves required Context entries, records unresolved bindings/external observations instead of guessing, and produces a bounded current-call view. It does not persist WorkflowState, Checkpoint, Memory truth, or Evidence truth.
+当時行った内容:
 
-## Compatibility boundary
+- Context Packsを `Context/Packs/` へ移行。
+- Knowledgeを `Context/Retrieval/Knowledge/` へ移行。
+- Context Budgetを `Context/Budget/context-budget.yaml` へ集約。
+- Prompt templatesを `Context/Prompt/Templates/` へ移行。
+- `Context/Selection/context-catalog.yaml` をmaterialization-only catalogとして整理。
+- `MaterializedContextView` / `ContextFingerprint` / `MemoryProjection`をfirst-class Context contract化。
+- `Context/Assembly/materialize_context.py` がexplicit Route IDからbounded current-call viewを生成する構造へ移行。
 
-`Context/Compatibility/legacy-path-map.yaml` is the only new read-only compatibility authority. It maps migrated legacy refs to canonical paths and names remaining Phase 3/4 dependencies through `compatibility://` keys.
+Contextは当時から:
 
-No compatibility write API exists. `resolve_for_write` fails closed.
+- WorkflowState
+- Checkpoint
+- durable Memory
+- durable Evidence
 
-Lossless migrated Context Packs and Knowledge may still contain historical legacy source-ref strings; those are resolved through the compatibility resolver at materialization time and are not treated as canonical ownership.
+のAuthorityを持たない方針でした。
+
+---
+
+## 当時のCompatibility Boundary
+
+当時は `Context/Compatibility/legacy-path-map.yaml` がread-only compatibility authorityでした。
+
+```text
+legacy ref
+  -> compatibility resolver
+  -> canonical path
+```
+
+write fallbackはfail-closedでした。
+
+その後のdestructive cutoverでこのCompatibility layerはcurrent Production pathから除去されています。
+
+現在はlegacy URI/path fallbackを使用しません。
+
+---
 
 ## Context Manifest split
 
-The previous monolithic Context Manifest runtime mixed context materialization with execution evidence, graph projection, retry status, and harness facts.
+旧monolithic Context Manifestは次を混在させていました。
 
-Phase 2 creates a context-only manifest:
-- current-call materialized context
-- context budget
-- unresolved bindings
-- attempt provenance
+- Context materialization
+- execution evidence
+- graph projection
+- retry status
+- harness facts
 
-Execution Evidence remains Runtime/Persistence work for later phases. Graph state/topology remains Orchestration work for Phase 4.
+このMigrationではContext-only manifestへ分離しました。
 
-## Guards
+```text
+Context
+= current-call materialized context
++ context budget
++ unresolved bindings
++ attempt provenance
+```
 
-- `Policy/Validators/validate_user_policy_equivalence.py` rejects any user-policy or risk-policy loss.
-- `Context/Validators/validate_stale_paths.py` rejects direct legacy path references on canonical operational surfaces.
-- New legacy-path writes are forbidden.
-- Old legacy files remain present and read-only until the explicit destructive cutover gate.
+Execution EvidenceはRuntime / Persistence、Graph stateはOrchestrationへ分離しました。
 
-## Phase 2 exit
+このAuthority分離自体は現在も維持されています。
 
-- New Policy paths are canonical: yes.
-- Existing user-specific policy semantics are lossless: yes, byte-exact check.
-- Context is modeled as a materialized current-call view: yes.
-- Prompt templates are under Context and reviewed for Golden expectation leakage: yes.
-- Context Packs / Knowledge / Budget have canonical Context locations: yes.
-- Old legacy tree is still available only for bounded compatibility reads: yes.
-- No new legacy writes are allowed: yes.
-- Deletion of the legacy tree remains deferred to Phase 8: yes.
+---
+
+## 当時のGuards
+
+- User Policy equivalence検証
+- stale legacy path検出
+- legacy write禁止
+- destructive cutover前のlegacy read-only保持
+
+現在はさらにProduction Tool Runtime側で:
+
+- Provider-independent CapabilityRequest
+- Project binding
+- Approval
+- Mutation Scope
+- Evidence strength
+- safe fallback
+
+をRuntime boundaryで再検証します。
+
+---
+
+## 現在との対応
+
+```mermaid
+flowchart TD
+    OLD[旧 mcp-selection<br/>ContextがMCP descriptionを選択] --> NEWC[tool-capability-catalog<br/>ContextはCapability説明のみ]
+    OLD --> NEWR[Provider Registry / Resolver<br/>RuntimeがProviderを解決]
+    NEWR --> DISP[Production Dispatcher]
+```
+
+現在の詳細:
+
+- `docs/architecture/production-tool-runtime.md`
+- `docs/architecture/architecture.md`
+- `docs/unity-environment-adaptation.md`
+
+Historical recordとCurrent Production Contractを混同しないでください。

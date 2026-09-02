@@ -8,10 +8,10 @@ metadata:
   summary:
     - Route Unity graphics inspection, planning, mutation, bake, and capture contracts.
   purpose:
-    - Select one primary graphics MCP capability while preserving UnityAgent ownership.
+    - Select graphics capabilities while preserving UnityAgent ownership and Runtime provider resolution.
   decisions:
-    - id: mcp-contract-authority
-      label: UnityAgent MCP routing rules remain authoritative
+    - id: capability-contract-authority
+      label: UnityAgent capability and safety rules remain authoritative
       source_ref: Context/Packs/graphics-mcp.yaml#rules
   forbidden:
     - id: unapproved-graphics-mutation
@@ -37,7 +37,7 @@ required:
   - type: repository_reference
     path: SkillReferences/ARCHITECTURE_DECISION_POLICY.md
   - type: repository_reference
-    path: Context/Selection/mcp-selection.yaml
+    path: Context/Selection/tool-capability-catalog.yaml
   - type: repository_reference
     path: Runtime/Permissions/mcp-activation.yaml
   - type: repository_reference
@@ -91,6 +91,8 @@ excluded_by_default:
 rules:
   user_policy_has_priority_over_generic_mcp_architecture: true
   unity_agent_owns_preferences_routes_and_domain_contracts: true
+  runtime_owns_provider_resolution: true
+  context_does_not_select_provider: true
   mcp_repository: DarumaPPAP/MyUnityMCP
   mcp_specification_root: Specs
   mcp_package_root: Packages

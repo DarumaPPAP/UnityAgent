@@ -2,290 +2,280 @@
 
 UnityAgentは、**個人のUnity開発に特化したAI開発エージェント基盤**です。
 
-単なるCoding Rule集ではなく、ユーザーの依頼を受け取ってから、Policy確認、Task分類、Context選択、設計確認、実行、検証、Evidence保存、品質評価までを一貫した責務分離で扱います。
+Coding Rule集ではなく、ユーザー依頼を受けてからPolicy確認、Task分類、Context選択、設計確認、実行、検証、Evidence保存、品質評価までを責務分離して扱います。
 
-このRepositoryの目的は、AIに「何でもそれっぽくやらせる」ことではありません。
+主な目的は次です。
 
 - ユーザー固有の開発方針を最優先する
 - 必要なContextだけを選ぶ
-- 作るものが大きい場合は、実装前に設計とGraphを確認できるようにする
+- 設計が重要なTaskでは実装前にArchitectureを確認できるようにする
 - Taskごとに許可された範囲だけを変更する
-- 実際に確認できたEvidenceだけを根拠にする
-- Unity / C# / Rendering / Performanceなどの専門判断を適切なSkillへ委譲する
-- 実行結果を評価し、品質低下を検出できるようにする
-
-ことを目的としています。
+- 実際に観測したEvidenceだけを根拠にする
+- Unity / C# / Rendering / Performance等の専門判断をSkillへ委譲する
+- Unity環境やTool構成が違ってもCapability単位で安全に適応する
+- Behavior RegressionをBaselineと比較できるようにする
 
 ---
 
-## UnityAgentがどのように動くか
-
-UnityAgentは、ユーザーの依頼をそのまま直接実行するのではなく、依頼の意味、設計、実行範囲、検証方法を順番に整理してから処理します。
+## 1. 全体像
 
 ```mermaid
 flowchart LR
-    U[ユーザー依頼] --> P[Policy確認]
-    P --> R[Routing]
+    U[ユーザー依頼] --> P[Policy]
+    P --> R[Orchestration Routing]
     R --> T[Task Contract]
-    T --> C[Context / Skill選択]
-    C --> G{Design Reviewが必要?}
+    T --> C[Context / Skill]
+    C --> D{Design Review?}
 
-    G -->|必要| D[設計プレビュー]
-    D --> H{ユーザー承認}
-    H -->|修正| D
-    H -->|承認| X[調査 / 実装]
-    H -->|却下| O[ユーザー報告]
+    D -->|必要| H[Human Review]
+    H -->|承認| X[Runtime]
+    H -->|修正| C
+    H -->|却下| O[結果]
 
-    G -->|不要| X
-    X --> V[検証]
-    V --> E[Evidence / 永続化]
-    E --> Q[Eval]
-    Q --> O
+    D -->|不要| X
+    X --> V[Verification / Evidence]
+    V --> S[Persistence]
+    S --> E[Eval / Regression]
+    E --> O
 ```
 
-詳細な関連図は [UnityAgent Flow](docs/architecture/unityagent-flow.mmd) で確認できます。GitHubではMermaidとしてそのまま描画されます。
+責務の基本原則は次です。
 
-この順序によって、設計判断、Context取得、実際の変更、検証、品質評価を同じ責務へ混ぜません。
+```text
+Policy defines
+Orchestration decides
+Context materializes
+Runtime executes
+Persistence remembers
+Operations observes / controls
+Eval measures / proposes
+```
+
+詳細は [UnityAgent Architecture](docs/architecture/architecture.md) を参照してください。
 
 ---
 
-## 基本原則
+## 2. Production Tool Runtime
 
-### 1. ユーザーの方針を最優先する
-
-UnityAgentは汎用的なUnity Best Practiceよりも、ユーザーが明示した要件と `Policy/User/user-policy.yaml` を優先します。
+Production Cutover後のUnity Tool実行は、**Provider製品名ではなくCapabilityを起点**にします。
 
 ```text
-今回のユーザー明示指示
-    ↓
-User Policy（ユーザー方針）
-    ↓
-検証済みProject Fact / Project固有条件
-    ↓
-UnityAgent Domain Standard / Skill
-    ↓
-外部Reference
-    ↓
-一般的なBest Practice
+Skill      = どう作業するか
+Capability = 何を実現したいか
+Provider   = 誰が実行できるか
+Transport  = どう接続するか
+Evidence   = 実際に何を観測したか
 ```
 
-一般論だけを理由に、ユーザーが決めた設計方針や命名、作業方法を勝手に置き換えません。
+Orchestrationは通常、次のような要求をRuntimeへ渡します。
 
-### 2. Project Factを推測しない
-
-Unity Version、Render Pipeline、Package Version、namespace、Scene構成、Asset状態などは可能な限り対象Projectから確認します。
-
-確認できない情報を固定値で補完せず、必要な場合だけFallback情報を使用します。
-
-### 3. 最小の凝集した解決から始める
-
-局所的な修正に不要なManager、Controller、Interface、Profile、Watcherなどを追加しません。
-
-まず既存Component、Unity Lifecycle、既存Callback、既存Source of Truthで解決できるかを確認します。
-
-### 4. Evidenceを推測で補わない
-
-Compile成功はRuntime成功ではありません。
-Editor成功はPlayer成功ではありません。
-静的解析だけでPerformance改善済みとも扱いません。
-
-確認できた範囲と未確認の範囲を分けて報告します。
-
-### 5. 設計が必要なTaskは、実装前に確認できるようにする
-
-新しいFeature、Architecture、MCP、Portable Tool、Visual Directionなど、設計自体が重要なTaskではDesign Reviewを使用します。
-
-小さなC#修正や、すでにArchitectureが決まっている局所変更まで毎回止めることはしません。
-
----
-
-## 全体構成
-
-UnityAgentは責務ごとに次の領域へ分かれています。
-
-| 領域 | 責務 |
-| --- | --- |
-| `Policy/` | ユーザー方針、安全、Approval、Risk、Evidence境界 |
-| `Orchestration/` | Task分類、Routing、Graph、Gate、Semantic Replan |
-| `Context/` | 必要なContextの選択、Retrieval、Budget、Materialization |
-| `Runtime/` | 実Process / Tool実行、Permission、Mutation制御、Harness |
-| `Persistence/` | State、Checkpoint、Memory、Evidence、Sessionの永続化 |
-| `Operations/` | Observability、Incident、Runbook、Runtime Control |
-| `Eval/` | Golden / Behavior Eval、Regression、Attribution、品質判定 |
-| `.agents/skills/` | Unity分野ごとの専門手順 |
-| `SkillReferences/` | Coding、Architecture、Rendering等の共通規約 |
-| `Specs/` | Project / Feature向け補助仕様 |
-| `Tools/` | Validation、可視化、Regression Gate等の実行入口 |
-
-基本的な責務関係は次です。
-
-```text
-Policy        : 判断基準と許可境界を定義する
-Orchestration : Taskの進め方を決定する
-Context       : 必要な情報を構成する
-Runtime       : 実際の処理を実行する
-Persistence   : State / Memory / Evidenceを保持する
-Operations    : 実行状態を観測・制御する
-Eval          : Behaviorと品質を測定する
+```yaml
+capability: scene.inspect
+project_root: D:/Projects/MyGame/Project
+operation_kind: read
+required_evidence:
+  - editor_observation
+preferred_surface: live_editor
 ```
 
----
+`MyUnityMCPを使う`、`Unity CLIを使う`のようなProvider製品指定をSemantic Graphの正本にしません。
 
-## Taskが処理される順番
-
-### 1. Policy
-
-最初に、ユーザー固有Policy、安全境界、変更許可、Approval要件を確認します。
-
-Policyは「どう判断してよいか」を定義しますが、実際のProcess実行は行いません。
-
-### 2. Routing
-
-依頼内容からTaskの種類を判断し、Primary Routeを一つ選びます。
-
-Routingの正本は次です。
-
-`Orchestration/Routing/task-routes.yaml`
-
-Technology Keywordだけではなく、依頼の目的、対象、Risk、必要Evidence、Mutation範囲を使って分類します。
-
-Routeは、Design Reviewを `required / conditional / not_required` のどれとして扱うかも定義します。
-
-### 3. Task Contract
-
-選択されたRouteに対して、実行条件をTask Contractで固定します。
-
-`Orchestration/Contracts/TaskContracts/`
-
-Task Contractは主に次を定義します。
-
-- 必須Input
-- 許可するMutation
-- 禁止するMutation
-- 必須Gate
-- 完了条件
-- 停止条件
-
-### 4. Context Materialization
-
-Taskに必要なPolicy、Context Pack、Primary Skill、Source、Referenceだけを選びます。
-
-```text
-選択されたRoute
-    ↓
-Context Catalog
-    ↓
-Context Pack
-    + Primary Skill
-    + Task Contract
-    + 必須Policy
-    + 必須Source / Reference
-    ↓
-Budget確認
-    ↓
-Materialized Context
-```
-
-Context Selectionの入口は次です。
-
-`Context/Selection/context-catalog.yaml`
-
-Contextを大量に読み込むこと自体を品質とはみなしません。必要な情報を欠かさず、不要な情報を増やさないことを重視します。
-
-### 5. Design Review
-
-設計確認が必要なTaskでは、Mutationへ進む前に設計プレビューをユーザーへ提示します。
-
-主なOutputは次の3つです。
-
-1. **関連図** — 実際に選択されたRoute / SubGraph / Gate / Runtime境界をMermaidで可視化
-2. **チェック項目** — Scope、責務、Mutation範囲、必要Context、Validation、Stop条件などを確認
-3. **最終イメージ仕様書** — 完成後に何がどう動くか、主要Component、Control Flow、Acceptance Criteria、Non-goalを自然言語で固定
-
-表示形式の基本Templateは `Templates/DesignReview.md`、構造化Output Contractは `Orchestration/Contracts/design-review-artifact.schema.yaml` です。
+### 実行経路
 
 ```mermaid
 flowchart TD
-    A[設計プレビュー生成] --> B[関連図]
-    A --> C[チェック項目]
-    A --> D[最終イメージ仕様書]
-    B --> E{ユーザー確認}
-    C --> E
-    D --> E
-    E -->|承認| F[次のSubGraphへ]
-    E -->|修正| A
-    E -->|却下| G[実装せず終了]
+    O[Orchestration] -->|CapabilityRequest| H[Runtime Handoff<br/>authoritative]
+    H --> G[Runtime Guard]
+    G --> B[ToolBroker]
+    B --> R[Capability Resolver]
+    R --> E[Environment Snapshot]
+    E --> P[Provider Registry]
+    P --> D[Production Dispatcher]
+    D --> X[Concrete Provider Adapter]
+    X --> V[Structured ProviderResult]
+    V --> N[Evidence Normalizer]
+    N --> S[Persistence Evidence]
 ```
 
-Design Reviewが必須のTaskでは、承認されるまで実装Mutationへ進みません。
+Production Dispatcherは、Resolverが選んだProviderにConcrete executorが無い場合も成功扱いしません。`backend_not_implemented`として扱い、安全性とEvidence強度を維持できる**同一Capability**だけをFallback候補にします。
 
-### 6. Investigation
-
-既存Projectの事実確認や原因特定が必要なTaskでは、Runtimeを使って必要なEvidenceだけを調べます。
-
-調査結果によって設計が変わる場合は、Design Reviewへ戻して更新した関連図・チェック項目・最終イメージを再提示できます。
-
-### 7. Runtime / Implementation
-
-Runtimeが実際の処理を実行します。
-
-主な責務は次です。
-
-- Codex / Tool / subprocessの実行
-- Timeout / Cancellation
-- Permission Enforcement
-- Workspace / Mutation Scope Enforcement
-- Unity Harness
-- Test Harness
-- Performance Harness
-- SCM Harness
-- Current-run Evidence Capture
-
-RuntimeはTaskの意味を勝手に変更したり、新しいPrimary Routeを決めたりしません。
-
-### 8. Verification / Evidence
-
-変更した内容を可能な範囲で検証します。
-
-```text
-静的Review
-    ↓
-Compile
-    ↓
-Editor / Test
-    ↓
-Player / Runtime
-    ↓
-Target Device / Performance / Visual Evidence
-```
-
-Taskに不要な上位検証を常に要求するわけではありませんが、未実施のGateを成功扱いにはしません。
-
-### 9. Persistence
-
-実行中のStateと永続Evidenceを分離します。
-
-```text
-Checkpoint != Memory != Evidence
-```
-
-- Checkpoint: 実行状態を再開するためのSnapshot
-- Memory: 後続Taskで再利用可能な情報
-- Evidence: 実際の実行結果を示す永続記録
-
-### 10. Eval
-
-Evalは、実行結果が期待するBehavior Contractを満たしているかを測定します。
-
-Agent自身の品質低下と、Runtime / Tool / Environment / Evaluator側のFailureを同一視しません。
+詳細は [Production Tool Runtime](docs/architecture/production-tool-runtime.md) を参照してください。
 
 ---
 
-## GraphとLoopの扱い
+## 3. Canonical Capability
 
-すべてのTaskを巨大なGraphへ通すわけではありません。
+現在のCapability語彙は次の15個です。
 
-小さいTaskは短い経路を使います。
+| Capability | 目的 |
+| --- | --- |
+| `project.inspect` | Project Fact観測 |
+| `source.read` | Source read |
+| `source.patch` | Source mutation |
+| `static.review` | Static review |
+| `git.diff` | Git diff観測 |
+| `compile.observe` | Compile観測 |
+| `project.test` | Unity Test |
+| `project.build` | Unity Build |
+| `scene.inspect` | Scene / Editor観測 |
+| `scene.mutate` | Approval付きEditor mutation |
+| `profiler.observe` | Profiler観測 |
+| `visual.capture` | Visual evidence取得 |
+| `domain.workflow` | Domain-specific workflow |
+| `player.observe` | Player観測 |
+| `player.mutate` | Approval付きPlayer control |
+
+旧資料で見られた次の名称はCanonical Capabilityではありません。
+
+```text
+source.inspect       -> source.read
+project.compile      -> compile.observe
+editor.capture       -> visual.capture
+performance.capture  -> profiler.observe 等へTaskごとに分解
+player.control       -> player.mutate
+```
+
+---
+
+## 4. ProviderはOptional
+
+UnityAgentはUnity CLIやMCPを必須依存にしません。
+
+代表Provider:
+
+- File Provider
+- Native Unity Editor Provider
+- Unity CLI Provider
+- MyUnityMCP Provider
+- Coplay MCP candidate / bridge
+- Player Runtime Provider
+
+RuntimeはTask開始時またはCapability実行前にEnvironment Snapshotを確認します。
+
+```text
+Unity CLIあり / なし
+MCPあり / なし
+Unity Editorあり / なし
+Safe Mode
+Player接続あり / なし
+Test Frameworkあり / なし
+Build Moduleあり / なし
+```
+
+はすべてEnvironment Factです。
+
+どれか1つが無いだけでUnityAgent全体を停止しません。一方で、利用不能な検証をPASS扱いしません。
+
+詳しくは [Unity環境への適応](docs/unity-environment-adaptation.md) を参照してください。
+
+---
+
+## 5. Safety Contract
+
+Provider unavailableはSafety Contractを弱める理由になりません。
+
+```text
+Provider unavailable
+!= Mutation Scopeを広げてよい
+!= Approvalを省略してよい
+!= Required Evidenceを弱めてよい
+```
+
+禁止例:
+
+```text
+scene.mutate
+MyUnityMCP unavailable
+        ↓
+× raw .unity YAML edit
+× arbitrary eval
+```
+
+許可できるFallback例:
+
+```text
+project.test
+Unity CLI unavailable
+        ↓
+Native Unity Editorが同じtest_execution Evidenceを満たす
+        ↓
+同一CapabilityとしてFallback
+```
+
+MyUnityMCP Mutationでは既存Safety Contractを維持します。
+
+```mermaid
+flowchart LR
+    I[Inspect] --> P[Prepare]
+    P --> D[Exact Diff]
+    D --> R[Revision]
+    R --> A[Approval]
+    A --> AP[Apply]
+```
+
+---
+
+## 6. Project Root / Mutation Scope
+
+UnityAgent本体とTarget Unity Projectは別Repository / 別Directoryを推奨します。
+
+```text
+D:\
+├─ UnityAgent\
+└─ Projects\
+   └─ MyGame\
+      └─ Project\
+         ├─ Assets\
+         ├─ Packages\
+         └─ ProjectSettings\
+```
+
+標準:
+
+```text
+Read Scope
+= Target Unity Project Root
+
+Mutation Scope
+= Taskに必要な最小範囲
+```
+
+`Assets/`だけではUnity Version、Packages、ProjectSettings等のProject Factが不足するため、原則Project Rootを読み取り対象にします。
+
+詳細は [ローカルUnity Project開発ガイド](docs/local-project-development.md) を参照してください。
+
+---
+
+## 7. Design Review
+
+新Feature、Architecture、MCP、Portable Tool、Visual Direction等の設計が重要なTaskではDesign Reviewを使います。
+
+主なOutput:
+
+1. **関連図** — Route / Component / Runtime boundaryをMermaidで表示
+2. **設計チェック** — Responsibility / Source of Truth / Scope / Approval / Evidence / Non-goalを確認
+3. **最終イメージ仕様** — 完成後のBehaviorとAcceptance Criteriaを固定
+
+```mermaid
+flowchart TD
+    A[設計プレビュー] --> B[関連図]
+    A --> C[チェック項目]
+    A --> D[最終イメージ]
+    B --> H{Human Review}
+    C --> H
+    D --> H
+    H -->|承認| X[実装]
+    H -->|修正| A
+    H -->|却下| S[停止]
+```
+
+Design Reviewが必須なら、承認前にImplementation Mutationへ進みません。
+
+---
+
+## 8. Graph / Loop
+
+小さなTaskはFast Pathを優先します。
 
 ```text
 Policy
@@ -298,133 +288,52 @@ Runtime
   ↓
 Verification
   ↓
-結果
+Result
 ```
 
-複数の判断、分岐、設計確認、検証、再計画が必要なTaskだけOrchestration Graphを使用します。
+複数判断や再計画が必要なTaskだけParentGraph / SubGraphを使用します。
 
 ```text
 Parent Graph
-    ↓
-SubGraph
-    ↓
-Node / Edge / Gate
-    ↓
-必要な場所だけLocal Loop
+  -> SubGraph
+      -> Node / Edge / Gate
+          -> 必要な場所だけLocal Loop
 ```
 
-Design Reviewも独立した別Systemではなく、Parent Graph内のSubGraphです。
-
-LoopはGraphとは別の独立Control Planeではなく、限定された処理を条件付きで再試行・再評価するための構造です。
+LoopはGraphと並ぶ別Control Planeではありません。
 
 ---
 
-## Skillの扱い
+## 9. Evidence
 
-Skillは巨大な知識Fileではなく、特定の専門作業を安定して実行するための手順です。
-
-`.agents/skills/`
-
-TaskごとにPrimary Skillを一つ選び、Primary Skillが持たない専門判断だけSecondary Skillへ委譲します。
-
-例えば、原因不明のRendering障害ではIncident系Skillが調査を所有し、原因確定後にRendering / Shader系Skillへ修正を渡します。
-
-Unity公式CLIのように外部製品と一緒に更新されるSkillは、UnityAgentへ全文を固定コピーして独自正本化しません。UnityAgent側にはPolicy / Capability selection / Evidence等の固有判断だけを保持し、外部Toolの現在のCommand Surfaceは実際のTool discoveryと公式Skillを優先します。
-
----
-
-## Unity Projectとの関係
-
-UnityAgent自身はUnity Projectではありません。
-
-実際のScene、Prefab、Material、Shader、C#、Package等は対象Unity Projectが所有します。
-
-UnityAgentはそれらを変更する際の判断、Context、設計確認、実行制御、Evidence、品質評価を提供します。
-
-Project固有Factは可能な限り実Projectから取得し、`Specs/ProjectProfile.md` は未解決FactのFallbackとしてのみ使用します。
-
-ローカル開発では次を標準とします。
+Evidence stateを混同しません。
 
 ```text
-UnityAgent
-= 独立Repository
-
-Read Scope
-= Target Unity Project Root
-
-Mutation Scope
-= Taskに必要な最小範囲
+Compile PASS
+!= Editor PASS
+!= Player PASS
+!= Target Device PASS
+!= Performance PASS
+!= Visual PASS
 ```
 
-UnityAgent本体をTarget Unity Projectの`Assets/`配下へコピーしません。`Assets/`だけではPackage Version、Unity Version、ProjectSettings等のProject Factが不足するため、原則Project Rootを読み取り対象にします。
+Runtimeが取得したProviderResultはcanonical Evidenceへ正規化され、`Persistence/Evidence/`へappendされて初めてdurable Evidenceになります。
 
-詳細は [ローカルUnity Project開発ガイド](docs/local-project-development.md) を参照してください。実際の依頼には [Development Request Template](Templates/DevelopmentRequest.md) を使用できます。
+代表Completion:
+
+- `verified`
+- `partial_verified`
+- `implemented_unverified`
+- `blocked_by_environment`
+- `not_applicable`
+
+`unavailable`や`not_observed`を成功として補完しません。
 
 ---
 
-## Unity Tool Runtimeの設計原則
+## 10. Regression / DefinitionFingerprint
 
-UnityAgentでは、Tool製品名とTaskの意味を分離します。
-
-```text
-Skill      = どう使うか
-Capability = 何をしたいか
-Provider   = 誰が実行できるか
-Transport  = どう接続するか
-Evidence   = 実際に何を観測したか
-```
-
-Target Architectureでは、Orchestrationは`MyUnityMCPを使う`や`Unity CLIを使う`ではなく、`scene.inspect`、`project.test`、`project.build`、`player.observe`等のCapabilityを要求します。
-
-Provider / Transportの選択はRuntimeの実行責務です。Provider名をSemantic Graphの恒久Contractへ埋め込みません。
-
-候補となるProviderは主に次です。
-
-- Unity CLI / `com.unity.pipeline`
-- MyUnityMCP
-- File Provider
-
-重要なSafety Rule:
-
-```text
-Provider unavailable
-!= Safety Contractを下げてよい
-```
-
-例えば承認付きMyUnityMCP Mutationが必要なのに接続できない場合、raw `eval`へsilent fallbackしません。
-
-Capability-driven Tool Broker / Provider Registryは [Unity Tool Runtime](Specs/UnityToolRuntime.md) に定義するTarget Architectureです。**設計書が存在すること自体を実装済みRuntime Capabilityとして扱いません。**
-
----
-
-## MyUnityMCPとの関係
-
-`DarumaPPAP/MyUnityMCP` はUnity操作やDomain Capabilityを提供する外部MCP Repositoryです。
-
-UnityAgentはMyUnityMCPを直接のAuthorityにはせず、自身のPolicy、Routing、Context、Task Contract、Runtime Guardrailを通して利用します。
-
-```mermaid
-flowchart LR
-    U[ユーザー依頼] --> A[UnityAgent]
-    A --> C[Capability / Policy / Guardrail]
-    C --> R[Runtime execution boundary]
-    R --> M[MyUnityMCP / Unity CLI / other provider]
-    M --> P[Unity Project / Editor / Player]
-    P --> V[検証 / Evidence]
-    V --> A
-```
-
-MCP Toolが利用可能だからという理由だけで、許可されていない変更を実行しません。
-
-MyUnityMCPが提供する`Inspect -> Prepare -> Exact Diff -> Revision -> Approval -> Apply`等の強いSafety Contractを、より低レベルなProviderへの自動Fallbackで迂回しません。
-
----
-
-## 品質Regressionの確認
-
-UnityAgentには、現在のProduction BehaviorをReviewed Baselineと比較するRegression Gateがあります。
-
-通常の流れは次です。
+Production BehaviorはFrozen Baselineと比較できます。
 
 ```text
 Production Smoke
@@ -435,72 +344,95 @@ Candidate Summary
     ↓
 Baseline Comparator
     ↓
-PASS
-または
-BLOCK_REGRESSION
-または
-BLOCK_INCONCLUSIVE
-または
-REBASELINE_REQUIRED
+PASS / BLOCK_REGRESSION / BLOCK_INCONCLUSIVE / REBASELINE_REQUIRED
 ```
 
-BaselineはCandidateがPASSしただけでは自動更新しません。
+Production Tool Runtime CutoverのようにRuntime / Tool / Evidence定義が変わる場合、DefinitionFingerprint driftによって `REBASELINE_REQUIRED` になるのが正常です。
 
-ローカルでRegression Gateを実行する場合は、安定したEntry Pointを使用します。
+BaselineをCandidate PASSだけで自動更新しません。
+
+ローカルRegression Gate:
 
 ```powershell
 python .\Tools\run_regression_gate.py
 ```
 
----
-
-## Repository全体のValidation
-
-UnityAgent自身のContract、Context、Skill、Eval、Documentation、Regression Boundaryをまとめて確認する場合は次を実行します。
+Repository全体Validation:
 
 ```powershell
 python .\Tools\validate_all.py
 ```
 
-UnityAgentのText ArtifactはUTF-8です。
-
-PowerShellで内容を確認する場合はEncodingを明示します。
+Production Tool Runtime専用Validation:
 
 ```powershell
-Get-Content ".\README.md" -Raw -Encoding UTF8
+python .\Tools\ProductionToolRuntime\validate_production_tool_runtime.py
 ```
 
 ---
 
-## 入口となるファイル
+## 11. Repository構成
 
-| File / Directory | 用途 |
+| Area | Responsibility |
 | --- | --- |
-| `AGENTS.md` | Agentが最初に読むBootstrap Map |
-| `Policy/User/user-policy.yaml` | ユーザー固有Policy |
-| `Orchestration/Routing/task-routes.yaml` | Task Routing / Design Review Requirement |
-| `Orchestration/Definitions/development-parent-graph.yaml` | Parent Graph / Design Review SubGraph |
-| `Orchestration/Contracts/TaskContracts/` | Taskごとの実行契約 |
-| `Orchestration/Contracts/design-review-artifact.schema.yaml` | Design Reviewの構造化Output Contract |
-| `Templates/DesignReview.md` | 人間が確認するDesign Review表示Template |
-| `Templates/DevelopmentRequest.md` | ローカルUnity開発を渡す依頼Template |
-| `Context/Selection/context-catalog.yaml` | Context選択 |
-| `Context/Packs/` | Domain Context Pack |
-| `Runtime/Profiles/runtime-profiles.yaml` | Runtime実行Profile |
-| `.agents/skills/` | 専門Skill |
-| `SkillReferences/` | Domain共通規約 |
-| `Specs/UnityToolRuntime.md` | Capability-driven Unity Tool RuntimeのTarget Architecture |
-| `docs/local-project-development.md` | Project Root / Scope / Provider / Evidenceを含むローカル開発ガイド |
-| `docs/architecture/unityagent-flow.mmd` | GitHubで描画できる全体関連図 |
-| `Tools/validate_all.py` | Repository全体Validation |
-| `Tools/run_regression_gate.py` | Production Regression Gate |
+| `Policy/` | User Policy / Risk / Security / Approval / Evidence requirement |
+| `Orchestration/` | Task Routing / Graph / Gate / Semantic Replan |
+| `Context/` | Context selection / Retrieval / Budget / Materialization |
+| `Runtime/` | Tool resolution / dispatch / timeout / cancellation / mutation guard / harness |
+| `Persistence/` | State / Checkpoint / Memory / durable Evidence |
+| `Operations/` | Observability / Incident / Runtime Control / Change Management |
+| `Eval/` | Behavior Eval / Regression / Attribution / Rebaseline |
+| `.agents/skills/` | Domain-specific work procedures |
+| `SkillReferences/` | Coding / Architecture / Rendering standards |
+| `Specs/` | Supporting specification。Production Authorityの代替ではない |
+| `Tools/` | Validation / Visualization / Regression entrypoints |
 
 ---
 
-## READMEの役割
+## 12. 主要Entry Point
 
-このREADMEは、UnityAgentの**目的、構造、利用方法、処理順序、責務境界**を説明するための文書です。
+| File / Directory | 用途 |
+| --- | --- |
+| `AGENTS.md` | Bootstrap Map |
+| `Policy/User/user-policy.yaml` | User Policy |
+| `Orchestration/Routing/task-routes.yaml` | Primary Route |
+| `Orchestration/ToolRouting/capability-routing.yaml` | Semantic Capability requirement |
+| `Context/Selection/context-catalog.yaml` | Context selection |
+| `Context/Selection/tool-capability-catalog.yaml` | Capability description |
+| `Runtime/Contracts/` | Capability / Environment contracts |
+| `Runtime/Tooling/provider_registry.yaml` | Runtime Provider Registry |
+| `Runtime/Tooling/capability_resolver.py` | Provider resolution |
+| `Runtime/Tooling/tool_broker.py` | Runtime Tool Broker |
+| `Runtime/Dispatcher/tool_runtime_dispatcher.py` | Production capability dispatch |
+| `Runtime/Guardrails/tool_runtime_guard.py` | Last-mile safety guard |
+| `Runtime/Tooling/fallback_policy.py` | Infrastructure-only fallback |
+| `Runtime/Tooling/Providers/` | Concrete Provider adapters |
+| `Runtime/EvidenceCapture/provider_evidence.py` | Provider Evidence normalization |
+| `docs/architecture/production-tool-runtime.md` | Production Tool Runtimeの人間向け解説 |
+| `docs/local-project-development.md` | Local Unity Project運用 |
+| `Templates/DevelopmentRequest.md` | 開発依頼Template |
+| `Tools/validate_all.py` | Canonical local validation |
 
-開発進捗、移行履歴、一時的な実行結果、特定Run ID、特定Baseline ID、Model Versionなどの変動情報はREADMEの責務ではありません。
+---
 
-そのような情報は、それぞれのMigration / Eval / Artifact / Git履歴で管理します。
+## 13. Migration文書について
+
+`docs/migration/`は**過去のArchitecture移行・監査証跡**です。
+
+そこに旧Path、旧Phase名、削除済みContractが書かれていても、current Production Authorityとして解決しません。
+
+現在仕様を確認するときは次を優先してください。
+
+1. `AGENTS.md`
+2. Canonical `Policy / Orchestration / Context / Runtime / Persistence / Operations / Eval`
+3. `docs/architecture/architecture.md`
+4. `docs/architecture/production-tool-runtime.md`
+5. Supporting `Specs/`
+
+---
+
+## 14. READMEの役割
+
+このREADMEはUnityAgentの**目的、現在Architecture、主要Runtime境界、利用入口**を説明する文書です。
+
+一時的なPR番号、Run ID、特定CI結果、Model Version等はREADMEに固定せず、Git履歴 / PR / Eval Artifact / Migration記録で管理します。

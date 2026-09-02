@@ -14,7 +14,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from Context.Selection.capability_selector import select_capability_context
-from Orchestration.Orchestrator.orchestrator import fast_path
+from Orchestration.Orchestrator.orchestrator import fast_path, runtime_handoff
 from Orchestration.ToolRouting.capability_request_builder import build_capability_requests
 from Policy.Security.capability_policy import policy_for_capability
 from Runtime.Contracts.capability_contract import (
@@ -141,7 +141,7 @@ class CapabilityContractTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             select_capability_context(["unknown.capability"])
 
-    def test_shadow_runtime_handoff_carries_unresolved_capability_requests(self):
+    def test_authoritative_runtime_handoff_carries_unresolved_capability_requests(self):
         requests = build_capability_requests(
             route_id="csharp-local-fix",
             project_root="D:/Projects/MyGame/Project",
@@ -159,18 +159,36 @@ class CapabilityContractTests(unittest.TestCase):
             capability_requests=requests,
         )
         self.assertIsNotNone(value)
-        self.assertEqual(value["runtime_handoff"]["capability_contract_mode"], "shadow")
+        self.assertEqual(value["runtime_handoff"]["capability_contract_mode"], "authoritative")
         self.assertEqual(
             value["runtime_handoff"]["capability_requests"][0]["capability"],
             "source.read",
         )
+
+    def test_runtime_handoff_rejects_provider_identity(self):
+        request = self.source_patch_request()
+        request["provider_ref"] = "unity_cli"
+        with self.assertRaises(ValueError):
+            runtime_handoff(
+                run_id="run",
+                node_id="execute",
+                route_id="csharp-local-fix",
+                execution_profile="personal_full_control",
+                context_id="ctx",
+                context_fingerprint="fp",
+                task_contract_runtime_projection={},
+                mutation_scope={},
+                validation_requirements=[],
+                capability_requests=[request],
+            )
 
     def test_foundation_catalogs_match_existing_task_routes(self):
         self.assertEqual(validate_contract_foundation(), [])
         routing = yaml.safe_load((ROOT / ROUTING_PATH).read_text(encoding="utf-8"))
         task_routes = yaml.safe_load((ROOT / TASK_ROUTES_PATH).read_text(encoding="utf-8"))
         self.assertEqual(set(routing["routes"]), set(task_routes["routes"]))
-        self.assertTrue((ROOT / "Context/Selection/mcp-selection.yaml").is_file())
+        self.assertTrue((ROOT / "Context/Selection/tool-capability-catalog.yaml").is_file())
+        self.assertFalse((ROOT / "Context/Selection/mcp-selection.yaml").exists())
 
     def test_orchestration_provider_product_fixture_is_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:

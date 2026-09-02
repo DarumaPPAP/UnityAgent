@@ -1,30 +1,42 @@
 # Project Profile
 
-このProfileは、対象Unity Projectへ接続できない場合や必要なProject Factを直接確認できない場合に使用するFallbackです。常時読み込む正本ではありません。
+このProfileは、対象Unity Projectへ接続できない場合や必要なProject Factを直接確認できない場合に使用する**Fallback**です。常時読み込む正本ではありません。
 
-対象Unity Projectへ接続できる場合、Unity Version、Pipeline、Rendering Path、Build Target、namespace等の検出済み事実をこのProfileより優先します。今回ユーザーが確認したProject FactもこのProfileより優先します。このProfileの値はMyUnityMCP全体の固定対応条件ではありません。
+対象Unity ProjectからFactを観測できる場合、Unity Version、Pipeline、Rendering Path、Build Target、namespace等の検出済み事実をこのProfileより優先します。
 
-このProfileを編集する場合も、検出済みFactの代替ではなく「未解決Factを補うためのProject固有Fallback」として管理します。
+```text
+Observed Project Fact
+> User-confirmed Project Fact
+> Project-specific Context
+> Project Profile fallback
+> generic preference
+```
+
+Project ProfileはEnvironment SnapshotやProvider bindingの代替にはなりません。
+
+---
 
 ## Identity
 
 - ProjectName: CHANGE_ME
 - RootNamespace: NONE
 
-`RootNamespace`には、実際に使用するRoot Namespaceか`NONE`を設定する。
+`RootNamespace`には実際に使用するRoot Namespaceか`NONE`を設定します。
 
 Namespace規則:
 
-- `RootNamespace`が実名の場合: `<RootNamespace>.<FeatureName>`
-- `RootNamespace: NONE`の場合: `<FeatureName>`
-- 既存コードを変更する場合: 既存namespaceを保持する
-- `.Runtime`、`.Editor`、`.Rendering`などの追加階層は既存Project規約または実在するAssembly/ownership boundaryがある場合だけ導入する
+- `RootNamespace`が実名: `<RootNamespace>.<FeatureName>`
+- `RootNamespace: NONE`: `<FeatureName>`
+- 既存コード変更: 既存namespaceを保持
+- `.Runtime` / `.Editor` / `.Rendering`等は実在するAssembly / ownership boundaryがある場合だけ導入
 
-`Namespace`、`RootNamespace`、`<RootNamespace>`、`CHANGE_ME`を実際のnamespaceやasmdef名として出力してはならない。先頭または末尾が`.`のnamespaceも禁止する。
+`Namespace`、`RootNamespace`、`<RootNamespace>`、`CHANGE_ME`を実際のnamespaceやasmdef名として出力しません。
 
-## Unity environment
+---
 
-以下はこのProfileをFallbackとして使用するProjectの補助設定値です。MyUnityMCPのGlobal DefaultまたはSupport Contractとして使用しません。
+## Unity Environment Fallback
+
+以下はProjectへ直接接続できない場合の補助値です。
 
 - UnityVersion: 6000.3
 - RenderPipeline: URP 17+
@@ -37,29 +49,34 @@ Namespace規則:
 - PerformanceReferenceExample: Nintendo Switch-equivalent constraints
 - XR: Not targeted
 
-`PerformanceReferenceExample`はCPU、GPU、Memory、Bandwidth、Frame Budgetの目安であり、対応Platform、Build Target、SDK依存、Module依存、専用define、完了条件を意味しない。
+`PerformanceReferenceExample`はPerformance budgetの参考であり、対応Platform、Build Target、SDK、Build Module、define、完了条件を自動的には意味しません。
 
-特定Platform名は、次の場合だけ`ExplicitPlatformIntegrations`へ追加する。
+特定Platformを`ExplicitPlatformIntegrations`へ追加するのは次の場合だけです。
 
-- Platform SDK、Platform API、専用Package、専用defineを使用する
-- Platform固有Buildを成果物として要求する
-- Platform固有の互換性または性能を保証する
+- Platform SDK / APIを使う
+- 専用Package / defineを使う
+- Platform固有Buildを成果物にする
+- Platform固有互換性または性能を保証する
 
-単に「Nintendo Switchでも動く程度に軽くする」場合はPlatform IntegrationではなくPerformance Classとして扱う。
+「Nintendo Switchでも動く程度に軽くする」は通常、Platform IntegrationではなくPerformance Classです。
 
-Environment情報の優先順位:
+---
 
-1. 対象Unity Projectから検出した事実
-2. 今回ユーザーが確認したProject Factと明示した実装依存・制約
+## Environment情報の優先順位
+
+1. Target Unity Projectから観測したFact
+2. 今回ユーザーが確認したProject Fact / 明示制約
 3. Project固有Context
 4. このProject Profile
-5. UnityAgentの既定Preference
+5. UnityAgent generic preference
 
-Project Profileを使用する場合は、どの未解決Factを補うために読んだかを明確にする。検出済みFactとProfileが競合した場合は検出済みFactを採用し、Profile側を自動的に正本へ昇格させない。
+検出済みFactとProfileが競合した場合は検出済みFactを採用します。
 
-Platform Build TargetとPerformance Targetを混同しない。Target Platformが未指定でも、Platform非依存の設計、実装、検証を継続する。
+ProfileをRuntime Environment Snapshotの代わりに使ってProvider availabilityやEditor bindingを推測しません。
 
-## Workspace / Repository boundary
+---
+
+## Workspace / Repository Boundary
 
 - UnityAgentRepository: `DarumaPPAP/UnityAgent`
 - McpRepository: `DarumaPPAP/MyUnityMCP`
@@ -74,30 +91,57 @@ Platform Build TargetとPerformance Targetを混同しない。Target Platform�
 - AutomaticFileSync: Disabled
 - AutomaticCodeScan: Disabled
 
-通常の製品コード、製品仕様、導入資料は`GeneratedProductRepository`へ保存する。
+MCP本体、Creator Workflow、Domain MCP、Capability Module、Manifest、Tool Schema、MCP固有仕様は`McpRepository`が所有します。
 
-UnityAgentが利用するMCP本体、Creator Workflow、Domain MCP、Capability Module、Manifest、Tool Schema、MCP固有仕様は`McpRepository`へ保存する。MCP関連の製品正本を`UnityAIGC-Archive`へ保存しない。
+MCPが生成・変更したScene、Prefab、Material、Timeline、Volume Profile等はTarget Unity Projectが所有します。
 
-MCPが生成または変更したScene、Prefab、Material、Timeline、Volume Profile等は対象Unity Projectが所有する。
+---
 
-UnityAgent自身が所有するのは、個別MCP製品実装ではなく、UnityAgentのProduction authorityです。現在の主なcanonical surfaceは次です。
+## UnityAgent Canonical Authority
+
+```mermaid
+flowchart LR
+    P[Policy] --> O[Orchestration]
+    O --> C[Context]
+    C --> R[Runtime]
+    R --> S[Persistence]
+    S --> E[Eval]
+```
+
+現在の主なcanonical surface:
 
 - `Policy/` — User / Risk / Security / Approval / Evidence rules
-- `Orchestration/` — Route / Graph / Task Contract / Runtime handoff
-- `Context/` — Context Pack / Retrieval / Budget / Materialization / MCP selection
-- `Runtime/` — Execution / Guardrails / Permissions / Harness / Telemetry
+- `Orchestration/` — Route / Graph / Task Contract / provider-independent CapabilityRequest
+- `Context/` — Context Pack / Retrieval / Budget / Materialization / Capability description
+- `Runtime/` — Environment Discovery / Tool Broker / Provider Resolution / Dispatcher / Guardrails / Harness / Telemetry
 - `Persistence/` — durable State / Checkpoint / Resume / Memory / Evidence
-- `Operations/` — Observability / Detection / Incident / approved control / ChangeManagement
+- `Operations/` — Observability / Detection / Incident / approved control / Change Management
 - `Eval/` — Golden / Behavior / Replay / Rebaseline / Regression
 - `.agents/skills/` / `SkillReferences/` — selected domain procedure / supporting rule
 
-MCP PackageやMCP製品仕様そのものをUnityAgentへ複製しない。UnityAgent側にはMCPを選択・制約・検証するためのcontractだけを保持する。
+### Provider selectionの境界
 
-## Project-specific preferences
+```text
+Context
+= Capabilityに必要な説明をmaterialize
 
-- InspectorとEditor Windowは日本語を優先する。
+Runtime
+= Environment FactからProviderをresolve / dispatch
+```
+
+ContextへMCP / CLI Provider selection Authorityを戻しません。
+
+MCP PackageやMCP製品仕様そのものをUnityAgentへ複製しません。
+
+---
+
+## Project-specific Preferences
+
+- Inspector / Editor Windowは日本語を優先する。
 - Editor UIは黒基調、文字は白を基本とする。
 - staticの乱用を避ける。
 - Scene上のControllerや外部Profileは要件がある場合だけ導入する。
 - Shader名に`Hidden/`を安易に使用しない。
 - Camera Stackを前提にしない。
+
+このPreferenceは対象Projectから観測したFactやユーザーの今回明示指示を上書きしません。

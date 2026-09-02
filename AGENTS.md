@@ -19,7 +19,7 @@
 4. `Context/Assembly/materialize_context.py` で current-call `MaterializedContextView` を構築しContext Budgetを評価する。Memoryは `Context/Retrieval/Memory/` が `Persistence/Memory` からread-only projectionだけを取得する。
 5. bounded Taskは `Policy -> Orchestration Route -> Context -> Runtime -> Verification -> Result` のFast Pathを優先し、semantic coordinationが必要な場合だけ `Orchestration/Definitions/development-parent-graph.yaml` を使う。
 6. OrchestrationはRuntime handoffを作る。actual process/tool execution、hard timeout/cancellation、mutation scope、tool dispatch、health/verification/evidence captureは `Runtime/` が実行する。
-7. MCPではContextがDescription/Manifestを選択し、Policyが許可条件を定義し、Runtimeが実Tool Groupを公開する。Unity Tool RuntimeのTarget ArchitectureではOrchestrationはProvider製品名ではなくCapabilityを要求し、Provider / Transport resolutionはRuntime責務とする。Target BrokerがProduction実装へ昇格するまでは現在のMCP / Runtime契約を正本とし、設計書だけを実装済みCapabilityとして扱わない。
+7. OrchestrationはProvider製品名ではなくCapabilityを要求する。Contextは選択Capabilityの説明だけをmaterializeし、`Runtime/Tooling/tool_broker.py` がEnvironment Discovery / Provider Resolutionを経て `Runtime/Dispatcher/tool_runtime_dispatcher.py` からProduction dispatchする。CLI/MCP/Player ProviderはCapabilityごとのoptional候補でありsemantic authorityではない。
 8. OrchestrationはPersistence-compatible state projectionだけを返し、Persistenceが ExecutionState / WorkflowState / LoopControlState をdurable truthとしてcommitする。
 9. RuntimeのExecution Evidenceは `Persistence/Evidence` にappendされて初めてdurable Evidence truthになる。CheckpointはState snapshot refsでありMemory/Evidenceではない。
 10. Resumeは `Persistence/Resume/` がDefinitionFingerprintを比較し、compatible / migration / replan / Human Reviewをfail-closedで決定する。
@@ -37,7 +37,7 @@
 | Local Loops / Gates / Parallel | `Orchestration/Graph/` | bounded semantic coordination |
 | Orchestrator | `Orchestration/Orchestrator/` | Runtime handoff; no execution implementation |
 | Prompt / Context / Retrieval | `Context/` | bounded current-call materialization |
-| Runtime Contracts / Execution | `Runtime/Contracts/` + `Runtime/Runner/` + `Runtime/Dispatcher/` + `Runtime/ExecutionControl/` | canonical execution facts / actual execution / hard limits |
+| Runtime Contracts / Execution | `Runtime/Contracts/` + `Runtime/Runner/` + `Runtime/Dispatcher/` + `Runtime/Tooling/` + `Runtime/ExecutionControl/` | canonical execution facts / Tool Broker resolution / actual execution / hard limits |
 | Runtime Guardrails / Harnesses | `Runtime/Sandbox/` + `Runtime/Guardrails/` + `Runtime/Permissions/` + `Runtime/Harnesses/` + `Runtime/Health/` | scope / permission / Unity/Test/Performance/SCM observation |
 | Runtime Evidence / Telemetry | `Runtime/EvidenceCapture/` + `Runtime/Telemetry/` | current-run capture / telemetry production |
 | Persistence | `Persistence/State/` + `Persistence/Checkpoint/` + `Persistence/Resume/` + `Persistence/Memory/` + `Persistence/Evidence/` + `Persistence/Session/` | durable State / Checkpoint / Memory / Evidence / Session |
@@ -45,7 +45,7 @@
 | Operations Runtime Control | `Operations/RuntimeControl/` + `Runtime/Control/` + `Orchestration/Control/` | external Policy/Approval-gated control |
 | Operations ChangeManagement | `Operations/ChangeManagement/` | VersionManifest / rollout / rollback / config change |
 | Eval | `Eval/Behavior/` + `Eval/Golden/` + `Eval/Datasets/` + `Eval/Attribution/` + `Eval/Replay/` + `Eval/ChangeProposals/` | grading / attribution / historical replay / proposals |
-| Unity Tool Runtime Design | `Specs/UnityToolRuntime.md` | Capability / Provider / Transport分離のTarget Architecture。実装済みRuntime authorityではない |
+| Unity Tool Runtime | `Specs/UnityToolRuntime.md` + `Runtime/Tooling/` + `Runtime/Dispatcher/` | Capability / Provider / Transport分離とProduction Tool Broker execution |
 
 ## 4. Responsibility guards
 - Policy defines; Context materializes; Orchestration decides; Runtime executes; Persistence remembers; Operations observes/controls; Eval measures/proposes.
@@ -70,7 +70,8 @@
 
 ## 5. Cutover state
 - actual execution=`Runtime/`、semantic Graph/Route/Task Contract=`Orchestration/`、durable truth=`Persistence/`、grading/replay=`Eval/`、observability/control/change management=`Operations/` がcanonical owner。
-- legacy `.ai` authority、Context/Eval/Persistence compatibility layer、old Eval shims、old LoopIntegration control planeをproduction bootstrapへ戻さない。
+- Production Tool Runtimeは `Orchestration CapabilityRequest -> Runtime ToolBroker -> Provider Resolution -> Runtime Dispatcher -> structured ProviderResult -> Runtime Evidence` がcanonical path。
+- legacy `.ai` authority、Context/Eval/Persistence compatibility layer、old Eval shims、old LoopIntegration control plane、旧MCP Context selectionをproduction bootstrapへ戻さない。
 - `DarumaPPAP/Unity-Graph-Engineering` はUnityAgent production execution dependencyではない。過去migration provenanceのみ保持できる。
 - `DarumaPPAP/MyUnityMCP` はMCP manifest / tool schema / package implementationの外部owner。UnityAgentのPolicy / Orchestration authorityではない。
 - Unity公式CLI / `com.unity.pipeline` はProject / Editor / Build / Test / Player transportの外部Provider候補であり、UnityAgentのsemantic authorityではない。
@@ -83,8 +84,8 @@
 - Runtime / Performance: `.agents/skills/unity-runtime-evidence/`
 - Route / Graph: `Orchestration/Routing/task-routes.yaml` + `Orchestration/Definitions/development-parent-graph.yaml`
 - Context Budget / Prompt: `Context/Budget/context-budget.yaml` + `Context/Prompt/Templates/`
-- Runtime Execution: `Runtime/Runner/` + `Runtime/Harnesses/`
-- Unity Tool Runtime Design: `Specs/UnityToolRuntime.md`
+- Runtime Execution: `Runtime/Runner/` + `Runtime/Tooling/` + `Runtime/Dispatcher/` + `Runtime/Harnesses/`
+- Unity Tool Runtime: `Specs/UnityToolRuntime.md`
 - Local Unity Project usage: `docs/local-project-development.md` + `Templates/DevelopmentRequest.md`
 - Persistence: `Persistence/persistence-layout.yaml` + `Persistence/State/` + `Persistence/Checkpoint/` + `Persistence/Resume/` + `Persistence/Memory/` + `Persistence/Evidence/`
 - Operations: `Operations/Observability/` + `Operations/Detection/` + `Operations/Incidents/` + `Operations/RuntimeControl/` + `Operations/ChangeManagement/`
@@ -105,5 +106,5 @@ Orchestration→Runtime: Policy revision / Route / Context ID/Fingerprint / Exec
 - EvalからRuntime/process/tool/Unity executionやproduction definition変更を実装しない。
 - `not_observed`をAgent品質regressionとして数えず、Runtime structured factsをdiff/text parserで再構築しない。
 - Checkpoint/Memory/Evidenceを同じrecordとして扱わず、Resume migrationでoriginal checkpoint/evidenceを上書きしない。
-- legacy fallback/shimを復活させず、Golden expectationをPromptへ混入させない。
-- `Specs/UnityToolRuntime.md`のTarget Architectureを、Runtime実装・Contract Test・EvidenceなしにProduction Capabilityへ昇格しない。
+- legacy fallback/shim/旧MCP Context selectionを復活させず、Golden expectationをPromptへ混入させない。
+- Production Tool Brokerを迂回するProvider direct dispatchを新設しない。Capability RequestへProvider identityを逆流させない。

@@ -1,10 +1,35 @@
 # Migration History
 
-このDirectoryは、UnityAgentの**過去のArchitecture移行・Cutover・Baseline更新・互換削除判断を監査できるように残すHistorical Record**です。
+このDirectoryは、UnityAgentの**過去のArchitecture移行・Cutover・Baseline更新・Compatibility削除判断を監査できるように残すHistorical Record**です。
 
-ここに置かれた文書は、現在のProduction Authorityではありません。
+> **ここに置かれた文書は現在のProduction Authorityではありません。**
+>
+> 旧Path、削除済みContract、旧Phase名が本文に残っている場合、それは「当時そうだった」というEvidenceです。現在も有効という意味ではありません。
 
-現在の正本は次です。
+---
+
+## Current Productionを知りたい場合
+
+次を優先してください。
+
+1. `AGENTS.md`
+2. `Policy / Orchestration / Context / Runtime / Persistence / Operations / Eval` のcanonical source
+3. `docs/architecture/architecture.md`
+4. `docs/architecture/production-tool-runtime.md`
+5. `docs/unity-environment-adaptation.md`
+6. Supporting `Specs/`
+
+```mermaid
+flowchart LR
+    C[Current behavior] --> A[Canonical Source]
+    C --> D[docs/architecture]
+    H[過去の経緯] --> M[docs/migration]
+    M -. historical only .-> A
+```
+
+---
+
+## 現在のCanonical Authority
 
 - Policy: `Policy/`
 - Context: `Context/`
@@ -16,6 +41,8 @@
 
 通常のUnityAgent実行、Routing、Context Materialization、Runtime Execution、Policy判断では、このDirectoryをCurrent Stateとして解決しません。
 
+---
+
 ## このDirectoryを残す理由
 
 - 過去にどのAuthorityをどこへ移したか確認する
@@ -24,9 +51,44 @@
 - 現在のContractがどのMigration判断から生まれたか監査する
 - 過去の判断をGit履歴だけに依存せず、人間が読みやすい形で保持する
 
+---
+
+## 主なMigration Record
+
+- `canonical-contracts.md`
+- `policy-context.md`
+- `runtime-harness.md`
+- `orchestration.md`
+- `persistence.md`
+- `eval-consolidation.md`
+- `operations.md`
+- `cutover.md`
+- `production-rebaseline.md`
+- `baseline-comparator.md`
+- `production-tool-runtime-cutover.md`
+
+---
+
+## 削除済みPathの例
+
+Historical文書には、当時実在した次のようなPathが出ることがあります。
+
+```text
+.ai/**
+Context/Selection/mcp-selection.yaml
+Context/Compatibility/**
+compatibility://...
+```
+
+これらをcurrent authorityとして復活させません。
+
+特にProduction Tool Runtime Cutoverでは、ContextがProviderを選ぶ旧`mcp-selection.yaml`はcurrent pathから削除され、Capability descriptionは `Context/Selection/tool-capability-catalog.yaml`、Provider resolutionは `Runtime/Tooling/`へ分離されています。
+
+---
+
 ## 命名規約
 
-Migration文書のファイル名は、**開発段階番号ではなく、その文書が表す意味・責務で命名します。**
+Migration文書のファイル名は、開発段階番号ではなく、その文書が表す意味・責務で命名します。
 
 推奨:
 
@@ -36,40 +98,42 @@ Migration文書のファイル名は、**開発段階番号ではなく、その
 - `cutover.md`
 - `production-rebaseline.md`
 - `baseline-comparator.md`
+- `production-tool-runtime-cutover.md`
 
 禁止:
 
 - `phase1-...`
 - `phase8-...`
 - `phase10-...`
-- その他、開発順序番号を文書の恒久的な名前にしたもの
 
-開発順序は時間とともに意味を失いますが、`cutover`、`persistence`、`baseline-comparator` のような責務名は後から見ても内容を判断できます。
+Historical Identifierとして本文中にPhase番号や過去Branch名を残すことは許可します。
 
-`Tools/DocumentationValidator/validate_documentation.py` は、このDirectoryへPhase番号付きファイル名が再導入された場合にFail Closedします。
+---
 
-## Historical literalの扱い
+## Historical Literalの扱い
 
-過去に実際に存在したBranch名、Run ID、Artifact名、Baseline IDなどは、監査証跡としてそのまま記録する場合があります。
+過去に実際に存在した:
 
-例:
+- Branch名
+- Run ID
+- Artifact名
+- Baseline ID
+- old path
+- old contract name
 
-- 過去のBranch名
-- 過去のArtifact ZIP名
-- Frozen Baseline ID
-- 過去のRun ID
+は監査証跡として残せます。
 
-これらは「現在の命名規約としてPhase番号を推奨している」という意味ではありません。実在したHistorical Identifierを改名すると、過去Evidenceとの対応関係が壊れるためです。
+改名してしまうと過去Evidenceとの対応が壊れるためです。
+
+---
 
 ## 利用時の注意
 
-新しい実装判断を行う場合は、まず現在のCanonical Sourceを確認してください。
-
-Migration文書は、次の場合だけ補助的に使用します。
+Migration文書を使うのは主に次です。
 
 1. 過去のArchitecture判断理由を確認したい
 2. 削除済みCompatibilityの由来を確認したい
 3. Replay / Baseline / Cutoverの監査証跡を確認したい
 4. 現在のContractへ至った経緯を追跡したい
 
-Migration文書の内容と現在のCanonical Sourceが競合する場合は、**現在のCanonical Sourceを優先**します。
+Migration文書とCurrent Canonical Sourceが競合する場合は、**Current Canonical Sourceを優先**します。
