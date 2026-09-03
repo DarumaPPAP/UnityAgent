@@ -6,7 +6,7 @@ allowed-tools:
   - Write
   - Edit
 metadata:
-  version: "2.2.0"
+  version: "2.3.0"
 ---
 
 # Unity Rendering
@@ -38,9 +38,10 @@ Unity 6 URP、RenderGraph、RendererFeature、Shader/HLSLの作業へ、描画�
 5. `SkillReferences/RENDERING_STANDARDS.md`
 6. `SkillReferences/SHADER_PERFORMANCE_STANDARDS.md`
 7. Shader変更時は`SkillReferences/ShaderPerformance/UNITY_URP_POLICY.md`
-8. 監査時は`SHADER_REVIEW_GATE.md`と`RULE_CATALOG.md`
-9. 修正時は`REFACTOR_POLICY.md`
-10. Variant変更時は`VARIANT_POLICY.md`
+8. Shaderに条件分岐、keyword、feature toggle、`clip` / `discard`が含まれる場合は`SkillReferences/ShaderPerformance/BRANCHING_POLICY.md`
+9. 監査時は`SHADER_REVIEW_GATE.md`と`RULE_CATALOG.md`
+10. 修正時は`REFACTOR_POLICY.md`
+11. Variant変更時は`VARIANT_POLICY.md`
 
 `Specs/ProjectProfile.md`はFallbackであり、対象Projectから検出したUnity/URP/Renderer/Platform Factや今回ユーザーが確認したFactを上書きしない。
 
@@ -120,7 +121,7 @@ Override Materialは元ShaderへPassを追加する機構として扱わない�
 
 RenderGraphとCompatibility APIを同じ実装経路へ混在させない。
 
-## Step 5 — Confirm shader and render-state contracts
+## Step 5 — Confirm shader, branching, and render-state contracts
 
 - Shader name
 - Properties and defaults
@@ -132,9 +133,15 @@ RenderGraphとCompatibility APIを同じ実装経路へ混在させない。
 - Instancing / DOTS / GPU Driven compatibility
 - MotionVectors、DepthOnly、ShadowCaster
 - Precision-sensitive values
+- Branch condition classification: compile-fixed / draw-uniform / spatially-coherent runtime / lane-divergent runtime
+- Static variant化した場合のvariant pressure / build cost / Player availability
+- Dynamic branchの場合のskipped work / divergence / worst-case register pressure
+- `clip` / `discard`がある場合のEarly-Z / Hi-Z / tile impact
 
 Shader名、Property、Keyword、Pass、LightMode、RenderStateを依頼なしで変更しない。
 Visual Intentを実現するためでも、互換性契約を無断変更しない。必要なTrade-offは人間判断へ渡す。
+
+Shaderの`if`を見つけただけで静的分岐へ変換せず、逆にbranchless化もしない。Material/draw-uniform branch、static variant、coherent dynamic branchを`BRANCHING_POLICY.md`のDecision orderで比較し、性能主張はtarget Player / GPU evidenceまで分離して扱う。
 
 ## Step 6 — Handle transparency and ordering explicitly
 
@@ -170,7 +177,7 @@ Depth、Motion Vector、History UV、Reprojection、Disocclusionを安易に低�
 
 1. Context Resolution
 2. Read-only Audit
-3. Variant Audit
+3. Branch / Variant Audit
 4. Runtime Evidence plan
 5. Safe Refactor
 6. Review Gate
@@ -187,6 +194,8 @@ Depth、Motion Vector、History UV、Reprojection、Disocclusionを安易に低�
 - Draw selection conditions
 - Resource ownership and lifetime
 - Shader / RenderState compatibility
+- Branch classification and branch-vs-variant decision
+- Variant count / Player availability risk when applicable
 - Changed or inspected files
 - Static findings and confidence
 - Validation performed
@@ -199,6 +208,7 @@ Depth、Motion Vector、History UV、Reprojection、Disocclusionを安易に低�
 - 仕様外のCamera Stack、XR、HDRP対応を追加しない。
 - Hidden Shader、追加Pass、Controller、Debug UIを勝手に作らない。
 - Shaderの`if`、`loop`、`half`、`discard`を一律禁止しない。
+- static branch、dynamic branch、branchless、Material branchのいずれかを一律で最適解としない。
 - Scanner結果だけでGPU問題を確定しない。
 - Editor結果だけでSwitchやConsole実機を保証しない。
 - 美的Definitionを作成または変更しない。
@@ -214,6 +224,9 @@ Depth、Motion Vector、History UV、Reprojection、Disocclusionを安易に低�
 - [ ] Queue / Layer / ShaderTag / Sortingを確認した
 - [ ] AttachmentとResource lifetimeを確認した
 - [ ] Shader / Keyword / Pass / RenderState契約を確認した
+- [ ] Shader branchをcompile-fixed / draw-uniform / coherent / divergentへ分類した
+- [ ] static variantとruntime branchの双方についてruntime costとvariant/build costを比較した
+- [ ] `clip` / `discard`を通常ALU branchと同一視していない
 - [ ] TransparentまたはTemporal固有条件を確認した
 - [ ] Audit、Patch、Evidenceを分離した
 - [ ] Beauty gateとTechnical gateを混同していない
@@ -228,6 +241,10 @@ Depth、Motion Vector、History UV、Reprojection、Disocclusionを安易に低�
 - Depth attachmentのsample/format不一致でRenderGraph errorを起こす。
 - Pass内Global State設定を許可せず`SetGlobalTexture`する。
 - Motion VectorをForwardLitだけへ追加し、Outlineや追加描画を履歴から漏らす。
+- Material Propertyというだけでwave-uniformと断定する。
+- `if`を見つけただけでvariant化、またはbranchless化する。
+- variant削減だけを見てruntime divergenceを悪化させる。
+- runtime branch削除だけを見てvariant explosionを起こす。
 - EditorのFrame Debuggerだけで実機VariantやGPU時間を保証する。
 - Visual IntentなしにLight、Bloom、Fog、Reflectionを追加して美しさを作ろうとする。
 - Compile成功やCapture生成を美的完成と誤認する。
