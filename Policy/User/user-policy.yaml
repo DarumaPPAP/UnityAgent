@@ -76,6 +76,10 @@ core_user_policies:
     rule: 最適化は測定可能な目的、Before After、品質条件、Revert条件を持つ
   unity_boundary_without_forced_layers:
     rule: Unity Lifecycle境界と計算責務の分離を検討するが、小規模機能へ機械的なDomain層やControllerを追加しない
+  shader_branching_policy:
+    rule: Shaderの条件分岐はstatic/dynamicの二択で機械判定せず、compile-fixed、draw-uniform、spatially-coherent runtime、lane-divergent runtimeへ分類する。draw-uniformなMaterial分岐はvariant増加を避ける有力候補として先に比較し、heavy pathの完全除去価値が高くvariant数をboundedに保てる場合はstatic variantを比較する。lane-divergent branch、branchless化、clip/discard、variant化はいずれも一律禁止・一律推奨せず、target Player/GPU evidence、variant count、compile/build time、register pressure、Player variant availabilityを含めて判断する
+    canonical_reference: SkillReferences/ShaderPerformance/BRANCHING_POLICY.md
+    protected: true
 
 comment_system:
   status: authoritative
