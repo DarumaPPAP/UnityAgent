@@ -1,110 +1,52 @@
 <!-- unityagent-bootstrap-map:v3 -->
 # UnityAgent Bootstrap Map
 > `bootstrap_map_only: true`
-`AGENTS.md` は起動用の地図です。詳細規約を複製せず、各 Authority の Canonical Source へ委譲します。
 
-## 1. Authority
-1. 今回のユーザー明示指示
+`AGENTS.md` は起動用の地図です。詳細規約を複製せず、必要なCanonical Sourceへ委譲します。
+
+## Authority and scope
+
+実行環境の上位指示・権限を守った上で、Repository内の優先順は次のとおりです。
+
+1. 今回のユーザー明示指示（進行中の訂正・範囲指定を含む）
 2. `Policy/User/user-policy.yaml`
 3. 対象Project固有Policy
 4. Unity Domain Standard
 5. 外部Reference
 6. 一般的Best Practice
-ユーザー固有Policyを一般論で上書きしません。Policyの削除・簡略化は `Policy/User/user-policy.yaml` の保護契約に従います。
 
-## 2. Bootstrap sequence
-1. `Policy/User/user-policy.yaml` を読み、Risk / Security / Approval / Evidence は `Policy/` を正本として適用する。
-2. Task Fingerprintを構築し、`Orchestration/Routing/task-routes.yaml` でPrimary Routeとsemantic Execution Profileを一つ選ぶ。Technology keywordだけではRouteを決めない。
-3. 選択Routeの `required_policy_clauses` をPolicy provenanceとして記録し、`Context/Selection/context-catalog.yaml` からContext Pack / Primary Skill / canonical Task Contractを解決する。
-4. `Context/Assembly/materialize_context.py` で current-call `MaterializedContextView` を構築しContext Budgetを評価する。Memoryは `Context/Retrieval/Memory/` が `Persistence/Memory` からread-only projectionだけを取得する。
-5. bounded Taskは `Policy -> Orchestration Route -> Context -> Runtime -> Verification -> Result` のFast Pathを優先し、semantic coordinationが必要な場合だけ `Orchestration/Definitions/development-parent-graph.yaml` を使う。
-6. OrchestrationはRuntime handoffを作る。actual process/tool execution、hard timeout/cancellation、mutation scope、tool dispatch、health/verification/evidence captureは `Runtime/` が実行する。
-7. OrchestrationはProvider製品名ではなくCapabilityを要求する。Contextは選択Capabilityの説明だけをmaterializeし、`Runtime/Tooling/tool_broker.py` がEnvironment Discovery / Provider Resolutionを経て `Runtime/Dispatcher/tool_runtime_dispatcher.py` からProduction dispatchする。CLI/MCP/Player ProviderはCapabilityごとのoptional候補でありsemantic authorityではない。
-8. OrchestrationはPersistence-compatible state projectionだけを返し、Persistenceが ExecutionState / WorkflowState / LoopControlState をdurable truthとしてcommitする。
-9. RuntimeのExecution Evidenceは `Persistence/Evidence` にappendされて初めてdurable Evidence truthになる。CheckpointはState snapshot refsでありMemory/Evidenceではない。
-10. Resumeは `Persistence/Resume/` がDefinitionFingerprintを比較し、compatible / migration / replan / Human Reviewをfail-closedで決定する。
-11. Evalは `Eval/Datasets/` / `Eval/GoldenContracts/` とRuntime/Persistence structured factsから測定し、`not_observed` をAgent品質denominatorから除外する。改善はnon-applying `ChangeProposal`のみ。
-12. Operationsは `Runtime/Telemetry/` とEval structured factsを観測し、Detection / Incident / Runbookを生成する。controlはPolicy/Approval済みapproved commandだけを authority別control APIへ渡す。
-13. `Context/Manifest/` は current-call Context provenanceであり、WorkflowState / Checkpoint / Evidence truth / Graph topologyの正本ではない。
-14. legacy URI/path fallbackを使用しない。Canonical pathを直接解決し、unknown/removed referenceはfail-closedにする。
+最初に[User Policy](Policy/User/user-policy.yaml)を読む。Skill、Agent定義、例、過去の監査記録で今回の依頼やUser Policyを上書きしない。Policyの削除・簡略化は同Policyの保護契約に従う。対象ディレクトリ固有の指示も確認する。
 
-## 3. Canonical map
-| Area | Canonical Source | Responsibility |
-|---|---|---|
-| User Policy | `Policy/User/user-policy.yaml` | ユーザー固有Policy |
-| Risk / Security / Approval / Evidence | `Policy/` | Rule / Authority |
-| Route / Graph / Task Contract | `Orchestration/Routing/` + `Orchestration/Definitions/` + `Orchestration/Contracts/TaskContracts/` | semantic route/topology/next action/task boundary |
-| Local Loops / Gates / Parallel | `Orchestration/Graph/` | bounded semantic coordination |
-| Orchestrator | `Orchestration/Orchestrator/` | Runtime handoff; no execution implementation |
-| Prompt / Context / Retrieval | `Context/` | bounded current-call materialization |
-| Runtime Contracts / Execution | `Runtime/Contracts/` + `Runtime/Runner/` + `Runtime/Dispatcher/` + `Runtime/Tooling/` + `Runtime/ExecutionControl/` | canonical execution facts / Tool Broker resolution / actual execution / hard limits |
-| Runtime Guardrails / Harnesses | `Runtime/Sandbox/` + `Runtime/Guardrails/` + `Runtime/Permissions/` + `Runtime/Harnesses/` + `Runtime/Health/` | scope / permission / Unity/Test/Performance/SCM observation |
-| Runtime Evidence / Telemetry | `Runtime/EvidenceCapture/` + `Runtime/Telemetry/` | current-run capture / telemetry production |
-| Persistence | `Persistence/State/` + `Persistence/Checkpoint/` + `Persistence/Resume/` + `Persistence/Memory/` + `Persistence/Evidence/` + `Persistence/Session/` | durable State / Checkpoint / Memory / Evidence / Session |
-| Operations Observability | `Operations/Observability/` + `Operations/Detection/` + `Operations/Incidents/` | backend/search/dashboard / detection / incident / runbook |
-| Operations Runtime Control | `Operations/RuntimeControl/` + `Runtime/Control/` + `Orchestration/Control/` | external Policy/Approval-gated control |
-| Operations ChangeManagement | `Operations/ChangeManagement/` | VersionManifest / rollout / rollback / config change |
-| Eval | `Eval/Behavior/` + `Eval/Golden/` + `Eval/Datasets/` + `Eval/Attribution/` + `Eval/Replay/` + `Eval/ChangeProposals/` | grading / attribution / historical replay / proposals |
-| Unity Tool Runtime | `Specs/UnityToolRuntime.md` + `Runtime/Tooling/` + `Runtime/Dispatcher/` | Capability / Provider / Transport分離とProduction Tool Broker execution |
+## Work through the authorized request
 
-## 4. Responsibility guards
-- Policy defines; Context materializes; Orchestration decides; Runtime executes; Persistence remembers; Operations observes/controls; Eval measures/proposes.
-- ContextはRoute authorityでもdurable Memory/Checkpoint/Evidence storeでもない。
-- Local LoopはSubGraph内edge/cycleでありtop-level control planeではない。
-- Orchestrationのsemantic continue/replanとRuntimeのhard retry/timeout/process killを混同しない。Orchestrationはdurable Stateを書かない。
-- Orchestrationは`MyUnityMCPを使う`、`Unity CLIを使う`等のProvider製品選択をsemantic Goalとして固定しない。Taskが必要とするCapabilityを表現し、Provider / Transportの実行解決はRuntime側へ委譲する。
-- RuntimeはAgent品質を採点せず、semantic Graph/TODO/replan authorityやdurable Evidence/Memory/Checkpoint truthを持たない。
-- RuntimeがProviderを変更する場合もPolicy / Approval / Mutation Scope / Evidence Contractを維持する。Provider unavailableを理由にSafety Contractを下げるsilent semantic fallbackを行わない。
-- MyUnityMCPの承認付きMutationが必要なTaskを、接続失敗だけを理由にraw `eval`やgeneric mutationへ迂回しない。
-- `Checkpoint != Memory != Evidence`。Checkpoint restoreはStateだけを復元しMemory/Evidenceを巻き戻さない。
-- Runtime Evidence captureはPersistence append後にのみhistorical Evidenceとなり、EvidenceはResume都合で書き換えない。
-- Operations observability recordはPersistence Evidence/ExecutionStateの代替truthではない。
-- `Operations/RuntimeControl` は外部運用control、`Runtime/ExecutionControl` はhard execution safetyであり別責務。
-- Operationsはraw control requestをdispatchせず、Policy decision + Approval decision済みapproved commandだけを明示control APIへ渡す。Policyのrisk/approval判断を上書きしない。
-- checkpoint replayは `Persistence/Resume` decision ref無しで実行しない。Detection / Incident / Dashboard / SearchはRuntime/Evalを直接変更しない。
-- EvalはRuntime/Codex/Unity/process executionを実装せず、structured factsをlossy text/diffから再構築しない。`not_observed`を品質denominatorへ入れず、production definitionを直接変更しない。
-- Golden expected contentをProduction Prompt / Contextへ注入しない。Unknown Project Factや不足Bindingを推測で埋めない。
-- `unavailable`を成功扱いしない。CompileだけでRuntime / Visual / Performance / Player / 実機を承認しない。
-- RuntimeのUnity Artifact GraphはAsset dependency graphでありAgent ParentGraph/SubGraphではない。
-- historical migration/Eval provenanceは `docs/migration/` と `Eval/Datasets/` / `Eval/Replay/` に監査用として残せるが、production authorityとして解決しない。
+- 「作って」「修正して」は実作業の依頼として扱い、調査・計画だけで終了しない。通常の実装判断は既存コードと依頼から決める。Project Fact・未知のBindingを捏造しない。
+- ユーザーが一件だけ指定したらその境界で止める。複数Taskを依頼済みなら、一件ごとの境界と検証を守り、依存順に依頼範囲の完了まで進める。Skill一回の終了はユーザー依頼全体の終了とは限らない。
+- 既存の承認が現在の操作・対象・差分条件を満たすかを先に確認する。承認済み内容を質問し直さない。[Approval Policy](Policy/Approval/approval-policy.yaml)が要求する承認・Revision・Exact Diff・Mutation Scopeは省略しない。
+- 不足情報が結果や互換性を変える場合は、取得できる証拠を先に調べ、既に許可された独立作業とレビュー可能な差分を準備する。停止時は該当ファイル・条項・適用理由・不足条件を示す。実行権限の拒否を別経路で回避しない。
+- 途中の質問には答え、元の目標も継続する。ユーザーが取消・変更した場合はそれに従い、完了済み作業を不必要にやり直さない。
 
-## 5. Cutover state
-- actual execution=`Runtime/`、semantic Graph/Route/Task Contract=`Orchestration/`、durable truth=`Persistence/`、grading/replay=`Eval/`、observability/control/change management=`Operations/` がcanonical owner。
-- Production Tool Runtimeは `Orchestration CapabilityRequest -> Runtime ToolBroker -> Provider Resolution -> Runtime Dispatcher -> structured ProviderResult -> Runtime Evidence` がcanonical path。
-- legacy `.ai` authority、Context/Eval/Persistence compatibility layer、old Eval shims、old LoopIntegration control plane、旧MCP Context selectionをproduction bootstrapへ戻さない。
-- `DarumaPPAP/Unity-Graph-Engineering` はUnityAgent production execution dependencyではない。過去migration provenanceのみ保持できる。
-- `DarumaPPAP/MyUnityMCP` はMCP manifest / tool schema / package implementationの外部owner。UnityAgentのPolicy / Orchestration authorityではない。
-- Unity公式CLI / `com.unity.pipeline` はProject / Editor / Build / Test / Player transportの外部Provider候補であり、UnityAgentのsemantic authorityではない。
+## Select only the needed path
 
-## 6. User-specific entrypoints
-- Comments: `Policy/User/user-policy.yaml#comment_system`
-- C# / Formatting: `.agents/skills/` + `SkillReferences/CODING_STANDARDS.md`
-- Architecture / ECS: `.agents/skills/unity-architecture-design/` + 対応 `SkillReferences/`
-- Rendering / Shader: `.agents/skills/unity-rendering/` + Context Pack / Knowledge
-- Runtime / Performance: `.agents/skills/unity-runtime-evidence/`
-- Route / Graph: `Orchestration/Routing/task-routes.yaml` + `Orchestration/Definitions/development-parent-graph.yaml`
-- Context Budget / Prompt: `Context/Budget/context-budget.yaml` + `Context/Prompt/Templates/`
-- Runtime Execution: `Runtime/Runner/` + `Runtime/Tooling/` + `Runtime/Dispatcher/` + `Runtime/Harnesses/`
-- Unity Tool Runtime: `Specs/UnityToolRuntime.md`
-- Local Unity Project usage: `docs/local-project-development.md` + `Templates/DevelopmentRequest.md`
-- Persistence: `Persistence/persistence-layout.yaml` + `Persistence/State/` + `Persistence/Checkpoint/` + `Persistence/Resume/` + `Persistence/Memory/` + `Persistence/Evidence/`
-- Operations: `Operations/Observability/` + `Operations/Detection/` + `Operations/Incidents/` + `Operations/RuntimeControl/` + `Operations/ChangeManagement/`
-- Eval: `Eval/Golden/` + `Eval/Behavior/` + `Eval/Datasets/` + `Eval/Attribution/` + `Eval/Replay/`
+| 作業 | 読むもの・実行経路 |
+|---|---|
+| UnityAgent自身の文書・Skill・コード保守 | 対象ファイル、直接参照、関連する検証。Unity Projectの起動を前提にしない |
+| Unity開発TaskをUnityAgent Runtimeで実行 | 下記Production bootstrapと[Runtime Bootstrap Contract](docs/architecture/runtime-bootstrap-contract.md) |
+| Authority・Route・Context・Runtime・永続化の変更 | [Architecture](docs/architecture/architecture.md)と[Runtime Bootstrap Contract](docs/architecture/runtime-bootstrap-contract.md)の関係する契約 |
+| C#・コメント・設計・描画の作業 | `.agents/skills/` の該当Skillと、その変更に必要な `SkillReferences/` |
+| Unity Project接続・Capability/Provider解決 | [Local Project Development](docs/local-project-development.md)、[Unity Tool Runtime](Specs/UnityToolRuntime.md) |
 
-## 7. Completion handoff
-Orchestration→Runtime: Policy revision / Route / Context ID/Fingerprint / Execution Profile / runtime projection / mutation scope / validation requirements / requested Capability。Runtime→Persistence: ExecutionResult / RuntimeFailure / MutationEvidence / captured Evidence / Telemetryのうちdurable truth。Evalはstructured factsとGoldenContract/Datasetからmeasurement / attribution / regression report / ChangeProposalを生成する。Operationsはtelemetryを観測してDetection / Incident / Runbookを生成し、必要な運用actionだけをPolicy/Approval済みapproved commandとしてcontrol APIへ渡す。rollout/rollbackはVersionManifest付きChangeManagementで管理する。
+Production bootstrapでは、`Orchestration/Routing/task-routes.yaml`からPrimary Routeを一つ選び、選択Routeの `required_policy_clauses` をPolicy provenanceとして記録する。`Context/Selection/context-catalog.yaml`からContext Pack / Primary Skill / Task Contractを解決し、`Context/Assembly/materialize_context.py`でcurrent-call Contextを構築する。Technology keywordだけでRouteを決めない。
 
-## 8. Anti-regression
-- `AGENTS.md`へ詳細規約本文を戻さない。Policy canonical sourceを旧Sourceで上書きしない。
-- ContextからRoute/Graph/Retry authorityやdurable storeを新設しない。
-- Orchestrationからsubprocess/Unity/tool execution、hard Runtime enforcement、durable State storeを実装しない。
-- Orchestration Graphへ特定Provider / Transport製品名を恒久的なsemantic authorityとして埋め込まない。
-- Runtimeからsemantic Graph/TODO/replan authority、durable Evidence/Memory/Checkpoint truth、Agent quality gradingを新設しない。
-- Provider fallbackでApproval / Revision / Exact Diff / Mutation Scope等のSafety Contractを弱めない。
-- PersistenceからRoute/semantic decision/Runtime execution/Eval grading authorityを新設しない。
-- Operationsから`Runtime/ExecutionControl`内部control、Policy/Approval bypass、Detection/Incident/Runbook直結production mutationを実装しない。
-- EvalからRuntime/process/tool/Unity executionやproduction definition変更を実装しない。
-- `not_observed`をAgent品質regressionとして数えず、Runtime structured factsをdiff/text parserで再構築しない。
-- Checkpoint/Memory/Evidenceを同じrecordとして扱わず、Resume migrationでoriginal checkpoint/evidenceを上書きしない。
-- legacy fallback/shim/旧MCP Context selectionを復活させず、Golden expectationをPromptへ混入させない。
-- Production Tool Brokerを迂回するProvider direct dispatchを新設しない。Capability RequestへProvider identityを逆流させない。
+bounded Taskは `Policy -> Orchestration Route -> Context -> Runtime -> Verification -> Result` のFast Pathを優先する。semantic coordinationが必要な場合だけParentGraphを使う。Production tool executionはRuntime Tool Broker / Dispatcherを通し、Provider direct dispatchを追加しない。State/Evidenceの永続化・Resume・EvalはRuntime Bootstrap Contractの責務分離に従う。
+
+## Delegation and verification
+
+- Skillの「Delegates to」は責務の委譲先を示す。同じAgentが該当Skillを適用してよく、全候補の読込や別Agent起動を要求しない。
+- Subagentはユーザーまたは適用中の指示が明示的に要求し、独立した有益な仕事と実行手段がある場合に使う。対象・変更権限・必要証拠を限定し、同じファイルの並行編集を避ける。結果は統括側が統合・確認する。
+- 変更した契約と主張を検証できる最小限のチェックに、Task ContractとCIの必須Gateを加える。UnityAgentのAgent指示変更では `python Tools/validate_all.py` を実行する（依存はCI定義のPyYAML / jsonschema）。
+- 必須チェック通過後は、新しい差分・失敗・具体的な未解決Riskがなければ検証を拡張・反復しない。実装の文言をなぞるだけのテストを増やさない。
+- Static / Compile / Editor / Player / 実機 / Performance / Visualを区別する。未実行は未実行、環境不足は`unavailable`として報告し、成功を捏造しない。実測のない性能改善、Human reviewのない美的受入を確定しない。
+
+## Completion
+
+日本語で結果を先に述べ、変更理由、検証結果、残る制限、成果物を簡潔に示す。説明の深さ・形式はユーザー指定に合わせる。SkillのOutput contractは必要情報の契約であり、無関係な欄や空欄の大量出力を要求しない。Runtimeの機械可読SchemaとEvidence必須項目は保持する。

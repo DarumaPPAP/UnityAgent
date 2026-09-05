@@ -4,7 +4,7 @@ description: Use when reviewing a Unity implementation, pull request, specificat
 allowed-tools:
   - Read
 metadata:
-  version: "2.0.0"
+  version: "2.1.0"
 ---
 
 # Unity Review
@@ -25,7 +25,8 @@ Unity変更を、仕様、互換性、実行条件、証拠からRead-onlyで審
 
 ## Inputs
 
-- Project Profile / Constitution
+- `Policy/User/user-policy.yaml`と今回のユーザー指示
+- 対象Projectから検出したFact・Project固有Policy（`Specs/ProjectProfile.md`は未解決FactのFallbackのみ）
 - 対象Spec、Plan、Tasks、Task ID
 - Diffまたは変更ファイル
 - 実行ログ、Test、Profiler、GPU Capture
@@ -129,7 +130,7 @@ Severity:
 - **Rework** — CriticalまたはErrorあり。
 - **Evidence Required** — 実機、Player、Profilerなどがなく受入判断不可。
 
-未検証を「おそらく問題ない」でApproveしない。
+未検証を「おそらく問題ない」でApproveしない。必要証拠は今回の受入対象とTask Contractから判断する。文書・局所Sourceの審査へ無関係な実機Gateを追加せず、Sourceとしての受入とPlayer/実機/性能の受入を区別する。
 
 ## Output contract
 

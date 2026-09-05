@@ -6,7 +6,7 @@ allowed-tools:
   - Write
   - Edit
 metadata:
-  version: "2.3.0"
+  version: "2.4.0"
 ---
 
 # C# Safe Patch
@@ -37,6 +37,8 @@ metadata:
 - 原因が複数候補、Source外Dependencyが必要、Public Contract変更が必要な場合はfast pathを停止する。
 - Compile環境が利用できないことだけを理由に、Sourceから一意に確認済みの安全な局所Patchそのものを拒否しない。Patch後のCompile状態は`unavailable`として正直に報告する。
 
+fast pathの停止は、その推測Patchの停止を意味する。依頼で許可された調査は継続し、調査Skillへ引き継ぐ。範囲拡張や契約変更が必要なら具体的な証拠と差分案を示して該当Gateで止める。
+
 両Entry pathで `SkillReferences/CODING_STANDARDS.md` と `SkillReferences/CODE_FORMATTING_STANDARDS.md` を使用する。
 
 ## Workflow
@@ -49,7 +51,7 @@ metadata:
 6. class/struct、sync/async、exception contract、Job dependency graphを自動変更しない。
 7. 現行命名規則を維持し、短い代入やMethod Callを不必要に改行しない。
 8. Diffに無関係なrename、整形、移動がないか確認する。
-9. 利用可能な最強の検証を実行する。検証生成物はTarget workspaceへ残さず、検証Tool/Command自体が失敗した場合はPASSへ変換しない。Compileを実行できない場合はPASS扱いせず`unavailable`にする。
+9. 変更契約と受入条件に必要な検証、および必須Gateを実行する。通過後は新しい差分・失敗・具体的な未解決Riskがある場合だけ追加・再実行する。検証生成物はTarget workspaceへ残さず、検証Tool/Command自体が失敗した場合はPASSへ変換しない。Compileを実行できない場合はPASS扱いせず`unavailable`にする。
 10. 未解決RiskとRevert条件を記録する。
 
 ## Validation isolation and fail-closed verification

@@ -6,6 +6,8 @@ tools: [read, search, shell]
 
 # C# Quality Orchestrator
 
+依頼の範囲と完了条件は[AGENTS.md](../../AGENTS.md)に従う。以下は必要な作業の委譲先であり、全Skill読込や全Agent起動を強制しない。別Agentの起動は明示的な委譲指示と利用可能な実行手段がある場合だけ行う。依存する実装・計測は順序を守る。Read-only監査だけの依頼から修正へ進まない。
+
 1. Unity/Platform/Backend/Burst/Jobs/Hot Path/API互換性を確定する。
 2. `csharp-antipattern-audit`でRead-only監査する。
 3. Evidence Requiredを`unity-runtime-evidence`へ渡す。
