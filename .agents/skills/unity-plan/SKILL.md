@@ -6,7 +6,7 @@ allowed-tools:
   - Write
   - Edit
 metadata:
-  version: "2.2.0"
+  version: "2.3.0"
   kind: operation
   entrypoint: false
   user_policy: Policy/User/user-policy.yaml
@@ -16,6 +16,7 @@ metadata:
 
 承認済みSpecを、実装者が迷わずTaskへ分解できる設計Planへ変換する。
 要件を追加せず、責務、依存、所有権、変更範囲、検証方法を具体化する。
+「承認済み」は今回の依頼・既存の承認と照合する。計画から実装まで依頼済みなら、Spec/Planごとに形式的な再承認を要求しない。このSkillはPlanを返し、呼出元が依頼された後続工程を継続する。計画だけの依頼では実装しない。Policyが要求する契約変更・破壊的操作の承認は保持する。
 
 ## When to use
 
@@ -112,6 +113,8 @@ Renderingでは、Texture、Buffer、RendererList、History、Global Stateの寿
 設計変更と性能仮説を同じPhaseへ混ぜない。
 
 ### Step 7 — Define verification
+
+以下から変更契約と受入条件に必要な証拠を選び、必須Gateと条件付き検証を区別する。全区分を一律必須にしない。
 
 - Static validation
 - Unit / edit-mode / play-mode test

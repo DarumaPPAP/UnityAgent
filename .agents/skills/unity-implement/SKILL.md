@@ -1,13 +1,13 @@
 ---
 name: unity-implement
-description: Use when a Unity Task, confirmed incident fix, or explicitly bounded file change is ready for implementation. Applies the smallest compatible code or asset-side change, follows the relevant C# or rendering standards, and reports the exact validation level. Does not expand into later Tasks, speculative refactors, or unrequested systems.
+description: Use when a Unity Task, confirmed incident fix, or explicitly bounded file change is ready for implementation. Applies the smallest compatible code or asset-side change, follows the relevant C# or rendering standards, and reports the exact validation level. Handles one bounded Task per invocation; the caller may continue other already-authorized Tasks. Does not add speculative refactors or unrequested systems.
 allowed-tools:
   - Read
   - Write
   - Edit
   - Bash
 metadata:
-  version: "2.4.0"
+  version: "2.5.0"
   kind: operation
   entrypoint: false
   user_policy: Policy/User/user-policy.yaml
@@ -16,7 +16,7 @@ metadata:
 # Unity Implement
 
 承認済みTask、Confirmed Incident、または依頼文で完全に境界づけられた局所変更を、最小差分で実装する。
-このSkillは「選択された一件の実装」を所有する。
+このSkillは「選択された一件の実装」を所有する。依頼全体の継続条件は[AGENTS.md](../../../AGENTS.md)に従い、一件ごとの完了を依頼全体の停止条件にしない。
 Primary Domain Routeは`Orchestration/Routing/task-routes.yaml`で選択済みであることを前提とし、このSkill自身をRouting入口にしない。
 
 ## When to use
@@ -36,7 +36,7 @@ Read-only監査には対応Audit Skillを使う。
 1. ユーザーが指定したTask ID、ファイル、禁止事項
 2. `Policy/User/user-policy.yaml`
 3. 選択済みContext PackとTask Contract
-4. Feature `spec.md`、`plan.md`、`tasks.md`
+4. Feature `spec.md`、`plan.md`、`tasks.md`（存在し、そのTaskで必要な場合）
 5. 対象コード、直接依存、対象Projectから検出したFact
 6. 必要なProject Factが未解決の場合だけ`Specs/ProjectProfile.md`をFallbackとして読む
 7. `SkillReferences/ENGINEERING_DESIGN_PRINCIPLES.md`と適用されるCoding / Architecture / Rendering standards
@@ -165,7 +165,9 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - Existing APIをNaming理由だけで変更していない
 - コメントがProductionまたはLearning Profileに一致している
 
-### Step 6 — Validate at the strongest available level
+### Step 6 — Validate the affected contract
+
+次は証拠の区分であり、毎回すべてを実行する階段ではない。変更契約・受入条件に必要な検証と必須Gateを選ぶ。通過後の追加・再実行には新しい差分、失敗、または具体的な未解決Riskを根拠にする。
 
 1. Static inspected
 2. Local validator / unit test passed
@@ -179,8 +181,8 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 
 ### Step 7 — Stop at the selected boundary
 
-現在Taskが完了しても、次Taskへ自動的に進まない。
-必要な追加作業はFindingまたはNext Taskとして報告する。
+このSkillは現在Taskの結果を呼出元へ返す。ユーザーが「このTaskだけ」と指定した場合、または後続Taskが未承認の場合はその境界で止める。
+依頼済みの複数Taskでは、呼出元が依存・検証・承認条件を確認して次の選択Taskを実行する。依頼外の追加作業はFindingまたはNext Taskとして報告する。
 
 ## Output contract
 
@@ -229,7 +231,7 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - [ ] Diffを自己レビューした
 - [ ] コメントProfileを確認した
 - [ ] 検証状態を正確に報告した
-- [ ] 次Taskへ進んでいない
+- [ ] 今回選択されたTask境界を保持し、依頼済み後続Taskの継続可否を呼出元へ返した
 
 ## Common mistakes
 
@@ -237,7 +239,7 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - 検出済みProject FactがあるのにProject Profileの固定値で上書きする。
 - Root Namespaceなしのプロジェクトへ`.FeatureName`のような無効namespaceを生成する。
 - asmdefの`name`だけ直し、`rootNamespace`やAssembly参照を更新しない。
-- 指定Taskを終えた勢いで後続Taskも実装する。
+- 未承認の後続Taskへ拡張する、または全体実装の依頼を一件完了だけで止める。
 - 小さな修正のために新しいControllerやManagerを作る。
 - SRPを理由にPropertyごとのTypeを作る。
 - 将来用にInterface / Base / Default implementationを先に作る。

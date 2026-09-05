@@ -6,13 +6,14 @@ allowed-tools:
   - Write
   - Edit
 metadata:
-  version: "2.0.0"
+  version: "2.1.0"
 ---
 
 # Unity Tasks
 
 承認済みPlanを、Agentまたは実装者が一件ずつ安全に実行できるTaskへ分解する。
 各Taskは変更境界、依存、検証、完了条件を持つ。
+Planの承認は今回の依頼と既存の承認から判断し、形式的に質問し直さない。このSkillはTask分解を返す。実装まで依頼済みなら呼出元が依頼範囲のTaskを順次選択して継続し、Task一覧だけの依頼なら実装しない。
 
 ## When to use
 
@@ -90,7 +91,7 @@ metadata:
 
 ### Step 4 — Define validation per task
 
-各Taskは、そのTask単独で確認できる最強の検証を持つ。
+各Taskは、その変更契約とDone criteriaを確認するために必要な検証と必須Gateを持つ。以下は候補であり、全区分を一律に要求しない。
 
 - Static check
 - Local validator
