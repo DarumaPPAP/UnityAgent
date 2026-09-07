@@ -90,7 +90,7 @@ metadata:
 
 ### Step 4 — Define validation per task
 
-各Taskは、そのTask単独で確認できる最強の検証を持つ。
+各Taskは、変更Riskと必須Gateに対応する検証を持つ。小変更ではTargetedを優先し、具体的なRegression Surfaceがある場合に範囲を広げる。
 
 - Static check
 - Local validator

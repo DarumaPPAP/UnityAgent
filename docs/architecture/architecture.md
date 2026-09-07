@@ -430,3 +430,21 @@ Historical文書に現れる旧PathやPhase名をcurrent Production contractと�
 3. この文書
 4. `docs/architecture/production-tool-runtime.md`
 5. Supporting `Specs/`
+
+
+## Bootstrap ownership details
+
+責務境界・handoff・移行境界を変更する際に参照する。起動時には全読込しない。
+
+- RouteはTask Fingerprintとsemantic Execution Profileで決め、Technology keywordだけでは決めない。
+- 選択Routeの`required_policy_clauses`をPolicy provenanceとして記録する。
+- Context Manifestはcurrent-call provenanceでありWorkflowState、Checkpoint、Graph topologyの正本ではない。MemoryはContext側へread-only projectionだけを渡す。
+- Orchestration→RuntimeはPolicy revision、Route、Context ID/Fingerprint、Execution Profile、runtime projection、mutation scope、validation requirements、requested Capabilityを渡す。
+- OrchestrationはPersistence-compatible state projectionだけを返す。Stateのdurable commitはPersistenceが行う。
+- Runtime EvidenceはPersistence append後にdurable truthとなる。Checkpoint restoreはStateだけを復元し、Memory/Evidenceを巻き戻さない。
+- ResumeはDefinitionFingerprintでcompatible / migration / replan / Human Reviewを決める。Operationsのcheckpoint replayもこのdecision refを必要とする。
+- Operationsのraw control requestはdispatchせず、Policy/Approval済みcommandをauthority別control APIへ渡す。Detection / Incident / Runbookはproduction mutation authorityを持たない。
+- EvalはRuntime structured factsを利用し、lossy text/diffから再構築しない。`not_observed`は品質denominatorから除外し、ChangeProposalはnon-applyingとする。
+- Capability unavailableだけを理由にSafety Contractを緩和しない。承認付きMyUnityMCP Mutationを接続失敗だけでraw evalへ迂回しない。
+- Unity RuntimeのArtifact GraphはAsset dependency graphでありAgent ParentGraph/SubGraphではない。
+- Historical migration / Eval provenanceは監査用途のみとし、legacy path fallbackや旧control planeをProductionへ戻さない。

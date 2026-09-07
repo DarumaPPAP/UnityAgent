@@ -17,6 +17,8 @@ def adapt_execution_result(
     eval_id: str,
     source_execution_result_ref: str,
     expect_mutation: bool = False,
+    workflow_observation: dict[str, Any] | None = None,
+    required_workflow_checks: list[str] | None = None,
 ) -> dict[str, Any]:
     """Project canonical Runtime facts into Eval without invoking Runtime.
 
@@ -69,6 +71,16 @@ def adapt_execution_result(
         failure_class = "agent_behavior_regression"
         reason = "expected mutation produced an observed empty changed_paths set"
 
+    workflow_grade = None
+    if required_workflow_checks:
+        from Eval.Behavior.workflow_observation import grade_workflow_observation
+        workflow_grade = grade_workflow_observation(workflow_observation, required_workflow_checks)
+        if workflow_grade['status'] == 'not_observed' and runtime_failure is None:
+            supplied_observation = 'not_observed'
+        if workflow_grade['status'] == 'failed' and runtime_failure is None:
+            failure_class = 'agent_behavior_regression'
+            reason = 'workflow checks failed: ' + ', '.join(workflow_grade['failed_checks'])
+
     eval_record = build_eval_record(
         eval_id=eval_id,
         run_id=run_id,
@@ -76,7 +88,7 @@ def adapt_execution_result(
         failure_class=failure_class,
         observation_state=supplied_observation,
         runtime_failure_ref=runtime_failure_ref,
-        evidence_refs=list(execution_result.get("evidence_refs") or []),
+        evidence_refs=list(execution_result.get("evidence_refs") or []) + (workflow_grade["evidence_refs"] if workflow_grade else []),
         reason=reason,
     )
     return {
@@ -90,4 +102,5 @@ def adapt_execution_result(
             execution_result.get("definition_fingerprint") or {}
         ),
         "eval_record": eval_record,
+        **({"workflow_grade": workflow_grade} if workflow_grade is not None else {}),
     }

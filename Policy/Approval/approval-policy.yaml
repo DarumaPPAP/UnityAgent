@@ -17,3 +17,10 @@ rules:
   orchestration_places_human_gate: true
   runtime_pauses_serializes_and_applies_decision: true
   runtime_revalidates_high_risk_action_before_execution: true
+
+authorization_scope:
+  existing_explicit_authorization_remains_valid_within_scope: true
+  read_search_analysis_review_do_not_require_reconfirmation: true
+  requested_reversible_source_edits_and_local_validation_do_not_require_reconfirmation: true
+  scope_expansion_or_destructive_action_requires_existing_policy_decision: true
+  tool_approval_revision_diff_and_permission_contracts_remain_required: true

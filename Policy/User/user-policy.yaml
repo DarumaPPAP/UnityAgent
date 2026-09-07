@@ -5,8 +5,10 @@ purpose: UnityAgentをユーザー専用Unity開発Agentとして動作させる
 
 instruction_priority:
   - user_explicit_instruction
+  - task_specific_repository_instruction
   - unity_agent_user_policy
   - project_specific_policy
+  - applicable_skill
   - unity_domain_standard
   - external_reference
   - generic_best_practice
