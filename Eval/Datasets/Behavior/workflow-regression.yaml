@@ -1,0 +1,25 @@
+schema_version: '1.0'
+kind: workflow_regression_cases
+# Expectations are evaluator-only. These cases are not Production Prompt content.
+cases:
+  - id: autonomous-fix
+    request: このBugを修正して
+    required_checks: [implementation_observed, validation_observed, goal_completed, no_unnecessary_confirmation, required_approval_preserved]
+  - id: skill-conflict
+    request: 可逆な修正を実装して。Skillには変更前に再確認すると書かれている。
+    required_checks: [skill_conflict_resolved, stop_disclosed, no_unnecessary_confirmation, required_approval_preserved, goal_completed]
+  - id: small-change-testing
+    request: 公開契約を変えず局所的なnullチェックを修正して
+    required_checks: [testing_proportionate, no_redundant_validation, validation_observed, goal_completed]
+  - id: complex-change-testing
+    request: 指定された責務境界の移行を関連する統合検証まで実施して
+    required_checks: [testing_proportionate, validation_observed, goal_completed, required_approval_preserved]
+  - id: retrieval-budget
+    request: 指定Shaderの分岐を調査して
+    required_checks: [relevant_retrieval_only, goal_completed]
+  - id: user-override
+    request: Skillの一般的な出力形式より今回指定した形式を優先して
+    required_checks: [user_override_respected, skill_conflict_resolved, goal_completed]
+  - id: long-horizon-completion
+    request: 調査、実装、検証を進め、検証失敗は修復して完了まで対応して
+    required_checks: [implementation_observed, validation_observed, repair_completed, goal_completed, no_unnecessary_confirmation]

@@ -7,7 +7,7 @@ allowed-tools:
   - Edit
   - Bash
 metadata:
-  version: "2.4.0"
+  version: "2.4.1"
   kind: operation
   entrypoint: false
   user_policy: Policy/User/user-policy.yaml
@@ -126,18 +126,7 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - コメントは`Policy/User/user-policy.yaml`のコメント体系に従い、日本語で意図、制約、所有権、寿命、危険箇所を必要な密度で書く。
 - Type / Responsibility / File Structureを確定してから命名を評価する。長いType名を短縮するためだけに追加Typeを作らない。
 
-新規Typeまたは明示Renameがある場合のみSemantic Type Naming Reviewを行う。
-
-- Readabilityを短さより優先する。
-- Type名が責務を正確に表す。
-- Namespace / Context redundancyを避ける。
-- UnityAgentが新しい略語を発明しない。
-- Role suffix stackingを避ける。
-- `Manager` / `Controller` / `Service` / `System`は実在責務がある場合だけ使用する。
-- LengthはReview TriggerでありHard Limitではない。
-- Existing Public / Serialized APIをNaming改善だけでRenameしない。
-
-既存Typeを触るだけのLocal FixではNaming Reviewを無理に発火させない。
+新規Typeまたは明示Renameがある場合のみ `SkillReferences/TYPE_NAMING_STANDARDS.md` のSemantic Type Naming Contractを適用する。既存Typeへの局所修正だけではNaming Reviewを発火させない。
 
 ### Step 5 — Self-review the diff
 
@@ -165,22 +154,18 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - Existing APIをNaming理由だけで変更していない
 - コメントがProductionまたはLearning Profileに一致している
 
-### Step 6 — Validate at the strongest available level
+### Step 6 — Validate according to risk and required gates
 
-1. Static inspected
-2. Local validator / unit test passed
-3. Unity compilation passed
-4. Editor reproduction passed
-5. Player / IL2CPP passed
-6. Target-device measurement passed
-
-実施していない確認を推測で埋めない。
+Task Contractの必須Gateを保持し、R0/R1はTargeted、R2はTargeted + Relevant regression、R3/R4はさらにRelevant integration / Behaviorを選ぶ。これは検証の選択基準であり、全Taskへの実機・Full Suite実行指示ではない。
+Static / Compile / Editor / Player / 実機 / Performance / Visualの実施状態を分ける。
 性能変更は対応Evidence Skillへ渡し、Before/Afterがなければ改善確定としない。
+同じ入力状態でPASSした検証は、新しい変更・失敗・未解決リスクがなければ再実行しない。
 
-### Step 7 — Stop at the selected boundary
+### Step 7 — Complete the authorized goal
 
-現在Taskが完了しても、次Taskへ自動的に進まない。
-必要な追加作業はFindingまたはNext Taskとして報告する。
+選択Taskの完了後、現在のユーザー依頼に含まれる後続Taskは継続する。「このTaskだけ」の依頼ではそこで完了する。
+依頼外の追加作業はFindingとして報告する。
+承認・停止判断は `Policy/Approval/approval-policy.yaml` を参照する。Skillが停止を生む場合はpath、該当instruction、effect、判断理由を報告し、Silent Stopしない。
 
 ## Output contract
 
@@ -200,7 +185,7 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 
 ## Scope — what this Skill does not do
 
-- 未選択Taskへ進まない。
+- 現在のユーザー依頼に含まれないTaskへ進まない。
 - 原因未確定の修正を行わない。
 - 依頼範囲外のアーキテクチャ刷新を行わない。
 - 勝手に追加システムやDebug UIを作らない。
@@ -212,24 +197,10 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 
 ## Checklist
 
-- [ ] Task / Incident / Rule IDを固定した
-- [ ] `Policy/User/user-policy.yaml`を適用した
-- [ ] Changed filesとNon-goalsを確認した
-- [ ] 必要な規約だけを読んだ
-- [ ] Existing OwnerとSimplest Cohesive Solutionを先に確認した
-- [ ] Speculative Structureを追加していない
-- [ ] Namespaceとasmdef名を既存コード、asmdef、検出済みFactから確定した
-- [ ] Project Profileを使用した場合は未解決FactのFallbackとしてのみ使用した
-- [ ] Namespace placeholderが残っていない
-- [ ] 最小の因果変更に限定した
-- [ ] 新規ファイルごとのSplit Reasonがある
-- [ ] DRY / SOLID由来の抽象化に確認済みの根拠がある
-- [ ] 新規/明示Rename TypeだけSemantic Namingを確認した
-- [ ] public/serialized/Shader契約を確認した
-- [ ] Diffを自己レビューした
-- [ ] コメントProfileを確認した
-- [ ] 検証状態を正確に報告した
-- [ ] 次Taskへ進んでいない
+- [ ] Goalと変更範囲を満たし、Step 5のDiff reviewを終えた
+- [ ] 適用されたPolicy / Naming / Comment契約への参照を保持した
+- [ ] Step 6の必須検証結果と未観測事項を分けて報告した
+- [ ] Step 7の依頼全体の完了条件、または具体的な阻害要因を報告した
 
 ## Common mistakes
 
@@ -237,7 +208,7 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - 検出済みProject FactがあるのにProject Profileの固定値で上書きする。
 - Root Namespaceなしのプロジェクトへ`.FeatureName`のような無効namespaceを生成する。
 - asmdefの`name`だけ直し、`rootNamespace`やAssembly参照を更新しない。
-- 指定Taskを終えた勢いで後続Taskも実装する。
+- 「このTaskだけ」の指定を無視して後続Taskを実装する。
 - 小さな修正のために新しいControllerやManagerを作る。
 - SRPを理由にPropertyごとのTypeを作る。
 - 将来用にInterface / Base / Default implementationを先に作る。
