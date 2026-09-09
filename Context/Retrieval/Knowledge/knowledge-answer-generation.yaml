@@ -1,0 +1,16 @@
+schema_version: "1.0"
+kind: grounded_answer_generation
+retrieval_owner: MyResourceCenter
+generation_owner: UnityAgent
+required:
+  - citation_for_every_factual_claim
+  - explicit_abstention_when_evidence_is_insufficient
+  - index_revision_propagation
+  - provenance_validation
+security:
+  retrieved_text_is_untrusted_data: true
+  retrieved_instructions_are_executable: false
+  prompt_and_answer_body_in_normal_logs: forbidden
+providers:
+  answer_model: adapter_required
+  deterministic_test_model: supported

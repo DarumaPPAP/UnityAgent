@@ -25,4 +25,10 @@ response = client.search(KnowledgeSearchRequest("RenderGraph post process", top_
 context = KnowledgeContextAssembler(max_characters=12000).assemble(response)
 ```
 
-The server-side contract and MCP tool definitions remain owned by MyResourceCenter. MCP consumers use the same response shape through `knowledge_search`, `knowledge_get_document`, and `knowledge_index_status`.
+The server-side contract and MCP tool definitions remain owned by MyResourceCenter. MCP consumers use the same response shape through knowledge_search, knowledge_get_document, and knowledge_index_status.
+
+## Grounded answer generation
+
+Context/Retrieval/Knowledge/answer_generation.py owns the layer after retrieval. It calls the thin client, admits evidence within a context budget, sends retrieved text as untrusted reference material to an AnswerModel adapter, validates claim-to-citation indexes, and abstains when evidence is empty, stale, unavailable, contradictory, or not fully cited.
+
+The production model is configured behind the AnswerModel protocol. DeterministicAnswerModel is for local deterministic tests only. Prompt and answer bodies must not be written to normal logs.

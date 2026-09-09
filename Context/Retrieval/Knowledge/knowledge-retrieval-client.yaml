@@ -13,6 +13,9 @@ responsibility:
     - explicit status propagation
     - Context budget trimming
     - citation and index revision propagation
+    - grounded answer generation orchestration
+    - citation coverage validation
+    - abstention on insufficient evidence
   does_not_own:
     - chunking
     - embedding
@@ -20,6 +23,7 @@ responsibility:
     - reranking
     - vector backend credentials
     - Google Drive credentials
+    - retrieval ACL policy
 
 failure_mapping:
   empty: preserve_as_empty
