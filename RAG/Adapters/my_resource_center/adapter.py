@@ -56,8 +56,9 @@ class MyResourceCenterAdapter:
 
     source_id = "my_resource_center"
 
-    def __init__(self, index_path: str | Path) -> None:
+    def __init__(self, index_path: str | Path, *, expected_revision: str | None = None) -> None:
         self.index_path = Path(index_path)
+        self.expected_revision = None if expected_revision is None else str(expected_revision).strip() or None
         self.last_revision: str | None = None
 
     def load(self) -> AdapterLoadResult:
@@ -71,12 +72,18 @@ class MyResourceCenterAdapter:
                 diagnostics=({"code": exc.code, "message": str(exc)},),
             )
         self.last_revision = snapshot.revision
-        diagnostics = tuple(
+        diagnostic_list = [
             {"code": item["code"], "message": item["message"]}
             for item in snapshot.diagnostics
-        )
+        ]
+        if self.expected_revision and self.expected_revision != snapshot.revision:
+            diagnostic_list.append({
+                "code": "index_stale",
+                "message": "Search Index revision does not match the requested revision",
+                "expected_revision": self.expected_revision,
+                "actual_revision": snapshot.revision,
+            })
         candidates_list: list[RetrievalCandidate] = []
-        diagnostic_list = list(diagnostics)
         for index, chunk in enumerate(snapshot.chunks):
             try:
                 candidates_list.append(self._candidate(chunk))

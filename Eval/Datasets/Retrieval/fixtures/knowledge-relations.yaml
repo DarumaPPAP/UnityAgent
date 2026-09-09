@@ -1,0 +1,15 @@
+schema_version: "1.0"
+kind: knowledge_graph_expansion
+max_hops: 2
+max_nodes: 8
+relations:
+  - relation_id: REL-RAG-003-004
+    source_candidate_id: RAG-GFX-003
+    target_candidate_id: RAG-GFX-004
+    relation_type: supports
+    provenance_ref: mrc://relations/REL-RAG-003-004
+  - relation_id: REL-RAG-003-005
+    source_candidate_id: RAG-GFX-003
+    target_candidate_id: RAG-GFX-005
+    relation_type: related
+    provenance_ref: mrc://relations/REL-RAG-003-005

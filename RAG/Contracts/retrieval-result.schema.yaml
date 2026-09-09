@@ -24,6 +24,8 @@ properties:
       bundle_revision: {type: string, minLength: 1}
   diagnostics: {type: array, items: {type: object}}
   trace: {type: object}
+  query_plan: {type: [object, 'null']}
+  graph_expansion: {type: [object, 'null']}
   revisions:
     type: object
     additionalProperties: false

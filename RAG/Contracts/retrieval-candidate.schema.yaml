@@ -37,7 +37,7 @@ $defs:
   provenance:
     type: object
     additionalProperties: false
-    required: [source_kind, source_ref, document_id, evidence_id, evidence_ids, source_units, drive_file_id, workspace_path, original_required]
+    required: [source_kind, source_ref, document_id, evidence_id, evidence_ids, source_units, drive_file_id, workspace_path, original_required, relation_refs]
     properties:
       source_kind: {type: string, minLength: 1}
       source_ref: {type: string, pattern: '^[a-z][a-z0-9+.-]*://[^\s]+$'}
@@ -48,3 +48,4 @@ $defs:
       drive_file_id: {type: [string, 'null']}
       workspace_path: {type: [string, 'null']}
       original_required: {type: boolean}
+      relation_refs: {type: array, items: {type: string, minLength: 1}}

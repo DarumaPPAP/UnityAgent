@@ -26,6 +26,10 @@ class RetrievalTrace:
     source_failures: list[dict[str, Any]] = field(default_factory=list)
     top_source_refs: list[str] = field(default_factory=list)
     diagnostics: list[dict[str, Any]] = field(default_factory=list)
+    ranking_config: dict[str, Any] = field(default_factory=dict)
+    query_plan: dict[str, Any] | None = None
+    subqueries: list[dict[str, Any]] = field(default_factory=list)
+    graph_expansion: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -42,6 +46,7 @@ class RetrievalTrace:
             "counts": {
                 "candidate": int(self.candidate_count),
                 "returned": int(self.returned_count),
+                "selected": int(self.grounded_count),
                 "grounded": int(self.grounded_count),
             },
             "latency_ms": None if self.latency_ms is None else round(float(self.latency_ms), 3),
@@ -50,4 +55,8 @@ class RetrievalTrace:
             "source_failures": list(self.source_failures),
             "top_source_refs": list(self.top_source_refs),
             "diagnostics": list(self.diagnostics),
+            "ranking_config": dict(self.ranking_config),
+            "query_plan": self.query_plan,
+            "subqueries": list(self.subqueries),
+            "graph_expansion": self.graph_expansion,
         }

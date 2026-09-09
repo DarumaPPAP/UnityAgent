@@ -1,0 +1,25 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:rag:query-plan
+title: QueryPlan
+type: object
+additionalProperties: false
+required: [schema_version, plan_id, original_query, subqueries, max_subqueries, revision]
+properties:
+  schema_version: {const: '1.0'}
+  plan_id: {type: string, minLength: 1}
+  original_query: {type: string, minLength: 1}
+  subqueries:
+    type: array
+    maxItems: 4
+    items:
+      type: object
+      additionalProperties: false
+      required: [subquery_id, query, purpose, filters, source_hints]
+      properties:
+        subquery_id: {type: string, minLength: 1}
+        query: {type: string, minLength: 1}
+        purpose: {type: string, minLength: 1}
+        filters: {type: object}
+        source_hints: {type: array, items: {type: string}}
+  max_subqueries: {type: integer, minimum: 0, maximum: 4}
+  revision: {type: string, minLength: 1}

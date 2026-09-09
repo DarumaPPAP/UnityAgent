@@ -118,7 +118,8 @@ Eval measures / proposes
 
 - Query normalization / classification / explicit metadata filters
 - MyResourceCenter Search Index と Persistence Memory の read-only adapter
-- lexical / dense / hybrid backend seam、ranking、reranking
+- lexical / dense / hybrid backend seam、optional Qdrant dense+sparse adapter、ranking、reranking
+- bounded query planning と Knowledge relation expansion（制御グラフではない）
 - provenance-preserving Grounding Bundle、bounded output、retrieval diagnostics
 
 所有しない:

@@ -1,0 +1,25 @@
+schema_version: "1.0"
+kind: qdrant_collection_schema
+dense:
+  name: dense
+  size: 384
+  distance: Cosine
+sparse:
+  name: sparse
+  encoding: bm25
+payload_indexes:
+  - {field_name: repository, field_schema: keyword}
+  - {field_name: project_id, field_schema: keyword}
+  - {field_name: engine, field_schema: keyword}
+  - {field_name: unity_version_major, field_schema: keyword}
+  - {field_name: unity_versions, field_schema: keyword}
+  - {field_name: render_pipelines, field_schema: keyword}
+  - {field_name: pipeline_version, field_schema: keyword}
+  - {field_name: platforms, field_schema: keyword}
+  - {field_name: domains, field_schema: keyword}
+  - {field_name: topics, field_schema: keyword}
+  - {field_name: tags, field_schema: keyword}
+  - {field_name: source_kind, field_schema: keyword}
+  - {field_name: document_id, field_schema: keyword}
+  - {field_name: review_status, field_schema: keyword}
+  - {field_name: confidence, field_schema: keyword}

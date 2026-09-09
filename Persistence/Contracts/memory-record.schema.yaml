@@ -55,3 +55,8 @@ properties:
     type: array
     items: {type: string, minLength: 1}
     uniqueItems: true
+  experience_feedback_ref: {type: string, pattern: '^feedback://[^\s]+$'}
+  source_revision: {type: string, minLength: 1}
+  query_fingerprint: {type: string, minLength: 1}
+  evaluation_run_id: {type: [string, 'null']}
+  evaluation_case_id: {type: [string, 'null']}

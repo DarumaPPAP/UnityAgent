@@ -43,6 +43,21 @@ class AdapterAndContextTests(unittest.TestCase):
         self.assertIn(result["status"], {"blocked", "partial", "no_answer"})
         self.assertTrue(any(item.get("code") == "source_unavailable" for item in result["diagnostics"]))
 
+    def test_expected_index_revision_marks_stale_source_partial(self):
+        index = ROOT / "Eval/Datasets/Retrieval/fixtures/search-index.json"
+        loaded = MyResourceCenterAdapter(index).load()
+        self.assertTrue(loaded.source_revision)
+        result = retrieve_knowledge(
+            query="RenderGraph Blit replacement",
+            route_id="graphics-mcp",
+            execution_profile="generic_planning",
+            sources=["my_resource_center"],
+            my_resource_center_index=index,
+            expected_index_revision="sha256:stale-index",
+        )
+        self.assertEqual(result["status"], "partial")
+        self.assertTrue(any(item.get("code") == "index_stale" for item in result["diagnostics"]))
+
 
 if __name__ == "__main__":
     unittest.main()

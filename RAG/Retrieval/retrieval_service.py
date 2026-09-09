@@ -8,6 +8,7 @@ write Memory, or make the final answer-quality decision.
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
+from dataclasses import replace
 import hashlib
 from pathlib import Path
 import time
@@ -30,8 +31,12 @@ from RAG.Observability.retrieval_trace import RetrievalTrace
 from RAG.Query.classify_query import classify_query
 from RAG.Query.extract_filters import extract_filters
 from RAG.Query.rewrite_query import rewrite_query
+from RAG.Ranking.reranker import NoopReranker, Reranker
+from RAG.Ranking.rrf import RRFConfig
 from RAG.Retrieval.backend import RetrievalBackend
+from RAG.Retrieval.graph_expander import GraphExpansionConfig, KnowledgeGraphExpander
 from RAG.Retrieval.local_lexical_backend import LocalLexicalBackend
+from RAG.Retrieval.query_planner import QueryPlan, build_query_plan, execute_query_plan
 
 
 SOURCE_ALIASES = {
@@ -109,6 +114,7 @@ def _load_candidates(
     my_resource_center_index: str | Path | None,
     memory_store_root: str | Path | None,
     execution_profile: str,
+    expected_index_revision: str | None = None,
 ) -> tuple[list[Any], list[dict[str, Any]], list[str], dict[str, str]]:
     candidates: list[Any] = []
     failures: list[dict[str, Any]] = []
@@ -122,7 +128,7 @@ def _load_candidates(
             index_path = Path(my_resource_center_index) if my_resource_center_index is not None else Path("catalog/search-index.json")
             if not index_path.is_absolute():
                 index_path = root / index_path
-            result = MyResourceCenterAdapter(index_path).load()
+            result = MyResourceCenterAdapter(index_path, expected_revision=expected_index_revision).load()
             methods.append("my_resource_center_search_index")
         elif source_name == "project_memory":
             if memory_store_root is None:
@@ -154,11 +160,23 @@ class RetrievalService:
         root: str | Path = ".",
         my_resource_center_index: str | Path | None = None,
         memory_store_root: str | Path | None = None,
+        expected_index_revision: str | None = None,
+        reranker: Reranker | None = None,
+        rrf_config: RRFConfig | Mapping[str, Any] | None = None,
     ) -> None:
         self.backend = backend
         self.root = Path(root).resolve()
         self.my_resource_center_index = my_resource_center_index
         self.memory_store_root = memory_store_root
+        self.expected_index_revision = expected_index_revision
+        self.reranker = reranker
+        self.rrf_config = (
+            rrf_config
+            if isinstance(rrf_config, RRFConfig)
+            else RRFConfig.from_mapping(rrf_config)
+            if rrf_config is not None
+            else RRFConfig()
+        )
 
     def retrieve(
         self,
@@ -179,8 +197,20 @@ class RetrievalService:
         backend: RetrievalBackend | None = None,
         my_resource_center_index: str | Path | None = None,
         memory_store_root: str | Path | None = None,
+        expected_index_revision: str | None = None,
         sources: Iterable[str] | None = None,
         filters: RetrievalFilters | Mapping[str, Any] | None = None,
+        reranker: Reranker | None = None,
+        rrf_config: RRFConfig | Mapping[str, Any] | None = None,
+        query_plan: QueryPlan | None = None,
+        enable_query_planning: bool = False,
+        max_subqueries: int = 3,
+        max_subquery_workers: int = 3,
+        graph_relations: Mapping[str, Iterable[Mapping[str, Any]]] | None = None,
+        graph_candidate_lookup: Mapping[str, Any] | Iterable[Any] | None = None,
+        graph_expander: KnowledgeGraphExpander | None = None,
+        max_graph_hops: int = 0,
+        max_graph_nodes: int = 32,
     ) -> dict[str, Any]:
         started = time.perf_counter()
         normalized = rewrite_query(query)
@@ -199,6 +229,19 @@ class RetrievalService:
         selected_backend = backend or self.backend
         selected_mrc = my_resource_center_index if my_resource_center_index is not None else self.my_resource_center_index
         selected_memory = memory_store_root if memory_store_root is not None else self.memory_store_root
+        selected_expected_revision = (
+            expected_index_revision
+            if expected_index_revision is not None
+            else self.expected_index_revision
+        )
+        selected_rrf_config = (
+            rrf_config
+            if isinstance(rrf_config, RRFConfig)
+            else RRFConfig.from_mapping(rrf_config)
+            if rrf_config is not None
+            else self.rrf_config
+        )
+        selected_reranker = reranker if reranker is not None else self.reranker
         source_names = _source_names(
             sources,
             root=self.root,
@@ -216,6 +259,16 @@ class RetrievalService:
             top_k,
             candidate_k,
             max_chars,
+            selected_rrf_config.to_dict(),
+            None if selected_reranker is None else str(getattr(selected_reranker, "revision", "custom")),
+            bool(enable_query_planning),
+            int(max_subqueries),
+            int(max_subquery_workers),
+            query_plan.plan_id if query_plan is not None else None,
+            int(max_graph_hops),
+            int(max_graph_nodes),
+            tuple(sorted(str(key) for key in (graph_relations or {}).keys())),
+            selected_expected_revision,
         )
         request = RetrievalRequest(
             request_id=request_id,
@@ -237,16 +290,78 @@ class RetrievalService:
             my_resource_center_index=selected_mrc,
             memory_store_root=selected_memory,
             execution_profile=execution_profile,
+            expected_index_revision=selected_expected_revision,
         )
         retrieval_backend = selected_backend or LocalLexicalBackend(source_candidates)
         backend_name = retrieval_backend.__class__.__name__
         backend_revision = str(getattr(retrieval_backend, "revision", "unknown"))
         diagnostics: list[dict[str, Any]] = [dict(item) for item in source_failures]
+        query_plan_payload: dict[str, Any] | None = None
+        graph_payload: dict[str, Any] | None = None
+        subquery_payload: list[dict[str, Any]] = []
         try:
-            ranked = list(retrieval_backend.retrieve(request))
-        except Exception as exc:  # Backend failures are explicit; no fallback backend is invoked.
+            active_plan = query_plan
+            if active_plan is None and enable_query_planning:
+                active_plan = build_query_plan(
+                    normalized.raw,
+                    filters=merged_filters,
+                    max_subqueries=max_subqueries,
+                )
+            if active_plan is not None:
+                def retrieve_subquery(subquery: Any) -> list[Any]:
+                    sub_normalized = rewrite_query(subquery.query)
+                    sub_request = replace(
+                        request,
+                        request_id=deterministic_id("req", request.request_id, subquery.subquery_id),
+                        raw_query=sub_normalized.raw,
+                        normalized_query=sub_normalized.normalized,
+                        filters=subquery.filters,
+                        query_tokens=sub_normalized.tokens,
+                        technical_tokens=sub_normalized.technical_tokens,
+                    )
+                    return list(retrieval_backend.retrieve(sub_request))
+
+                planned = execute_query_plan(
+                    active_plan,
+                    retrieve_subquery,
+                    rrf_config=selected_rrf_config,
+                    max_workers=max_subquery_workers,
+                    candidate_limit=request.candidate_k,
+                )
+                ranked = list(planned.candidates)
+                query_plan_payload = active_plan.to_dict()
+                subquery_payload = [item.to_dict() for item in planned.subquery_traces]
+                diagnostics.extend(dict(item) for item in planned.diagnostics)
+                methods.append("bounded_query_planner")
+            else:
+                ranked = list(retrieval_backend.retrieve(request))
+        except Exception as exc:  # Backend failures are explicit and remain visible in diagnostics.
             ranked = []
             diagnostics.append({"code": "backend_failure", "backend": backend_name, "message": str(exc)})
+        backend_diagnostics = getattr(retrieval_backend, "last_diagnostics", ())
+        diagnostics.extend(dict(item) for item in backend_diagnostics)
+        fallback_used = bool(getattr(retrieval_backend, "last_fallback_used", False))
+
+        if graph_expander is not None or (graph_relations is not None and int(max_graph_hops) > 0):
+            expander = graph_expander or KnowledgeGraphExpander(
+                graph_relations,
+                config=GraphExpansionConfig(max_hops=max_graph_hops, max_nodes=max_graph_nodes),
+            )
+            lookup = {candidate.candidate_id: candidate for candidate in source_candidates}
+            lookup.update({candidate.candidate_id: candidate for candidate in ranked})
+            if isinstance(graph_candidate_lookup, Mapping):
+                lookup.update({str(key): value for key, value in graph_candidate_lookup.items()})
+            elif graph_candidate_lookup is not None:
+                lookup.update({candidate.candidate_id: candidate for candidate in graph_candidate_lookup})
+            graph_result = expander.expand(ranked, candidate_lookup=lookup)
+            ranked = list(graph_result.candidates)
+            diagnostics.extend(dict(item) for item in graph_result.diagnostics)
+            graph_payload = graph_result.to_dict()
+            methods.append("knowledge_graph_expansion")
+
+        if selected_reranker is not None:
+            ranked = list(selected_reranker.rerank(request, ranked[: request.candidate_k]))
+            methods.append("rerank")
         ranked = ranked[: request.candidate_k]
         bundle = build_grounding_bundle(
             request,
@@ -259,7 +374,18 @@ class RetrievalService:
         status = bundle.status
         if diagnostics and status == "grounded":
             status = "partial"
+        if fallback_used and status == "grounded":
+            status = "partial"
         capabilities = set(retrieval_backend.capabilities()) if hasattr(retrieval_backend, "capabilities") else set()
+        retrieval_methods = list(dict.fromkeys(
+            methods
+            + [name for name in ("lexical", "dense", "sparse", "hybrid", "filtering", "rrf") if name in capabilities]
+        ))
+        ranking_revision = selected_rrf_config.revision
+        if selected_reranker is not None:
+            ranking_revision += "+" + str(getattr(selected_reranker, "revision", "custom"))
+        if graph_payload is not None:
+            ranking_revision += "+graph-v1"
         trace = RetrievalTrace(
             request_id=request.request_id,
             query_hash=normalized.query_hash,
@@ -269,16 +395,23 @@ class RetrievalService:
             filters=merged_filters.to_dict(),
             backend=backend_name,
             backend_revision=backend_revision,
-            retrieval_methods=methods + (["lexical"] if "lexical" in capabilities else []),
-            candidate_count=len(source_candidates),
+            retrieval_methods=retrieval_methods,
+            candidate_count=max(len(source_candidates), len(ranked)),
             returned_count=len(ranked[: request.top_k]),
             grounded_count=len(bundle.items),
             latency_ms=(time.perf_counter() - started) * 1000.0,
             truncated=len(ranked) > request.top_k or (len(bundle.items) < len(ranked) and bool(ranked)),
-            fallback_used=False,
+            fallback_used=fallback_used,
             source_failures=diagnostics,
             top_source_refs=[str(item.get("provenance", {}).get("source_ref")) for item in bundle.items],
             diagnostics=list(bundle.diagnostics.get("skipped_candidates", [])),
+            ranking_config={
+                **selected_rrf_config.to_dict(),
+                "reranker": None if selected_reranker is None else str(getattr(selected_reranker, "revision", "custom")),
+            },
+            query_plan=query_plan_payload,
+            subqueries=subquery_payload,
+            graph_expansion=graph_payload,
         )
         index_revision = (
             "sha256:" + hashlib.sha256(
@@ -301,8 +434,10 @@ class RetrievalService:
                 "backend": backend_revision,
                 "index": index_revision,
                 "sources": revisions,
-                "ranking": "lexical-v1",
+                "ranking": ranking_revision,
             },
+            **({"query_plan": query_plan_payload} if query_plan_payload is not None else {}),
+            **({"graph_expansion": graph_payload} if graph_payload is not None else {}),
         }
 
 
@@ -328,8 +463,20 @@ def retrieve_knowledge(
     backend: RetrievalBackend | None = None,
     my_resource_center_index: str | Path | None = None,
     memory_store_root: str | Path | None = None,
+    expected_index_revision: str | None = None,
     sources: Iterable[str] | None = None,
     filters: RetrievalFilters | Mapping[str, Any] | None = None,
+    reranker: Reranker | None = None,
+    rrf_config: RRFConfig | Mapping[str, Any] | None = None,
+    query_plan: QueryPlan | None = None,
+    enable_query_planning: bool = False,
+    max_subqueries: int = 3,
+    max_subquery_workers: int = 3,
+    graph_relations: Mapping[str, Iterable[Mapping[str, Any]]] | None = None,
+    graph_candidate_lookup: Mapping[str, Any] | Iterable[Any] | None = None,
+    graph_expander: KnowledgeGraphExpander | None = None,
+    max_graph_hops: int = 0,
+    max_graph_nodes: int = 32,
     root: str | Path = ".",
 ) -> dict[str, Any]:
     """Public RAG entrypoint matching the implementation specification."""
@@ -339,6 +486,9 @@ def retrieve_knowledge(
         root=root,
         my_resource_center_index=my_resource_center_index,
         memory_store_root=memory_store_root,
+        expected_index_revision=expected_index_revision,
+        reranker=reranker,
+        rrf_config=rrf_config,
     ).retrieve(
         query=query,
         route_id=route_id,
@@ -355,6 +505,17 @@ def retrieve_knowledge(
         max_chars=max_chars,
         sources=sources,
         filters=filters,
+        reranker=reranker,
+        rrf_config=rrf_config,
+        query_plan=query_plan,
+        enable_query_planning=enable_query_planning,
+        max_subqueries=max_subqueries,
+        max_subquery_workers=max_subquery_workers,
+        graph_relations=graph_relations,
+        graph_candidate_lookup=graph_candidate_lookup,
+        graph_expander=graph_expander,
+        max_graph_hops=max_graph_hops,
+        max_graph_nodes=max_graph_nodes,
     )
 
 

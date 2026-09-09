@@ -1,0 +1,24 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:rag:graph-expansion
+title: KnowledgeGraphExpansion
+type: object
+additionalProperties: false
+required: [schema_version, kind, max_hops, max_nodes, relations]
+properties:
+  schema_version: {const: '1.0'}
+  kind: {const: knowledge_graph_expansion}
+  max_hops: {type: integer, minimum: 0, maximum: 4}
+  max_nodes: {type: integer, minimum: 1, maximum: 200}
+  relations:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required: [relation_id, source_candidate_id, target_candidate_id, relation_type, provenance_ref]
+      properties:
+        relation_id: {type: string, minLength: 1}
+        source_candidate_id: {type: string, minLength: 1}
+        target_candidate_id: {type: string, minLength: 1}
+        relation_type:
+          enum: [related, supports, depends_on, contradicts, derived_from, same_topic, diagnoses]
+        provenance_ref: {type: string, pattern: '^[a-z][a-z0-9+.-]*://[^\s]+$'}

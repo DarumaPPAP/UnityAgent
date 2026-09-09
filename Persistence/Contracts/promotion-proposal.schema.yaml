@@ -1,0 +1,22 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:persistence:promotion-proposal
+title: PersistencePromotionProposal
+type: object
+additionalProperties: false
+required: [schema_version, kind, proposal_id, feedback_id, evaluation_decision, statement, source_evidence_refs, source_revision, query_fingerprint, promotion_target, review_status]
+properties:
+  schema_version: {const: '1.0'}
+  kind: {const: rag_promotion_proposal}
+  proposal_id: {type: string, minLength: 1}
+  feedback_id: {type: string, minLength: 1}
+  evaluation_decision: {enum: [PASS, passed, success, verified]}
+  statement: {type: string, minLength: 1}
+  source_evidence_refs:
+    type: array
+    minItems: 1
+    uniqueItems: true
+    items: {type: string, minLength: 1}
+  source_revision: {type: string, minLength: 1}
+  query_fingerprint: {type: string, minLength: 1}
+  promotion_target: {enum: [none, execution_reference, unityagent_knowledge, user_policy_candidate]}
+  review_status: {enum: [pending, approved, rejected, not_required]}

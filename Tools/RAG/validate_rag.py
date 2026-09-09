@@ -24,17 +24,37 @@ REQUIRED_FILES = (
     "RAG/Contracts/retrieval-result.schema.yaml",
     "RAG/Contracts/grounding-bundle.schema.yaml",
     "RAG/Contracts/backend-capability.schema.yaml",
+    "RAG/Contracts/qdrant-collection.schema.yaml",
+    "RAG/Contracts/ranking-config.schema.yaml",
+    "RAG/Contracts/query-plan.schema.yaml",
+    "RAG/Contracts/graph-expansion.schema.yaml",
+    "RAG/Contracts/promotion-proposal.schema.yaml",
     "RAG/Retrieval/retrieval_service.py",
+    "RAG/Retrieval/dense_retriever.py",
+    "RAG/Retrieval/query_planner.py",
+    "RAG/Retrieval/graph_expander.py",
+    "RAG/Ranking/rrf.py",
+    "RAG/Ranking/reranker.py",
+    "RAG/Ranking/ranking-config.yaml",
+    "RAG/Adapters/qdrant/adapter.py",
+    "RAG/Adapters/qdrant/collection.py",
+    "RAG/Adapters/qdrant/collection-schema.yaml",
+    "RAG/Adapters/qdrant/ingestion.py",
     "RAG/Adapters/my_resource_center/adapter.py",
     "RAG/Adapters/memory/adapter.py",
+    "RAG/Feedback/experience_feedback.py",
     "RAG/Grounding/grounding_builder.py",
     "RAG/Observability/retrieval_trace.py",
     "RAG/Observability/retrieval_metrics.py",
     "Eval/Datasets/Retrieval/golden.yaml",
     "Eval/Datasets/Retrieval/fixtures/search-index.json",
     "Eval/Datasets/Retrieval/retrieval-eval-report.schema.yaml",
+    "Eval/Datasets/Retrieval/retrieval-variants-report.schema.yaml",
+    "Eval/Datasets/Retrieval/fixtures/knowledge-relations.yaml",
     "Eval/Retrieval/failure-taxonomy.yaml",
     "Eval/Retrieval/Baselines/local-lexical-v1.yaml",
+    "Eval/Retrieval/run_retrieval_variants.py",
+    "Persistence/Memory/promotion_writer.py",
 )
 
 
@@ -96,6 +116,10 @@ def validate(root: Path) -> list[str]:
     try:
         importlib.import_module("RAG.Retrieval.retrieval_service")
         importlib.import_module("RAG.Grounding.grounding_builder")
+        importlib.import_module("RAG.Adapters.qdrant")
+        importlib.import_module("RAG.Feedback.experience_feedback")
+        importlib.import_module("Persistence.Memory.promotion_writer")
+        importlib.import_module("Eval.Retrieval.run_retrieval_variants")
     except Exception as exc:  # noqa: BLE001
         errors.append(f"RAG import smoke failed: {exc}")
     return errors

@@ -1,0 +1,14 @@
+schema_version: "1.0"
+kind: rag_ranking_config
+algorithm: weighted_rrf
+rrf:
+  k: 60
+  weights:
+    lexical: 1.35
+    semantic: 1.0
+  revision: rrf-v2
+reranker:
+  enabled: false
+  revision: technical-reranker-v1
+candidate_k: 24
+top_k: 8

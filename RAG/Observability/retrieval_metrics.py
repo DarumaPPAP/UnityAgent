@@ -78,3 +78,21 @@ def calculate_retrieval_metrics(
         "provenance_completeness": sum(provenance_values) / len(rows),
         "exact_token_hit_rate": sum(exact_token_values) / len(rows),
     }
+
+
+def calculate_latency_metrics(values: Iterable[float]) -> dict[str, float]:
+    """Return stable nearest-rank latency summaries for offline comparisons."""
+
+    latencies = sorted(max(0.0, float(value)) for value in values)
+    if not latencies:
+        return {"p50_ms": 0.0, "p95_ms": 0.0, "max_ms": 0.0}
+
+    def percentile(percent: float) -> float:
+        index = min(len(latencies) - 1, max(0, int(len(latencies) * percent) - 1))
+        return latencies[index]
+
+    return {
+        "p50_ms": percentile(0.50),
+        "p95_ms": percentile(0.95),
+        "max_ms": latencies[-1],
+    }

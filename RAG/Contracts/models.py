@@ -206,6 +206,7 @@ class CandidateProvenance:
     drive_file_id: str | None = None
     workspace_path: str | None = None
     original_required: bool = False
+    relation_refs: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if not str(self.source_kind).strip():
@@ -214,6 +215,8 @@ class CandidateProvenance:
             raise ValueError("provenance.source_ref must be a URI")
         if any(int(unit) <= 0 for unit in self.source_units):
             raise ValueError("provenance.source_units must contain positive integers")
+        if any(not SOURCE_REF_RE.fullmatch(str(ref)) for ref in self.relation_refs):
+            raise ValueError("provenance.relation_refs must contain URIs")
         if self.workspace_path and any(part == ".." for part in str(self.workspace_path).split("/")):
             raise ValueError("provenance.workspace_path must not traverse parent directories")
 
@@ -232,6 +235,7 @@ class CandidateProvenance:
             "drive_file_id": self.drive_file_id,
             "workspace_path": self.workspace_path,
             "original_required": bool(self.original_required),
+            "relation_refs": list(self.relation_refs),
         }
 
 

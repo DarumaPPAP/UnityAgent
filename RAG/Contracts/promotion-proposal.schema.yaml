@@ -1,0 +1,38 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:rag:promotion-proposal
+title: RAGPromotionProposal
+type: object
+additionalProperties: false
+required: [schema_version, kind, feedback_id, proposal_id, evaluation_run_id, evaluation_case_id, evaluation_decision, verification_status, query, query_fingerprint, statement, source_evidence_refs, source_memory_refs, source_revision, applicability, limits, scope_class, promotion_target, review_status, supersedes, conflicts_with, evaluation_metrics, created_at, definition_fingerprint]
+properties:
+  schema_version: {const: '1.0'}
+  kind: {const: rag_promotion_proposal}
+  feedback_id: {type: string, minLength: 1}
+  proposal_id: {type: string, minLength: 1}
+  evaluation_run_id: {type: string, minLength: 1}
+  evaluation_case_id: {type: string, minLength: 1}
+  evaluation_decision: {enum: [PASS, passed, success, verified]}
+  verification_status: {enum: [passed, failed, unavailable, unverified]}
+  query: {type: string, minLength: 1}
+  query_fingerprint: {type: string, minLength: 1}
+  statement: {type: string, minLength: 1}
+  source_evidence_refs:
+    type: array
+    minItems: 1
+    uniqueItems: true
+    items: {type: string, minLength: 1}
+  source_memory_refs:
+    type: array
+    uniqueItems: true
+    items: {type: string, minLength: 1}
+  source_revision: {type: string, minLength: 1}
+  applicability: {type: array, items: {type: string}}
+  limits: {type: array, items: {type: string}}
+  scope_class: {enum: [project_internal, portable_artifact, public_reference]}
+  promotion_target: {enum: [none, execution_reference, unityagent_knowledge, user_policy_candidate]}
+  review_status: {enum: [pending, approved, rejected, not_required]}
+  supersedes: {type: array, uniqueItems: true, items: {type: string, minLength: 1}}
+  conflicts_with: {type: array, uniqueItems: true, items: {type: string, minLength: 1}}
+  evaluation_metrics: {type: object}
+  created_at: {type: string, minLength: 1}
+  definition_fingerprint: {type: [string, 'null']}

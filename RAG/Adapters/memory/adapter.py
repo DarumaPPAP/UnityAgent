@@ -66,6 +66,11 @@ class MemoryAdapter:
             "scope_class": record.get("scope_class"),
             "layer": record.get("layer"),
             "review_status": record.get("review_status"),
+            "source_revision": record.get("source_revision"),
+            "query_fingerprint": record.get("query_fingerprint"),
+            "experience_feedback_ref": record.get("experience_feedback_ref"),
+            "supersedes": list(record.get("supersedes") or []),
+            "conflicts_with": list(record.get("conflicts_with") or []),
         }
         provenance = CandidateProvenance(
             source_kind="project_memory",

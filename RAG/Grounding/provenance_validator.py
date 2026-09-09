@@ -39,6 +39,7 @@ def validate_provenance(value: CandidateProvenance | Mapping[str, Any]) -> Candi
                 drive_file_id=value.get("drive_file_id"),
                 workspace_path=value.get("workspace_path"),
                 original_required=bool(value.get("original_required", False)),
+                relation_refs=tuple(str(item) for item in (value.get("relation_refs") or ())),
             )
         except (TypeError, ValueError) as exc:
             raise ProvenanceError(str(exc)) from exc
