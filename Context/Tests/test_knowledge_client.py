@@ -150,6 +150,10 @@ class KnowledgeClientTests(unittest.TestCase):
         response = client.search(KnowledgeSearchRequest("RenderGraph"))
         self.assertEqual(response.status, "success")
         self.assertEqual(captured["headers"]["Authorization"], "Bearer secret-token")
+        correlation_header = next(
+            value for key, value in captured["headers"].items() if key.casefold() == "x-correlation-id"
+        )
+        self.assertTrue(correlation_header.startswith("trace-client-"))
         self.assertNotIn("user_id", captured["body"])
 
 

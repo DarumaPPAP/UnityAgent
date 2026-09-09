@@ -27,6 +27,7 @@ def main() -> int:
     parser.add_argument("--profile", default="hybrid_v1")
     parser.add_argument("--top-k", type=int, default=8)
     parser.add_argument("--max-context-characters", type=int, default=12000)
+    parser.add_argument("--correlation-id", default=os.environ.get("KNOWLEDGE_CORRELATION_ID"))
     parser.add_argument("--deterministic-model", action="store_true")
     args = parser.parse_args()
 
@@ -48,6 +49,7 @@ def main() -> int:
             top_k=args.top_k,
             retrieval_profile=args.profile,
             max_context_characters=args.max_context_characters,
+            correlation_id=args.correlation_id,
         )
     )
     print(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))

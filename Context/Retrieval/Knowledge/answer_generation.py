@@ -46,6 +46,7 @@ class AnswerRequest:
     max_context_characters: int = 12000
     answer_style: str = "concise"
     require_citations: bool = True
+    correlation_id: str | None = None
 
     def to_search_request(self) -> KnowledgeSearchRequest:
         return KnowledgeSearchRequest(
@@ -54,6 +55,7 @@ class AnswerRequest:
             filters=self.filters,
             top_k=self.top_k,
             retrieval_profile=self.retrieval_profile,
+            correlation_id=self.correlation_id,
         )
 
 

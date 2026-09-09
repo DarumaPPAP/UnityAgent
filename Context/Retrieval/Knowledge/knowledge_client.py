@@ -150,6 +150,9 @@ class KnowledgeResult:
         }
         if any(not isinstance(value, str) or not value.strip() for value in required.values()):
             raise KnowledgeClientError("PROVENANCE_INCOMPLETE", "retrieval result has incomplete provenance")
+        workspace_path = str(provenance["workspace_path"])
+        if not workspace_path.startswith(("sources/evidence/", "runtime/knowledge/")):
+            raise KnowledgeClientError("PROVENANCE_INCOMPLETE", "retrieval result has an invalid provenance workspace")
         units = _string_list(payload.get("source_units"), "source_units")
         if not units:
             raise KnowledgeClientError("PROVENANCE_INCOMPLETE", "retrieval result has no source units")
@@ -293,7 +296,13 @@ class KnowledgeHttpClient:
             return self._unavailable("BACKEND_TIMEOUT", started)
         payload = json.dumps(request.to_payload(), ensure_ascii=False).encode("utf-8")
         url = self.options.base_url.rstrip("/") + "/v1/knowledge/search"
-        headers = {"Content-Type": "application/json", "Accept": "application/json", "User-Agent": self.options.user_agent}
+        correlation_id = request.correlation_id or f"trace-client-{uuid.uuid4().hex}"
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": self.options.user_agent,
+            "X-Correlation-ID": correlation_id,
+        }
         if self.options.bearer_token:
             headers["Authorization"] = f"Bearer {self.options.bearer_token}"
         last_error = "INDEX_UNAVAILABLE"
