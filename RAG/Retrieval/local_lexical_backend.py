@@ -8,9 +8,12 @@ from RAG.Retrieval.lexical_retriever import (
     score_candidate,
 )
 
+LocalSearchIndexBackend = LocalLexicalBackend
+
 __all__ = [
     "LexicalScoringWeights",
     "LocalLexicalBackend",
+    "LocalSearchIndexBackend",
     "matches_hard_filters",
     "rank_candidates",
     "score_candidate",

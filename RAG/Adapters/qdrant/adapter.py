@@ -256,4 +256,7 @@ class QdrantBackend:
         return candidate
 
 
-__all__ = ["QdrantBackend", "QdrantBackendError"]
+QdrantAdapter = QdrantBackend
+
+
+__all__ = ["QdrantAdapter", "QdrantBackend", "QdrantBackendError"]

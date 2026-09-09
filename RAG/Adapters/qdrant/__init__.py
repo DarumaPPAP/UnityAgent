@@ -4,7 +4,7 @@ The rest of RAG depends only on ``RetrievalBackend``.  Qdrant-specific HTTP
 payloads, vector names, and authentication stay inside this package.
 """
 
-from RAG.Adapters.qdrant.adapter import QdrantBackend, QdrantBackendError
+from RAG.Adapters.qdrant.adapter import QdrantAdapter, QdrantBackend, QdrantBackendError
 from RAG.Adapters.qdrant.collection import (
     QdrantCollectionSchema,
     build_collection_create_payload,
@@ -33,6 +33,7 @@ __all__ = [
     "DenseEmbedder",
     "HashingDenseEmbedder",
     "QdrantBackend",
+    "QdrantAdapter",
     "QdrantBackendError",
     "QdrantCollectionManager",
     "QdrantCollectionSchema",
