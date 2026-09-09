@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "1.0.0",
+  "cases": [
+    {
+      "id": "grounded-answer",
+      "question": "<replace with a question answerable by the staged Knowledge source>",
+      "expected_status": "answered",
+      "expected_abstained": false,
+      "minimum_citation_coverage": 1.0,
+      "minimum_citations": 1,
+      "top_k": 5,
+      "retrieval_profile": "hybrid_v1"
+    },
+    {
+      "id": "negative-answer",
+      "question": "<replace with an intentionally unanswerable question>",
+      "expected_status": "retrieval_empty",
+      "expected_abstained": true,
+      "minimum_citation_coverage": 0.0,
+      "minimum_citations": 0,
+      "top_k": 5,
+      "retrieval_profile": "hybrid_v1"
+    }
+  ]
+}

@@ -23,13 +23,17 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Run grounded Knowledge Retrieval + answer generation")
     parser.add_argument("question")
     parser.add_argument("--base-url", default=os.environ.get("KNOWLEDGE_SERVICE_URL", "http://127.0.0.1:8080"))
-    parser.add_argument("--token", default=os.environ.get("KNOWLEDGE_SERVICE_TOKEN"))
+    parser.add_argument("--token-env", default="KNOWLEDGE_SERVICE_TOKEN", help="Environment variable containing the bearer token")
     parser.add_argument("--profile", default="hybrid_v1")
     parser.add_argument("--top-k", type=int, default=8)
     parser.add_argument("--max-context-characters", type=int, default=12000)
     parser.add_argument("--correlation-id", default=os.environ.get("KNOWLEDGE_CORRELATION_ID"))
     parser.add_argument("--deterministic-model", action="store_true")
     args = parser.parse_args()
+
+    token = os.environ.get(args.token_env, "").strip()
+    if not token:
+        parser.error(f"the bearer token must be supplied through {args.token_env}; it is never accepted as a CLI argument")
 
     if args.deterministic_model:
         model = DeterministicAnswerModel()
@@ -38,7 +42,7 @@ def main() -> int:
     client = KnowledgeHttpClient(
         KnowledgeClientOptions(
             args.base_url,
-            bearer_token=args.token,
+            bearer_token=token,
             timeout_seconds=float(os.environ.get("KNOWLEDGE_CLIENT_TIMEOUT_SECONDS", "10")),
             max_retries=int(os.environ.get("KNOWLEDGE_CLIENT_MAX_RETRIES", "1")),
         )
