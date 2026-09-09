@@ -118,6 +118,7 @@ def run_case(case: Mapping[str, Any], *, service_url: str, token: str, timeout_s
     started = time.perf_counter()
     try:
         model = DeterministicAnswerModel() if deterministic else OpenAICompatibleAnswerModel.from_environment()
+        provider_health = model.health()
         client = KnowledgeHttpClient(
             KnowledgeClientOptions(
                 service_url,
@@ -140,6 +141,12 @@ def run_case(case: Mapping[str, Any], *, service_url: str, token: str, timeout_s
             )
         )
         _, safe = validate_answer(result, case)
+        if isinstance(provider_health, Mapping):
+            safe["provider_health"] = {
+                key: provider_health.get(key)
+                for key in ("ready", "provider", "model_version")
+                if key in provider_health
+            }
     except Exception as error:  # provider and transport details never enter the report
         safe = {
             "case_id": str(case.get("id") or "unknown"),
@@ -150,6 +157,7 @@ def run_case(case: Mapping[str, Any], *, service_url: str, token: str, timeout_s
             "citation_count": 0,
             "index_revision": None,
             "model_version": None,
+            "provider_health": {},
             "diagnostics": {"error_type": type(error).__name__},
             "passed": False,
             "failures": ["runner_error"],

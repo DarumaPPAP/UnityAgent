@@ -35,6 +35,9 @@ class AnswerModel(Protocol):
     ) -> Mapping[str, Any]:
         ...
 
+    def health(self) -> Mapping[str, Any]:
+        ...
+
 
 @dataclass(frozen=True)
 class AnswerRequest:
@@ -105,6 +108,9 @@ class DeterministicAnswerModel:
     """Local test model that returns a citation-bearing evidence summary."""
 
     model_version = "deterministic-answer-v1"
+
+    def health(self) -> Mapping[str, Any]:
+        return {"ready": True, "provider": "deterministic", "model_version": self.model_version}
 
     def generate(
         self,
@@ -206,6 +212,13 @@ class OpenAICompatibleAnswerModel:
                 if attempt >= self.config.max_retries:
                     break
         raise AnswerModelError("answer provider request failed") from last_error
+
+    def health(self) -> Mapping[str, Any]:
+        return {
+            "ready": bool(self.config.endpoint and self.config.api_key and self.config.model),
+            "provider": "openai-compatible",
+            "model_version": self.model_version or None,
+        }
 
 
 class KnowledgeAnswerGenerator:

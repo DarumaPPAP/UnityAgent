@@ -10,6 +10,7 @@ if str(ROOT) not in sys.path:
 
 from Context.Retrieval.Knowledge.answer_generation import (
     AnswerRequest,
+    AnswerModelError,
     DeterministicAnswerModel,
     KnowledgeAnswerGenerator,
 )
@@ -63,6 +64,22 @@ def response(status="success", results=None):
 
 
 class AnswerGenerationTests(unittest.TestCase):
+    def test_provider_failure_returns_generation_failed_and_abstains(self):
+        class FailingModel:
+            model_version = "failing-model"
+
+            def generate(self, **_kwargs):
+                raise AnswerModelError("provider unavailable")
+
+        generator = KnowledgeAnswerGenerator(
+            FakeKnowledgeClient(response(results=[result_payload(0, "evidence")])),
+            FailingModel(),
+        )
+        answer = generator.generate(AnswerRequest("question"))
+        self.assertEqual(answer.status, "generation_failed")
+        self.assertTrue(answer.abstained)
+        self.assertEqual(answer.diagnostics["error_code"], "ANSWER_PROVIDER_UNAVAILABLE")
+
     def test_answer_has_citations_and_index_revision(self):
         generator = KnowledgeAnswerGenerator(
             FakeKnowledgeClient(response(results=[result_payload(0, "GPU visibility uses meshlet culling.")])) ,
