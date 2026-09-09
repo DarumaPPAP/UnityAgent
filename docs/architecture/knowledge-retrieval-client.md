@@ -58,4 +58,6 @@ python Tools/run_knowledge_answer_acceptance.py \
   --output reports/knowledge-answer-staging-soak.json
 ```
 
-The report contains case IDs, expected/actual statuses, abstention, citation count, citation coverage, index/model revisions, safe diagnostics, and latency. It never stores the question, generated answer, claim text, citation labels, retrieved content, bearer token, or provider response body. A grounded case must be `answered` with complete citation coverage; negative, stale, unavailable, and provider-failure cases must remain abstained with their expected typed status.
+For a grounded case, optionally set `expected_citation_locators` to the expected Source Unit locators and `expected_citation_mode` to `all` (default) or `any`. The runner compares those locators with the citations actually referenced by claims, and can reject a forbidden locator through `forbidden_citation_locators`; this gives a deterministic citation-correctness check without storing source labels.
+
+The report contains case IDs, expected/actual statuses, abstention, citation count, citation coverage, citation-correctness result, index/model revisions, safe diagnostics, and latency. It never stores the question, generated answer, claim text, citation labels, retrieved content, bearer token, or provider response body. A grounded case must be `answered` with complete citation coverage and the expected citation locator(s); negative, blocked, stale, unavailable, and provider-failure cases must remain abstained with their expected typed status.

@@ -8,6 +8,8 @@
       "expected_abstained": false,
       "minimum_citation_coverage": 1.0,
       "minimum_citations": 1,
+      "expected_citation_locators": ["<expected source-unit locator>"],
+      "expected_citation_mode": "all",
       "top_k": 5,
       "retrieval_profile": "hybrid_v1"
     },

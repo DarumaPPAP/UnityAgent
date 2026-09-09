@@ -108,6 +108,36 @@ class AnswerGenerationTests(unittest.TestCase):
         self.assertTrue(answer.abstained)
         self.assertEqual(answer.diagnostics["error_code"], "ANSWER_PROVIDER_UNAVAILABLE")
 
+    def test_conflicting_evidence_abstains_with_typed_diagnostic(self):
+        class ConflictModel:
+            model_version = "conflict-model"
+
+            def generate(self, **_kwargs):
+                return {
+                    "answer": "conflicting answer",
+                    "claims": [{"text": "conflicting claim", "citation_indexes": [0, 1]}],
+                    "conflicts": [{"citation_indexes": [0, 1]}],
+                    "abstained": False,
+                }
+
+        generator = KnowledgeAnswerGenerator(
+            FakeKnowledgeClient(
+                response(
+                    results=[
+                        result_payload(0, "The setting is enabled."),
+                        result_payload(1, "The setting is disabled."),
+                    ]
+                )
+            ),
+            ConflictModel(),
+        )
+        answer = generator.generate(AnswerRequest("What is the setting?"))
+        self.assertEqual(answer.status, "insufficient_evidence")
+        self.assertTrue(answer.abstained)
+        self.assertIsNone(answer.answer)
+        self.assertEqual(answer.diagnostics["reason"], "evidence_conflict")
+        self.assertEqual(answer.diagnostics["conflict_count"], 1)
+
     def test_answer_has_citations_and_index_revision(self):
         generator = KnowledgeAnswerGenerator(
             FakeKnowledgeClient(response(results=[result_payload(0, "GPU visibility uses meshlet culling.")])) ,
@@ -125,6 +155,12 @@ class AnswerGenerationTests(unittest.TestCase):
         answer = generator.generate(AnswerRequest("unknown"))
         self.assertEqual(answer.status, "retrieval_empty")
         self.assertIsNone(answer.answer)
+        self.assertTrue(answer.abstained)
+
+    def test_blocked_retrieval_preserves_blocked_status(self):
+        generator = KnowledgeAnswerGenerator(FakeKnowledgeClient(response(status="blocked")), DeterministicAnswerModel())
+        answer = generator.generate(AnswerRequest("restricted"))
+        self.assertEqual(answer.status, "blocked")
         self.assertTrue(answer.abstained)
 
     def test_invalid_citation_coverage_does_not_return_success(self):

@@ -28,7 +28,8 @@ from Context.Retrieval.Knowledge.answer_generation import (  # noqa: E402
 from Context.Retrieval.Knowledge.knowledge_client import KnowledgeClientOptions, KnowledgeHttpClient  # noqa: E402
 
 
-ANSWER_STATUSES = {"answered", "retrieval_empty", "retrieval_unavailable", "insufficient_evidence", "generation_failed"}
+ANSWER_STATUSES = {"answered", "blocked", "retrieval_empty", "retrieval_unavailable", "insufficient_evidence", "generation_failed"}
+CITATION_MODES = {"all", "any"}
 
 
 def utc_now() -> str:
@@ -53,6 +54,14 @@ def safe_base_url(value: str) -> str:
     return urlunsplit((parsed.scheme, host, parsed.path.rstrip("/"), "", ""))
 
 
+def string_list(value: Any, field_name: str) -> list[str]:
+    if value is None:
+        return []
+    if not isinstance(value, list) or any(not isinstance(item, str) or not item.strip() for item in value):
+        raise ValueError(f"{field_name} must be a list of non-empty strings")
+    return [item.strip() for item in value]
+
+
 def load_cases(path: Path) -> list[dict[str, Any]]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     cases = payload.get("cases") if isinstance(payload, Mapping) else None
@@ -67,6 +76,16 @@ def load_cases(path: Path) -> list[dict[str, Any]]:
         expected_status = str(case.get("expected_status") or "").strip()
         if not case_id or not question or expected_status not in ANSWER_STATUSES:
             raise ValueError("answer acceptance cases require id, question, and a valid expected_status")
+        if "expected_citation_locators" in case:
+            string_list(case.get("expected_citation_locators"), "expected_citation_locators")
+        if "forbidden_citation_locators" in case:
+            string_list(case.get("forbidden_citation_locators"), "forbidden_citation_locators")
+        citation_mode = str(case.get("expected_citation_mode", "all")).strip()
+        if citation_mode not in CITATION_MODES:
+            raise ValueError("expected_citation_mode must be all or any")
+        minimum_coverage = float(case.get("minimum_citation_coverage", 0.0))
+        if not 0 <= minimum_coverage <= 1:
+            raise ValueError("minimum_citation_coverage must be between 0 and 1")
         normalized.append(dict(case))
     return normalized
 
@@ -93,9 +112,47 @@ def validate_answer(answer: GroundedAnswer, case: Mapping[str, Any]) -> tuple[li
         failures.append("citation_count_below_threshold")
     if expected_status == "answered" and not answer.index_revision:
         failures.append("index_revision_missing")
+    used_locators: set[str] = set()
+    citation_references_valid = True
+    citations = getattr(answer, "citations", ())
+    for claim in getattr(answer, "claims", ()):
+        indexes = getattr(claim, "citation_indexes", None)
+        if not isinstance(indexes, (tuple, list)):
+            citation_references_valid = False
+            continue
+        for index in indexes:
+            if isinstance(index, bool) or not isinstance(index, int) or index < 0 or index >= len(citations):
+                citation_references_valid = False
+                continue
+            locator = getattr(citations[index], "locator", None)
+            if not isinstance(locator, str) or not locator.strip():
+                citation_references_valid = False
+                continue
+            used_locators.add(locator.strip())
+    if not citation_references_valid:
+        failures.append("citation_reference_invalid")
+    expected_locators = set(string_list(case.get("expected_citation_locators"), "expected_citation_locators"))
+    forbidden_locators = set(string_list(case.get("forbidden_citation_locators"), "forbidden_citation_locators"))
+    citation_mode = str(case.get("expected_citation_mode", "all")).strip()
+    expected_matches = expected_locators & used_locators
+    if expected_locators and (
+        (citation_mode == "all" and expected_matches != expected_locators)
+        or (citation_mode == "any" and not expected_matches)
+    ):
+        failures.append("citation_correctness_below_threshold")
+    if forbidden_locators & used_locators:
+        failures.append("forbidden_citation_used")
     safe_diagnostics = {
         key: answer.diagnostics.get(key)
-        for key in ("retrieval_status", "context_characters", "trimmed_results", "retrieval_trace_id", "reason", "error_code")
+        for key in (
+            "retrieval_status",
+            "context_characters",
+            "trimmed_results",
+            "retrieval_trace_id",
+            "reason",
+            "error_code",
+            "conflict_count",
+        )
         if key in answer.diagnostics
     }
     safe = {
@@ -105,6 +162,13 @@ def validate_answer(answer: GroundedAnswer, case: Mapping[str, Any]) -> tuple[li
         "abstained": answer.abstained,
         "coverage": answer.coverage,
         "citation_count": len(answer.citations),
+        "used_citation_count": len(used_locators),
+        "citation_correctness_checked": bool(expected_locators),
+        "citation_correctness": (
+            None
+            if not expected_locators
+            else (expected_matches == expected_locators if citation_mode == "all" else bool(expected_matches))
+        ),
         "index_revision": answer.index_revision,
         "model_version": answer.model_version,
         "diagnostics": safe_diagnostics,
