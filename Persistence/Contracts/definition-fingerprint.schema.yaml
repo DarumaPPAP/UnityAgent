@@ -28,3 +28,7 @@ properties:
   checkpoint_schema_revision: {type: string, minLength: 1}
   evidence_schema_revision: {type: string, minLength: 1}
   eval_contract_revision: {type: string, minLength: 1}
+  rag_contract_revision: {type: string, minLength: 1}
+  retrieval_backend_revision: {type: string, minLength: 1}
+  retrieval_index_revision: {type: string, minLength: 1}
+  ranking_revision: {type: string, minLength: 1}

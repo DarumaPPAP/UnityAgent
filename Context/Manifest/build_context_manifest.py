@@ -50,6 +50,10 @@ def build(
     *,
     project_facts: list[dict[str, Any]] | None = None,
     previous_manifest_ref: str | None = None,
+    rag_projection_refs: list[str] | None = None,
+    grounding_bundle_ref: str | None = None,
+    rag_bundle_revision: str | None = None,
+    rag_selected_utf8_bytes: int | None = None,
 ) -> dict:
     facts = list(project_facts or [])
     validate_project_facts(facts, attempt)
@@ -58,7 +62,16 @@ def build(
     if attempt == 1 and previous_manifest_ref is not None:
         raise ValueError("attempt 1 must not declare previous_manifest_ref")
     materializer = _load_materializer()
-    view = materializer.materialize_context(run_id, route_id, prompt_spec_ref, root=ROOT)
+    view = materializer.materialize_context(
+        run_id,
+        route_id,
+        prompt_spec_ref,
+        root=ROOT,
+        rag_projection_refs=rag_projection_refs,
+        grounding_bundle_ref=grounding_bundle_ref,
+        rag_bundle_revision=rag_bundle_revision,
+        rag_selected_utf8_bytes=rag_selected_utf8_bytes,
+    )
     return {
         "schema_version": "1.0",
         "manifest_id": f"{view['context_id']}-a{attempt}",
@@ -80,6 +93,10 @@ def main() -> int:
     parser.add_argument("--attempt", type=int, default=1)
     parser.add_argument("--prompt-spec-ref")
     parser.add_argument("--previous-manifest-ref")
+    parser.add_argument("--grounding-bundle-ref")
+    parser.add_argument("--rag-projection-ref", action="append", default=[])
+    parser.add_argument("--rag-bundle-revision")
+    parser.add_argument("--rag-selected-utf8-bytes", type=int)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     manifest = build(
@@ -88,6 +105,10 @@ def main() -> int:
         args.attempt,
         args.prompt_spec_ref,
         previous_manifest_ref=args.previous_manifest_ref,
+        rag_projection_refs=args.rag_projection_ref,
+        grounding_bundle_ref=args.grounding_bundle_ref,
+        rag_bundle_revision=args.rag_bundle_revision,
+        rag_selected_utf8_bytes=args.rag_selected_utf8_bytes,
     )
     text = yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True)
     if args.output:

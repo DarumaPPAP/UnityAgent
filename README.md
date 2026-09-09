@@ -24,7 +24,8 @@ flowchart LR
     U[ユーザー依頼] --> P[Policy]
     P --> R[Orchestration Routing]
     R --> T[Task Contract]
-    T --> C[Context / Skill]
+    T --> G[RAG Retrieval / Grounding]
+    G --> C[Context / Skill]
     C --> D{Design Review?}
 
     D -->|必要| H[Human Review]
@@ -44,6 +45,7 @@ flowchart LR
 ```text
 Policy defines
 Orchestration decides
+RAG retrieves / grounds
 Context materializes
 Runtime executes
 Persistence remembers
@@ -377,7 +379,8 @@ python .\Tools\ProductionToolRuntime\validate_production_tool_runtime.py
 | --- | --- |
 | `Policy/` | User Policy / Risk / Security / Approval / Evidence requirement |
 | `Orchestration/` | Task Routing / Graph / Gate / Semantic Replan |
-| `Context/` | Context selection / Retrieval / Budget / Materialization |
+| `RAG/` | Query / Retrieval / Ranking / Grounding / retrieval observability |
+| `Context/` | Context selection / Budget / Compression / Materialization |
 | `Runtime/` | Tool resolution / dispatch / timeout / cancellation / mutation guard / harness |
 | `Persistence/` | State / Checkpoint / Memory / durable Evidence |
 | `Operations/` | Observability / Incident / Runtime Control / Change Management |
@@ -424,7 +427,7 @@ python .\Tools\ProductionToolRuntime\validate_production_tool_runtime.py
 現在仕様を確認するときは次を優先してください。
 
 1. `AGENTS.md`
-2. Canonical `Policy / Orchestration / Context / Runtime / Persistence / Operations / Eval`
+2. Canonical `Policy / Orchestration / RAG / Context / Runtime / Persistence / Operations / Eval`
 3. `docs/architecture/architecture.md`
 4. `docs/architecture/production-tool-runtime.md`
 5. Supporting `Specs/`

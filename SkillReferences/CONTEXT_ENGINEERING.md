@@ -5,6 +5,7 @@
 UnityAgentの専門知識を失わず、Taskごとに必要なPolicy、Skill、Reference、Sourceだけを選択し、必要十分なContext量へ制御する。
 
 Contextは**current-call materialization**を所有し、Route selection、durable State、Memory、Checkpoint、Evidence truthを所有しない。
+検索・ranking・provenance付きGroundingは `RAG/` が所有し、Contextはその参照をselection・budget・compression・materializationする。
 
 ## Canonical selection flow
 
@@ -16,6 +17,8 @@ Task Fingerprint
 Orchestration/Routing/task-routes.yaml
   ↓
 One Primary Route
+  ↓
+RAG Query / Retrieval / Grounding
   ↓
 Context/Selection/context-catalog.yaml
   ↓
@@ -38,6 +41,10 @@ MaterializedContextView
 ```
 
 Technology keywordだけでRouteを決めない。Context catalogはRouteを選ばず、Orchestrationが選択済みのRouteをmaterializeする。
+
+## RAG handoff
+
+`RAG/` は MyResourceCenter Search Index、Persistence Memory、将来のbackendを Candidate として統合します。`grounding_bundle_ref` と source/evidence provenanceを保持したまま Contextへ渡し、Context側の最終選択と予算計測を置き換えません。RAGはPolicy instruction、Route、Provider、Tool、Runtime、durable Memoryを決めません。
 
 ## Typed Context Pack v3
 
@@ -282,7 +289,7 @@ Knowledge Graphは候補Artifactを絞るNavigation Layerである。
 
 Current pilot contract:
 
-`Context/Retrieval/Knowledge/knowledge-graph-pilot.yaml`
+`RAG/Retrieval/graph_expander.py`。既存のKnowledge graph contractは移行期間の入力としてRAG adapterから参照します。
 
 ```text
 Query -> Candidate artifacts -> Direct source read -> Decision

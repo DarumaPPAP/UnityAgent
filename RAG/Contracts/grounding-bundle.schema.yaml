@@ -1,0 +1,49 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:rag:grounding-bundle
+title: GroundingBundle
+type: object
+additionalProperties: false
+required: [schema_version, grounding_bundle_id, request_id, items, diagnostics, status, grounding_bundle_ref]
+properties:
+  schema_version: {const: '1.0'}
+  grounding_bundle_id: {type: string, minLength: 1}
+  request_id: {type: string, minLength: 1}
+  items:
+    type: array
+    maxItems: 20
+    items:
+      type: object
+      additionalProperties: false
+      required: [candidate_id, source_kind, statement, provenance, confidence, review_status, scores]
+      properties:
+        candidate_id: {type: string, minLength: 1}
+        source_kind: {type: string, minLength: 1}
+        statement: {type: string, minLength: 1}
+        provenance:
+          type: object
+          additionalProperties: false
+          required: [source_kind, source_ref, document_id, evidence_id, evidence_ids, source_units, drive_file_id, workspace_path, original_required]
+          properties:
+            source_kind: {type: string, minLength: 1}
+            source_ref: {type: string, pattern: '^[a-z][a-z0-9+.-]*://[^\s]+$'}
+            document_id: {type: [string, 'null']}
+            evidence_id: {type: [string, 'null']}
+            evidence_ids: {type: array, items: {type: string, minLength: 1}}
+            source_units: {type: array, items: {type: integer, minimum: 1}}
+            drive_file_id: {type: [string, 'null']}
+            workspace_path: {type: [string, 'null']}
+            original_required: {type: boolean}
+        confidence: {enum: [verified, probable, unverified, reviewed]}
+        review_status: {type: [string, 'null']}
+        scores:
+          type: object
+          additionalProperties: false
+          required: [lexical, semantic, fusion, rerank]
+          properties:
+            lexical: {type: number}
+            semantic: {type: number}
+            fusion: {type: number}
+            rerank: {type: [number, 'null']}
+  diagnostics: {type: object}
+  status: {enum: [grounded, partial, blocked, no_answer]}
+  grounding_bundle_ref: {type: string, pattern: '^rag://grounding/[^\s]+$'}

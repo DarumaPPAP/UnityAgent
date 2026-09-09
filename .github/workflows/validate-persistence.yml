@@ -5,6 +5,8 @@ on:
     paths:
       - "Persistence/**"
       - "Context/Retrieval/Memory/**"
+      - "RAG/Adapters/memory/**"
+      - "RAG/Contracts/**"
       - "AGENTS.md"
       - "docs/migration/persistence.md"
       - ".github/workflows/validate-persistence.yml"
@@ -13,6 +15,8 @@ on:
     paths:
       - "Persistence/**"
       - "Context/Retrieval/Memory/**"
+      - "RAG/Adapters/memory/**"
+      - "RAG/Contracts/**"
       - "AGENTS.md"
       - ".github/workflows/validate-persistence.yml"
 

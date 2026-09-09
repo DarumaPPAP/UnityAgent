@@ -1,0 +1,50 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:rag:retrieval-candidate
+title: RetrievalCandidate
+type: object
+additionalProperties: false
+required: [schema_version, candidate_id, source_kind, source_ref, text, metadata, provenance, scores, confidence, review_status]
+properties:
+  schema_version: {const: '1.0'}
+  candidate_id: {type: string, minLength: 1}
+  source_kind: {type: string, minLength: 1}
+  source_ref: {type: string, pattern: '^[a-z][a-z0-9+.-]*://[^\s]+$'}
+  document_id: {type: [string, 'null']}
+  evidence_id: {type: [string, 'null']}
+  text:
+    type: object
+    additionalProperties: false
+    required: [heading, summary, content]
+    properties:
+      heading: {type: string}
+      summary: {type: string, minLength: 1}
+      content: {type: string}
+  metadata: {type: object}
+  provenance:
+    $ref: '#/$defs/provenance'
+  scores:
+    type: object
+    additionalProperties: false
+    required: [lexical, semantic, fusion, rerank]
+    properties:
+      lexical: {type: number}
+      semantic: {type: number}
+      fusion: {type: number}
+      rerank: {type: [number, 'null']}
+  confidence: {enum: [verified, probable, unverified, reviewed]}
+  review_status: {type: [string, 'null']}
+$defs:
+  provenance:
+    type: object
+    additionalProperties: false
+    required: [source_kind, source_ref, document_id, evidence_id, evidence_ids, source_units, drive_file_id, workspace_path, original_required]
+    properties:
+      source_kind: {type: string, minLength: 1}
+      source_ref: {type: string, pattern: '^[a-z][a-z0-9+.-]*://[^\s]+$'}
+      document_id: {type: [string, 'null']}
+      evidence_id: {type: [string, 'null']}
+      evidence_ids: {type: array, items: {type: string, minLength: 1}}
+      source_units: {type: array, items: {type: integer, minimum: 1}}
+      drive_file_id: {type: [string, 'null']}
+      workspace_path: {type: [string, 'null']}
+      original_required: {type: boolean}

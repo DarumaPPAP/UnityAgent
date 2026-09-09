@@ -1,0 +1,35 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:rag:retrieval-result
+title: RetrievalResult
+type: object
+additionalProperties: false
+required: [schema_version, result_id, request_id, request, status, candidates, grounding_bundle, context_projection, diagnostics, trace, revisions]
+properties:
+  schema_version: {const: '1.0'}
+  result_id: {type: string, minLength: 1}
+  request_id: {type: string, minLength: 1}
+  request: {type: object}
+  status: {enum: [grounded, partial, blocked, no_answer]}
+  candidates: {type: array, maxItems: 20, items: {type: object}}
+  grounding_bundle: {type: object}
+  context_projection:
+    type: object
+    additionalProperties: false
+    required: [grounding_bundle_ref, source_refs, selected_count, status, bundle_revision]
+    properties:
+      grounding_bundle_ref: {type: string, pattern: '^rag://grounding/[^\s]+$'}
+      source_refs: {type: array, items: {type: string, minLength: 1}}
+      selected_count: {type: integer, minimum: 0}
+      status: {enum: [grounded, partial, blocked, no_answer]}
+      bundle_revision: {type: string, minLength: 1}
+  diagnostics: {type: array, items: {type: object}}
+  trace: {type: object}
+  revisions:
+    type: object
+    additionalProperties: false
+    required: [backend, index, sources, ranking]
+    properties:
+      backend: {type: string, minLength: 1}
+      index: {type: string, minLength: 1}
+      sources: {type: object}
+      ranking: {type: string, minLength: 1}

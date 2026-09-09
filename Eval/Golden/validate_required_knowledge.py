@@ -44,17 +44,17 @@ def main() -> int:
         if not required:
             continue
         covered += 1
-        selection = route.get("knowledge_selection")
+        selection = route.get("rag_requirement", route.get("knowledge_selection"))
         if selection not in {"required", "required_when_domain_matches", "optional"}:
-            errors.append(f"{route_id}: required_knowledge requires explicit knowledge_selection; found {selection!r}.")
+            errors.append(f"{route_id}: required_knowledge requires explicit rag_requirement; found {selection!r}.")
         if any(not value.strip() for value in required):
             errors.append(f"{route_id}: required_knowledge contains an empty selector.")
 
     for marker in (
         "knowledge_refs: list[str] | None",
         '_selected_ref(logical, "knowledge", root)',
-        'route.get("knowledge_selection") == "required_when_domain_matches"',
-        'unresolved.append("knowledge_selection")',
+        'route.get("rag_requirement", route.get("knowledge_selection"))',
+        'unresolved.append("rag_requirement")',
     ):
         if marker not in materializer_text:
             errors.append(f"Canonical Context materializer missing knowledge handling marker: {marker}")

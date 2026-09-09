@@ -1,0 +1,18 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:rag:query
+title: RAGQuery
+type: object
+additionalProperties: false
+required: [schema_version, raw, normalized, tokens, technical_tokens, query_hash]
+properties:
+  schema_version: {const: '1.0'}
+  raw: {type: string, minLength: 1}
+  normalized: {type: string, minLength: 1}
+  tokens:
+    type: array
+    minItems: 1
+    items: {type: string, minLength: 1}
+  technical_tokens:
+    type: array
+    items: {type: string, minLength: 1}
+  query_hash: {type: string, pattern: '^sha256:[0-9a-f]{64}$'}

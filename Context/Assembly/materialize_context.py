@@ -59,6 +59,14 @@ def _append_unique(items: list[dict[str, Any]], value: dict[str, Any]) -> None:
         items.append(value)
 
 
+def _rag_requirement(route: dict[str, Any]) -> str | None:
+    """Read the post-migration RAG requirement with a narrow compatibility bridge."""
+
+    if "rag_requirement" in route and "knowledge_selection" in route:
+        raise ValueError("route must not declare both rag_requirement and knowledge_selection")
+    return route.get("rag_requirement", route.get("knowledge_selection"))
+
+
 def _process_entry(
     entry: Any,
     *,
@@ -160,6 +168,10 @@ def materialize_context(
     capability_ids: list[str] | None = None,
     tool_schema_refs: list[str] | None = None,
     root: Path = ROOT,
+    rag_projection_refs: list[str] | None = None,
+    grounding_bundle_ref: str | None = None,
+    rag_bundle_revision: str | None = None,
+    rag_selected_utf8_bytes: int | None = None,
 ) -> dict[str, Any]:
     root = root.resolve()
     bindings = dict(bindings or {})
@@ -231,9 +243,24 @@ def materialize_context(
     knowledge: list[dict[str, Any]] = []
     for logical in knowledge_refs or []:
         _append_unique(knowledge, _selected_ref(logical, "knowledge", root))
-    if route.get("knowledge_selection") == "required_when_domain_matches" and not knowledge:
-        unresolved.append("knowledge_selection")
-        missing_observations.append("knowledge_selection")
+    rag_refs = sorted({str(value).strip() for value in (rag_projection_refs or []) if str(value).strip()})
+    if grounding_bundle_ref is not None:
+        grounding_bundle_ref = str(grounding_bundle_ref).strip()
+        if not grounding_bundle_ref.startswith("rag://grounding/"):
+            raise ValueError("grounding_bundle_ref must use rag://grounding/ URI")
+    if rag_bundle_revision is not None:
+        rag_bundle_revision = str(rag_bundle_revision).strip()
+        if not rag_bundle_revision:
+            raise ValueError("rag_bundle_revision must be non-empty when provided")
+    if rag_selected_utf8_bytes is not None and int(rag_selected_utf8_bytes) < 0:
+        raise ValueError("rag_selected_utf8_bytes must be non-negative")
+    rag_requirement = _rag_requirement(route)
+    if rag_requirement == "required_when_domain_matches" and not (rag_refs or grounding_bundle_ref or knowledge):
+        unresolved.append("rag_requirement")
+        missing_observations.append("rag_requirement")
+    elif rag_requirement == "required" and not (rag_refs or grounding_bundle_ref or knowledge):
+        unresolved.append("rag_requirement")
+        missing_observations.append("rag_requirement")
 
     capabilities = capability_selector.select_capability_context(capability_ids or [], root=root)
     if route.get("capability_selection") == "required" and not capabilities:
@@ -262,11 +289,14 @@ def materialize_context(
     ]
     if prompt_ref is not None:
         local_refs.append(prompt_ref)
+    measured_sizes = [int(item["selected_utf8_bytes"]) for item in local_refs]
+    if rag_selected_utf8_bytes is not None:
+        measured_sizes.append(int(rag_selected_utf8_bytes))
 
     expansion_hops = int((pack_document.get("limits") or {}).get("context_expansion_hops", 0) or 0)
     budget_report = budget.evaluate(
         route_id,
-        [int(item["selected_utf8_bytes"]) for item in local_refs],
+        measured_sizes,
         missing_observations=missing_observations,
         external_fetches=len(external_references),
         context_includes=len(context_includes),
@@ -284,6 +314,10 @@ def materialize_context(
         "active_conditions": sorted(conditions),
         "external_references": external_references,
         "memory_projection_refs": sorted(set(memory_projection_refs or [])),
+        "rag_projection_refs": rag_refs,
+        "grounding_bundle_ref": grounding_bundle_ref,
+        "rag_bundle_revision": rag_bundle_revision,
+        "rag_selected_utf8_bytes": rag_selected_utf8_bytes,
         "capability_ids": sorted({str(item["capability"]) for item in capabilities}),
         "tool_schema_refs": sorted(set(selected_tool_refs)),
     }
@@ -310,6 +344,13 @@ def materialize_context(
             "external_references": external_references,
             "knowledge": knowledge,
             "memory_projections": sorted(set(memory_projection_refs or [])),
+            "rag": {
+                "grounding_bundle_ref": grounding_bundle_ref,
+                "source_refs": rag_refs,
+                "projection_refs": rag_refs,
+                "bundle_revision": rag_bundle_revision,
+                "selected_utf8_bytes": rag_selected_utf8_bytes,
+            },
             "capabilities": capabilities,
             "tool_schema_refs": sorted(set(selected_tool_refs)),
         },
@@ -325,7 +366,7 @@ def materialize_context(
         },
         "definition_fingerprint": {
             "schema_version": "1.0",
-            "architecture_version": "v4.0",
+            "architecture_version": "v5.0",
             "policy_revision": _policy_revision(policy_refs),
             "prompt_revision": prompt_revision,
             "context_revision": context_hash,
@@ -335,6 +376,10 @@ def materialize_context(
             "checkpoint_schema_revision": "1.1",
             "evidence_schema_revision": "1.2",
             "eval_contract_revision": "1.2",
+            "rag_contract_revision": "1.0",
+            "retrieval_backend_revision": "local-lexical-v1",
+            "retrieval_index_revision": rag_bundle_revision or "unbound",
+            "ranking_revision": "lexical-v1",
         },
     }
 

@@ -1,0 +1,22 @@
+schema_version: "1.0"
+kind: retrieval_frozen_baseline
+run_id: rag-eval-e89f430397b909ad
+dataset_revision: sha256:99b9a8d397d91c0acc015cbecf0817d2241518f12a3f5aa91e146e82f14812a2
+rag_contract_revision: "1.0"
+index_revision: sha256:cdc089be669ce540c79f2e43c9fd0f4ef4840203f38252dfbc20384f0a5bce7c
+backend:
+  name: local_lexical
+  revision: local-lexical-v1
+ranking_config:
+  algorithm: lexical-v1
+  candidate_k: 24
+  top_k: 5
+metrics:
+  precision_at_5: 0.19
+  recall_at_5: 0.95
+  recall_at_10: 0.95
+  mrr: 0.95
+  provenance_completeness: 1.0
+  no_answer_false_positive_rate: 0.0
+  exact_token_hit_rate: 1.0
+decision: PASS

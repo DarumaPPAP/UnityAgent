@@ -1,6 +1,6 @@
 # UnityAgent Architecture
 
-Status: **Canonical Architecture Contract / Production Tool Runtime integrated**
+Status: **Canonical Architecture Contract / Production Tool Runtime and RAG integrated**
 
 この文書はUnityAgentの**現在Architecture**を人間向けに説明します。
 
@@ -16,6 +16,7 @@ UnityAgent/
 ├─ Policy/
 ├─ Orchestration/
 ├─ Context/
+├─ RAG/
 ├─ Runtime/
 ├─ Persistence/
 ├─ Operations/
@@ -38,9 +39,10 @@ UnityAgent/
 ```mermaid
 flowchart LR
     P[Policy<br/>defines] --> O[Orchestration<br/>decides]
-    O --> C[Context<br/>materializes]
-    C --> R[Runtime<br/>executes]
-    R --> S[Persistence<br/>remembers]
+    O --> R[RAG<br/>retrieves / grounds]
+    R --> C[Context<br/>materializes]
+    C --> RT[Runtime<br/>executes]
+    RT --> S[Persistence<br/>remembers]
     S --> OP[Operations<br/>observes / controls]
     S --> E[Eval<br/>measures / proposes]
 ```
@@ -48,6 +50,7 @@ flowchart LR
 ```text
 Policy defines
 Orchestration decides
+RAG retrieves / grounds
 Context materializes
 Runtime executes
 Persistence remembers
@@ -99,9 +102,8 @@ Eval measures / proposes
 
 - Context selection
 - Context Pack
-- Retrieval
-- Knowledge
 - Context Budget
+- Compression
 - current-call Materialization
 
 所有しない:
@@ -109,6 +111,24 @@ Eval measures / proposes
 - Route selection
 - Provider selection
 - durable Memory / Evidence / Checkpoint
+
+### RAG
+
+所有:
+
+- Query normalization / classification / explicit metadata filters
+- MyResourceCenter Search Index と Persistence Memory の read-only adapter
+- lexical / dense / hybrid backend seam、ranking、reranking
+- provenance-preserving Grounding Bundle、bounded output、retrieval diagnostics
+
+所有しない:
+
+- Route / Provider / Tool selection
+- Runtime execution
+- durable Memory / Evidence write
+- final answer quality decision
+
+RAGからContextへは `grounding_bundle_ref` と出典付きprojection refsを渡します。Contextがselection、budget、compression、materializationを行うため、RAGはContextの代替ではありません。
 
 ### Runtime
 
@@ -179,7 +199,8 @@ flowchart TD
     U[User Request] --> P[Policy]
     P --> T[Task Fingerprint]
     T --> R[Primary Route]
-    R --> C[Context Materialization]
+    R --> G[RAG Retrieval / Grounding]
+    G --> C[Context Materialization]
     C --> D{Design Review needed?}
     D -->|yes| H[Human Review]
     H -->|approve| X[Runtime Handoff]
@@ -398,6 +419,7 @@ Regression decision:
 | User Policy | `Policy/User/user-policy.yaml` |
 | Capability Policy | `Policy/Security/tool-capability-policy.yaml` |
 | Route | `Orchestration/Routing/task-routes.yaml` |
+| Retrieval / Grounding | `RAG/` |
 | Capability routing | `Orchestration/ToolRouting/capability-routing.yaml` |
 | Context catalog | `Context/Selection/context-catalog.yaml` |
 | Capability descriptions | `Context/Selection/tool-capability-catalog.yaml` |
@@ -439,6 +461,7 @@ Historical文書に現れる旧PathやPhase名をcurrent Production contractと�
 - RouteはTask Fingerprintとsemantic Execution Profileで決め、Technology keywordだけでは決めない。
 - 選択Routeの`required_policy_clauses`をPolicy provenanceとして記録する。
 - Context Manifestはcurrent-call provenanceでありWorkflowState、Checkpoint、Graph topologyの正本ではない。MemoryはContext側へread-only projectionだけを渡す。
+- RAGはQuery / Retrieval / Groundingとsource provenanceを所有し、Contextへ`grounding_bundle_ref`をhandoffする。ContextはRAG結果のselection・budget・compression・materializationを所有する。
 - Orchestration→RuntimeはPolicy revision、Route、Context ID/Fingerprint、Execution Profile、runtime projection、mutation scope、validation requirements、requested Capabilityを渡す。
 - OrchestrationはPersistence-compatible state projectionだけを返す。Stateのdurable commitはPersistenceが行う。
 - Runtime EvidenceはPersistence append後にdurable truthとなる。Checkpoint restoreはStateだけを復元し、Memory/Evidenceを巻き戻さない。

@@ -110,7 +110,7 @@ def validate(root: Path = ROOT) -> list[str]:
 
         materializer = (ROOT / "Context/Assembly/materialize_context.py").read_text(encoding="utf-8")
         required_revisions = {
-            '"architecture_version": "v4.0"',
+            '"architecture_version": "v5.0"',
             '"runtime_profile_revision": "runtime-profiles-v1"',
             '"tool_schema_revision": "production-tool-runtime-v1"',
             '"evidence_schema_revision": "1.2"',

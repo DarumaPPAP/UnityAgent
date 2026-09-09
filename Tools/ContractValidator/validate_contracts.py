@@ -9,6 +9,9 @@ import re
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Any
+
+import yaml
 
 KEY_PATTERN = re.compile(r"^([a-zA-Z0-9_-]+):(?:\s*(.*))?$")
 KNOWLEDGE_ID_PATTERN = re.compile(r"^[a-z0-9]+(?:[._-][a-z0-9]+)*$")
@@ -28,6 +31,7 @@ RISK_LEVELS = {"R0", "R1", "R2", "R3", "R4"}
 KNOWLEDGE_ROOT = Path("Context/Retrieval/Knowledge")
 KNOWLEDGE_INDEX = KNOWLEDGE_ROOT / "index.yaml"
 TASK_ROOT = Path("Orchestration/Contracts/TaskContracts")
+RAG_CONTRACT_ROOT = Path("RAG/Contracts")
 
 
 @dataclass(frozen=True)
@@ -121,6 +125,40 @@ def validate_index(root: Path, knowledge_files: list[Path]) -> list[Finding]:
     return findings
 
 
+def validate_rag_contracts(root: Path) -> tuple[list[Finding], int]:
+    findings: list[Finding] = []
+    contract_root = root / RAG_CONTRACT_ROOT
+    paths = sorted(contract_root.glob("*.schema.yaml")) if contract_root.is_dir() else []
+    ids: set[str] = set()
+    for path in paths:
+        relative = path.relative_to(root).as_posix()
+        try:
+            value: Any = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        except (OSError, UnicodeError, yaml.YAMLError) as exc:
+            findings.append(Finding("error", "RAG001", relative, f"Cannot parse RAG contract: {exc}"))
+            continue
+        if not isinstance(value, dict):
+            findings.append(Finding("error", "RAG002", relative, "RAG contract must be a mapping."))
+            continue
+        schema_id = str(value.get("$id") or "")
+        if not schema_id:
+            findings.append(Finding("error", "RAG003", relative, "RAG contract requires $id."))
+        elif schema_id in ids:
+            findings.append(Finding("error", "RAG004", relative, f"Duplicate RAG contract $id: {schema_id}"))
+        else:
+            ids.add(schema_id)
+        if value.get("$schema") != "https://json-schema.org/draft/2020-12/schema":
+            findings.append(Finding("error", "RAG005", relative, "RAG contract must use JSON Schema 2020-12."))
+        if value.get("type") != "object":
+            findings.append(Finding("error", "RAG006", relative, "RAG contract root type must be object."))
+        properties = value.get("properties")
+        if not isinstance(properties, dict) or "schema_version" not in properties:
+            findings.append(Finding("error", "RAG007", relative, "RAG contract requires schema_version property."))
+    if not paths:
+        findings.append(Finding("error", "RAG000", RAG_CONTRACT_ROOT.as_posix(), "No RAG contracts found."))
+    return findings, len(paths)
+
+
 def main() -> int:
     args = parse_args()
     root = Path(args.root).expanduser().resolve()
@@ -146,6 +184,8 @@ def main() -> int:
         findings.extend(validate_task(path, root))
     if knowledge_files:
         findings.extend(validate_index(root, knowledge_files))
+    rag_findings, rag_contracts = validate_rag_contracts(root)
+    findings.extend(rag_findings)
 
     findings.sort(key=lambda item: (item.severity != "error", item.path, item.code))
     errors = sum(item.severity == "error" for item in findings)
@@ -153,6 +193,7 @@ def main() -> int:
     payload = {
         "knowledge_contracts": len(knowledge_files),
         "task_contracts": len(task_files),
+        "rag_contracts": rag_contracts,
         "errors": errors,
         "warnings": warnings,
         "findings": [asdict(item) for item in findings],

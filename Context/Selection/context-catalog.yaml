@@ -16,12 +16,12 @@ routes:
     context_pack: Context/Packs/architecture-design.yaml
     primary_skill: .agents/skills/unity-architecture-design/SKILL.md
     task_contract: Orchestration/Contracts/TaskContracts/architecture-design.yaml
-    knowledge_selection: optional
+    rag_requirement: optional
   graphics-mcp:
     context_pack: Context/Packs/graphics-mcp.yaml
     primary_skill: .agents/skills/unity-architecture-design/SKILL.md
     task_contract: Orchestration/Contracts/TaskContracts/graphics-mcp.yaml
-    knowledge_selection: required_when_domain_matches
+    rag_requirement: required_when_domain_matches
     capability_selection: required
   csharp-local-fix:
     context_pack: Context/Packs/csharp-local-fix.yaml
@@ -35,12 +35,12 @@ routes:
     context_pack: Context/Packs/shader-change.yaml
     primary_skill: .agents/skills/unity-rendering/SKILL.md
     task_contract: Orchestration/Contracts/TaskContracts/shader-change.yaml
-    knowledge_selection: required_when_domain_matches
+    rag_requirement: required_when_domain_matches
   renderer-feature-change:
     context_pack: Context/Packs/renderer-feature-change.yaml
     primary_skill: .agents/skills/unity-rendering/SKILL.md
     task_contract: Orchestration/Contracts/TaskContracts/renderer-feature-change.yaml
-    knowledge_selection: required_when_domain_matches
+    rag_requirement: required_when_domain_matches
   performance-experiment:
     context_pack: Context/Packs/performance.yaml
     primary_skill: .agents/skills/unity-runtime-evidence/SKILL.md
@@ -53,7 +53,7 @@ routes:
     context_pack: Context/Packs/portable-feature.yaml
     primary_skill: .agents/skills/unity-architecture-design/SKILL.md
     task_contract: Orchestration/Contracts/TaskContracts/portable-feature.yaml
-    knowledge_selection: required_when_domain_matches
+    rag_requirement: required_when_domain_matches
     forced_profile: generic_planning
   safe-import-integration:
     context_pack: Context/Packs/asset-data-change.yaml
@@ -64,7 +64,7 @@ routes:
     context_pack: Context/Packs/visual-direction.yaml
     primary_skill: .agents/skills/unity-visual-direction/SKILL.md
     task_contract: Orchestration/Contracts/TaskContracts/visual-direction.yaml
-    knowledge_selection: optional
+    rag_requirement: optional
 rules:
   context_catalog_does_not_select_route: true
   technology_keyword_is_not_route_authority: true

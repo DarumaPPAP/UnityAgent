@@ -1,0 +1,16 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:rag:backend-capability
+title: BackendCapability
+type: object
+additionalProperties: false
+required: [schema_version, backend, revision, capabilities, supports_filters, supports_provenance]
+properties:
+  schema_version: {const: '1.0'}
+  backend: {type: string, minLength: 1}
+  revision: {type: string, minLength: 1}
+  capabilities:
+    type: array
+    uniqueItems: true
+    items: {type: string, minLength: 1}
+  supports_filters: {type: boolean}
+  supports_provenance: {type: boolean}

@@ -37,6 +37,7 @@ properties:
       - external_references
       - knowledge
       - memory_projections
+      - rag
       - capabilities
       - tool_schema_refs
     properties:
@@ -77,6 +78,20 @@ properties:
       memory_projections:
         type: array
         items: {type: string, minLength: 1}
+      rag:
+        type: object
+        additionalProperties: false
+        required: [grounding_bundle_ref, source_refs, projection_refs, bundle_revision, selected_utf8_bytes]
+        properties:
+          grounding_bundle_ref: {type: [string, "null"], pattern: "^rag://grounding/[^\\s]+$"}
+          source_refs:
+            type: array
+            items: {type: string, minLength: 1}
+          projection_refs:
+            type: array
+            items: {type: string, minLength: 1}
+          bundle_revision: {type: [string, "null"]}
+          selected_utf8_bytes: {type: [integer, "null"], minimum: 0}
       capabilities:
         type: array
         uniqueItems: true

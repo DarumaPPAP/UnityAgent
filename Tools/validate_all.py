@@ -19,6 +19,7 @@ YAML_ROOTS = (
     Path("Persistence"),
     Path("Operations"),
     Path("Eval"),
+    Path("RAG"),
     Path(".agents"),
 )
 
@@ -40,6 +41,7 @@ VALIDATORS = (
     Path("Eval/Golden/validate_naming_grader.py"),
     Path("Eval/Golden/validate_typed_context_v3.py"),
     Path("Eval/Golden/validate_context_budget_v1.py"),
+    Path("Tools/RAG/validate_rag.py"),
     Path("Eval/Behavior/validate_behavior_eval.py"),
     Path("Eval/Behavior/validate_policy_provenance.py"),
     Path("Eval/Behavior/validate_naming_production_contract.py"),
@@ -65,6 +67,7 @@ TEST_SUITES = (
     Path("Eval/Tests"),
     Path("Operations/Tests"),
     Path("Tests/HarnessProjection"),
+    Path("RAG/Tests"),
 )
 
 

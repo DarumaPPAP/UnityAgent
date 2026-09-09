@@ -1,0 +1,124 @@
+schema_version: "1.0"
+dataset_id: rag-golden-v1
+kind: retrieval_golden_dataset
+cases:
+  - id: RAG-GOLDEN-001
+    query: "UTS Outline の strict shader variant matching で build 失敗"
+    relevant: [RAG-GFX-001]
+    forbidden: [RAG-GFX-002]
+    answerable: true
+    expected_exact_tokens: [shader, variant, outline]
+  - id: RAG-GOLDEN-002
+    query: "BlendShape normals None import warning"
+    relevant: [RAG-GFX-002]
+    forbidden: []
+    answerable: true
+    expected_exact_tokens: [blendshape, normals, none]
+  - id: RAG-GOLDEN-003
+    query: "RenderGraph Blit replacement"
+    relevant: [RAG-GFX-003]
+    forbidden: []
+    answerable: true
+    expected_exact_tokens: [rendergraph, blit]
+  - id: RAG-GOLDEN-004
+    query: "URP Compatibility Mode removal"
+    relevant: [RAG-GFX-004]
+    forbidden: []
+    answerable: true
+    expected_exact_tokens: [urp, compatibility, mode]
+  - id: RAG-GOLDEN-005
+    query: "RenderMeshIndirect indexed args"
+    relevant: [RAG-GFX-005]
+    forbidden: []
+    answerable: true
+    expected_exact_tokens: [rendermeshindirect, indexed]
+  - id: RAG-GOLDEN-006
+    query: "GPU culling indirect draw"
+    relevant: [RAG-GFX-006]
+    forbidden: []
+    answerable: true
+    expected_exact_tokens: [gpu, culling, indirect]
+  - id: RAG-GOLDEN-007
+    query: "Forward vs Forward+ light loop"
+    relevant: [RAG-GFX-007]
+    forbidden: []
+    answerable: true
+    expected_exact_tokens: [forward, light]
+  - id: RAG-GOLDEN-008
+    query: "Switch の CPU / GPU frame time performance"
+    relevant: [RAG-GFX-008]
+    forbidden: []
+    answerable: true
+    expected_exact_tokens: [switch, cpu, gpu]
+  - id: RAG-GOLDEN-009
+    query: "TAA で motion vector が不足"
+    relevant: [RAG-GFX-009]
+    forbidden: []
+    answerable: true
+    expected_exact_tokens: [taa, motion, vectors]
+  - id: RAG-GOLDEN-010
+    query: "transparent rendering queue depth blend"
+    relevant: [RAG-GFX-010]
+    forbidden: []
+    answerable: true
+    expected_exact_tokens: [transparent, rendering, queue]
+  - id: RAG-GOLDEN-011
+    query: "UTS Outline LightMode"
+    relevant: [RAG-GFX-011]
+    forbidden: []
+    answerable: true
+    expected_exact_tokens: [uts, outline, lightmode]
+  - id: RAG-GOLDEN-012
+    query: "shader dynamic branching lane divergence"
+    relevant: [RAG-GFX-012]
+    forbidden: []
+    answerable: true
+    expected_exact_tokens: [shader, dynamic, branching]
+  - id: RAG-GOLDEN-013
+    query: "Cinemachine 2.10.7 の virtual camera"
+    relevant: [RAG-GFX-013]
+    forbidden: []
+    answerable: true
+    expected_exact_tokens: [cinemachine, 2.10.7, virtual]
+  - id: RAG-GOLDEN-014
+    query: "camera stacking CPU cost"
+    relevant: [RAG-GFX-014]
+    forbidden: []
+    answerable: true
+    expected_exact_tokens: [camera, stacking, cpu]
+  - id: RAG-GOLDEN-015
+    query: "LoadSceneAsync scene transition"
+    relevant: [RAG-GFX-015]
+    forbidden: []
+    answerable: true
+    expected_exact_tokens: [loadsceneasync, scene, transition]
+  - id: RAG-GOLDEN-016
+    query: "mesh merge atlas draw calls"
+    relevant: [RAG-GFX-016]
+    forbidden: []
+    answerable: true
+    expected_exact_tokens: [mesh, merge, atlas]
+  - id: RAG-GOLDEN-017
+    query: "VAT animation vertex animation texture"
+    relevant: [RAG-GFX-017]
+    forbidden: []
+    answerable: true
+    expected_exact_tokens: [vat, animation, texture]
+  - id: RAG-GOLDEN-018
+    query: "Volume Fog の geometry"
+    relevant: [RAG-GFX-018]
+    forbidden: []
+    answerable: true
+    expected_exact_tokens: [volume, fog, geometry]
+  - id: RAG-GOLDEN-019
+    query: "Project Auditor unused assets"
+    relevant: [RAG-GFX-019]
+    forbidden: []
+    answerable: true
+    expected_exact_tokens: [project, auditor, assets]
+  - id: RAG-GOLDEN-020
+    query: "UnknownQuantumBananaApi invented class"
+    relevant: []
+    forbidden: [RAG-GFX-001, RAG-GFX-002, RAG-GFX-003]
+    answerable: false
+    expected_exact_tokens: [unknownquantumbananaapi]

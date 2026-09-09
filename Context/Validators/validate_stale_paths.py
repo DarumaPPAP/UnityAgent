@@ -9,12 +9,14 @@ CANONICAL_SCAN_ROOTS = (
     Path("AGENTS.md"), Path("Policy"), Path("Context/Assembly"), Path("Context/Budget"),
     Path("Context/Compression"), Path("Context/Contracts"), Path("Context/Manifest"),
     Path("Context/Selection"), Path("Context/Validators"), Path("Context/Tests"),
+    Path("RAG"),
     Path("Runtime/Permissions"),
 )
 REFERENCE_EXEMPT_PREFIXES = (
     "Context/Compatibility/",
     "Context/Packs/",
     "Context/Retrieval/Knowledge/",
+    # Existing static Knowledge is a staged compatibility input consumed by RAG.
     "Eval/Compatibility/",
     "Eval/Datasets/",
     "docs/migration/",

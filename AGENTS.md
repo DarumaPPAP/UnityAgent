@@ -13,7 +13,7 @@ Repository内の優先順位は `Policy/User/user-policy.yaml#instruction_priori
 ## Execution
 1. User Policyを読み、Goal・対象範囲・完了条件を固定する。修正依頼は調査だけで終えず、変更・検証・必要な修復まで進む。
 2. `Orchestration/Routing/task-routes.yaml` で意図と範囲からRouteを選び、`Context/Selection/context-catalog.yaml` で必要なContext / Skill / Task Contractだけ解決する。選択Routeの`required_policy_clauses`をPolicy provenanceとして記録する。
-3. `Context/Assembly/materialize_context.py` でcurrent-call Contextを構築する。Context / Retrieval Budgetと圧縮時の必須制約保持は `Context/Budget/context-budget.yaml` に従う。
+3. `RAG/` でKnowledgeを検索・Groundingし、`Context/Assembly/materialize_context.py` でRAG参照を含むcurrent-call Contextを構築する。Contextのselection / budget / compressionとRAGのretrieval budgetはそれぞれのContractに従う。
 4. bounded TaskはFast Pathを使う。Graph、Local Loop、SubAgentは分解・修復・独立並列作業が必要な場合にだけ利用する。
 5. Orchestrationは必要Capabilityを要求し、Runtime Tool BrokerがProviderを解決・実行する。Provider直接呼出しでApproval / Scopeを迂回しない。
 6. 変更リスクと必須Gateに応じて検証する。新しい変更・失敗・未解決リスクがなければ同じPASS検証を反復しない。
@@ -28,7 +28,8 @@ Policy追加の前にKnowledge / Retrieval / Tool / Harness / Eval / Architectur
 | User preferences / Comments | `Policy/User/user-policy.yaml` |
 | Risk / Approval / Evidence | `Policy/Risk/` / `Policy/Approval/` / `Policy/Evidence/` |
 | Route / Graph / Task boundary | `Orchestration/Routing/` / `Orchestration/Definitions/` / `Orchestration/Contracts/TaskContracts/` |
-| Context / Retrieval / Compression | `Context/Selection/` / `Context/Budget/` / `Context/Manifest/` |
+| Retrieval / Grounding | `RAG/` / `RAG/Contracts/` / `RAG/Adapters/` |
+| Context / Selection / Compression | `Context/Selection/` / `Context/Budget/` / `Context/Manifest/` |
 | Task workflow / Unity knowledge | `.agents/skills/` / `SkillReferences/` |
 | Naming contract / Golden checks | `SkillReferences/TYPE_NAMING_STANDARDS.md` / `Eval/Golden/validate_naming_grader.py` |
 | Execution / Tools / Validation | `Runtime/Runner/` / `Runtime/Tooling/` / `Runtime/Harnesses/` |
@@ -40,7 +41,8 @@ Policy追加の前にKnowledge / Retrieval / Tool / Harness / Eval / Architectur
 | Local Unity project use | `docs/local-project-development.md` / `Templates/DevelopmentRequest.md` |
 
 ## Completion and invariants
-- Policy defines; Orchestration decides; Context materializes; Runtime executes; Persistence remembers; Operations observes/controls; Eval measures/proposes.
+- Policy defines; Orchestration decides; RAG retrieves/grounds; Context materializes; Runtime executes; Persistence remembers; Operations observes/controls; Eval measures/proposes.
+- RAGの結果は出典付きKnowledge/Evidenceであり、Route / Provider / Tool選択やdurable Memoryの書き込み権限を持たない。ContextはRAGのbundle参照を受け、selection・budget・compression・materializationを所有する。
 - Runtime capture becomes durable Evidence only after Persistence append. Checkpoint、Memory、Evidenceを混同しない。
 - Unknown Project Fact / Bindingを推測で補完しない。legacy path fallbackやGolden期待値のProduction Prompt注入を行わない。
 - Static / Compile / Editor / Player / 実機 / Visual / Performanceの検証状態を分け、未観測は`not_observed`、利用不可は`unavailable`として報告する。
