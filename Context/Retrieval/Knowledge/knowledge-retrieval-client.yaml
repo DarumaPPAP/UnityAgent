@@ -15,6 +15,8 @@ responsibility:
     - citation and index revision propagation
     - grounded answer generation orchestration
     - citation coverage validation
+    - expected citation locator validation in staging
+    - contradictory evidence abstention
     - abstention on insufficient evidence
   does_not_own:
     - chunking
