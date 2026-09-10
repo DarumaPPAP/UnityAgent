@@ -53,7 +53,6 @@
 
   const conceptById = new Map((architecture.concepts || []).map((concept) => [concept.id, concept]));
   const conceptButtons = new Map();
-  let selectedConceptId = "";
 
   function renderConceptFlow() {
     const flow = byId("concept-flow");
@@ -97,7 +96,6 @@
   function selectConcept(conceptId, options) {
     const concept = conceptById.get(conceptId);
     if (!concept) return;
-    selectedConceptId = conceptId;
     conceptButtons.forEach((button, id) => {
       const active = id === conceptId;
       button.classList.toggle("is-active", active);
@@ -117,7 +115,6 @@
   }
 
   function clearConceptSelection() {
-    selectedConceptId = "";
     conceptButtons.forEach((button) => {
       button.classList.remove("is-active");
       button.setAttribute("aria-pressed", "false");
@@ -170,6 +167,11 @@
   }
 
   function updateTourToggle() {
+    if (prefersReducedMotion) {
+      text(byId("tour-toggle"), "次");
+      byId("tour-toggle").setAttribute("aria-label", "Next tour step");
+      return;
+    }
     text(byId("tour-toggle"), tourPlaying ? "Ⅱ" : "▶");
     byId("tour-toggle").setAttribute("aria-label", tourPlaying ? "Pause tour" : "Play tour");
   }
@@ -198,6 +200,11 @@
 
   byId("start-tour").addEventListener("click", startTour);
   byId("tour-toggle").addEventListener("click", () => {
+    if (prefersReducedMotion) {
+      const last = (architecture.tour || []).length - 1;
+      setTourStep(tourIndex >= last ? 0 : tourIndex + 1);
+      return;
+    }
     tourPlaying = !tourPlaying;
     updateTourToggle();
     scheduleTour();
@@ -270,6 +277,12 @@
   }
 
   byId("demo-play").addEventListener("click", () => {
+    if (prefersReducedMotion) {
+      const last = (demo.steps || []).length - 1;
+      setDemoStep(demoIndex < 0 || demoIndex >= last ? 0 : demoIndex + 1);
+      text(byId("demo-play"), "次のStep →");
+      return;
+    }
     if (demoPlaying) {
       stopDemo();
       return;
@@ -280,6 +293,7 @@
     scheduleDemo();
   });
   renderDemoSteps();
+  if (prefersReducedMotion) text(byId("demo-play"), "Stepを見る →");
 
   const contextNodes = graph.nodes.filter((node) => node.type === "context");
   const contextById = new Map(contextNodes.map((node) => [node.id, node]));
