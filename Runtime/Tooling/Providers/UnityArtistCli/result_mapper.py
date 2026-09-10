@@ -1,6 +1,7 @@
 """Normalize UnityArtistCLI envelopes into the canonical ProviderResult shape."""
 from __future__ import annotations
 
+import json
 from typing import Any, Mapping
 
 COMMAND_EVIDENCE: dict[str, tuple[str, ...]] = {
@@ -46,6 +47,22 @@ def _value(envelope: Mapping[str, Any], *names: str) -> Any:
     return None
 
 
+def _nested_pipeline_result(data: Any) -> Mapping[str, Any] | None:
+    """Extract the Editor result nested inside the host CLI adapter envelope."""
+    if not isinstance(data, Mapping):
+        return None
+    provider = data.get("provider")
+    provider_data = provider.get("data") if isinstance(provider, Mapping) else None
+    raw_result = provider_data.get("result") if isinstance(provider_data, Mapping) else None
+    if isinstance(raw_result, str):
+        try:
+            parsed = json.loads(raw_result)
+        except json.JSONDecodeError:
+            return None
+        return parsed if isinstance(parsed, Mapping) else None
+    return raw_result if isinstance(raw_result, Mapping) else None
+
+
 def _failure_class(code: str | None) -> str:
     if code in {"APPROVAL_REQUIRED", "EXPECTED_REVISION_REQUIRED"}:
         return "blocked_by_approval"
@@ -70,12 +87,13 @@ def _payload_evidence(data: Any) -> list[str]:
     candidates: list[Any] = []
     if isinstance(data, Mapping):
         candidates.extend(data.get("evidence") or [])
-        nested = data.get("provider")
-        if isinstance(nested, Mapping):
-            candidates.extend(nested.get("evidence") or [])
-        nested = data.get("adapter")
-        if isinstance(nested, Mapping):
-            candidates.extend(nested.get("evidence") or [])
+        for key in ("provider", "adapter"):
+            nested = data.get(key)
+            if isinstance(nested, Mapping):
+                candidates.extend(nested.get("evidence") or [])
+        pipeline_result = _nested_pipeline_result(data)
+        if pipeline_result is not None:
+            candidates.extend(pipeline_result.get("evidence") or [])
     result: list[str] = []
     for item in candidates:
         token = str(item).split(":", 1)[0].strip()
@@ -103,6 +121,7 @@ def normalize_artist_result(
     data = _value(payload, "Data", "data")
     errors = _value(payload, "Errors", "errors")
     warnings = _value(payload, "Warnings", "warnings")
+    pipeline_result = _nested_pipeline_result(data)
     evidence = list(COMMAND_EVIDENCE.get(command, ("domain_result",)))
     for item in _payload_evidence(data):
         if item not in evidence:
@@ -119,11 +138,12 @@ def normalize_artist_result(
             "command_id": f"artist.{command}",
         }
         if "mutation_evidence" in evidence:
+            provenance = pipeline_result if pipeline_result is not None else data
             result["redacted_provenance"] = {
-                "plan_id": _value(data, "planId", "plan_id") if isinstance(data, Mapping) else None,
-                "session_id": _value(data, "sessionId", "session_id") if isinstance(data, Mapping) else None,
-                "expected_revision": _value(data, "expectedRevision", "expected_revision") if isinstance(data, Mapping) else None,
-                "exact_diff_ref": _value(data, "diffDigest", "diff_digest") if isinstance(data, Mapping) else None,
+                "plan_id": _value(provenance, "planId", "plan_id") if isinstance(provenance, Mapping) else None,
+                "session_id": _value(provenance, "sessionId", "session_id") if isinstance(provenance, Mapping) else None,
+                "expected_revision": _value(provenance, "expectedRevision", "expected_revision") if isinstance(provenance, Mapping) else None,
+                "exact_diff_ref": _value(provenance, "diffDigest", "diff_digest") if isinstance(provenance, Mapping) else None,
             }
         return result
 

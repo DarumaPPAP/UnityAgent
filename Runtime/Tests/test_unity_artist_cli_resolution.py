@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -175,6 +176,30 @@ class UnityArtistCliResolutionTests(unittest.TestCase):
             result["evidence"],
             ["visual_capture", "camera_binding", "capture_manifest"],
         )
+
+    def test_host_adapter_nested_editor_result_is_mapped_to_evidence_and_provenance(self) -> None:
+        editor_result = {
+            "status": "passed",
+            "planId": "artist-plan-live",
+            "expectedRevision": "revision-live",
+            "evidence": ["mutation_evidence", "undo_registration", "save_not_performed"],
+        }
+        result = normalize_artist_result(
+            {
+                "status": "passed",
+                "data": {
+                    "adapter": {"pipelineCommand": "artist.apply"},
+                    "provider": {"data": {"result": json.dumps(editor_result)}},
+                },
+            },
+            command="apply",
+        )
+
+        self.assertIn("mutation_evidence", result["evidence"])
+        self.assertIn("undo_registration", result["evidence"])
+        self.assertIn("save_not_performed", result["evidence"])
+        self.assertEqual(result["redacted_provenance"]["plan_id"], "artist-plan-live")
+        self.assertEqual(result["redacted_provenance"]["expected_revision"], "revision-live")
 
 
 if __name__ == "__main__":
