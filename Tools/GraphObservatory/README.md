@@ -4,6 +4,16 @@
 
 Production Authorityは `Policy/`、`Orchestration/`、`Context/`、`Runtime/`、`Persistence/`、`Operations/`、`Eval/` にあります。このToolが生成するGraphとHuman MapはDerived Viewであり、正本ではありません。
 
+## Hosted Explorer
+
+公開版はGitHub Pagesで提供します。
+
+- https://darumappap.github.io/UnityAgent/
+- `main` 更新時に `.github/workflows/deploy-context-explorer-pages.yml` がBundleを再生成して自動Deployします。
+- Workflowは `validate_context_explorer.py` が成功した場合だけPages artifactを公開します。
+
+GitHub PagesをRepositoryで初めて有効化する場合だけ、GitHubの `Settings > Pages > Build and deployment > Source` を **GitHub Actions** に設定します。これはRepository設定のため、Workflow自身の `GITHUB_TOKEN` では初回有効化しません。
+
 ## 何を見るToolか
 
 HTML Bundleは4段階で情報を開示します。
