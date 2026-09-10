@@ -1,7 +1,6 @@
 schema_version: "1.0"
 selection:
   primary_retrieval: local_reference_snapshot
-  remote_knowledge_service_default: false
   select_one_primary_knowledge: true
   load_related_only_when_condition_matches: true
   read_human_html_by_default: false

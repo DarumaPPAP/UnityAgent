@@ -1,10 +1,10 @@
 # Local Reference Navigator
 
-UnityAgentの個人運用では、MyResourceCenterの外部Knowledge/RAG Serviceを通常経路にしません。MyResourceCenterで必要なSource確認を一度だけ行い、生成した `myresourcecenter-reference-snapshot` をローカルファイルとして読み込みます。
+UnityAgentの個人運用では、MyResourceCenterへ通常の依頼ごとに接続しません。必要なSource確認を一度だけ行い、生成した `myresourcecenter-reference-snapshot` をローカルファイルとして読み込みます。
 
 ## Goal
 
-資料検索と不具合調査の初期探索を一回にまとめ、以後はUnity Projectの観測結果で切り分ける。サーバー、Embedding、Qdrant、常時同期、Drive資格情報をUnityAgentの通常実行から外す。
+資料検索と不具合調査の初期探索を一回にまとめ、以後はUnity Projectの観測結果で切り分ける。外部検索サーバー、常時同期、Drive資格情報をUnityAgentの通常実行から外す。
 
 ## Data flow
 
