@@ -1,5 +1,7 @@
 schema_version: "1.0"
 selection:
+  primary_retrieval: local_reference_snapshot
+  remote_knowledge_service_default: false
   select_one_primary_knowledge: true
   load_related_only_when_condition_matches: true
   read_human_html_by_default: false
@@ -9,6 +11,13 @@ selection:
     - experiment_results_required
     - visual_reference_required
     - decision_history_required
+
+local_reference:
+  path: Context/Retrieval/Reference/reference-navigator.yaml
+  status: reviewed
+  normal_question: local_snapshot_first
+  incident: local_snapshot_then_project_observation
+  remote_recheck: explicit_only
 
 knowledge:
   graphics.unity_graphics_mcp:

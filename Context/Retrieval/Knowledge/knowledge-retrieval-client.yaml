@@ -1,11 +1,19 @@
-schema_version: "1.0"
-kind: external_knowledge_retrieval_client
+schema_version: "1.1"
+kind: optional_legacy_external_knowledge_retrieval_client
+status: optional_legacy
+default_for_personal_operation: false
+primary_reference_path: Context/Retrieval/Reference/reference-navigator.yaml
 contract_source:
   repository: DarumaPPAP/MyResourceCenter
   path: contracts/knowledge-retrieval-v1.schema.json
   api_version: v1
 
 responsibility:
+  local_first_owner:
+    - load the generated MyResourceCenter reference snapshot
+    - select bounded local references
+    - create a one-pass incident investigation plan
+    - use local project observation before external re-query
   owns:
     - query construction
     - retrieval budget selection
@@ -32,3 +40,8 @@ security:
   identity_transport: bearer_authentication
   identity_in_request_body: forbidden
   backend_direct_access: forbidden
+
+deprecation:
+  reason: Personal operation does not require a continuously running Knowledge/RAG Service.
+  retained_for: future team or hosted deployment and historical compatibility
+  replacement: Context/Retrieval/Reference/reference_navigator.py

@@ -17,11 +17,13 @@ routes:
     primary_skill: .agents/skills/unity-architecture-design/SKILL.md
     task_contract: Orchestration/Contracts/TaskContracts/architecture-design.yaml
     knowledge_selection: optional
+    reference_selection: local_snapshot_when_relevant
   graphics-mcp:
     context_pack: Context/Packs/graphics-mcp.yaml
     primary_skill: .agents/skills/unity-architecture-design/SKILL.md
     task_contract: Orchestration/Contracts/TaskContracts/graphics-mcp.yaml
     knowledge_selection: required_when_domain_matches
+    reference_selection: local_snapshot_when_relevant
     capability_selection: required
   csharp-local-fix:
     context_pack: Context/Packs/csharp-local-fix.yaml
@@ -31,16 +33,19 @@ routes:
     context_pack: Context/Packs/rendering-incident.yaml
     primary_skill: .agents/skills/unity-incident-investigation/SKILL.md
     task_contract: Orchestration/Contracts/TaskContracts/rendering-incident.yaml
+    reference_selection: incident_plan_first
   shader-change:
     context_pack: Context/Packs/shader-change.yaml
     primary_skill: .agents/skills/unity-rendering/SKILL.md
     task_contract: Orchestration/Contracts/TaskContracts/shader-change.yaml
     knowledge_selection: required_when_domain_matches
+    reference_selection: local_snapshot_when_relevant
   renderer-feature-change:
     context_pack: Context/Packs/renderer-feature-change.yaml
     primary_skill: .agents/skills/unity-rendering/SKILL.md
     task_contract: Orchestration/Contracts/TaskContracts/renderer-feature-change.yaml
     knowledge_selection: required_when_domain_matches
+    reference_selection: local_snapshot_when_relevant
   performance-experiment:
     context_pack: Context/Packs/performance.yaml
     primary_skill: .agents/skills/unity-runtime-evidence/SKILL.md
@@ -54,6 +59,7 @@ routes:
     primary_skill: .agents/skills/unity-architecture-design/SKILL.md
     task_contract: Orchestration/Contracts/TaskContracts/portable-feature.yaml
     knowledge_selection: required_when_domain_matches
+    reference_selection: local_snapshot_when_relevant
     forced_profile: generic_planning
   safe-import-integration:
     context_pack: Context/Packs/asset-data-change.yaml

@@ -1,28 +1,31 @@
-# Knowledge Retrieval Client Boundary
+# Knowledge Retrieval and Local Reference Boundary
 
-`Context/Retrieval/Knowledge/knowledge_client.py` is the UnityAgent-side thin client for the MyResourceCenter Knowledge/RAG Service.
+個人運用の通常経路は `Context/Retrieval/Reference/reference_navigator.py` です。MyResourceCenterで明示的に一度だけ確認して生成したローカルSnapshotを読み、タイトル・Topics・Tags・Collections・短いEvidenceから候補を選びます。詳細は [Local Reference Navigator](local-reference-navigator.md) を参照してください。
 
-The client sends query intent, scope, filters, and retrieval budget. It does not send identity fields in the request body. Identity is supplied by the HTTP transport using a bearer token.
+`Context/Retrieval/Knowledge/knowledge_client.py` は、将来のチーム／Hosted運用に残した任意の外部クライアントであり、個人運用の既定経路では呼び出しません。
 
-The client preserves `success`, `empty`, `partial`, `stale`, `blocked`, and `unavailable` as distinct states. It never turns a timeout or `unavailable` response into an empty result, and it never connects to Qdrant, an embedding provider, Google Drive, or an index file.
-
-`KnowledgeContextAssembler` only performs Context-budget admission: it retains complete provenance, suppresses exact duplicate `(document, source_units)` pairs, preserves different source units, and records truncation. `KnowledgeCitationState` carries citations and `index_revision` to the answer layer.
-
-## Example
+## Local-first example
 
 ```python
-from Context.Retrieval.Knowledge.knowledge_client import (
-    KnowledgeClientOptions,
-    KnowledgeContextAssembler,
-    KnowledgeHttpClient,
-    KnowledgeSearchRequest,
-)
+from Context.Retrieval.Reference.reference_navigator import load_snapshot, search_snapshot
 
-client = KnowledgeHttpClient(
-    KnowledgeClientOptions("http://127.0.0.1:8080", bearer_token="dev-token")
-)
-response = client.search(KnowledgeSearchRequest("RenderGraph post process", top_k=5))
-context = KnowledgeContextAssembler(max_characters=12000).assemble(response)
+snapshot = load_snapshot("../MyResourceCenter/catalog/reference-snapshot.json")
+selection = search_snapshot(snapshot, "URP TAA MotionVector", max_items=5)
+if selection["remote_recheck_recommended"]:
+    # Do not fabricate an answer. Perform an explicit source recheck.
+    pass
 ```
 
-The server-side contract and MCP tool definitions remain owned by MyResourceCenter. MCP consumers use the same response shape through `knowledge_search`, `knowledge_get_document`, and `knowledge_index_status`.
+Local Reference Navigatorはネットワーク、Qdrant、Embedding、Drive資格情報を持ちません。候補なし、Snapshotの古さ、原文確認の必要、Source間の矛盾を検出した場合だけ、明示的な再確認を提案します。
+
+## Optional hosted client
+
+外部クライアントを明示的に使う場合は、query intent、scope、filters、retrieval budgetだけを送信し、identity fieldsをrequest bodyへ入れません。IdentityはHTTP transportのbearer tokenで供給します。
+
+外部クライアントは `success`、`empty`、`partial`、`stale`、`blocked`、`unavailable` を区別します。タイムアウトを空結果へ変換しません。Server-side contractとMCP tool定義は将来のHosted運用向けにMyResourceCenterが所有します。
+
+## Answer and incident handling
+
+回答生成は、Local Reference Navigatorまたは明示的な外部Clientが選んだ候補をbounded Contextへ入れる層です。候補本文はuntrusted reference materialとして扱い、出典URL・Resource ID・Snapshot revisionを保持します。不具合の場合は、先に一度だけ候補検索と検証計画を作り、その後はローカルProject観測を優先します。候補なし、古さ、矛盾、根拠不足の場合は推測せず再確認または保留にします。
+
+外部Answer providerを使うかどうかは別の選択です。Local Reference Navigator自体はAnswer providerを呼びません。Promptとanswer bodyを通常ログへ書きません。

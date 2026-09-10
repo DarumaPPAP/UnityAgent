@@ -53,6 +53,12 @@ Eval measures / proposes
 
 詳細は [UnityAgent Architecture](docs/architecture/architecture.md) を参照してください。
 
+### MyResourceCenter参照はLocal-first
+
+個人運用では、MyResourceCenterやGoogle Driveへ通常の依頼ごとに接続しません。必要時に一度だけSourceを確認して生成した `myresourcecenter-reference-snapshot` を、`Context/Retrieval/Reference/reference_navigator.py` でローカル検索します。通常の質問は上位3〜5件だけをContextへ入れ、不具合は一度の候補検索から仮説と読み取り専用の検証計画を作成し、以後はUnity Projectの観測を優先します。
+
+サーバー、Embedding、Qdrant、常時同期は個人運用の既定経路ではありません。Snapshotに候補がない、古い、原文確認が必要、またはSource間に矛盾がある場合だけ明示的な再確認へ切り替えます。詳細は [Local Reference Navigator](docs/architecture/local-reference-navigator.md) を参照してください。
+
 ---
 
 ## 2. Production Tool Runtime
