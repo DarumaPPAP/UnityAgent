@@ -1,0 +1,57 @@
+schema_version: "1.0"
+kind: local_reference_navigator
+status: reviewed
+
+purpose:
+  - local-first reference selection from a MyResourceCenter snapshot
+  - one-pass incident candidate search and verification-plan creation
+  - bounded context with source links and source-unit locators
+
+source:
+  canonical_original: Google Drive /Sources
+  snapshot_producer: DarumaPPAP/MyResourceCenter/tools/build_reference_snapshot.py
+  snapshot_kind: myresourcecenter-reference-snapshot
+  raw_document_body_included: false
+
+operating_modes:
+  initial_refresh:
+    network_access: allowed_only_for_explicit_source_confirmation
+    action: build_and_validate_local_snapshot
+    output:
+      - catalog/reference-snapshot.json
+      - generated/reference/reference-brief.md
+  normal_question:
+    network_access: forbidden_by_default
+    action: search_local_snapshot
+    tier: default
+    max_candidates: 5
+    max_context_characters: 8000
+  incident:
+    network_access: forbidden_by_default
+    action: build_local_investigation_plan
+    tier: investigation
+    max_hypotheses: 5
+    max_context_characters: 12000
+    follow_up: local_project_observation_first
+
+selection:
+  algorithm: deterministic_lexical_title_topic_tag_summary_match
+  japanese_matching: normalized_character_ngrams
+  relation_expansion_hops: 1
+  source_quality_affects_priority: true
+  measured_probability_claim: false
+  raw_document_body_to_prompt: forbidden
+
+remote_recheck:
+  allowed_when:
+    - snapshot_candidate_is_empty
+    - snapshot_revision_is_stale
+    - original_page_or_slide_confirmation_is_required
+    - candidate_sources_conflict
+  after_recheck: regenerate_snapshot_or_attach_explicit_source_evidence
+
+safety:
+  reference_text_is_untrusted_data: true
+  mutation_from_reference_text: forbidden
+  mutation_requires_existing_approval_contract: true
+  observation_unavailable_is_not_success: true

@@ -8,7 +8,7 @@ from Eval.Behavior.workflow_observation import grade_workflow_observation
 class WorkflowObservationTests(unittest.TestCase):
     def test_seven_cases_accept_pass_reject_each_failure_and_missing_fact(self):
         path = Path(__file__).resolve().parents[1] / 'Datasets/Behavior/workflow-regression.yaml'
-        cases = yaml.safe_load(path.read_text())['cases']
+        cases = yaml.safe_load(path.read_text(encoding='utf-8'))['cases']
         self.assertEqual(len(cases), 7)
         for case in cases:
             required = case['required_checks']
