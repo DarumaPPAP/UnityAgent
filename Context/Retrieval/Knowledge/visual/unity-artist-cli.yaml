@@ -1,0 +1,46 @@
+id: visual.unity_artist_cli
+version: "2.0.0"
+status: reviewed
+
+use_when:
+  - explicit visual intent requires LookDev, Lighting, Environment, Camera, Capture, Evaluation, or Refine
+  - explicit cinematic intent requires Timeline, Cinemachine Shot, Track, Clip, Binding, Marker, Signal, Activation, Control, or Animation work
+
+required_inputs:
+  - project_root
+  - exact_scene_or_asset_scope
+  - visual_or_cinematic_intent
+  - technical_constraints
+  - prohibited_changes
+
+principles:
+  - UnityAgent owns Policy, Approval, Mutation Scope, routing, loop control, fallback, and Evidence persistence.
+  - UnityArtistCLI is a specialist Provider; Player is a conceptual alias, not a second framework.
+  - Requests use semantic `domain.workflow` or `visual.capture` qualifiers, never a hard-coded Provider identity.
+  - The official Unity CLI plus Unity Pipeline is the first transport for all four formal release rows.
+  - Unity 2022.3 Built-in is tested first through the official path; version alone never selects a fallback.
+  - Unsupported version/pipeline and unknown Pipeline reachability fail before mutation.
+  - Capture is technical Evidence, not human visual acceptance.
+
+workflow:
+  - inspect
+  - visual_intent
+  - exact_plan_and_diff
+  - expected_revision
+  - unity_agent_approval
+  - apply
+  - undo_and_evidence
+  - capture
+  - human_evaluate
+  - refine
+
+formal_release_matrix:
+  - { unity_version: "2022.3 LTS", render_pipeline: builtin, support_tier: primary }
+  - { unity_version: "Unity 6.x+", render_pipeline: builtin, support_tier: primary }
+  - { unity_version: "Unity 6.x+", render_pipeline: urp, support_tier: primary }
+  - { unity_version: "Unity 6.x+", render_pipeline: hdrp, support_tier: primary }
+
+non_goals:
+  - generic GameObject, hierarchy, compile, test, build, play, stop, log, Addressables, UI, or Audio operations
+  - arbitrary eval or raw serialized Unity mutation
+  - automatic save, automatic visual acceptance, or silent fallback

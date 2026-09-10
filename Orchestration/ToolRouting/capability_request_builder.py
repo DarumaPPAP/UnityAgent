@@ -64,8 +64,7 @@ def build_capability_requests(
                 )
             request_scope = mutation_scope
 
-        requests.append(
-            {
+        request = {
                 "schema_version": "1.0",
                 "capability": str(template["capability"]),
                 "project_root": project_root,
@@ -75,5 +74,10 @@ def build_capability_requests(
                 "approval_ref": approval_ref,
                 "preferred_surface": template.get("preferred_surface"),
             }
-        )
+        qualifiers = template.get("qualifiers")
+        if qualifiers is not None:
+            if not isinstance(qualifiers, dict):
+                raise ValueError(f"qualifiers must be a mapping for {template.get('capability')}")
+            request["qualifiers"] = dict(qualifiers)
+        requests.append(request)
     return requests

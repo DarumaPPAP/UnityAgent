@@ -87,7 +87,9 @@ required_evidence:
 preferred_surface: live_editor
 ```
 
-`MyUnityMCPを使う`、`Unity CLIを使う`のようなProvider製品指定をSemantic Graphの正本にしません。
+UnityAgentはこの経路のArchitect / Commander / Loop Ownerです。Providerは既存のRegistry・Resolver・Dispatcher・Adapter・Evidence chainへ接続します。UnityArtistCLIは、その上でvisual art / cinematic Capabilityを実行するspecialist Provider（概念上のPlayer）です。新しいPlayer Frameworkや第二のRegistryは追加しません。
+
+`MyUnityMCPを使う`、`Unity CLIを使う`のようなProvider製品指定をSemantic Graphの正本にしません。Artist系要求は `domain.workflow` / `visual.capture` と `qualifiers.domain` / `qualifiers.workflow` で表現します。
 
 ### 実行経路
 
@@ -148,16 +150,17 @@ player.control       -> player.mutate
 
 ## 4. ProviderはOptional
 
-UnityAgentはUnity CLIやMCPを必須依存にしません。
+UnityAgentはUnity CLIやArtist Providerを必須依存にしません。環境事実を確認できたCapabilityだけを実行します。
 
 代表Provider:
 
 - File Provider
 - Native Unity Editor Provider
 - Unity CLI Provider
-- MyUnityMCP Provider
-- Coplay MCP candidate / bridge
+- UnityArtistCLI Provider（visual art / cinematic specialist）
 - Player Runtime Provider
+
+`myunitymcp` は履歴互換の legacy adapter としてRegistryに残りますが、`production_enabled: false` であり、現行のResolverからは選択されません。旧MCP経路は移行資料とタグ `v1.1.1` の再現用に限定します。
 
 RuntimeはTask開始時またはCapability実行前にEnvironment Snapshotを確認します。
 
@@ -194,7 +197,7 @@ Provider unavailable
 
 ```text
 scene.mutate
-MyUnityMCP unavailable
+Provider unavailable
         ↓
 × raw .unity YAML edit
 × arbitrary eval
@@ -211,7 +214,7 @@ Native Unity Editorが同じtest_execution Evidenceを満たす
 同一CapabilityとしてFallback
 ```
 
-MyUnityMCP Mutationでは既存Safety Contractを維持します。
+UnityArtistCLI Mutationでは既存Safety Contractを維持します。
 
 ```mermaid
 flowchart LR
@@ -221,6 +224,8 @@ flowchart LR
     R --> A[Approval]
     A --> AP[Apply]
 ```
+
+Visual / Cinematic mutationは `Inspect -> Prepare -> Exact Diff -> Expected Revision -> Approval -> Apply -> Evidence` を必須とし、Undo登録と未保存状態をEvidenceへ残します。
 
 ---
 

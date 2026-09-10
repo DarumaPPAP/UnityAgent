@@ -209,6 +209,42 @@ providers:
           player_runtime.reachable: true
         scope_preservation: true
 
+  unity_artist_cli:
+    id: unity_artist_cli
+    transport: cli
+    surfaces: [host, editor, live_editor]
+    health: environment_fact
+    project_binding: explicit_project_path
+    environment_key: unity_artist_cli
+    safety_strength: 5
+    evidence_strength: 5
+    qualifiers_supported:
+      domain: [visual_art, cinematic]
+      workflow: [lookdev_refine, lighting, environment, camera, capture, evaluate, refine, timeline, cinematic]
+    capabilities:
+      domain.workflow:
+        priority: 140
+        surfaces: [editor, live_editor]
+        evidence_supported: [domain_result, mutation_evidence, visual_direction_plan, exact_diff, expected_revision, cinematic_plan, timeline_evidence, artist_validation, refinement_plan, evaluation_reference, undo_registration, save_not_performed]
+        environment_requirements:
+          project.exists: true
+          unity_artist_cli.available: true
+          unity_artist_cli.project_bound: true
+          unity_artist_cli.package_installed: true
+          unity_artist_cli.pipeline_reachable: true
+        scope_preservation: true
+      visual.capture:
+        priority: 140
+        surfaces: [editor, live_editor]
+        evidence_supported: [visual_capture, camera_binding, capture_manifest]
+        environment_requirements:
+          project.exists: true
+          unity_artist_cli.available: true
+          unity_artist_cli.project_bound: true
+          unity_artist_cli.package_installed: true
+          unity_artist_cli.pipeline_reachable: true
+        scope_preservation: true
+
   myunitymcp:
     id: myunitymcp
     transport: mcp
@@ -218,6 +254,8 @@ providers:
     environment_key: myunitymcp
     safety_strength: 5
     evidence_strength: 5
+    legacy: true
+    production_enabled: false
     capabilities:
       project.inspect:
         priority: 110

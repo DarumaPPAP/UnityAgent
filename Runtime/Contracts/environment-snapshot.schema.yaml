@@ -93,6 +93,46 @@ properties:
       failure_class:
         type: [string, "null"]
         enum: [unavailable, unhealthy, timeout, unknown, null]
+  unity_artist_cli:
+    type: [object, "null"]
+    additionalProperties: false
+    required:
+      - available
+      - version
+      - executable_path
+      - project_bound
+      - package_installed
+      - package_version
+      - pipeline_reachable
+      - unity_version
+      - render_pipeline
+      - support_tier
+      - compatibility_backend
+      - capabilities
+      - failure_class
+      - binding_status
+      - bound_instance_id
+    properties:
+      available: { $ref: "#/$defs/tri_state" }
+      version: { type: [string, "null"], minLength: 1 }
+      executable_path: { type: [string, "null"], minLength: 1 }
+      project_bound: { $ref: "#/$defs/tri_state" }
+      package_installed: { $ref: "#/$defs/tri_state" }
+      package_version: { type: [string, "null"], minLength: 1 }
+      pipeline_reachable: { $ref: "#/$defs/tri_state" }
+      unity_version: { type: [string, "null"], minLength: 1 }
+      render_pipeline: { type: [string, "null"], minLength: 1 }
+      support_tier: { type: [string, "null"], minLength: 1 }
+      compatibility_backend: { type: [string, "null"], minLength: 1 }
+      capabilities:
+        type: array
+        uniqueItems: true
+        items: { type: string, minLength: 1 }
+      failure_class:
+        type: [string, "null"]
+        enum: [unavailable, unhealthy, timeout, unknown, null]
+      binding_status: { $ref: "#/$defs/binding_status" }
+      bound_instance_id: { type: [string, "null"], minLength: 1 }
   pipeline:
     type: object
     additionalProperties: false

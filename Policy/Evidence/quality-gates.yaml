@@ -64,6 +64,57 @@ gates:
       - unity_compile
       - runtime_behavior
       - visual_quality
+  visual_direction_plan:
+    proves:
+      - visual_intent_and_reference_boundary_are_recorded
+      - artist_capability_translation_is_explicit
+    does_not_prove:
+      - unity_compile
+      - visual_acceptance
+  cinematic_plan:
+    proves:
+      - cinematic_intent_and_exact_director_scope_are_recorded
+      - allowlisted_timeline_operation_is_explicit
+    does_not_prove:
+      - unity_compile
+      - visual_acceptance
+  exact_diff:
+    proves:
+      - planned_targets_and_before_after_values_are_explicit
+    does_not_prove:
+      - apply_success
+      - visual_acceptance
+  expected_revision:
+    proves:
+      - mutation_is_bound_to_the_observed_project_revision
+    does_not_prove:
+      - revision_freshness_after_the_evidence_was_captured
+  timeline_evidence:
+    proves:
+      - timeline_director_tracks_clips_bindings_and_markers_are_recorded
+    does_not_prove:
+      - visual_acceptance
+      - player_runtime_behavior
+  unity_editor:
+    proves:
+      - required_unity_editor_and_pipeline_path_was_observed_or_reported_unavailable
+    does_not_prove:
+      - visual_quality
+  capture:
+    proves:
+      - technical_visual_capture_status_is_recorded
+    does_not_prove:
+      - artistic_acceptance
+  human_review:
+    proves:
+      - a_human_visual_review_decision_is_recorded
+    does_not_prove:
+      - technical_correctness
+  refine:
+    proves:
+      - refinement_request_references_prior_evaluation_and_evidence
+    does_not_prove:
+      - refined_visual_acceptance
   compile:
     proves:
       - csharp_or_shader_syntax_for_executed_scope

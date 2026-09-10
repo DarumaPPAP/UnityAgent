@@ -19,6 +19,16 @@ local_reference:
   remote_recheck: explicit_only
 
 knowledge:
+  visual.unity_artist_cli:
+    path: Context/Retrieval/Knowledge/visual/unity-artist-cli.yaml
+    status: reviewed
+    related:
+      conditional:
+        - rendering.temporal_anti_aliasing
+        - rendering.motion_vectors
+        - rendering.transparent_rendering
+        - rendering.shader_variants
+
   graphics.unity_graphics_mcp:
     path: Context/Retrieval/Knowledge/graphics/unity-graphics-mcp.yaml
     status: draft

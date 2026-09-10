@@ -229,7 +229,7 @@ class EnvironmentDiscoveryTests(unittest.TestCase):
             )
             after = sorted((path.relative_to(project).as_posix(), path.read_bytes()) for path in project.rglob("*") if path.is_file())
             self.assertEqual(before, after)
-            self.assertEqual(calls, ["git"])
+            self.assertEqual(calls, ["git", "unity-artist"])
 
     def test_manifest_facts_and_mutation_scope_are_observations_only(self):
         with tempfile.TemporaryDirectory() as tmp:

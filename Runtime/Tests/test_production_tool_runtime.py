@@ -159,7 +159,7 @@ class ProductionToolRuntimeTests(unittest.TestCase):
         request = self.request("project.inspect")
         full = self.snapshot("FULL")
         first = broker.resolve(request, full, context=self.context("project.inspect"))
-        self.assertEqual(first["provider_ref"], "myunitymcp")
+        self.assertEqual(first["provider_ref"], "file")
         removed = deepcopy(full)
         removed["myunitymcp"].update(
             {"reachable": False, "available": False, "project_bound": False, "binding_status": "unbound", "bound_instance_id": None}
@@ -167,7 +167,7 @@ class ProductionToolRuntimeTests(unittest.TestCase):
         second = broker.resolve(request, removed, context=self.context("project.inspect"))
         self.assertEqual(second["provider_ref"], "file")
         third = broker.resolve(request, full, context=self.context("project.inspect"))
-        self.assertEqual(third["provider_ref"], "myunitymcp")
+        self.assertEqual(third["provider_ref"], "file")
 
     def test_all_external_providers_absent_static_flow_remains_available(self):
         broker = ToolBroker()
@@ -215,7 +215,7 @@ class ProductionToolRuntimeTests(unittest.TestCase):
             executors={},
         )
         self.assertEqual(outcome["status"], "blocked")
-        self.assertEqual(outcome["attempts"][0]["provider_ref"], "myunitymcp")
+        self.assertEqual(outcome["attempts"][0]["provider_ref"], "unity_cli")
         self.assertEqual(outcome["provider_result"]["failure_class"], "backend_not_implemented")
         self.assertNotIn("file", [item["provider_ref"] for item in outcome["attempts"]])
 

@@ -1,0 +1,61 @@
+id: artist-cinematic
+default_execution_profile: generic_planning
+risk_level: R3
+mutation_channel_binding: request
+
+required_inputs:
+  - cinematic_intent
+  - project_root
+  - exact_playable_director_or_timeline_scope
+  - shot_and_binding_definition
+  - technical_constraints
+  - prohibited_changes
+
+allowed_mutations:
+  - timeline_plan
+  - bounded_track_clip_binding_changes
+  - bounded_cinemachine_shot_changes
+  - bounded_activation_signal_marker_control_animation_changes
+  - explicitly_approved_cinematic_changes
+
+prohibited_mutations:
+  - generic_gameobject_or_hierarchy_crud
+  - unbound_track_mutation
+  - arbitrary_eval
+  - automatic_save
+  - visual_acceptance_without_human_review
+  - rewrite_unrelated_timeline_content
+
+required_knowledge: []
+
+required_quality_gates:
+  - static_review
+  - cinematic_plan
+  - timeline_evidence
+  - exact_diff
+  - expected_revision
+
+conditional_quality_gates:
+  - unity_editor
+  - capture
+  - human_review
+  - refine
+
+completion:
+  - semantic_qualifier_domain_is_cinematic
+  - exact_director_and_timeline_scope_are_recorded
+  - tracks_clips_bindings_and_shots_are_observed_or_explicitly_unavailable
+  - approval_and_revision_are_recorded_before_apply
+  - timeline_and_visual_evidence_are_persisted
+
+stop_conditions:
+  - cinematic_intent_is_undefined
+  - exact_timeline_scope_is_missing
+  - binding_is_ambiguous
+  - approval_or_expected_revision_is_missing
+
+result_format:
+  summary: cinematic_timeline_and_shot_state
+  changed_artifacts: timeline_plans_and_approved_cinematic_changes
+  validation: timeline_binding_capture_and_review_status
+  unresolved: unobserved_editor_pipeline_or_cinemachine_conditions

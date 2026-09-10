@@ -126,3 +126,25 @@ routes:
       failure_mode: [none, visual]
       mutation_target: [none, visual_plan, serialized_asset]
       evidence_state: [known, partial, not_applicable]
+  artist-lookdev:
+    priority: 110
+    entry_action: plan
+    design_review: required
+    fingerprint_match:
+      intent: [design, review, implement]
+      artifact: [visual]
+      scope: [project_asset]
+      failure_mode: [none, visual]
+      mutation_target: [none, visual_plan, serialized_asset]
+      evidence_state: [known, partial, not_applicable]
+  artist-cinematic:
+    priority: 110
+    entry_action: plan
+    design_review: required
+    fingerprint_match:
+      intent: [design, review, implement]
+      artifact: [cinematic]
+      scope: [project_asset]
+      failure_mode: [none, visual]
+      mutation_target: [none, visual_plan, serialized_asset]
+      evidence_state: [known, partial, not_applicable]

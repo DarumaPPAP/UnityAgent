@@ -66,6 +66,9 @@ class ProviderDescriptor:
     environment_key: str
     safety_strength: int
     evidence_strength: int
+    qualifiers_supported: dict[str, tuple[str, ...]] | None = None
+    legacy: bool = False
+    production_enabled: bool = True
 
 
 @dataclass(frozen=True)
@@ -159,6 +162,23 @@ def _parse_offer(
     )
 
 
+def _qualifiers_supported(value: Any, *, label: str) -> dict[str, tuple[str, ...]]:
+    """Normalize provider semantic qualifiers without making Runtime a planner."""
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ValueError(f"{label} must be a mapping")
+    normalized: dict[str, tuple[str, ...]] = {}
+    for key, raw_values in value.items():
+        if not isinstance(key, str) or not key.strip():
+            raise ValueError(f"{label} keys must be non-empty strings")
+        normalized[key] = _string_list(
+            raw_values,
+            label=f"{label}.{key}",
+        )
+    return normalized
+
+
 def parse_provider_registry(value: Any, *, root: Path = ROOT) -> ProviderRegistry:
     if not isinstance(value, dict):
         raise ValueError("provider registry must be a mapping")
@@ -226,6 +246,16 @@ def parse_provider_registry(value: Any, *, root: Path = ROOT) -> ProviderRegistr
             raise ValueError(f"{provider_id}: environment_key is required")
         safety_strength = _strength(raw.get("safety_strength"), label=f"{provider_id}.safety_strength")
         evidence_strength = _strength(raw.get("evidence_strength"), label=f"{provider_id}.evidence_strength")
+        qualifiers_supported = _qualifiers_supported(
+            raw.get("qualifiers_supported"),
+            label=f"{provider_id}.qualifiers_supported",
+        )
+        legacy = raw.get("legacy", False)
+        production_enabled = raw.get("production_enabled", True)
+        if not isinstance(legacy, bool):
+            raise ValueError(f"{provider_id}: legacy must be boolean")
+        if not isinstance(production_enabled, bool):
+            raise ValueError(f"{provider_id}: production_enabled must be boolean")
 
         raw_capabilities = raw.get("capabilities")
         if not isinstance(raw_capabilities, dict) or not raw_capabilities:
@@ -252,6 +282,9 @@ def parse_provider_registry(value: Any, *, root: Path = ROOT) -> ProviderRegistr
             environment_key=environment_key,
             safety_strength=safety_strength,
             evidence_strength=evidence_strength,
+            qualifiers_supported=qualifiers_supported,
+            legacy=legacy,
+            production_enabled=production_enabled,
         )
 
     for capability in known_capabilities:

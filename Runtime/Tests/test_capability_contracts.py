@@ -132,6 +132,26 @@ class CapabilityContractTests(unittest.TestCase):
                 active_conditions={"mutation_requested"},
             )
 
+    def test_artist_route_emits_semantic_qualifiers_without_provider_identity(self):
+        requests = build_capability_requests(
+            route_id="artist-lookdev",
+            project_root="D:/Projects/MyGame/Project",
+            active_conditions={"domain_execution_requested", "visual_evidence_needed"},
+            mutation_scope={
+                "allowed_paths": ["Assets/Scenes"],
+                "prohibited_paths": ["ProjectSettings"],
+            },
+            approval_ref="approval-1",
+        )
+        workflow = next(item for item in requests if item["capability"] == "domain.workflow")
+        capture = next(item for item in requests if item["capability"] == "visual.capture")
+        self.assertEqual(workflow["qualifiers"], {"domain": "visual_art", "workflow": "lookdev_refine"})
+        self.assertEqual(capture["qualifiers"], {"domain": "visual_art", "workflow": "capture"})
+        for request in requests:
+            self.assertNotIn("provider", request)
+            self.assertNotIn("provider_ref", request)
+            validate_capability_request(request)
+
     def test_context_materializes_only_selected_capability_descriptions(self):
         selected = select_capability_context(["scene.inspect", "player.observe", "scene.inspect"])
         self.assertEqual(

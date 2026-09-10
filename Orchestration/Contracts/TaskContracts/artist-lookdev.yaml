@@ -1,0 +1,60 @@
+id: artist-lookdev
+default_execution_profile: generic_planning
+risk_level: R3
+mutation_channel_binding: request
+
+required_inputs:
+  - visual_intent
+  - project_root
+  - exact_scene_or_asset_scope
+  - reference_or_visual_definition
+  - technical_constraints
+  - prohibited_changes
+
+allowed_mutations:
+  - lookdev_plan
+  - lighting_plan
+  - environment_plan
+  - camera_plan
+  - explicitly_approved_visual_scene_changes
+
+prohibited_mutations:
+  - generic_gameobject_or_hierarchy_crud
+  - arbitrary_eval
+  - automatic_save
+  - silent_pipeline_fallback
+  - visual_acceptance_without_human_review
+  - unapproved_lighting_bake
+
+required_knowledge: []
+
+required_quality_gates:
+  - static_review
+  - visual_direction_plan
+  - exact_diff
+  - expected_revision
+
+conditional_quality_gates:
+  - unity_editor
+  - capture
+  - human_review
+  - refine
+
+completion:
+  - semantic_qualifier_domain_is_visual_art
+  - intent_and_reference_boundary_are_recorded
+  - plan_and_exact_diff_are_observed
+  - approval_and_revision_are_recorded_before_apply
+  - before_after_capture_and_human_review_status_are_reported
+
+stop_conditions:
+  - visual_intent_is_undefined
+  - exact_target_scope_is_missing
+  - pipeline_support_is_unknown
+  - approval_or_expected_revision_is_missing
+
+result_format:
+  summary: visual_direction_and_lookdev_state
+  changed_artifacts: visual_intent_plans_and_approved_visual_changes
+  validation: technical_support_capture_and_review_status
+  unresolved: unobserved_editor_pipeline_or_human_review_conditions

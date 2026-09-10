@@ -144,6 +144,8 @@ route_profiles:
   portable-feature: standard
   safe-import-integration: standard
   visual-direction: standard
+  artist-lookdev: standard
+  artist-cinematic: standard
 
 budget_decision:
   statuses:

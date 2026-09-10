@@ -71,6 +71,36 @@ routes:
     capabilities:
       - {capability: project.inspect, operation_kind: read, required_evidence: [project_fact], preferred_surface: project, when: always}
       - {capability: visual.capture, operation_kind: read, required_evidence: [visual_capture], preferred_surface: live_editor, when: visual_evidence_needed}
+  artist-lookdev:
+    capabilities:
+      - {capability: project.inspect, operation_kind: read, required_evidence: [project_fact], preferred_surface: project, when: always}
+      - capability: domain.workflow
+        operation_kind: editor_mutation
+        required_evidence: [domain_result, mutation_evidence]
+        preferred_surface: live_editor
+        when: domain_execution_requested
+        qualifiers: {domain: visual_art, workflow: lookdev_refine}
+      - capability: visual.capture
+        operation_kind: read
+        required_evidence: [visual_capture]
+        preferred_surface: live_editor
+        when: visual_evidence_needed
+        qualifiers: {domain: visual_art, workflow: capture}
+  artist-cinematic:
+    capabilities:
+      - {capability: project.inspect, operation_kind: read, required_evidence: [project_fact], preferred_surface: project, when: always}
+      - capability: domain.workflow
+        operation_kind: editor_mutation
+        required_evidence: [domain_result, mutation_evidence]
+        preferred_surface: live_editor
+        when: domain_execution_requested
+        qualifiers: {domain: cinematic, workflow: cinematic}
+      - capability: visual.capture
+        operation_kind: read
+        required_evidence: [visual_capture]
+        preferred_surface: live_editor
+        when: visual_evidence_needed
+        qualifiers: {domain: cinematic, workflow: capture}
 
 rules:
   orchestration_requests_capability_not_provider: true
