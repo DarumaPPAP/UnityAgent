@@ -75,7 +75,7 @@ CONCEPTS: tuple[dict[str, Any], ...] = (
         "description": "Compile / Editor / Player / Performanceなどを混同せず、ProviderResultをcanonical Evidenceへ正規化します。",
         "machine_areas": ["Runtime/EvidenceCapture/"],
         "source_paths": [
-            "Runtime/EvidenceCapture/provider_evidence.py",
+            "Runtime/EvidenceCapture/tool_runtime_evidence.py",
             "Runtime/Contracts/",
         ],
     },
