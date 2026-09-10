@@ -1,35 +1,177 @@
 <!doctype html>
-<html lang="en">
+<html lang="ja">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>UnityAgent Context Explorer</title>
+  <meta name="color-scheme" content="dark">
+  <title>UnityAgent Architecture Explorer</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <main class="layout">
-    <aside class="sidebar" aria-label="Context search">
-      <h1>Context Explorer</h1>
-      <label for="search">Search</label>
-      <input id="search" type="search" autocomplete="off">
-      <label for="priority">Priority</label>
-      <select id="priority"><option value="">All</option><option>critical</option><option>high</option><option>normal</option><option>low</option></select>
-      <ul id="context-list" role="listbox" aria-label="Contexts"></ul>
-    </aside>
-    <section class="graph" aria-label="Selected context relations">
-      <h2 id="selected-title">Select a context</h2>
-      <p id="selected-summary"></p>
-      <div id="relations"></div>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">UNITYAGENT / HUMAN ARCHITECTURE</p>
+      <h1>Architecture Explorer</h1>
+    </div>
+    <nav class="topnav" aria-label="Explorer sections">
+      <button type="button" class="nav-button is-active" data-target="overview">Overview</button>
+      <button type="button" class="nav-button" data-target="task-demo">Task Demo</button>
+      <button type="button" class="nav-button" data-target="explore">Explore</button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="overview" class="page-section">
+      <div class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">3-MINUTE MENTAL MODEL</p>
+          <h2>全部を覚えなくていい。<br>迷子にならない地図だけ持つ。</h2>
+          <p id="architecture-tagline" class="lead"></p>
+          <div class="hero-actions">
+            <button id="start-tour" class="primary-button" type="button">▶ 3分で理解する</button>
+            <button id="jump-explore" class="secondary-button" type="button">自由に見る</button>
+          </div>
+        </div>
+        <div class="hero-model" aria-label="UnityAgent mental model">
+          <div class="model-word"><strong>THINK</strong><span>判断・設計</span></div>
+          <span class="model-arrow">→</span>
+          <div class="model-word"><strong>ACT</strong><span>Unityを操作</span></div>
+          <span class="model-arrow">→</span>
+          <div class="model-word"><strong>VERIFY</strong><span>実測・評価</span></div>
+        </div>
+      </div>
+
+      <section id="tour-panel" class="tour-panel" aria-label="Guided architecture tour">
+        <div class="tour-header">
+          <div>
+            <p class="eyebrow">GUIDED TOUR</p>
+            <h3 id="tour-title">UnityAgent</h3>
+          </div>
+          <div class="tour-controls">
+            <button id="tour-prev" type="button" aria-label="Previous tour step">←</button>
+            <button id="tour-toggle" type="button" aria-label="Play or pause tour">▶</button>
+            <button id="tour-next" type="button" aria-label="Next tour step">→</button>
+          </div>
+        </div>
+        <p id="tour-caption" class="tour-caption" aria-live="polite"></p>
+        <div class="tour-progress" aria-hidden="true"><span id="tour-progress-bar"></span></div>
+        <div id="concept-flow" class="concept-flow" aria-label="Human architecture concepts"></div>
+      </section>
+
+      <section class="overview-grid">
+        <article class="detail-card">
+          <p class="eyebrow">SELECTED CONCEPT</p>
+          <div class="detail-heading">
+            <div>
+              <h3 id="concept-title">Select a concept</h3>
+              <p id="concept-question" class="concept-question"></p>
+            </div>
+            <span id="concept-index" class="index-badge"></span>
+          </div>
+          <p id="concept-summary" class="detail-summary"></p>
+          <p id="concept-description"></p>
+          <div class="detail-columns">
+            <div>
+              <h4>Machine mapping</h4>
+              <ul id="concept-machine-areas"></ul>
+            </div>
+            <div>
+              <h4>Drill down</h4>
+              <div id="concept-sources" class="source-list"></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="stack-card">
+          <p class="eyebrow">SYSTEM BOUNDARY</p>
+          <h3>3つの問いで分ける</h3>
+          <div id="system-stack" class="system-stack"></div>
+        </article>
+      </section>
+
+      <section class="principles-card">
+        <div>
+          <p class="eyebrow">IMPORTANT</p>
+          <h3>Human Map ≠ Source of Truth</h3>
+        </div>
+        <ul id="architecture-principles"></ul>
+      </section>
     </section>
-    <aside class="details" aria-label="Context details">
-      <section><h2>Purpose</h2><ul id="purpose"></ul></section>
-      <section><h2>Decisions</h2><ul id="decisions"></ul></section>
-      <section><h2>Forbidden</h2><ul id="forbidden"></ul></section>
-      <section><h2>Related</h2><ul id="related"></ul></section>
-      <section><h2>Source</h2><button id="copy-source" type="button">Copy source path</button><code id="source-path"></code></section>
-    </aside>
+
+    <section id="task-demo" class="page-section" hidden>
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">TASK WALKTHROUGH</p>
+          <h2 id="demo-title">Task Demo</h2>
+          <p id="demo-subtitle" class="lead"></p>
+        </div>
+        <button id="demo-play" class="primary-button compact" type="button">▶ Demoを再生</button>
+      </div>
+      <div class="demo-shell">
+        <div class="request-card">
+          <span>USER REQUEST</span>
+          <strong id="demo-request"></strong>
+        </div>
+        <div id="demo-steps" class="demo-steps"></div>
+        <article class="demo-explanation">
+          <p class="eyebrow">NOW</p>
+          <h3 id="demo-step-title">Start</h3>
+          <p id="demo-step-detail">再生するとTaskがUnityAgent内部をどう通るか確認できます。</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="explore" class="page-section" hidden>
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">DEEP DIVE</p>
+          <h2>Context Explorer</h2>
+          <p class="lead">概念を理解したあと、必要なContextだけを検索してSourceへ降りる。</p>
+        </div>
+      </div>
+      <div class="explorer-layout">
+        <aside class="explorer-sidebar" aria-label="Context search">
+          <label for="search">Search</label>
+          <input id="search" type="search" autocomplete="off" placeholder="context / tag / purpose">
+          <label for="priority">Priority</label>
+          <select id="priority">
+            <option value="">All</option>
+            <option>critical</option>
+            <option>high</option>
+            <option>normal</option>
+            <option>low</option>
+          </select>
+          <p id="context-count" class="context-count"></p>
+          <ul id="context-list" role="listbox" aria-label="Contexts"></ul>
+        </aside>
+        <section class="context-main" aria-label="Selected context relations">
+          <p class="eyebrow">CONTEXT</p>
+          <h3 id="selected-title">Select a context</h3>
+          <p id="selected-summary" class="detail-summary"></p>
+          <div id="relations" class="relations"></div>
+        </section>
+        <aside class="context-details" aria-label="Context details">
+          <section><h3>Purpose</h3><ul id="purpose"></ul></section>
+          <section><h3>Decisions</h3><ul id="decisions"></ul></section>
+          <section><h3>Forbidden</h3><ul id="forbidden"></ul></section>
+          <section><h3>Related</h3><ul id="related"></ul></section>
+          <section>
+            <h3>Source</h3>
+            <button id="copy-source" class="path-button" type="button">Copy source path</button>
+            <code id="source-path"></code>
+          </section>
+        </aside>
+      </div>
+    </section>
   </main>
+
+  <footer>
+    <span>Read-only / Offline / Derived View</span>
+    <span>Canonical Authority stays in Policy / Orchestration / Context / Runtime / Persistence / Operations / Eval</span>
+  </footer>
+
   <script>window.__CONTEXT_GRAPH__ = null;</script>
+  <script>window.__HUMAN_ARCHITECTURE__ = null;</script>
   <script src="app.js"></script>
 </body>
 </html>

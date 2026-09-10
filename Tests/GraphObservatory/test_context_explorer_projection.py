@@ -9,6 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "Tools/GraphObservatory"))
+from architecture_projection import build_human_architecture  # noqa: E402
 from context_projection import CANONICAL_CONTEXT_PACKS, build_context_graph  # noqa: E402
 from validate_graph import validate_graph  # noqa: E402
 
@@ -33,3 +34,24 @@ class ContextExplorerProjectionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             with self.assertRaises(FileNotFoundError):
                 build_context_graph(Path(temp_dir))
+
+    def test_human_architecture_is_deterministic_and_uses_seven_concepts(self) -> None:
+        first = build_human_architecture(ROOT)
+        second = build_human_architecture(ROOT)
+        self.assertEqual(first, second)
+        self.assertEqual(
+            [concept["id"] for concept in first["concepts"]],
+            ["rules", "planner", "knowledge", "executor", "evidence", "memory", "quality"],
+        )
+        self.assertGreaterEqual(len(first["tour"]), 7)
+        self.assertGreater(len(first["task_demo"]["steps"]), 0)
+
+    def test_human_architecture_drill_down_paths_exist(self) -> None:
+        architecture = build_human_architecture(ROOT)
+        for concept in architecture["concepts"]:
+            for relative in concept["source_paths"]:
+                self.assertTrue((ROOT / relative).exists(), f"missing drill-down source: {relative}")
+
+
+if __name__ == "__main__":
+    unittest.main()
