@@ -1,5 +1,8 @@
 # UnityAgent
 
+[▶ **3分でUnityAgentを理解する — Architecture Explorer**](https://darumappap.github.io/UnityAgent/)  
+*Guided Tour / Task Demo / Context Explorer*
+
 UnityAgentは、**個人のUnity開発に特化したAI開発エージェント基盤**です。
 
 Coding Rule集ではなく、ユーザー依頼を受けてからPolicy確認、Task分類、Context選択、設計確認、実行、検証、Evidence保存、品質評価までを責務分離して扱います。
@@ -413,7 +416,7 @@ python .\Tools\ProductionToolRuntime\validate_production_tool_runtime.py
 | `Runtime/Guardrails/tool_runtime_guard.py` | Last-mile safety guard |
 | `Runtime/Tooling/fallback_policy.py` | Infrastructure-only fallback |
 | `Runtime/Tooling/Providers/` | Concrete Provider adapters |
-| `Runtime/EvidenceCapture/provider_evidence.py` | Provider Evidence normalization |
+| `Runtime/EvidenceCapture/tool_runtime_evidence.py` | Provider Evidence normalization |
 | `docs/architecture/production-tool-runtime.md` | Production Tool Runtimeの人間向け解説 |
 | `docs/local-project-development.md` | Local Unity Project運用 |
 | `Templates/DevelopmentRequest.md` | 開発依頼Template |
