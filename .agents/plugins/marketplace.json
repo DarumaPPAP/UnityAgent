@@ -22,7 +22,7 @@
         "source": "git-subdir",
         "url": "https://github.com/DarumaPPAP/UnityArtistCLI.git",
         "path": "./.agents/plugins/unity-artist",
-        "ref": "main"
+        "ref": "v0.0.1-beta"
       },
       "policy": {
         "installation": "AVAILABLE",
