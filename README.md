@@ -54,9 +54,9 @@ UnityAgentは次の考え方を中心に設計しています。
 - Windows PowerShell 5.1 以上
 - Python 3.10 以上
 - Unity 2022.3 以上
-- Codex Pluginを使う場合はCodex
+- Codex Pluginを使う場合はCodex CLI
 
-## Recommended — PowerShell one-liner
+## Control Plane
 
 ```powershell
 irm https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/main/scripts/install.ps1 | iex
@@ -66,13 +66,11 @@ irm https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/main/scripts/install
 
 現在の既定Releaseは `v0.0.1-beta` です。ReleaseのPython wheelを取得し、`SHA256SUMS.txt` と照合した後にインストールします。
 
-インストール後:
-
 ```powershell
 unity-agent --help
 ```
 
-正常なら `unity-agent` コマンドが利用できます。
+が成功すればControl Planeの導入は完了です。
 
 ### インストーラを確認してから実行する場合
 
@@ -104,7 +102,6 @@ unity-agent doctor `
 ```
 
 `unavailable` が出ても、それだけでUnityAgent全体の異常とは限りません。
-
 UnityAgentは利用できないProviderや未観測の結果を、勝手に成功へ変換しません。
 
 ## Step 3 — Setup Planを作る
@@ -117,14 +114,7 @@ unity-agent setup `
   --non-interactive
 ```
 
-Planには次のような情報が含まれます。
-
-- 利用可能 / 不足しているToolchain
-- `verify` または `install_then_verify`
-- `plan_id`
-- Approvalの要否
-
-変更が必要なSetupは、Plan確認後にApproval付きでApplyします。
+Planには利用可能 / 不足Toolchain、`verify` / `install_then_verify`、`plan_id`、Approval要否が含まれます。
 
 ---
 
@@ -134,7 +124,7 @@ UnityAgentにはEntry Layer用のUPM Packageがあります。
 
 ## Via Unity Package Manager
 
-Unity Editorで:
+公開Betaを使う場合、Unity Editorで:
 
 1. `Window > Package Manager`
 2. `+`
@@ -153,33 +143,75 @@ UnityAgent > Setup
 
 からControl Planeへ接続できます。
 
-Unity側のWindowはEntry Layerです。Official Unity CLIやUnityArtistCLIへ直接接続せず、`unity-agent` Control Planeを呼び出します。
+Unity側のWindowはEntry Layerです。Official Unity CLI、UnityArtistCLI、Codex CLIへ直接Mutationを送らず、`unity-agent` Control Planeを通します。
+
+### Recommended — Codex PluginはUnity Windowから導入
+
+`main` ではUnityAgent Setup WindowからCodex Integrationを管理できます。
+
+```text
+UnityAgent > Setup
+
+Codex Integration
+├─ Codex Pluginを確認
+└─ Codex Pluginをインストール / 修復   ← Recommended
+```
+
+Install / Repairは次の経路で実行します。
+
+```text
+Unity Window
+  ↓
+UnityAgent Control Plane
+  ↓
+Setup Plan / Approval
+  ↓
+Installer Provider
+  ↓
+Codex CLI
+  ↓
+UnityAgent Codex Plugin
+  ↓
+InstallReceipt / Evidence
+```
+
+Unity Windowが `codex plugin ...` を直接実行するわけではありません。Planを表示し、ユーザー承認後に同じ `plan_id` をInstaller ProviderへApplyします。
+
+> **Current Beta note:** 公開済み `v0.0.1-beta` のUPM artifactには、このワンクリックCodex Plugin導入UIはまだ含まれていません。現在は `main` に実装済みで、次BetaからこのUnity Window導線をPrimary installation pathにする予定です。`v0.0.1-beta` を使う場合は下のManual Codex integrationを使用してください。
 
 ---
 
 # Codex integration
 
-UnityAgentはCodex Pluginとしても利用できます。
+## Recommended
+
+次Beta以降は **`UnityAgent > Setup > Codex Pluginをインストール / 修復`** を推奨します。
+
+理由は、Marketplace / Plugin状態の観測、Plan、Approval、Apply、InstallReceiptをUnityAgent側で一貫して扱えるためです。
+
+インストール後はCodexで**新しいThread**を開始してPluginを読み直してください。
+
+## Manual — current `v0.0.1-beta`
 
 Marketplaceを追加:
 
 ```powershell
-codex plugin marketplace add DarumaPPAP/UnityAgent --ref v0.0.1-beta
+codex plugin marketplace add DarumaPPAP/UnityAgent --ref v0.0.1-beta --json
 ```
 
 Pluginを追加:
 
 ```powershell
-codex plugin add unity-agent@personal
+codex plugin add unity-agent@personal --json
 ```
 
 確認:
 
 ```powershell
-codex plugin list
+codex plugin list --json
 ```
 
-Plugin導入後は新しいCodex threadでテストすることを推奨します。
+UnityAgentは既存の同名Marketplaceを勝手にretargetしません。`personal` が別Sourceに使われている場合はfail-closedで停止します。
 
 UnityAgent PluginはProviderそのものではなく、Architecture / Routing / Approval / Evidence-backed executionの入口です。
 
@@ -195,6 +227,7 @@ UnityAgent PluginはProviderそのものではなく、Architecture / Routing / 
 | Runtime | Provider Registry / Resolver / Dispatcherを統括する |
 | Unity operations | Official Unity CLI等へ実行を委譲する |
 | Visual / Cinematic | UnityArtistCLIへ専門処理を委譲する |
+| Toolchain Setup | Installer ProviderでCodex Plugin等を観測・導入する |
 | Evidence | ProviderResultを正規化し、実行結果を永続化する |
 | Regression | Frozen BaselineとのBehavior比較を行う |
 
