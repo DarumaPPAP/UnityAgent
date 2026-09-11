@@ -23,37 +23,26 @@ $headers = @{
 }
 
 if ($requestedTag -and $requestedTag -notmatch '^v[A-Za-z0-9._-]+$') {
-    throw "UNITY_AGENT_TAG must be a release tag such as v0.0.4-beta."
+    throw "UNITY_AGENT_TAG must be a release tag such as v0.0.5-beta."
 }
 
 function Resolve-Python {
     $py = Get-Command py -ErrorAction SilentlyContinue
     if ($py) {
-        return @{
-            Command = $py.Source
-            Prefix = @("-3")
-        }
+        return @{ Command = $py.Source; Prefix = @("-3") }
     }
-
     $python = Get-Command python -ErrorAction SilentlyContinue
     if ($python) {
-        return @{
-            Command = $python.Source
-            Prefix = @()
-        }
+        return @{ Command = $python.Source; Prefix = @() }
     }
-
     throw "Python 3.10 or newer was not found. Install Python, then rerun the installer."
 }
 
 function Invoke-Python {
     param(
-        [Parameter(Mandatory = $true)]
-        [hashtable]$Python,
-        [Parameter(Mandatory = $true)]
-        [string[]]$Arguments
+        [Parameter(Mandatory = $true)][hashtable]$Python,
+        [Parameter(Mandatory = $true)][string[]]$Arguments
     )
-
     & $Python.Command @($Python.Prefix + $Arguments)
     if ($LASTEXITCODE -ne 0) {
         throw "Python command failed with exit code $LASTEXITCODE."
@@ -61,23 +50,19 @@ function Invoke-Python {
 }
 
 $python = Resolve-Python
-
 & $python.Command @($python.Prefix + @("-c", "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)"))
 if ($LASTEXITCODE -ne 0) {
     throw "Python 3.10 or newer is required."
 }
-
 Invoke-Python -Python $python -Arguments @("-m", "pip", "--version")
 
 if ($requestedTag) {
     Write-Host "Resolving UnityAgent release $requestedTag..."
-    $releaseApi = "https://api.github.com/repos/$repository/releases/tags/$requestedTag"
-    $release = Invoke-RestMethod -Uri $releaseApi -Headers $headers -UseBasicParsing
+    $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$repository/releases/tags/$requestedTag" -Headers $headers -UseBasicParsing
 }
 else {
     Write-Host "Resolving latest published UnityAgent prerelease..."
-    $releasesApi = "https://api.github.com/repos/$repository/releases?per_page=20"
-    $releases = @(Invoke-RestMethod -Uri $releasesApi -Headers $headers -UseBasicParsing)
+    $releases = @(Invoke-RestMethod -Uri "https://api.github.com/repos/$repository/releases?per_page=20" -Headers $headers -UseBasicParsing)
     $release = @($releases | Where-Object { -not $_.draft -and $_.prerelease }) | Select-Object -First 1
     if (-not $release) {
         throw "No published UnityAgent prerelease was found."
@@ -93,42 +78,28 @@ if ($release.draft) {
 }
 
 Write-Host "Resolved UnityAgent $releaseTag."
-
 $wheelAsset = @($release.assets | Where-Object { $_.name -match '^unityagent_control_plane-.*\.whl$' }) | Select-Object -First 1
 $checksumAsset = @($release.assets | Where-Object { $_.name -eq 'SHA256SUMS.txt' }) | Select-Object -First 1
-
-if (-not $wheelAsset) {
-    throw "Release $releaseTag does not contain a UnityAgent Control Plane wheel."
-}
-if (-not $checksumAsset) {
-    throw "Release $releaseTag does not contain SHA256SUMS.txt."
-}
+if (-not $wheelAsset) { throw "Release $releaseTag does not contain a UnityAgent Control Plane wheel." }
+if (-not $checksumAsset) { throw "Release $releaseTag does not contain SHA256SUMS.txt." }
 
 $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ("UnityAgent-" + [Guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
-
 try {
     $wheelPath = Join-Path $tempRoot $wheelAsset.name
     $checksumPath = Join-Path $tempRoot "SHA256SUMS.txt"
-
     Write-Host "Downloading $($wheelAsset.name)..."
     Invoke-WebRequest -Uri $wheelAsset.browser_download_url -Headers $headers -OutFile $wheelPath -UseBasicParsing
     Invoke-WebRequest -Uri $checksumAsset.browser_download_url -Headers $headers -OutFile $checksumPath -UseBasicParsing
 
     $expectedHash = $null
     foreach ($line in Get-Content -LiteralPath $checksumPath) {
-        if ($line -match '^\s*([0-9a-fA-F]{64})\s+\*?(.+?)\s*$') {
-            if ($Matches[2].Trim() -eq $wheelAsset.name) {
-                $expectedHash = $Matches[1].ToLowerInvariant()
-                break
-            }
+        if ($line -match '^\s*([0-9a-fA-F]{64})\s+\*?(.+?)\s*$' -and $Matches[2].Trim() -eq $wheelAsset.name) {
+            $expectedHash = $Matches[1].ToLowerInvariant()
+            break
         }
     }
-
-    if (-not $expectedHash) {
-        throw "SHA256SUMS.txt does not contain an entry for $($wheelAsset.name)."
-    }
-
+    if (-not $expectedHash) { throw "SHA256SUMS.txt does not contain an entry for $($wheelAsset.name)." }
     $actualHash = (Get-FileHash -LiteralPath $wheelPath -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($actualHash -ne $expectedHash) {
         throw "SHA-256 verification failed for $($wheelAsset.name). Expected $expectedHash but got $actualHash."
@@ -142,48 +113,44 @@ finally {
 }
 
 $scriptsRootOutput = & $python.Command @($python.Prefix + @("-c", "import sysconfig; print(sysconfig.get_path('scripts', scheme='nt_user'))"))
-if ($LASTEXITCODE -ne 0) {
-    throw "Unable to determine the current user's Python Scripts directory."
-}
+if ($LASTEXITCODE -ne 0) { throw "Unable to determine the current user's Python Scripts directory." }
 $scriptsRoot = ($scriptsRootOutput | Out-String).Trim()
-if ([string]::IsNullOrWhiteSpace($scriptsRoot)) {
-    throw "Unable to determine the current user's Python Scripts directory."
-}
+if ([string]::IsNullOrWhiteSpace($scriptsRoot)) { throw "Unable to determine the current user's Python Scripts directory." }
 
 $env:Path = "$scriptsRoot;$env:Path"
-
 $unityAgent = Get-Command unity-agent -ErrorAction SilentlyContinue
 if (-not $unityAgent) {
     throw "UnityAgent was installed but unity-agent was not found in $scriptsRoot."
 }
-
 & $unityAgent.Source --help | Out-Host
-if ($LASTEXITCODE -ne 0) {
-    throw "Installed unity-agent failed its help verification."
-}
+if ($LASTEXITCODE -ne 0) { throw "Installed unity-agent failed its help verification." }
 
 $currentUserPath = [Environment]::GetEnvironmentVariable("Path", "User")
 $pathParts = @()
 if ($currentUserPath) {
     $pathParts = @($currentUserPath -split ';' | Where-Object { $_ -and $_.Trim() })
 }
-
 $alreadyPresent = @($pathParts | Where-Object {
     [string]::Equals($_.TrimEnd('\'), $scriptsRoot.TrimEnd('\'), [StringComparison]::OrdinalIgnoreCase)
 }).Count -gt 0
-
 if (-not $alreadyPresent) {
     [Environment]::SetEnvironmentVariable("Path", (($pathParts + $scriptsRoot) -join ';'), "User")
 }
 
+# Persist the exact executable path separately from PATH. Unity Hub / Editor processes
+# that were started before this installer ran can read the User-scoped value directly.
+$controlPlanePath = [IO.Path]::GetFullPath($unityAgent.Source)
+$env:UNITY_AGENT_CONTROL_PLANE = $controlPlanePath
+[Environment]::SetEnvironmentVariable("UNITY_AGENT_CONTROL_PLANE", $controlPlanePath, "User")
+
 Write-Host ""
 Write-Host "UnityAgent $releaseTag installed successfully."
-Write-Host "Control Plane: $($unityAgent.Source)"
+Write-Host "Control Plane: $controlPlanePath"
+Write-Host "Control Plane hint: UNITY_AGENT_CONTROL_PLANE=$controlPlanePath"
 Write-Host "Python Scripts: $scriptsRoot"
 Write-Host ""
 Write-Host "Next:"
 Write-Host '  1. Add the UnityAgent UPM package to your Unity project.'
 Write-Host '  2. Open UnityAgent > Setup.'
-Write-Host '  3. Use Codex Plugin install / repair from the UnityAgent window.'
-Write-Host ""
-Write-Host "Open a new PowerShell window if unity-agent is not immediately available in another terminal."
+Write-Host '  3. Confirm that Control Plane and Codex CLI show a Resolved Path.'
+Write-Host '  4. Use Codex Plugin install / repair from the UnityAgent window.'

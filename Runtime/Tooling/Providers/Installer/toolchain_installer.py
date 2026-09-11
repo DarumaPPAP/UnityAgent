@@ -15,7 +15,7 @@ from Runtime.Tooling.Providers.Installer.release_installer import (
     install_plan as install_release_plan,
 )
 
-CHANNEL = "0.0.4-beta"
+CHANNEL = "0.0.5-beta"
 
 
 def _now() -> str:

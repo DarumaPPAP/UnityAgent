@@ -1,6 +1,6 @@
 {
   "name": "com.darumappap.unity-agent",
-  "version": "0.0.4-beta",
+  "version": "0.0.5-beta",
   "displayName": "UnityAgent",
   "description": "UnityAgent Control Plane entry package for approval-gated setup and evidence-backed execution.",
   "unity": "2022.3",
