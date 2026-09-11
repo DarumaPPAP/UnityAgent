@@ -1,6 +1,6 @@
 ---
 name: unity-coding-standards
-description: Unity C#実装へ命名、Formatting、API互換性、IL2CPP、Burst/Jobs、Allocation、例外、async、Architecture選定、C#ファイル粒度規約を適用する。
+description: Use when implementing or reviewing Unity C# where naming, formatting, API compatibility, IL2CPP, Burst/Jobs, allocations, exceptions, async behavior, architecture boundaries, or file granularity must be enforced. Produces an applicable standards checklist and delegates Shader/HLSL work to rendering skills. Does not redesign an already-scoped feature by default.
 ---
 
 # Unity Coding Standards
@@ -26,3 +26,32 @@ C# Formattingでは短い代入とMethod Callを1行で記述し、`=`直後の�
 データ並列処理ではECS、Jobs、Burstを候補から除外せず、ECS Component、Tag、Aspect、Jobを1型1ファイルへ機械的に分割しない。
 
 For Shader/HLSL work, delegate to `unity-rendering` and the Shader Performance skills rather than applying C# rules directly.
+
+## Output contract
+
+- Applicable coding and architecture rules
+- Changed or reviewed files
+- Public / serialized / save-data compatibility impact
+- Allocation, IL2CPP, Burst/Jobs, async, and exception considerations when applicable
+- Naming / formatting decisions that materially affect the patch
+- Validation performed and explicitly unverified states
+
+## Checklist
+
+- [ ] Applicable references were selected without loading unrelated standards
+- [ ] Public API and serialized contracts are preserved or explicitly approved
+- [ ] Unity Lifecycle and existing owners were considered before adding abstractions
+- [ ] New Types/files have a concrete responsibility and split reason
+- [ ] IL2CPP / Burst / Jobs / allocation constraints are checked when relevant
+- [ ] Formatting changes do not alter existing naming conventions or semantics
+- [ ] Shader/HLSL work is delegated instead of receiving C#-only rules
+- [ ] Validation status distinguishes static, compile, Editor, Player, and target-device evidence
+
+## Common mistakes
+
+- Adding a Manager, Service, Interface, or ScriptableObject only for hypothetical reuse.
+- Renaming serialized fields or public Types as a side effect of formatting cleanup.
+- Treating Editor success as proof of IL2CPP or target-device compatibility.
+- Applying LINQ or allocation-heavy convenience code in a confirmed hot path without measuring it.
+- Forcing one-Type-per-file onto ECS Components, Tags, Aspects, or Jobs.
+- Applying C# standards directly to Shader/HLSL instead of using the rendering skills.
