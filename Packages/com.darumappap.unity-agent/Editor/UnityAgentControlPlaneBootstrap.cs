@@ -4,7 +4,6 @@ using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEditor;
-using UnityEditor.PackageManager;
 using UnityEngine;
 
 namespace DarumaPPAP.UnityAgent.Editor
@@ -15,8 +14,8 @@ namespace DarumaPPAP.UnityAgent.Editor
     /// </summary>
     internal static class UnityAgentControlPlaneBootstrap
     {
-        internal const string Channel = "0.0.6-beta";
-        internal const string ReleaseTag = "v0.0.6-beta";
+        internal const string Channel = "0.0.7-beta";
+        internal const string ReleaseTag = "v0.0.7-beta";
 
         private static bool s_isRunning;
         internal static bool IsRunning => s_isRunning;
@@ -43,7 +42,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                 return false;
             }
 
-            var package = PackageInfo.FindForAssembly(typeof(UnityAgentControlPlaneBootstrap).Assembly);
+            var package = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(UnityAgentControlPlaneBootstrap).Assembly);
             if (package == null || string.IsNullOrWhiteSpace(package.resolvedPath))
             {
                 error = "UnityAgent package pathを解決できませんでした。";
