@@ -3,10 +3,11 @@ name: UnityAgent Release
 on:
   workflow_dispatch:
     inputs:
-      tag:
-        description: Immutable beta release tag to publish after human review
+      confirm_release:
+        description: Publish the canonical VERSION from main as an immutable prerelease
         required: true
-        type: string
+        type: boolean
+        default: false
 
 jobs:
   release:
@@ -23,15 +24,34 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Check release source, tag, and version contract
+      - name: Resolve canonical release tag
         env:
-          REQUESTED_TAG: ${{ inputs.tag }}
+          CONFIRM_RELEASE: ${{ inputs.confirm_release }}
         run: |
           set -euo pipefail
-          test "$GITHUB_REF" = "refs/heads/main"
-          version="$(tr -d '\r\n' < VERSION)"
-          test "$REQUESTED_TAG" = "v$version"
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Release workflow must run from main. Current ref: $GITHUB_REF"
+            exit 1
+          fi
+          if [ "$CONFIRM_RELEASE" != "true" ]; then
+            echo "::error::Check confirm_release before publishing a release."
+            exit 1
+          fi
 
+          version="$(tr -d '\r\n' < VERSION)"
+          if [ -z "$version" ]; then
+            echo "::error::VERSION is empty."
+            exit 1
+          fi
+          release_tag="v$version"
+          echo "RELEASE_VERSION=$version" >> "$GITHUB_ENV"
+          echo "RELEASE_TAG=$release_tag" >> "$GITHUB_ENV"
+          echo "Canonical version: $version"
+          echo "Canonical release tag: $release_tag"
+
+      - name: Check release version contract
+        run: |
+          set -euo pipefail
           python3 - <<'PY'
           import json
           import pathlib
@@ -47,8 +67,9 @@ jobs:
           marketplace = json.loads(pathlib.Path(".agents/plugins/marketplace.json").read_text(encoding="utf-8"))
           license_text = pathlib.Path("LICENSE").read_text(encoding="utf-8")
           readme = pathlib.Path("README.md").read_text(encoding="utf-8")
-          bootstrap = pathlib.Path("scripts/install.ps1").read_text(encoding="utf-8")
+          installer = pathlib.Path("scripts/install.ps1").read_text(encoding="utf-8")
           codex_installer = pathlib.Path("Runtime/Tooling/Providers/Installer/codex_plugin_installer.py").read_text(encoding="utf-8")
+          bootstrap = pathlib.Path("Packages/com.darumappap.unity-agent/Editor/UnityAgentControlPlaneBootstrap.cs").read_text(encoding="utf-8")
 
           assert upm["version"] == version, (upm["version"], version)
           assert plugin["version"] == version, (plugin["version"], version)
@@ -66,21 +87,24 @@ jobs:
           assert f'CHANNEL = "{version}"' in codex_installer
           assert "unity-agent@unity-agent" in readme
           assert "unity-agent@personal" not in readme
-          assert "UNITY_AGENT_CONTROL_PLANE" in bootstrap
+          assert "UNITY_AGENT_CONTROL_PLANE" in installer
+          assert f'internal const string Channel = "{version}"' in bootstrap
+          assert f'internal const string ReleaseTag = "v{version}"' in bootstrap
 
           artist = next(item for item in marketplace["plugins"] if item["name"] == "unity-artist")
           artist_ref = artist["source"].get("ref", "")
           assert artist_ref.startswith("v") and artist_ref != "main", artist_ref
           print(f"Release version: {version}")
           print(f"Python version: {expected_python}")
+          print(f"Release tag: v{version}")
           print("Codex marketplace: unity-agent")
-          print("Control Plane discovery hint: UNITY_AGENT_CONTROL_PLANE")
+          print("Control Plane bootstrap: pinned package-local installer")
           print("License: MIT")
           print(f"Pinned UnityArtistCLI ref: {artist_ref}")
           PY
 
-          if git ls-remote --exit-code --tags origin "refs/tags/$REQUESTED_TAG" >/dev/null 2>&1; then
-            echo "Tag already exists; refusing to move or replace it."
+          if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "::error::Tag $RELEASE_TAG already exists; refusing to move or replace it."
             exit 1
           fi
 
@@ -121,7 +145,6 @@ jobs:
       - name: Pack Unity UPM package
         run: |
           set -euo pipefail
-          version="$(tr -d '\r\n' < VERSION)"
           mkdir -p artifacts
           (
             cd Packages/com.darumappap.unity-agent
@@ -129,7 +152,7 @@ jobs:
           )
           upm_source="$(find artifacts -maxdepth 1 -type f -name 'com.darumappap.unity-agent-*.tgz' -print -quit)"
           test -n "$upm_source"
-          upm_target="artifacts/UnityAgent-UPM-$version.tgz"
+          upm_target="artifacts/UnityAgent-UPM-$RELEASE_VERSION.tgz"
           mv "$upm_source" "$upm_target"
 
           python3 - "$upm_target" <<'PY'
@@ -143,25 +166,26 @@ jobs:
               "package/Editor/DarumaPPAP.UnityAgent.Editor.asmdef.meta",
               "package/Editor/UnityAgentCodexPathResolver.cs.meta",
               "package/Editor/UnityAgentControlPlanePathResolver.cs.meta",
+              "package/Editor/UnityAgentControlPlaneBootstrap.cs.meta",
               "package/Editor/UnityAgentControlPlaneClient.cs.meta",
               "package/Editor/UnityAgentSetupWindow.cs.meta",
+              "package/Editor/Bootstrap~/install-control-plane.ps1",
           }
           with tarfile.open(archive, "r:gz") as package:
               names = set(package.getnames())
           missing = sorted(required - names)
           if missing:
-              raise SystemExit("UPM artifact is missing Unity .meta files: " + ", ".join(missing))
-          print(f"UPM artifact meta validation passed: {len(required)} required .meta files")
+              raise SystemExit("UPM artifact is missing bootstrap/meta files: " + ", ".join(missing))
+          print(f"UPM artifact validation passed: {len(required)} required files")
           PY
 
       - name: Pack Codex plugin
         run: |
           set -euo pipefail
-          version="$(tr -d '\r\n' < VERSION)"
           mkdir -p artifacts
           (
             cd .agents/plugins/unity-agent
-            zip -qr "$GITHUB_WORKSPACE/artifacts/UnityAgent-CodexPlugin-$version.zip" .
+            zip -qr "$GITHUB_WORKSPACE/artifacts/UnityAgent-CodexPlugin-$RELEASE_VERSION.zip" .
           )
 
       - name: Generate SHA-256 checksums
@@ -178,28 +202,23 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Create immutable tag
-        env:
-          REQUESTED_TAG: ${{ inputs.tag }}
-        run: git tag -a "$REQUESTED_TAG" -m "UnityAgent $REQUESTED_TAG"
+        run: git tag -a "$RELEASE_TAG" -m "UnityAgent $RELEASE_TAG"
 
       - name: Push immutable tag
-        env:
-          REQUESTED_TAG: ${{ inputs.tag }}
-        run: git push origin "$REQUESTED_TAG"
+        run: git push origin "$RELEASE_TAG"
 
       - name: Create GitHub prerelease
         env:
           GH_TOKEN: ${{ github.token }}
-          REQUESTED_TAG: ${{ inputs.tag }}
         run: |
-          gh release create "$REQUESTED_TAG" \
+          gh release create "$RELEASE_TAG" \
             --verify-tag \
             --prerelease \
-            --title "UnityAgent $REQUESTED_TAG" \
+            --title "UnityAgent $RELEASE_TAG" \
             --notes-file RELEASE_NOTES.md \
             artifacts/*
 
       - uses: actions/upload-artifact@v7
         with:
-          name: UnityAgent-${{ inputs.tag }}-Distribution
+          name: UnityAgent-${{ env.RELEASE_TAG }}-Distribution
           path: artifacts
