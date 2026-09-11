@@ -22,7 +22,7 @@ PRODUCTS = (
     "codex_cli",
     "unity_agent_codex_plugin",
 )
-CHANNEL = "0.0.7-beta"
+CHANNEL = "0.0.6-beta"
 
 
 def _fingerprint() -> dict[str, str]:
