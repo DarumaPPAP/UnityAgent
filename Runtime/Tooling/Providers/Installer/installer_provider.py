@@ -16,6 +16,7 @@ from typing import Any, Callable, Mapping, Sequence
 from Runtime.Contracts.toolchain_setup_contract import validate_toolchain_setup_request
 from Runtime.Tooling.Providers.Installer.codex_plugin_installer import (
     CommandRunner,
+    CodexPluginInstallError,
     observe_codex_plugin,
     run_command,
 )
@@ -62,38 +63,69 @@ def _plan_id(project_root: str, products: Sequence[str], report: Mapping[str, An
     return "plan-" + hashlib.sha256(material.encode("utf-8")).hexdigest()[:24]
 
 
-def _candidate_codex_paths(env: Mapping[str, str]) -> list[Path]:
-    roots: list[Path] = []
-    for key in ("NPM_CONFIG_PREFIX", "APPDATA"):
+def _candidate_codex_paths(env: Mapping[str, str]) -> list[tuple[Path, str]]:
+    direct: list[tuple[Path, str]] = []
+    for key in ("UNITY_AGENT_CODEX_CLI", "CODEX_CLI"):
         value = env.get(key)
         if value:
-            root = Path(value).expanduser()
-            roots.append(root if key == "NPM_CONFIG_PREFIX" else root / "npm")
+            direct.append((Path(value).expanduser(), f"environment:{key}"))
+
+    roots: list[tuple[Path, str]] = []
+    npm_prefix = env.get("NPM_CONFIG_PREFIX")
+    if npm_prefix:
+        prefix = Path(npm_prefix).expanduser()
+        roots.extend([(prefix, "npm_prefix"), (prefix / "bin", "npm_prefix")])
+
+    app_data = env.get("APPDATA")
+    if app_data:
+        roots.append((Path(app_data).expanduser() / "npm", "windows_npm"))
+
+    local_app_data = env.get("LOCALAPPDATA")
+    if local_app_data:
+        local = Path(local_app_data).expanduser()
+        roots.extend([
+            (local / "npm", "windows_npm"),
+            (local / "Programs/codex", "windows_native"),
+            (local / "Programs/nodejs", "windows_node"),
+        ])
+
+    program_files = env.get("ProgramFiles") or env.get("PROGRAMFILES")
+    if program_files:
+        roots.append((Path(program_files).expanduser() / "nodejs", "windows_node"))
+
+    nvm_symlink = env.get("NVM_SYMLINK")
+    if nvm_symlink:
+        roots.append((Path(nvm_symlink).expanduser(), "nvm_symlink"))
 
     user_profile = env.get("USERPROFILE") or env.get("HOME")
     if user_profile:
         home = Path(user_profile).expanduser()
         roots.extend([
-            home / "AppData/Roaming/npm",
-            home / "AppData/Local/npm",
-            home / ".npm-global",
-            home / "npm",
+            (home / "AppData/Roaming/npm", "windows_npm"),
+            (home / "AppData/Local/npm", "windows_npm"),
+            (home / ".local/bin", "user_local"),
+            (home / ".npm-global/bin", "npm_global"),
         ])
-
-    local_app_data = env.get("LOCALAPPDATA")
-    if local_app_data:
-        local = Path(local_app_data).expanduser()
-        roots.extend([local / "npm", local / "Programs/nodejs"])
+        nvm_root = home / ".nvm/versions/node"
+        if nvm_root.is_dir():
+            for version_dir in sorted(nvm_root.iterdir(), reverse=True):
+                if version_dir.is_dir():
+                    roots.append((version_dir / "bin", "nvm"))
 
     seen: set[str] = set()
-    candidates: list[Path] = []
-    for root in roots:
-        for filename in ("codex.cmd", "codex.exe", "codex.bat", "codex"):
+    candidates: list[tuple[Path, str]] = []
+    for candidate, source in direct:
+        key = str(candidate).casefold()
+        if key not in seen:
+            seen.add(key)
+            candidates.append((candidate, source))
+    for root, source in roots:
+        for filename in ("codex.cmd", "codex.exe", "codex.bat", "codex.ps1", "codex"):
             candidate = root / filename
             key = str(candidate).casefold()
             if key not in seen:
                 seen.add(key)
-                candidates.append(candidate)
+                candidates.append((candidate, source))
     return candidates
 
 
@@ -135,11 +167,64 @@ class InstallerProvider:
         if detected:
             return str(detected), "PATH", None
 
-        for candidate in _candidate_codex_paths(self.env):
+        for candidate, source in _candidate_codex_paths(self.env):
             if candidate.is_file():
-                return str(candidate.resolve(strict=False)), "well_known_windows_location", None
+                return str(candidate.resolve(strict=False)), source, None
 
         return None, "auto_detect", "codex_cli_unavailable"
+
+    def _observe_codex_cli(self, request: Mapping[str, Any]) -> dict[str, Any]:
+        codex_path, codex_source, codex_reason = self._resolve_codex_cli(request.get("codex_cli_path"))
+        if not codex_path:
+            return {
+                "product": "codex_cli",
+                "status": "unavailable",
+                "version": None,
+                "location": None,
+                "source": codex_source,
+                "sha256": None,
+                "reason": codex_reason,
+                "message": "Codex CLI was not found in the selected path, inherited PATH, or common install locations.",
+            }
+
+        try:
+            result = self.command_runner([codex_path, "--version"])
+        except CodexPluginInstallError as exc:
+            return {
+                "product": "codex_cli",
+                "status": "failed",
+                "version": None,
+                "location": codex_path,
+                "source": codex_source,
+                "sha256": None,
+                "reason": "codex_cli_execution_failed",
+                "message": str(exc),
+            }
+
+        version_text = (result.stdout or result.stderr).strip()
+        if result.returncode != 0:
+            detail = (result.stderr or result.stdout).strip()
+            return {
+                "product": "codex_cli",
+                "status": "failed",
+                "version": None,
+                "location": codex_path,
+                "source": codex_source,
+                "sha256": None,
+                "reason": "codex_cli_execution_failed",
+                "message": f"codex --version failed: {detail or f'exit code {result.returncode}'}",
+            }
+
+        return {
+            "product": "codex_cli",
+            "status": "verified",
+            "version": version_text or None,
+            "location": codex_path,
+            "source": codex_source,
+            "sha256": None,
+            "reason": None,
+            "message": "Codex CLI detected and executable.",
+        }
 
     def _product_observation(self, product: str, request: Mapping[str, Any]) -> dict[str, Any]:
         if product == "official_unity_cli":
@@ -164,24 +249,10 @@ class InstallerProvider:
                 "source": package_id or "project manifest",
                 "sha256": None,
             }
-
-        codex_path, codex_source, codex_reason = self._resolve_codex_cli(request.get("codex_cli_path"))
         if product == "codex_cli":
-            return {
-                "product": product,
-                "status": "verified" if codex_path else "unavailable",
-                "version": None,
-                "location": codex_path,
-                "source": codex_source,
-                "sha256": None,
-                "reason": codex_reason,
-                "message": (
-                    "Codex CLI detected."
-                    if codex_path
-                    else "Codex CLI was not found in the selected path, inherited PATH, or common Windows npm locations."
-                ),
-            }
+            return self._observe_codex_cli(request)
         if product == "unity_agent_codex_plugin":
+            codex_path, _, codex_reason = self._resolve_codex_cli(request.get("codex_cli_path"))
             result = observe_codex_plugin(codex_path, runner=self.command_runner)
             result["codex_cli_path"] = codex_path
             if codex_reason and not result.get("reason"):
@@ -195,7 +266,7 @@ class InstallerProvider:
         statuses = {str(entry["status"]) for entry in entries}
         status = "passed" if statuses == {"verified"} else ("failed" if "failed" in statuses else "unavailable")
         errors = [
-            str(entry.get("reason") or entry.get("message") or "toolchain product unavailable")
+            str(entry.get("message") or entry.get("reason") or "toolchain product unavailable")
             for entry in entries
             if str(entry.get("status")) not in {"verified", "installed"}
         ]
