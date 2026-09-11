@@ -124,16 +124,15 @@ finally {
     Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-$userBaseOutput = & $python.Command @($python.Prefix + @("-c", "import site; print(site.getuserbase())"))
+$scriptsRootOutput = & $python.Command @($python.Prefix + @("-c", "import sysconfig; print(sysconfig.get_path('scripts', scheme='nt_user'))"))
 if ($LASTEXITCODE -ne 0) {
-    throw "Unable to determine the current user's Python installation directory."
+    throw "Unable to determine the current user's Python Scripts directory."
 }
-$userBase = ($userBaseOutput | Out-String).Trim()
-if ([string]::IsNullOrWhiteSpace($userBase)) {
-    throw "Unable to determine the current user's Python installation directory."
+$scriptsRoot = ($scriptsRootOutput | Out-String).Trim()
+if ([string]::IsNullOrWhiteSpace($scriptsRoot)) {
+    throw "Unable to determine the current user's Python Scripts directory."
 }
 
-$scriptsRoot = Join-Path $userBase "Scripts"
 $env:Path = "$scriptsRoot;$env:Path"
 
 $unityAgent = Get-Command unity-agent -ErrorAction SilentlyContinue
