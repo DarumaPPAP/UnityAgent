@@ -1,6 +1,6 @@
 {
   "name": "unity-agent",
-  "version": "0.0.7-beta",
+  "version": "0.0.6-beta",
   "description": "Skill-only Codex plugin for UnityAgent's five-layer architecture, setup, routing and evidence-backed execution.",
   "author": {
     "name": "DarumaPPAP",
