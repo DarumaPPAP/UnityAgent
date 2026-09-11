@@ -1,0 +1,156 @@
+name: UnityAgent Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Immutable beta release tag to publish after human review
+        required: true
+        type: string
+
+jobs:
+  release:
+    name: Human-gated beta release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Check release tag and version contract
+        env:
+          REQUESTED_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          version="$(tr -d '\r\n' < VERSION)"
+          test "$REQUESTED_TAG" = "v$version"
+
+          python3 - <<'PY'
+          import json
+          import pathlib
+          import tomllib
+
+          version = pathlib.Path("VERSION").read_text(encoding="utf-8").strip()
+          expected_python = version.replace("-beta", "b0")
+
+          upm = json.loads(pathlib.Path("Packages/com.darumappap.unity-agent/package.json").read_text(encoding="utf-8"))
+          plugin = json.loads(pathlib.Path(".agents/plugins/unity-agent/plugin.json").read_text(encoding="utf-8"))
+          codex_plugin = json.loads(pathlib.Path(".agents/plugins/unity-agent/.codex-plugin/plugin.json").read_text(encoding="utf-8"))
+          pyproject = tomllib.loads(pathlib.Path("pyproject.toml").read_text(encoding="utf-8"))
+          marketplace = json.loads(pathlib.Path(".agents/plugins/marketplace.json").read_text(encoding="utf-8"))
+
+          assert upm["version"] == version, (upm["version"], version)
+          assert plugin["version"] == version, (plugin["version"], version)
+          assert codex_plugin["version"] == version, (codex_plugin["version"], version)
+          assert pyproject["project"]["version"] == expected_python, (pyproject["project"]["version"], expected_python)
+
+          artist = next(item for item in marketplace["plugins"] if item["name"] == "unity-artist")
+          artist_ref = artist["source"].get("ref", "")
+          assert artist_ref.startswith("v") and artist_ref != "main", artist_ref
+          print(f"Release version: {version}")
+          print(f"Python version: {expected_python}")
+          print(f"Pinned UnityArtistCLI ref: {artist_ref}")
+          PY
+
+          if git ls-remote --exit-code --tags origin "refs/tags/$REQUESTED_TAG" >/dev/null 2>&1; then
+            echo "Tag already exists; refusing to move or replace it."
+            exit 1
+          fi
+
+      - name: Install validation and build dependencies
+        run: python3 -m pip install --disable-pip-version-check -e . build
+
+      - name: Validate repository contracts
+        run: |
+          set -euo pipefail
+          python3 Tools/validate_all.py
+          python3 Tools/run_regression_gate.py
+          python3 Tools/ProductionToolRuntime/validate_production_tool_runtime.py
+
+      - name: Verify pinned UnityArtistCLI release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          artist_ref="$(python3 - <<'PY'
+          import json
+          data = json.load(open('.agents/plugins/marketplace.json', encoding='utf-8'))
+          print(next(item for item in data['plugins'] if item['name'] == 'unity-artist')['source']['ref'])
+          PY
+          )"
+          gh api "repos/DarumaPPAP/UnityArtistCLI/releases/tags/$artist_ref" >/dev/null
+
+      - name: Build Python distribution
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          python3 -m build --outdir artifacts
+
+      - name: Pack Unity UPM package
+        run: |
+          set -euo pipefail
+          version="$(tr -d '\r\n' < VERSION)"
+          mkdir -p artifacts
+          (
+            cd Packages/com.darumappap.unity-agent
+            npm pack --pack-destination "$GITHUB_WORKSPACE/artifacts"
+          )
+          upm_source="$(find artifacts -maxdepth 1 -type f -name 'com.darumappap.unity-agent-*.tgz' -print -quit)"
+          test -n "$upm_source"
+          mv "$upm_source" "artifacts/UnityAgent-UPM-$version.tgz"
+
+      - name: Pack Codex plugin
+        run: |
+          set -euo pipefail
+          version="$(tr -d '\r\n' < VERSION)"
+          mkdir -p artifacts
+          (
+            cd .agents/plugins/unity-agent
+            zip -qr "$GITHUB_WORKSPACE/artifacts/UnityAgent-CodexPlugin-$version.zip" .
+          )
+
+      - name: Generate SHA-256 checksums
+        run: |
+          set -euo pipefail
+          (
+            cd artifacts
+            sha256sum ./* > SHA256SUMS.txt
+          )
+
+      - name: Configure Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Create immutable tag
+        env:
+          REQUESTED_TAG: ${{ inputs.tag }}
+        run: git tag -a "$REQUESTED_TAG" -m "UnityAgent $REQUESTED_TAG"
+
+      - name: Push immutable tag
+        env:
+          REQUESTED_TAG: ${{ inputs.tag }}
+        run: git push origin "$REQUESTED_TAG"
+
+      - name: Create GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_TAG: ${{ inputs.tag }}
+        run: |
+          gh release create "$REQUESTED_TAG" \
+            --verify-tag \
+            --prerelease \
+            --title "UnityAgent $REQUESTED_TAG" \
+            --notes-file RELEASE_NOTES.md \
+            artifacts/*
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: UnityAgent-${{ inputs.tag }}-Distribution
+          path: artifacts
