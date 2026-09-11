@@ -2,14 +2,14 @@
 
 [![Unity](https://img.shields.io/badge/Unity-2022.3%2B-000000?logo=unity&logoColor=white)](https://unity.com/)
 [![Codex](https://img.shields.io/badge/Codex-Plugin-111827?logo=openai&logoColor=white)](https://github.com/openai/codex)
-[![Release](https://img.shields.io/badge/Release-v0.0.4--beta-orange)](https://github.com/DarumaPPAP/UnityAgent/releases)
+[![Release](https://img.shields.io/badge/Release-v0.0.5--beta-orange)](https://github.com/DarumaPPAP/UnityAgent/releases)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![UnityAgent CI](https://github.com/DarumaPPAP/UnityAgent/actions/workflows/validate-agent-contracts.yml/badge.svg)](https://github.com/DarumaPPAP/UnityAgent/actions/workflows/validate-agent-contracts.yml)
 
 **AIにUnity開発を任せるためのControl Plane。**  
 Unityの設計・実装・検証を、Policy / Capability / Provider / Evidenceに分離して安全に回します。
 
-> **Current source version:** `v0.0.4-beta`  
+> **Current source version:** `v0.0.5-beta`  
 > Betaでは破壊的変更が入る可能性があります。
 
 [Architecture Explorer](https://darumappap.github.io/UnityAgent/) · [Releases](https://github.com/DarumaPPAP/UnityAgent/releases) · [Architecture](docs/architecture/architecture.md) · [MIT License](LICENSE)
@@ -74,10 +74,12 @@ irm https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/main/scripts/install
 
 このBootstrap URLは常に `main/scripts/install.ps1` を使用します。既定では**最新の公開UnityAgent Prerelease**を解決し、ReleaseのPython wheelを `SHA256SUMS.txt` で検証してからインストールします。
 
+`v0.0.5-beta` 以降は、Installerが実際に導入した `unity-agent.exe` の絶対PathをUser環境変数 `UNITY_AGENT_CONTROL_PLANE` にも保存します。Unity Hubから既に起動済みのEditorでも、Shell PATHの再継承だけに頼らずControl Planeを解決できます。
+
 特定Releaseを固定したい場合:
 
 ```powershell
-$env:UNITY_AGENT_TAG = "v0.0.4-beta"
+$env:UNITY_AGENT_TAG = "v0.0.5-beta"
 irm https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/main/scripts/install.ps1 | iex
 ```
 
@@ -97,7 +99,7 @@ Unity Editor:
 4. 次を入力
 
 ```text
-https://github.com/DarumaPPAP/UnityAgent.git?path=/Packages/com.darumappap.unity-agent#v0.0.4-beta
+https://github.com/DarumaPPAP/UnityAgent.git?path=/Packages/com.darumappap.unity-agent#v0.0.5-beta
 ```
 
 > **Important:** `v0.0.2-beta` のUPM artifactにはUnity `.meta` ファイルが不足しており、Package Managerのimmutable packageとしてEditor assetsが無視される問題があります。Unity integrationの検証には `v0.0.3-beta` 以降を使用してください。
@@ -108,12 +110,18 @@ https://github.com/DarumaPPAP/UnityAgent.git?path=/Packages/com.darumappap.unity
 UnityAgent > Setup
 ```
 
-### 4. Detect Codex CLI and install the Codex Plugin
+### 4. Confirm Control Plane and Codex CLI
 
-`v0.0.4-beta` からUnityAgent Setupは、Unity Hubから起動したEditorのPATHだけに依存しません。
+`v0.0.5-beta` からSetup Windowは、**Control PlaneとCodex CLIを別々に解決してResolved Pathを表示**します。
 
 ```text
 UnityAgent Setup
+
+UnityAgent Control Plane
+├─ Resolved Path
+├─ 再検出
+├─ 参照...
+└─ Override解除
 
 Codex CLI
 ├─ Resolved Path
@@ -123,13 +131,27 @@ Codex CLI
 
 Codex Integration
 ├─ 状態を確認
-└─ Codex Pluginをインストール / 修復   ← Recommended
+└─ Codex Pluginをインストール / 修復
 
 Status
 └─ 人間向けの短い診断
 
 詳細ログ / Raw response
 └─ 必要な時だけ展開・コピー
+```
+
+Control Planeは概ね次の順で解決します。
+
+```text
+Manual Override
+  ↓
+UNITY_AGENT_CONTROL_PLANE
+  ↓
+User environment
+  ↓
+Python User Scripts
+  ↓
+Process PATH / User PATH
 ```
 
 Codex CLIは概ね次の順で解決します。
@@ -145,7 +167,7 @@ NVM / user-local locations
   ↓
 PATH / where.exe / which
   ↓
-codex --version で実行確認
+Installer Providerで codex --version を実行確認
 ```
 
 Unity WindowはCodex Pluginを直接Mutationしません。
@@ -168,15 +190,27 @@ InstallReceipt / Evidence
 
 インストール後はCodexで**新しいThread**を開始してPluginを読み直してください。
 
+### Control Planeが見つからない場合
+
+1. 最新の `install.ps1` をもう一度実行
+2. `UnityAgent > Setup` のControl Plane欄で `再検出`
+3. まだ見つからなければ `参照...` から `unity-agent.exe` を選択
+4. 壊れた手動指定が残っている場合は `Override解除`
+5. `Resolved Path` が表示されたことを確認してからSetupを実行
+
+Windowsの標準的な`pip --user`構成では、Control Planeは概ね次のようなPython User Scripts配下にあります。
+
+```text
+%APPDATA%\Python\Python3xx\Scripts\unity-agent.exe
+```
+
 ### Codex CLIが見つからない場合
 
 1. `UnityAgent > Setup` を開く
-2. `再検出` を押す
+2. Codex欄の `再検出` を押す
 3. 見つからなければ `参照...` から `codex.exe` / `codex.cmd` / `codex.ps1` を選択
 4. 壊れた手動指定が残っている場合は `Override解除`
 5. 失敗理由は `詳細ログ / Raw response` を開いて確認・コピー
-
-Unity Hub起動後にCodex CLIをインストールした場合でも、Editor再起動やPATH編集だけに頼らず復旧できることを目標にしています。
 
 ---
 
@@ -185,7 +219,7 @@ Unity Hub起動後にCodex CLIをインストールした場合でも、Editor�
 Unity Editorを使わず手動で導入する場合:
 
 ```powershell
-codex plugin marketplace add DarumaPPAP/UnityAgent --ref v0.0.4-beta --json
+codex plugin marketplace add DarumaPPAP/UnityAgent --ref v0.0.5-beta --json
 codex plugin add unity-agent@unity-agent --json
 codex plugin list --json
 ```
@@ -280,7 +314,7 @@ Evidence   = 実際に何を観測したか
 
 UnityArtistCLIはLookDev / Lighting / Camera / Cinematic等を担当するspecialist Providerです。UnityAgentのGraph / Loop / Policyを持つ第二のAgent Frameworkにはしません。
 
-`v0.0.4-beta` のUnityAgentはUnityArtistCLI `v0.0.1-beta` をimmutable dependencyとしてpinしています。UnityAgentのRelease channelとProvider製品versionは別契約として扱います。
+`v0.0.5-beta` のUnityAgentはUnityArtistCLI `v0.0.1-beta` をimmutable dependencyとしてpinしています。UnityAgentのRelease channelとProvider製品versionは別契約として扱います。
 
 ---
 
@@ -396,7 +430,7 @@ python .\Tools\run_regression_gate.py
 Canonical version:
 
 ```text
-0.0.4-beta
+0.0.5-beta
 ```
 
 Release Workflowは同一tagから以下を生成します。
