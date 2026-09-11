@@ -1,20 +1,35 @@
-# UnityAgent 0.0.2-beta
+# UnityAgent 0.0.3-beta
 
-UnityAgent 0.0.2-beta focuses on making the beta installable and testable from the Unity Editor while preserving the single-Control-Plane architecture.
+UnityAgent 0.0.3-beta is a packaging-fix beta for the Unity Editor integration introduced in 0.0.2-beta.
 
-## Highlights
+## Critical UPM fix
 
-- UnityAgent Setup Window can inspect, install, and repair the Codex `unity-agent` plugin through the approval-gated Control Plane.
-- Codex Marketplace ID is now dedicated to UnityAgent: `unity-agent`.
-- The canonical Codex plugin identifier is now `unity-agent@unity-agent`.
-- The generic `personal` Marketplace name is no longer used by UnityAgent.
-- The public README now presents the recommended Unity-first setup flow and includes Unity, Codex, Release, CI, and MIT badges.
-- The repository is now explicitly distributed under the MIT License.
-- `main/scripts/install.ps1` resolves the newest published UnityAgent prerelease by default while still supporting an explicit `UNITY_AGENT_TAG` override.
+`v0.0.2-beta` shipped the UnityAgent UPM source without the Unity `.meta` files required for assets inside an immutable Package Manager package. Unity therefore reported messages such as:
+
+```text
+Asset Packages/com.darumappap.unity-agent/Editor has no meta file, but it's in an immutable folder. The asset will be ignored.
+```
+
+`v0.0.3-beta` fixes this by shipping stable `.meta` files for:
+
+- `Editor/`
+- `package.json`
+- `Editor/DarumaPPAP.UnityAgent.Editor.asmdef`
+- `Editor/UnityAgentControlPlaneClient.cs`
+- `Editor/UnityAgentSetupWindow.cs`
+
+The corresponding GUIDs are committed to the repository and remain stable across installs.
+
+## Release hardening
+
+Two independent guards now prevent this regression:
+
+1. The repository validator requires every imported UnityAgent UPM asset/folder to have a corresponding `.meta` file with a canonical GUID; folder metas must declare `folderAsset: yes`.
+2. The Release Workflow inspects the packed `UnityAgent-UPM-<version>.tgz` artifact and fails before tag creation if required `.meta` files are absent.
 
 ## Unity-first Codex setup
 
-The recommended Codex setup route is now:
+The recommended setup route remains:
 
 ```text
 UnityAgent > Setup
@@ -34,7 +49,7 @@ unity-agent@unity-agent
 InstallReceipt / Evidence
 ```
 
-The Unity Entry Layer does not invoke `codex plugin ...` directly. The five-layer boundary remains enforced by validation.
+The Unity Entry Layer does not invoke `codex plugin ...` directly.
 
 ## Distribution
 
@@ -47,29 +62,28 @@ This release publishes the following artifacts from the same immutable tag:
 
 ## Provider pinning
 
-UnityAgent `0.0.2-beta` keeps UnityArtistCLI pinned to the immutable `v0.0.1-beta` release.
-
-The UnityAgent release channel and Provider product versions are separate contracts:
+UnityAgent `0.0.3-beta` continues to pin UnityArtistCLI to the immutable `v0.0.1-beta` release.
 
 ```text
-UnityAgent channel     = 0.0.2-beta
-UnityAgent Codex plugin = 0.0.2-beta
+UnityAgent channel      = 0.0.3-beta
+UnityAgent Codex plugin = 0.0.3-beta
 UnityArtistCLI provider = 0.0.1-beta
 ```
 
-This keeps the UnityAgent beta reproducible without pretending that every Provider must share the Control Plane version.
+UnityAgent release channel and Provider product versions remain separate contracts.
 
 ## Safety and compatibility
 
 - Toolchain mutation remains `Plan -> Approval -> Apply -> Evidence`.
+- Codex Marketplace ID remains `unity-agent`.
+- Canonical Codex plugin identifier remains `unity-agent@unity-agent`.
 - Unknown, unavailable, stale, or conflicting Marketplace states fail closed.
-- An existing unrelated Marketplace is never silently retargeted.
-- InstallReceipt and toolchain setup contracts are versioned with the UnityAgent release channel.
-- Published release artifacts remain immutable.
+- InstallReceipt and Toolchain Setup contracts are versioned with the UnityAgent release channel.
+- Published release artifacts remain immutable; `v0.0.2-beta` is not modified or replaced.
 
 ## License
 
-UnityAgent is distributed under the MIT License. See `LICENSE` in the repository and release source archive.
+UnityAgent is distributed under the MIT License.
 
 ## Beta limitations
 
@@ -79,10 +93,10 @@ UnityAgent is distributed under the MIT License. See `LICENSE` in the repository
 
 ## Version contract
 
-The canonical release version is `0.0.2-beta`.
+The canonical release version is `0.0.3-beta`.
 
-- UPM package: `0.0.2-beta`
-- Codex plugin: `0.0.2-beta`
-- Python package: `0.0.2b0`
+- UPM package: `0.0.3-beta`
+- Codex plugin: `0.0.3-beta`
+- Python package: `0.0.3b0`
 - Codex Marketplace: `unity-agent`
 - License: `MIT`
