@@ -193,7 +193,12 @@ jobs:
           set -euo pipefail
           (
             cd artifacts
-            sha256sum ./* > SHA256SUMS.txt
+            : > SHA256SUMS.txt
+            for artifact in *; do
+              [ "$artifact" = "SHA256SUMS.txt" ] && continue
+              [ -f "$artifact" ] || continue
+              sha256sum -- "$artifact" >> SHA256SUMS.txt
+            done
           )
 
       - name: Configure Git identity
