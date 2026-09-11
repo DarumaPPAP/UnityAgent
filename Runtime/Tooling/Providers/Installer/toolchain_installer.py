@@ -2,8 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any, Callable, Mapping, Sequence
+from typing import Callable, Mapping
 
 from Runtime.Tooling.Providers.Installer.codex_plugin_installer import (
     CommandRunner,
@@ -16,7 +15,7 @@ from Runtime.Tooling.Providers.Installer.release_installer import (
     install_plan as install_release_plan,
 )
 
-CHANNEL = "0.0.3-beta"
+CHANNEL = "0.0.4-beta"
 
 
 def _now() -> str:
@@ -53,6 +52,11 @@ def install_toolchain_plan(
 
     codex_path = which_fn("codex")
     for action in codex_actions:
+        hinted = action.get("codex_cli_path") or (action.get("location") if action.get("product") == "codex_cli" else None)
+        if hinted:
+            codex_path = str(hinted)
+
+    for action in codex_actions:
         product = str(action.get("product") or "")
         action_name = str(action.get("action") or "")
         if product == "codex_cli":
@@ -61,7 +65,7 @@ def install_toolchain_plan(
                 "status": "verified" if codex_path else "unavailable",
                 "version": action.get("version"),
                 "location": codex_path,
-                "source": "PATH",
+                "source": action.get("source") or "PATH",
                 "sha256": None,
             })
             continue
