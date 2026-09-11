@@ -49,6 +49,51 @@ User / Codex / Unity UI
 - **Evidence-first** — 観測できていない結果をPASSとして扱わない。
 - **Provider isolation** — UnityAgent Coreへ専門機能を詰め込まずProviderへ分離する。
 
+詳細は [UnityAgent Architecture](docs/architecture/architecture.md) を参照してください。
+
+製品境界は、Entry Layer、Control Plane、Capability & Orchestration、Provider
+Layer、Evidence & Stateの5層です。依存方向と禁止依存は
+[`Specs/unityagent-layer-contract.yaml`](Specs/unityagent-layer-contract.yaml) に固定し、
+`Tools/validate_all.py` から自動検証します。Unity UI / Codex PluginはProviderを
+直接呼ばず、UnityAgent Control PlaneのSetup／Execution入口だけを呼びます。
+
+### Control Planeのローカル導入
+
+リポジトリをcloneせずにWindows PowerShellから導入する場合は、GitHubのremote bootstrapを
+実行できます。
+
+```powershell
+irm https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/migration/unity-artist-cli-v2/scripts/install-remote.ps1 | iex
+```
+
+このスクリプトはUnityAgent Control PlaneをGitHubの指定refから現在ユーザーのPython環境へ導入し、
+`unity-agent` をUser PATHへ追加します。Python 3.10以上とpipが必要です。現在の移行ブランチを
+直接指定しており、mainへmergeされた後はURLのrefを `main` に変更できます。ローカルcheckoutを
+使う場合は `python -m pip install -e .` でも導入できます。
+
+Unity UPM PackageはUnityのPackage Managerへ、Codex PluginはMarketplace／GitHub plugin入口へ
+同じリポジトリから追加します。remote bootstrapはホストControl Planeを担当し、これらを勝手に
+コピーしたり、Providerを直接実行したりしません。
+
+Setupは次の順序で実行します。
+
+```text
+unity-agent doctor --project-path <project> --format json --non-interactive
+unity-agent setup --operation plan --project-path <project> --format json --non-interactive
+外部承認
+unity-agent setup --operation apply --project-path <project> --expected-plan-id <plan_id> --approval-ref <approval_ref> --approved-plan <approved_plan.json> --format json --non-interactive
+```
+
+CLIはInstaller Providerを直接選択せず、既存Runtime Provider RegistryとToolBrokerの
+management operationを通します。Unity UIの `UnityAgent/Setup` も同じControl Plane
+コマンドを呼び出します。
+
+### MyResourceCenter参照はLocal-first
+
+個人運用では、MyResourceCenterやGoogle Driveへ通常の依頼ごとに接続しません。必要時に一度だけSourceを確認して生成した `myresourcecenter-reference-snapshot` を、`Context/Retrieval/Reference/reference_navigator.py` でローカル検索します。通常の質問は上位3〜5件だけをContextへ入れ、不具合は一度の候補検索から仮説と読み取り専用の検証計画を作成し、以後はUnity Projectの観測を優先します。
+
+外部検索サーバー、埋め込みAPI、ベクトルDB、常時同期は現行の個人運用に含めません。Snapshotに候補がない、古い、原文確認が必要、またはSource間に矛盾がある場合だけ明示的な再確認へ切り替えます。詳細は [Local Reference Navigator](docs/architecture/local-reference-navigator.md) を参照してください。
+
 ---
 
 # Installation
