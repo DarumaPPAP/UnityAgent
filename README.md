@@ -2,14 +2,14 @@
 
 [![Unity](https://img.shields.io/badge/Unity-2022.3%2B-000000?logo=unity&logoColor=white)](https://unity.com/)
 [![Codex](https://img.shields.io/badge/Codex-Plugin-111827?logo=openai&logoColor=white)](https://github.com/openai/codex)
-[![Release](https://img.shields.io/badge/Release-v0.0.2--beta-orange)](https://github.com/DarumaPPAP/UnityAgent/releases)
+[![Release](https://img.shields.io/badge/Release-v0.0.3--beta-orange)](https://github.com/DarumaPPAP/UnityAgent/releases)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![UnityAgent CI](https://github.com/DarumaPPAP/UnityAgent/actions/workflows/validate-agent-contracts.yml/badge.svg)](https://github.com/DarumaPPAP/UnityAgent/actions/workflows/validate-agent-contracts.yml)
 
 **AIにUnity開発を任せるためのControl Plane。**  
 Unityの設計・実装・検証を、Policy / Capability / Provider / Evidenceに分離して安全に回します。
 
-> **Current source version:** `v0.0.2-beta`  
+> **Current source version:** `v0.0.3-beta`  
 > Betaでは破壊的変更が入る可能性があります。
 
 [Architecture Explorer](https://darumappap.github.io/UnityAgent/) · [Releases](https://github.com/DarumaPPAP/UnityAgent/releases) · [Architecture](docs/architecture/architecture.md) · [MIT License](LICENSE)
@@ -77,7 +77,7 @@ irm https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/main/scripts/install
 特定Releaseを固定したい場合:
 
 ```powershell
-$env:UNITY_AGENT_TAG = "v0.0.2-beta"
+$env:UNITY_AGENT_TAG = "v0.0.3-beta"
 irm https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/main/scripts/install.ps1 | iex
 ```
 
@@ -97,8 +97,10 @@ Unity Editor:
 4. 次を入力
 
 ```text
-https://github.com/DarumaPPAP/UnityAgent.git?path=/Packages/com.darumappap.unity-agent#v0.0.2-beta
+https://github.com/DarumaPPAP/UnityAgent.git?path=/Packages/com.darumappap.unity-agent#v0.0.3-beta
 ```
+
+> **Important:** `v0.0.2-beta` のUPM artifactにはUnity `.meta` ファイルが不足しており、Package Managerのimmutable packageとしてEditor assetsが無視される問題があります。Unity integrationの検証には `v0.0.3-beta` 以降を使用してください。
 
 ### 3. Open UnityAgent Setup
 
@@ -143,7 +145,7 @@ InstallReceipt / Evidence
 Unity Editorを使わず手動で導入する場合:
 
 ```powershell
-codex plugin marketplace add DarumaPPAP/UnityAgent --ref v0.0.2-beta --json
+codex plugin marketplace add DarumaPPAP/UnityAgent --ref v0.0.3-beta --json
 codex plugin add unity-agent@unity-agent --json
 codex plugin list --json
 ```
@@ -226,7 +228,7 @@ Evidence   = 実際に何を観測したか
 
 UnityArtistCLIはLookDev / Lighting / Camera / Cinematic等を担当するspecialist Providerです。UnityAgentのGraph / Loop / Policyを持つ第二のAgent Frameworkにはしません。
 
-`v0.0.2-beta` のUnityAgentはUnityArtistCLI `v0.0.1-beta` をimmutable dependencyとしてpinしています。UnityAgentのRelease channelとProvider製品versionは別契約として扱います。
+`v0.0.3-beta` のUnityAgentはUnityArtistCLI `v0.0.1-beta` をimmutable dependencyとしてpinしています。UnityAgentのRelease channelとProvider製品versionは別契約として扱います。
 
 ---
 
@@ -342,7 +344,7 @@ python .\Tools\run_regression_gate.py
 Canonical version:
 
 ```text
-0.0.2-beta
+0.0.3-beta
 ```
 
 Release Workflowは同一tagから以下を生成します。
@@ -351,6 +353,8 @@ Release Workflowは同一tagから以下を生成します。
 - Codex `unity-agent` plugin archive
 - Python Control Plane wheel / source distribution
 - `SHA256SUMS.txt`
+
+UPM artifactはRelease前に、Editor assetsと対応するUnity `.meta` ファイルがpack後の`.tgz`へ含まれていることを検証します。
 
 Releaseはimmutable tagとして作成し、GitHubではPrereleaseとして公開します。
 
