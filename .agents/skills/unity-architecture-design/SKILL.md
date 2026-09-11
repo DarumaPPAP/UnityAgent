@@ -1,13 +1,13 @@
 ---
 name: unity-architecture-design
-description: Unityの新規Feature、System、UI、ECS、Jobs/Burst、ScriptableObject、C#ファイル構成を、問題規模に応じた思考量で選定する。Local BehaviorはLifecycleと最小構成を先に評価し、Feature/System以上では所有権・Lifetime・変更軸・性能要件から設計する。
+description: Use when designing a new Unity Feature, System, UI flow, ECS/Jobs/Burst path, ScriptableObject boundary, or C# file structure whose ownership, lifetime, change axes, performance requirements, or implementation shape are not yet fixed. Produces the smallest cohesive architecture and file plan; delegates confirmed local fixes to csharp-safe-patch and implementation-only work to unity-implement.
 allowed-tools:
   - Read
   - Write
   - Edit
   - Bash
 metadata:
-  version: "1.3.1"
+  version: "1.4.0"
 ---
 
 # Unity Architecture Design
@@ -324,3 +324,26 @@ Feature / System以上では必要に応じて次を返す。
 16. Serialization Contracts
 17. Validation Plan
 18. Re-evaluation Conditions
+
+## Checklist
+
+- [ ] ScopeをLocal Behavior / Feature / System等へ分類した
+- [ ] Existing OwnerとUnity Lifecycleで解決できないか先に確認した
+- [ ] KISS / YAGNIをPatternやSOLIDより先に適用した
+- [ ] 新規Typeと新規Fileに実在する責務・Owner・Split Reasonがある
+- [ ] Ownership / Lifetime / Serialization / Change Axisを必要な規模で確認した
+- [ ] 候補比較は構造選定が必要な場合だけ行った
+- [ ] ECS / Jobs / Burstは要件とEvidenceに基づいて候補化した
+- [ ] NamingはType NecessityとArchitecture決定の後に行った
+- [ ] Validation Planと再評価条件を明示した
+
+## Common mistakes
+
+- 最初にMVP / MVVM / Service / ManagerなどのPattern名を選び、問題へ後付けする。
+- Local BehaviorへSystem級の層、Watcher、Profile、Interfaceを追加する。
+- 将来使うかもしれないという理由だけで新規Typeや抽象化を増やす。
+- SRPをProperty単位のType分割と解釈してファイル数を増やす。
+- Unity Lifecycleや既存Callbackで解決できるのに`Update` Pollingを追加する。
+- GameObject Baselineや実測なしでECSを性能改善として確定する。
+- Architecture判断前にType名を固定し、不要なTypeを命名だけで正当化する。
+- Editor上の設計成立だけでSerialization、Player、実機の互換性まで保証する。
