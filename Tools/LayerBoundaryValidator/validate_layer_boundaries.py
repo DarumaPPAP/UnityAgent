@@ -194,9 +194,19 @@ def validate(root: Path = ROOT) -> list[str]:
         else:
             script_text = bootstrap_script_path.read_text(encoding="utf-8")
             script_folded = script_text.casefold()
-            for required in ("SHA256SUMS.txt", "Get-FileHash", '"--user"', "UNITY_AGENT_CONTROL_PLANE"):
+            for required in (
+                "SHA256SUMS.txt",
+                "Get-FileHash",
+                '"-m", "venv"',
+                "LocalApplicationData",
+                "UnityAgent\\ControlPlane\\",
+                "UnityAgent\\bin",
+                "UNITY_AGENT_CONTROL_PLANE",
+            ):
                 if required not in script_text:
                     errors.append("Control Plane bootstrap script is missing trust/install guard: " + required)
+            if '"--user"' in script_text:
+                errors.append("Control Plane bootstrap must use an isolated runtime instead of pip --user")
             for forbidden in ("codex plugin", "unity-artist", "main/scripts/install.ps1"):
                 if forbidden in script_folded:
                     errors.append("Control Plane bootstrap script exceeds its bootstrap-only scope: " + forbidden)

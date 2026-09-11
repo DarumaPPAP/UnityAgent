@@ -105,6 +105,42 @@ jobs:
           print("Checksum parser hardening validation passed.")
           PY
 
+      - name: Validate managed Control Plane and Codex Desktop discovery
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          installers = [
+              Path("scripts/install.ps1"),
+              Path("Packages/com.darumappap.unity-agent/Editor/Bootstrap~/install-control-plane.ps1"),
+          ]
+          for path in installers:
+              text = path.read_text(encoding="utf-8")
+              required = (
+                  "LocalApplicationData",
+                  "UnityAgent\\ControlPlane\\",
+                  '"-m", "venv"',
+                  "UnityAgent\\bin",
+                  "UNITY_AGENT_CONTROL_PLANE",
+                  "--disable-pip-version-check",
+              )
+              for token in required:
+                  if token not in text:
+                      raise SystemExit(f"{path} is missing managed Control Plane contract: {token}")
+              if '"--user"' in text:
+                  raise SystemExit(f"{path} must not install the Control Plane with pip --user")
+
+          resolver = Path("Packages/com.darumappap.unity-agent/Editor/UnityAgentControlPlanePathResolver.cs").read_text(encoding="utf-8")
+          if "UnityAgent LocalAppData runtime" not in resolver or 'Path.Combine(localAppData, "UnityAgent", "ControlPlane")' not in resolver:
+              raise SystemExit("Control Plane resolver must prefer the managed LocalAppData runtime")
+
+          codex = Path("Packages/com.darumappap.unity-agent/Editor/UnityAgentCodexPathResolver.cs").read_text(encoding="utf-8")
+          for token in ("Codex Desktop managed runtime", '".codex", "packages", "standalone", "releases"', '"Programs", "OpenAI", "Codex", "bin"'):
+              if token not in codex:
+                  raise SystemExit(f"Codex resolver is missing desktop runtime discovery: {token}")
+          print("Managed runtime and Codex Desktop discovery validation passed.")
+          PY
+
       - name: Enforce Skill authoring quality
         run: python Tools/SkillValidator/validate_skills.py --strict
 
@@ -183,6 +219,18 @@ jobs:
         shell: pwsh
         run: |
           & "Packages/com.darumappap.unity-agent/Editor/Bootstrap~/install-control-plane.ps1" -ReleaseTag "v0.0.6-beta"
+          $controlPlane = [Environment]::GetEnvironmentVariable("UNITY_AGENT_CONTROL_PLANE", "User")
+          if (-not $controlPlane) { throw "UNITY_AGENT_CONTROL_PLANE was not persisted." }
+          $expectedRoot = Join-Path $env:LOCALAPPDATA "UnityAgent\ControlPlane\v0.0.6-beta\venv\Scripts"
+          if (-not $controlPlane.StartsWith($expectedRoot, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Control Plane was not installed into the managed LocalAppData runtime: $controlPlane"
+          }
+          if ($controlPlane -match 'AppData\\Roaming\\Python') { throw "Legacy pip --user path is still in use: $controlPlane" }
+          if (-not (Test-Path -LiteralPath $controlPlane)) { throw "Managed Control Plane executable is missing: $controlPlane" }
+          $shim = Join-Path $env:LOCALAPPDATA "UnityAgent\bin\unity-agent.cmd"
+          if (-not (Test-Path -LiteralPath $shim)) { throw "Stable unity-agent shim is missing: $shim" }
+          & $controlPlane --help | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "Managed Control Plane help verification failed." }
 
       - name: Bootstrap published v0.0.6 through stable installer
         shell: pwsh
@@ -190,3 +238,8 @@ jobs:
           UNITY_AGENT_TAG: v0.0.6-beta
         run: |
           & "scripts/install.ps1"
+          $controlPlane = [Environment]::GetEnvironmentVariable("UNITY_AGENT_CONTROL_PLANE", "User")
+          if (-not $controlPlane) { throw "Stable installer did not persist UNITY_AGENT_CONTROL_PLANE." }
+          if ($controlPlane -match 'AppData\\Roaming\\Python') { throw "Stable installer regressed to pip --user: $controlPlane" }
+          & $controlPlane --help | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "Stable installer Control Plane verification failed." }

@@ -8,7 +8,7 @@ using UnityEditor;
 namespace DarumaPPAP.UnityAgent.Editor
 {
     /// <summary>
-    /// Resolves the Codex CLI without relying only on the PATH inherited by Unity Hub.
+    /// Resolves the Codex Local runtime without relying only on the PATH inherited by Unity Hub.
     /// Discovery is intentionally read-only. Executable validation belongs to the
     /// Control Plane / Installer Provider so the Entry Layer never executes Codex directly.
     /// </summary>
@@ -35,7 +35,7 @@ namespace DarumaPPAP.UnityAgent.Editor
             var fullPath = Path.GetFullPath(path.Trim());
             if (!File.Exists(fullPath))
             {
-                error = "選択したCodex CLIが存在しません: " + fullPath;
+                error = "選択したCodex Local runtimeが存在しません: " + fullPath;
                 return false;
             }
 
@@ -58,12 +58,12 @@ namespace DarumaPPAP.UnityAgent.Editor
                 var overridePath = GetOverride();
                 if (File.Exists(overridePath))
                 {
-                    source = "Manual override";
+                    source = IsDesktopManagedRuntime(overridePath) ? "Codex Desktop managed runtime" : "Manual override";
                     return Path.GetFullPath(overridePath);
                 }
 
                 source = "Manual override";
-                diagnostic = "保存されたCodex CLI Pathが無効です。『Override解除』または『参照...』を使用してください。";
+                diagnostic = "保存されたCodex Local runtime Pathが無効です。『Override解除』または『参照...』を使用してください。";
                 return null;
             }
 
@@ -78,8 +78,20 @@ namespace DarumaPPAP.UnityAgent.Editor
                 return Path.GetFullPath(candidate.Path);
             }
 
-            diagnostic = "Codex CLIを検出できませんでした。PATH、npm/NVMの一般的な配置先、環境変数を確認しました。";
+            diagnostic = "Codex Local runtimeを検出できませんでした。Codex Desktop managed runtime、PATH、npm/NVMの一般的な配置先、環境変数を確認しました。";
             return null;
+        }
+
+        internal static bool IsDesktopManagedRuntime(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return false;
+            }
+
+            var normalized = path.Replace('/', '\\');
+            return normalized.IndexOf("\\.codex\\packages\\standalone\\releases\\", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   normalized.IndexOf("\\Programs\\OpenAI\\Codex\\", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private static IEnumerable<(string Path, string Source)> EnumerateCandidates()
@@ -100,6 +112,11 @@ namespace DarumaPPAP.UnityAgent.Editor
                 var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) ?? string.Empty;
                 var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles) ?? string.Empty;
                 var nvmSymlink = Environment.GetEnvironmentVariable("NVM_SYMLINK") ?? string.Empty;
+
+                foreach (var candidate in WindowsDesktopRuntimeCandidates(home, localAppData))
+                {
+                    yield return candidate;
+                }
 
                 foreach (var path in WindowsCandidates(appData, localAppData, home, programFiles, nvmSymlink))
                 {
@@ -141,6 +158,49 @@ namespace DarumaPPAP.UnityAgent.Editor
             }
         }
 
+        private static IEnumerable<(string Path, string Source)> WindowsDesktopRuntimeCandidates(string home, string localAppData)
+        {
+            if (!string.IsNullOrWhiteSpace(localAppData))
+            {
+                var appBin = Path.Combine(localAppData, "Programs", "OpenAI", "Codex", "bin");
+                foreach (var fileName in WindowsExecutableNames())
+                {
+                    yield return (Path.Combine(appBin, fileName), "Codex Desktop installation");
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(home))
+            {
+                yield break;
+            }
+
+            var releasesRoot = Path.Combine(home, ".codex", "packages", "standalone", "releases");
+            if (!Directory.Exists(releasesRoot))
+            {
+                yield break;
+            }
+
+            IEnumerable<string> releases;
+            try
+            {
+                releases = Directory.EnumerateDirectories(releasesRoot)
+                    .OrderByDescending(path => path, StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+            }
+            catch
+            {
+                yield break;
+            }
+
+            foreach (var release in releases)
+            {
+                foreach (var fileName in WindowsExecutableNames())
+                {
+                    yield return (Path.Combine(release, "bin", fileName), "Codex Desktop managed runtime");
+                }
+            }
+        }
+
         private static IEnumerable<string> WindowsCandidates(
             string appData,
             string localAppData,
@@ -159,7 +219,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                          string.IsNullOrWhiteSpace(nvmSymlink) ? null : nvmSymlink,
                      }.Where(value => !string.IsNullOrWhiteSpace(value)))
             {
-                foreach (var fileName in new[] { "codex.cmd", "codex.exe", "codex.bat", "codex.ps1", "codex" })
+                foreach (var fileName in WindowsExecutableNames())
                 {
                     yield return Path.Combine(root, fileName);
                 }
@@ -196,7 +256,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                 }
 
                 var directory = rawDirectory.Trim();
-                foreach (var fileName in new[] { "codex.cmd", "codex.exe", "codex.bat", "codex.ps1", "codex" })
+                foreach (var fileName in WindowsExecutableNames())
                 {
                     yield return Path.Combine(directory, fileName);
                 }
@@ -218,6 +278,15 @@ namespace DarumaPPAP.UnityAgent.Editor
                     yield return Path.Combine(rawDirectory.Trim(), executable);
                 }
             }
+        }
+
+        private static IEnumerable<string> WindowsExecutableNames()
+        {
+            yield return "codex.exe";
+            yield return "codex.cmd";
+            yield return "codex.bat";
+            yield return "codex.ps1";
+            yield return "codex";
         }
     }
 }
