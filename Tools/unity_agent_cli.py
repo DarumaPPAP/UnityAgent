@@ -16,6 +16,13 @@ if str(ROOT) not in sys.path:
 from ControlPlane.unity_agent_control_plane import UnityAgentControlPlane
 from Runtime.Tooling.Providers.Installer.installer_provider import InstallerProvider
 
+PRODUCTS = (
+    "official_unity_cli",
+    "unity_artist_cli",
+    "codex_cli",
+    "unity_agent_codex_plugin",
+)
+
 
 def _fingerprint() -> dict[str, str]:
     def digest(relative: str) -> str:
@@ -55,8 +62,9 @@ def _parse_args() -> argparse.Namespace:
         subparser = subparsers.add_parser(command)
         subparser.add_argument("--operation", choices=("doctor", "plan", "apply"), default=command if command == "doctor" else "plan")
         subparser.add_argument("--project-path", required=True)
-        subparser.add_argument("--product", action="append", choices=("official_unity_cli", "unity_artist_cli"), dest="products")
+        subparser.add_argument("--product", action="append", choices=PRODUCTS, dest="products")
         subparser.add_argument("--channel", default="0.0.1-beta")
+        subparser.add_argument("--entry-point", choices=("unity_ui", "codex_plugin"), default="codex_plugin")
         subparser.add_argument("--approval-ref")
         subparser.add_argument("--expected-plan-id")
         subparser.add_argument("--approved-plan", type=Path)
@@ -96,7 +104,7 @@ def main() -> int:
     installer = InstallerProvider(project_root)
     plane = UnityAgentControlPlane(args.state_root)
     result = plane.setup(
-        "codex_plugin",
+        args.entry_point,
         request,
         executors={"installer": installer.execute},
         definition_fingerprint=_fingerprint(),
