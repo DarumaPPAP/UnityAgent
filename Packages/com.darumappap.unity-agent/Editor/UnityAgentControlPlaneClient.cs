@@ -96,7 +96,7 @@ namespace DarumaPPAP.UnityAgent.Editor
 
         private static string Quote(string value)
         {
-            return "\"" + (value ?? string.Empty).Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
+            return "\"" + (value ?? string.Empty).Replace("\"", "\\\"") + "\"";
         }
     }
 }
