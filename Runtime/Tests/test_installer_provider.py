@@ -51,14 +51,14 @@ class InstallerProviderTests(unittest.TestCase):
             {
                 "project_root": str(ROOT),
                 "plan_id": "plan-test",
-                "channel": "0.0.2-beta",
+                "channel": "0.0.3-beta",
                 "install_root": str(self.install_root),
                 "actions": [{"product": "unity_artist_cli", "action": "install_then_verify"}],
             },
             download_fn=download,
         )
         self.assertEqual(result["status"], "passed")
-        self.assertEqual(result["channel"], "0.0.2-beta")
+        self.assertEqual(result["channel"], "0.0.3-beta")
         self.assertEqual(result["entries"][0]["version"], "0.0.1-beta")
         self.assertTrue((self.install_root / "unity-artist.exe").is_file())
         self.assertEqual(result["install_receipt"]["entries"][0]["sha256"], f"sha256:{digest}")
@@ -76,7 +76,7 @@ class InstallerProviderTests(unittest.TestCase):
                 {
                     "project_root": str(ROOT),
                     "plan_id": "plan-unsafe",
-                    "channel": "0.0.2-beta",
+                    "channel": "0.0.3-beta",
                     "install_root": str(self.install_root),
                     "actions": [{"product": "unity_artist_cli", "action": "install_then_verify"}],
                 },
@@ -97,7 +97,7 @@ class InstallerProviderTests(unittest.TestCase):
                         "pluginId": "unity-agent@unity-agent",
                         "name": "unity-agent",
                         "marketplaceName": "unity-agent",
-                        "version": "0.0.2-beta",
+                        "version": "0.0.3-beta",
                         "installed": True,
                         "enabled": True,
                         "installedPath": "C:/Users/test/.codex/plugins/unity-agent",
@@ -108,7 +108,7 @@ class InstallerProviderTests(unittest.TestCase):
 
         result = observe_codex_plugin("C:/Tools/codex.exe", runner=runner)
         self.assertEqual(result["status"], "verified")
-        self.assertEqual(result["version"], "0.0.2-beta")
+        self.assertEqual(result["version"], "0.0.3-beta")
 
     def test_codex_plugin_install_adds_pinned_marketplace_and_verifies(self) -> None:
         calls: list[list[str]] = []
@@ -132,7 +132,7 @@ class InstallerProviderTests(unittest.TestCase):
                             "pluginId": "unity-agent@unity-agent",
                             "name": "unity-agent",
                             "marketplaceName": "unity-agent",
-                            "version": "0.0.2-beta",
+                            "version": "0.0.3-beta",
                             "installed": True,
                             "enabled": True,
                             "installedPath": "C:/Users/test/.codex/plugins/unity-agent",
@@ -147,7 +147,7 @@ class InstallerProviderTests(unittest.TestCase):
         self.assertIn(
             [
                 "C:/Tools/codex.exe", "plugin", "marketplace", "add",
-                "DarumaPPAP/UnityAgent", "--ref", "v0.0.2-beta", "--json",
+                "DarumaPPAP/UnityAgent", "--ref", "v0.0.3-beta", "--json",
             ],
             calls,
         )
@@ -182,7 +182,7 @@ class InstallerProviderTests(unittest.TestCase):
         plan = provider.plan({
             "project_root": str(ROOT),
             "products": ["unity_agent_codex_plugin"],
-            "channel": "0.0.2-beta",
+            "channel": "0.0.3-beta",
             "install_root": None,
         })
         self.assertEqual(plan["status"], "unavailable")
