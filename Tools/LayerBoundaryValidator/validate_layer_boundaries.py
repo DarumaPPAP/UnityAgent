@@ -28,7 +28,7 @@ EXPECTED_EDGES = {
     ("provider_layer", "evidence_state", "structured_result_capture"),
 }
 FORBIDDEN_ENTRY_TEXT = ("unity artist", "unity-artist")
-CANONICAL_VERSION = "0.0.5-beta"
+CANONICAL_VERSION = "0.0.6-beta"
 _GUID_PATTERN = re.compile(r"^guid:\s*([0-9a-f]{32})$", re.MULTILINE)
 
 
@@ -144,6 +144,8 @@ def validate(root: Path = ROOT) -> list[str]:
 
         codex_resolver_path = package_path.parent / "Editor/UnityAgentCodexPathResolver.cs"
         control_plane_resolver_path = package_path.parent / "Editor/UnityAgentControlPlanePathResolver.cs"
+        bootstrap_path = package_path.parent / "Editor/UnityAgentControlPlaneBootstrap.cs"
+        bootstrap_script_path = package_path.parent / "Editor/Bootstrap~/install-control-plane.ps1"
         setup_window_path = package_path.parent / "Editor/UnityAgentSetupWindow.cs"
         control_plane_client_path = package_path.parent / "Editor/UnityAgentControlPlaneClient.cs"
 
@@ -172,12 +174,43 @@ def validate(root: Path = ROOT) -> list[str]:
             if "environmentvariabletarget.user" not in resolver_text:
                 errors.append("Control Plane path resolver must inspect the persisted User environment")
 
+        if not bootstrap_path.is_file():
+            errors.append("UnityAgent Control Plane bootstrap runner is missing")
+        else:
+            bootstrap_text = bootstrap_path.read_text(encoding="utf-8")
+            bootstrap_folded = bootstrap_text.casefold()
+            if f'internal const string Channel = "{CANONICAL_VERSION}"' not in bootstrap_text:
+                errors.append("Control Plane bootstrap channel must match the canonical version")
+            if f'internal const string ReleaseTag = "v{CANONICAL_VERSION}"' not in bootstrap_text:
+                errors.append("Control Plane bootstrap release tag must match the canonical version")
+            if "PackageInfo.FindForAssembly" not in bootstrap_text or "Bootstrap~" not in bootstrap_text:
+                errors.append("Control Plane bootstrap must execute the package-local pinned bootstrap script")
+            for forbidden in ("codex plugin", "unity-artist", "unity artist"):
+                if forbidden in bootstrap_folded:
+                    errors.append("Control Plane bootstrap must not mutate Providers or Codex directly: " + forbidden)
+
+        if not bootstrap_script_path.is_file():
+            errors.append("UnityAgent package-local Control Plane bootstrap script is missing")
+        else:
+            script_text = bootstrap_script_path.read_text(encoding="utf-8")
+            script_folded = script_text.casefold()
+            for required in ("SHA256SUMS.txt", "Get-FileHash", '"--user"', "UNITY_AGENT_CONTROL_PLANE"):
+                if required not in script_text:
+                    errors.append("Control Plane bootstrap script is missing trust/install guard: " + required)
+            for forbidden in ("codex plugin", "unity-artist", "main/scripts/install.ps1"):
+                if forbidden in script_folded:
+                    errors.append("Control Plane bootstrap script exceeds its bootstrap-only scope: " + forbidden)
+
         if setup_window_path.is_file():
             setup_text = setup_window_path.read_text(encoding="utf-8")
             if "UnityAgentCodexPathResolver.Resolve" not in setup_text:
                 errors.append("UnityAgent Setup Window must use the canonical Codex path resolver")
             if "UnityAgentControlPlanePathResolver.Resolve" not in setup_text:
                 errors.append("UnityAgent Setup Window must use the canonical Control Plane path resolver")
+            if "UnityAgentControlPlaneBootstrap.Start" not in setup_text:
+                errors.append("UnityAgent Setup Window must expose the bounded Control Plane bootstrap path")
+            if "Install Control Plane" not in setup_text:
+                errors.append("UnityAgent Setup Window must present an explicit Control Plane bootstrap action")
             if 'hostCommand = "unity-agent"' in setup_text:
                 errors.append("UnityAgent Setup Window must not fall back to a bare unity-agent command")
 
