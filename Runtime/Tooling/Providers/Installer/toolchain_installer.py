@@ -16,6 +16,8 @@ from Runtime.Tooling.Providers.Installer.release_installer import (
     install_plan as install_release_plan,
 )
 
+CHANNEL = "0.0.2-beta"
+
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -93,7 +95,7 @@ def install_toolchain_plan(
     status = "passed" if entries and all(
         str(entry.get("status")) in {"installed", "verified"} for entry in entries
     ) else "unavailable"
-    channel = str(plan.get("channel") or "0.0.1-beta")
+    channel = str(plan.get("channel") or CHANNEL)
     return {
         "schema_version": "1.0",
         "operation": "apply",

@@ -23,7 +23,7 @@ properties:
     minItems: 1
     uniqueItems: true
     items: {enum: [official_unity_cli, unity_artist_cli, codex_cli, unity_agent_codex_plugin]}
-  channel: {const: "0.0.1-beta"}
+  channel: {const: "0.0.2-beta"}
   non_interactive: {type: boolean}
   approval_ref: {type: [string, 'null']}
   expected_plan_id: {type: [string, 'null']}

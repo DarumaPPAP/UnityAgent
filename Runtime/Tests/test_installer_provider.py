@@ -51,12 +51,15 @@ class InstallerProviderTests(unittest.TestCase):
             {
                 "project_root": str(ROOT),
                 "plan_id": "plan-test",
+                "channel": "0.0.2-beta",
                 "install_root": str(self.install_root),
                 "actions": [{"product": "unity_artist_cli", "action": "install_then_verify"}],
             },
             download_fn=download,
         )
         self.assertEqual(result["status"], "passed")
+        self.assertEqual(result["channel"], "0.0.2-beta")
+        self.assertEqual(result["entries"][0]["version"], "0.0.1-beta")
         self.assertTrue((self.install_root / "unity-artist.exe").is_file())
         self.assertEqual(result["install_receipt"]["entries"][0]["sha256"], f"sha256:{digest}")
         self.assertEqual(len(urls), 2)
@@ -73,6 +76,7 @@ class InstallerProviderTests(unittest.TestCase):
                 {
                     "project_root": str(ROOT),
                     "plan_id": "plan-unsafe",
+                    "channel": "0.0.2-beta",
                     "install_root": str(self.install_root),
                     "actions": [{"product": "unity_artist_cli", "action": "install_then_verify"}],
                 },
@@ -90,10 +94,10 @@ class InstallerProviderTests(unittest.TestCase):
                 0,
                 json.dumps([
                     {
-                        "pluginId": "unity-agent@personal",
+                        "pluginId": "unity-agent@unity-agent",
                         "name": "unity-agent",
-                        "marketplaceName": "personal",
-                        "version": "0.0.1-beta",
+                        "marketplaceName": "unity-agent",
+                        "version": "0.0.2-beta",
                         "installed": True,
                         "enabled": True,
                         "installedPath": "C:/Users/test/.codex/plugins/unity-agent",
@@ -104,7 +108,7 @@ class InstallerProviderTests(unittest.TestCase):
 
         result = observe_codex_plugin("C:/Tools/codex.exe", runner=runner)
         self.assertEqual(result["status"], "verified")
-        self.assertEqual(result["version"], "0.0.1-beta")
+        self.assertEqual(result["version"], "0.0.2-beta")
 
     def test_codex_plugin_install_adds_pinned_marketplace_and_verifies(self) -> None:
         calls: list[list[str]] = []
@@ -117,18 +121,18 @@ class InstallerProviderTests(unittest.TestCase):
             if args[2:5] == ["marketplace", "list", "--json"]:
                 return CommandResult(0, "[]", "")
             if args[2:5] == ["marketplace", "add", "DarumaPPAP/UnityAgent"]:
-                return CommandResult(0, json.dumps({"name": "personal"}), "")
-            if args[2:4] == ["add", "unity-agent@personal"]:
-                return CommandResult(0, json.dumps({"pluginId": "unity-agent@personal"}), "")
+                return CommandResult(0, json.dumps({"name": "unity-agent"}), "")
+            if args[2:4] == ["add", "unity-agent@unity-agent"]:
+                return CommandResult(0, json.dumps({"pluginId": "unity-agent@unity-agent"}), "")
             if args[2:4] == ["list", "--json"]:
                 return CommandResult(
                     0,
                     json.dumps([
                         {
-                            "pluginId": "unity-agent@personal",
+                            "pluginId": "unity-agent@unity-agent",
                             "name": "unity-agent",
-                            "marketplaceName": "personal",
-                            "version": "0.0.1-beta",
+                            "marketplaceName": "unity-agent",
+                            "version": "0.0.2-beta",
                             "installed": True,
                             "enabled": True,
                             "installedPath": "C:/Users/test/.codex/plugins/unity-agent",
@@ -143,12 +147,12 @@ class InstallerProviderTests(unittest.TestCase):
         self.assertIn(
             [
                 "C:/Tools/codex.exe", "plugin", "marketplace", "add",
-                "DarumaPPAP/UnityAgent", "--ref", "v0.0.1-beta", "--json",
+                "DarumaPPAP/UnityAgent", "--ref", "v0.0.2-beta", "--json",
             ],
             calls,
         )
         self.assertIn(
-            ["C:/Tools/codex.exe", "plugin", "add", "unity-agent@personal", "--json"],
+            ["C:/Tools/codex.exe", "plugin", "add", "unity-agent@unity-agent", "--json"],
             calls,
         )
 
@@ -162,7 +166,7 @@ class InstallerProviderTests(unittest.TestCase):
                     0,
                     json.dumps([
                         {
-                            "name": "personal",
+                            "name": "unity-agent",
                             "source": {"url": "https://github.com/Other/PluginRepo", "ref": "main"},
                         }
                     ]),
@@ -178,7 +182,7 @@ class InstallerProviderTests(unittest.TestCase):
         plan = provider.plan({
             "project_root": str(ROOT),
             "products": ["unity_agent_codex_plugin"],
-            "channel": "0.0.1-beta",
+            "channel": "0.0.2-beta",
             "install_root": None,
         })
         self.assertEqual(plan["status"], "unavailable")

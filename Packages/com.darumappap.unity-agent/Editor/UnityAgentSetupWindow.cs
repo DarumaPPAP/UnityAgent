@@ -8,6 +8,7 @@ namespace DarumaPPAP.UnityAgent.Editor
 {
     internal sealed class UnityAgentSetupWindow : EditorWindow
     {
+        private const string CODEX_PLUGIN_SOURCE = "DarumaPPAP/UnityAgent@v0.0.2-beta";
         private static readonly string[] CODEX_PLUGIN_PRODUCTS = { "unity_agent_codex_plugin" };
         private static readonly string[] ALL_PRODUCTS =
         {
@@ -147,7 +148,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                 if (!EditorUtility.DisplayDialog(
                         "UnityAgent Codex Plugin",
                         "Codex CLIのユーザースコープへUnityAgent Pluginをインストールします。\n\n" +
-                        "Source: DarumaPPAP/UnityAgent@v0.0.1-beta\n" +
+                        "Source: " + CODEX_PLUGIN_SOURCE + "\n" +
                         "MutationはUnityAgent Control Plane / Installer Provider経由で実行されます。",
                         "インストール",
                         "キャンセル"))

@@ -22,6 +22,7 @@ PRODUCTS = (
     "codex_cli",
     "unity_agent_codex_plugin",
 )
+CHANNEL = "0.0.2-beta"
 
 
 def _fingerprint() -> dict[str, str]:
@@ -63,7 +64,7 @@ def _parse_args() -> argparse.Namespace:
         subparser.add_argument("--operation", choices=("doctor", "plan", "apply"), default=command if command == "doctor" else "plan")
         subparser.add_argument("--project-path", required=True)
         subparser.add_argument("--product", action="append", choices=PRODUCTS, dest="products")
-        subparser.add_argument("--channel", default="0.0.1-beta")
+        subparser.add_argument("--channel", default=CHANNEL)
         subparser.add_argument("--entry-point", choices=("unity_ui", "codex_plugin"), default="codex_plugin")
         subparser.add_argument("--approval-ref")
         subparser.add_argument("--expected-plan-id")
@@ -77,8 +78,8 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = _parse_args()
-    if args.channel != "0.0.1-beta":
-        raise SystemExit("only the 0.0.1-beta setup channel is supported")
+    if args.channel != CHANNEL:
+        raise SystemExit(f"only the {CHANNEL} setup channel is supported")
     project_root = Path(args.project_path).expanduser().resolve(strict=False)
     products = args.products or ["official_unity_cli", "unity_artist_cli"]
     request = {
@@ -96,8 +97,6 @@ def main() -> int:
     approved_plan = None
     if args.approved_plan:
         approved_plan = json.loads(args.approved_plan.read_text(encoding="utf-8"))
-        # Accept the complete Control Plane plan response saved from the CLI as
-        # well as the nested Provider plan object.
         if isinstance(approved_plan, dict) and isinstance(approved_plan.get("outcome"), dict):
             approved_plan = approved_plan["outcome"].get("provider_result", approved_plan)
 

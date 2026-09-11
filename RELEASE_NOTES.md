@@ -1,15 +1,40 @@
-# UnityAgent 0.0.1-beta
+# UnityAgent 0.0.2-beta
 
-UnityAgent 0.0.1-beta is the first beta release of the five-layer Unity automation architecture centered on a single UnityAgent Control Plane.
+UnityAgent 0.0.2-beta focuses on making the beta installable and testable from the Unity Editor while preserving the single-Control-Plane architecture.
 
-## Production surface
+## Highlights
 
-- UnityAgent remains the Architect / Commander / Loop Owner.
-- Unity UI and the Codex `unity-agent` plugin are entry surfaces only; they do not route directly to Providers.
-- Capability requests flow through Runtime Guard, ToolBroker, Resolver, Provider Registry, Dispatcher, Provider Adapter, ProviderResult, and Evidence normalization.
-- Official Unity CLI remains the first provider for supported project/editor/pipeline operations.
-- UnityArtistCLI is integrated as the specialist provider for visual art and cinematic workflows.
-- Setup and mutation remain approval-gated and fail closed when required evidence is unavailable.
+- UnityAgent Setup Window can inspect, install, and repair the Codex `unity-agent` plugin through the approval-gated Control Plane.
+- Codex Marketplace ID is now dedicated to UnityAgent: `unity-agent`.
+- The canonical Codex plugin identifier is now `unity-agent@unity-agent`.
+- The generic `personal` Marketplace name is no longer used by UnityAgent.
+- The public README now presents the recommended Unity-first setup flow and includes Unity, Codex, Release, CI, and MIT badges.
+- The repository is now explicitly distributed under the MIT License.
+- `main/scripts/install.ps1` resolves the newest published UnityAgent prerelease by default while still supporting an explicit `UNITY_AGENT_TAG` override.
+
+## Unity-first Codex setup
+
+The recommended Codex setup route is now:
+
+```text
+UnityAgent > Setup
+  ↓
+Codex Pluginをインストール / 修復
+  ↓
+UnityAgent Control Plane
+  ↓
+Setup Plan / Approval
+  ↓
+Installer Provider
+  ↓
+Codex CLI
+  ↓
+unity-agent@unity-agent
+  ↓
+InstallReceipt / Evidence
+```
+
+The Unity Entry Layer does not invoke `codex plugin ...` directly. The five-layer boundary remains enforced by validation.
 
 ## Distribution
 
@@ -20,19 +45,44 @@ This release publishes the following artifacts from the same immutable tag:
 - Python Control Plane wheel and source distribution
 - SHA-256 checksums for every published artifact
 
-The bundled marketplace pins UnityArtistCLI to `v0.0.1-beta` so this UnityAgent beta remains reproducible instead of following the moving `main` branch.
+## Provider pinning
 
-## Verification status
+UnityAgent `0.0.2-beta` keeps UnityArtistCLI pinned to the immutable `v0.0.1-beta` release.
 
-The merged migration passed the repository's canonical validation, runtime harness, persistence, policy/context, operations, eval, orchestration, production smoke, and production tool runtime checks. A live Unity 6000.6.0f1 Built-in route was exercised through UnityAgent -> UnityArtistCLI -> official Unity command -> Pipeline -> Editor.
+The UnityAgent release channel and Provider product versions are separate contracts:
+
+```text
+UnityAgent channel     = 0.0.2-beta
+UnityAgent Codex plugin = 0.0.2-beta
+UnityArtistCLI provider = 0.0.1-beta
+```
+
+This keeps the UnityAgent beta reproducible without pretending that every Provider must share the Control Plane version.
+
+## Safety and compatibility
+
+- Toolchain mutation remains `Plan -> Approval -> Apply -> Evidence`.
+- Unknown, unavailable, stale, or conflicting Marketplace states fail closed.
+- An existing unrelated Marketplace is never silently retargeted.
+- InstallReceipt and toolchain setup contracts are versioned with the UnityAgent release channel.
+- Published release artifacts remain immutable.
+
+## License
+
+UnityAgent is distributed under the MIT License. See `LICENSE` in the repository and release source archive.
 
 ## Beta limitations
 
-- This is a beta contract and breaking changes are still possible before GA.
-- UnityAgent-level live provider E2E coverage for Unity 6 URP/HDRP is not yet complete.
-- Unity 2022.3 completion remains dependent on compatible official Pipeline behavior; blocked rows must stay fail-closed rather than silently selecting an unapproved backend.
+- This is still a beta contract and breaking changes may occur before GA.
+- UnityArtistCLI remains on `v0.0.1-beta` until a separately validated provider release is published.
 - Release signing is not yet a GA-grade trust mechanism; beta artifacts are published with SHA-256 checksums.
 
 ## Version contract
 
-The canonical release version is `0.0.1-beta`. UPM and Codex plugin manifests use that exact value. The Python package uses the PEP 440 equivalent `0.0.1b0`.
+The canonical release version is `0.0.2-beta`.
+
+- UPM package: `0.0.2-beta`
+- Codex plugin: `0.0.2-beta`
+- Python package: `0.0.2b0`
+- Codex Marketplace: `unity-agent`
+- License: `MIT`

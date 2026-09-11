@@ -27,6 +27,7 @@ EXPECTED_EDGES = {
     ("provider_layer", "evidence_state", "structured_result_capture"),
 }
 FORBIDDEN_ENTRY_TEXT = ("unity artist", "unity-artist")
+CANONICAL_VERSION = "0.0.2-beta"
 
 
 def _load(path: Path) -> dict[str, Any]:
@@ -87,8 +88,8 @@ def validate(root: Path = ROOT) -> list[str]:
         else:
             if package.get("name") != "com.darumappap.unity-agent":
                 errors.append("UnityAgent UPM package name is not canonical")
-            if package.get("version") != "0.0.1-beta":
-                errors.append("UnityAgent UPM package version is not 0.0.1-beta")
+            if package.get("version") != CANONICAL_VERSION:
+                errors.append(f"UnityAgent UPM package version is not {CANONICAL_VERSION}")
         for path in sorted(package_path.parent.glob("Editor/*.cs")):
             text = path.read_text(encoding="utf-8").casefold()
             if "unity-artist" in text or "unity artist" in text:

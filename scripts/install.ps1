@@ -3,8 +3,8 @@
 # Recommended usage:
 #   irm https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/main/scripts/install.ps1 | iex
 #
-# The bootstrap URL stays on main, while the installed Control Plane comes from a
-# published GitHub Release and is verified against that release's SHA256SUMS.txt.
+# The bootstrap URL stays on main. By default it installs the newest published
+# UnityAgent prerelease. Set UNITY_AGENT_TAG to pin an immutable release explicitly.
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version 2.0
@@ -16,10 +16,14 @@ if ($PSVersionTable.PSVersion.Major -lt 5) {
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $repository = "DarumaPPAP/UnityAgent"
-$releaseTag = if ($env:UNITY_AGENT_TAG) { $env:UNITY_AGENT_TAG.Trim() } else { "v0.0.1-beta" }
+$requestedTag = if ($env:UNITY_AGENT_TAG) { $env:UNITY_AGENT_TAG.Trim() } else { $null }
+$headers = @{
+    "User-Agent" = "UnityAgent-Installer"
+    "Accept" = "application/vnd.github+json"
+}
 
-if ([string]::IsNullOrWhiteSpace($releaseTag) -or $releaseTag -notmatch '^v[A-Za-z0-9._-]+$') {
-    throw "UNITY_AGENT_TAG must be a release tag such as v0.0.1-beta."
+if ($requestedTag -and $requestedTag -notmatch '^v[A-Za-z0-9._-]+$') {
+    throw "UNITY_AGENT_TAG must be a release tag such as v0.0.2-beta."
 }
 
 function Resolve-Python {
@@ -65,17 +69,30 @@ if ($LASTEXITCODE -ne 0) {
 
 Invoke-Python -Python $python -Arguments @("-m", "pip", "--version")
 
-$releaseApi = "https://api.github.com/repos/$repository/releases/tags/$releaseTag"
-$headers = @{
-    "User-Agent" = "UnityAgent-Installer"
-    "Accept" = "application/vnd.github+json"
+if ($requestedTag) {
+    Write-Host "Resolving UnityAgent release $requestedTag..."
+    $releaseApi = "https://api.github.com/repos/$repository/releases/tags/$requestedTag"
+    $release = Invoke-RestMethod -Uri $releaseApi -Headers $headers -UseBasicParsing
+}
+else {
+    Write-Host "Resolving latest published UnityAgent prerelease..."
+    $releasesApi = "https://api.github.com/repos/$repository/releases?per_page=20"
+    $releases = @(Invoke-RestMethod -Uri $releasesApi -Headers $headers -UseBasicParsing)
+    $release = @($releases | Where-Object { -not $_.draft -and $_.prerelease }) | Select-Object -First 1
+    if (-not $release) {
+        throw "No published UnityAgent prerelease was found."
+    }
 }
 
-Write-Host "Resolving UnityAgent release $releaseTag..."
-$release = Invoke-RestMethod -Uri $releaseApi -Headers $headers -UseBasicParsing
+$releaseTag = [string]$release.tag_name
+if ([string]::IsNullOrWhiteSpace($releaseTag) -or $releaseTag -notmatch '^v[A-Za-z0-9._-]+$') {
+    throw "Resolved UnityAgent release returned an invalid tag."
+}
 if ($release.draft) {
     throw "Release $releaseTag is still a draft and cannot be installed."
 }
+
+Write-Host "Resolved UnityAgent $releaseTag."
 
 $wheelAsset = @($release.assets | Where-Object { $_.name -match '^unityagent_control_plane-.*\.whl$' }) | Select-Object -First 1
 $checksumAsset = @($release.assets | Where-Object { $_.name -eq 'SHA256SUMS.txt' }) | Select-Object -First 1
@@ -165,6 +182,8 @@ Write-Host "Control Plane: $($unityAgent.Source)"
 Write-Host "Python Scripts: $scriptsRoot"
 Write-Host ""
 Write-Host "Next:"
-Write-Host '  unity-agent doctor --project-path "C:\path\to\UnityProject" --format json --non-interactive'
+Write-Host '  1. Add the UnityAgent UPM package to your Unity project.'
+Write-Host '  2. Open UnityAgent > Setup.'
+Write-Host '  3. Use Codex Plugin install / repair from the UnityAgent window.'
 Write-Host ""
 Write-Host "Open a new PowerShell window if unity-agent is not immediately available in another terminal."
