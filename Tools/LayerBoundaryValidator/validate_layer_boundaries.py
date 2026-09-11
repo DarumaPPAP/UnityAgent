@@ -28,7 +28,7 @@ EXPECTED_EDGES = {
     ("provider_layer", "evidence_state", "structured_result_capture"),
 }
 FORBIDDEN_ENTRY_TEXT = ("unity artist", "unity-artist")
-CANONICAL_VERSION = "0.0.3-beta"
+CANONICAL_VERSION = "0.0.4-beta"
 _GUID_PATTERN = re.compile(r"^guid:\s*([0-9a-f]{32})$", re.MULTILINE)
 
 
