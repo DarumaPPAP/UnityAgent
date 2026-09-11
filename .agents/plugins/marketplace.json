@@ -1,7 +1,7 @@
 {
-  "name": "personal",
+  "name": "unity-agent",
   "interface": {
-    "displayName": "Personal"
+    "displayName": "UnityAgent"
   },
   "plugins": [
     {
