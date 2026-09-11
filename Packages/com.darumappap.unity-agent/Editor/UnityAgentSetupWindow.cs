@@ -8,7 +8,7 @@ namespace DarumaPPAP.UnityAgent.Editor
 {
     internal sealed class UnityAgentSetupWindow : EditorWindow
     {
-        private const string CODEX_PLUGIN_SOURCE = "DarumaPPAP/UnityAgent@v0.0.2-beta";
+        private const string CODEX_PLUGIN_SOURCE = "DarumaPPAP/UnityAgent@v0.0.3-beta";
         private static readonly string[] CODEX_PLUGIN_PRODUCTS = { "unity_agent_codex_plugin" };
         private static readonly string[] ALL_PRODUCTS =
         {
