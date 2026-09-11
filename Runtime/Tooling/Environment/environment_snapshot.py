@@ -59,6 +59,27 @@ class UnityCliSnapshot:
 
 
 @dataclass(frozen=True)
+class UnityArtistCliSnapshot:
+    """Observed UnityArtistCLI facts exposed to the existing Provider Resolver."""
+
+    available: TriState
+    version: str | None
+    executable_path: str | None
+    project_bound: TriState
+    package_installed: TriState
+    package_version: str | None
+    pipeline_reachable: TriState
+    unity_version: str | None
+    render_pipeline: str | None
+    support_tier: str | None
+    compatibility_backend: str | None
+    capabilities: list[str]
+    failure_class: Literal["unavailable", "unhealthy", "timeout", "unknown"] | None
+    binding_status: BindingStatus
+    bound_instance_id: str | None
+
+
+@dataclass(frozen=True)
 class PipelineSnapshot:
     installed: TriState
     reachable: TriState
@@ -106,6 +127,7 @@ class EnvironmentSnapshot:
     player_runtime: PlayerRuntimeSnapshot
     profile_hint: str | None
     binding_fingerprint: str
+    unity_artist_cli: UnityArtistCliSnapshot | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)

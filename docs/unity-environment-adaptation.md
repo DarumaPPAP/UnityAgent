@@ -1,6 +1,6 @@
 # Unity環境に応じたProduction Runtime適応
 
-UnityAgentはUnity CLIやMCPを必須依存にしません。
+UnityAgentはUnity CLIやUnityArtistCLIを必須依存にしません。UnityAgentはArchitect / Commander / Loop Ownerとして既存Runtimeを運用し、UnityArtistCLIはArtist / Cinematicのspecialist Provider（概念上のPlayer）です。現行境界は [UnityArtistCLI cutover](architecture/unity-artist-cli-cutover.md) にあります。
 
 **必要なCapabilityを先に決め、現在のEnvironment Snapshotから実行可能なProviderをRuntimeが解決します。**
 
@@ -10,8 +10,7 @@ UnityAgentはUnity CLIやMCPを必須依存にしません。
 
 ```text
 Unity CLIあり / なし
-MyUnityMCPあり / なし
-Coplay MCPあり / なし
+UnityArtistCLIあり / なし
 Unity Editorあり / なし
 Safe Mode
 Test Frameworkあり / なし
@@ -26,7 +25,7 @@ flowchart LR
     P[Project Root] --> E[Environment Snapshot]
     U[Unity Editor] --> E
     C[Unity CLI] --> E
-    M[MCP Providers] --> E
+    A[Artist Provider] --> E
     T[Test / Build Modules] --> E
     R[Player Runtime] --> E
     E --> B[Capability Resolver]
@@ -78,8 +77,8 @@ Player unavailable = false
 - Unity Editor running / Safe Mode / Project binding
 - Unity CLI availability / version
 - Pipeline installed / reachable
-- MyUnityMCP availability / Project binding / instance
-- Coplay MCP availability / Project binding / instance
+- UnityArtistCLI availability / version / Project binding / package / Pipeline / support tier
+- Legacy bridge observations（移行互換のみ）
 - Test Framework availability
 - requested Build Target / Build Module availability
 - Player Runtime reachability / instance
@@ -98,10 +97,10 @@ Canonical Schema:
 
 | Profile | 代表状態 |
 | --- | --- |
-| `FULL` | CLI / MCP / Editor / Player等が利用可能 |
-| `CLI_ONLY` | CLIあり、MCPなし |
-| `MCP_ONLY` | MCPあり、CLIなし |
-| `NATIVE_EDITOR` | CLI / MCPなし、Unity Editor executableあり |
+| `FULL` | CLI / Artist Provider / Editor / Player等が利用可能 |
+| `CLI_ONLY` | CLIあり、Artist Providerなし |
+| `MCP_ONLY` | legacy bridgeのみ（移行互換、現行Artist経路ではない） |
+| `NATIVE_EDITOR` | CLI / Artist Providerなし、Unity Editor executableあり |
 | `FILES_ONLY` | File / Git中心 |
 | `SAFE_MODE` | Editor Safe Mode |
 | `NO_EDITOR` | Unity Editor unavailable |
@@ -116,9 +115,9 @@ flowchart TD
     T --> C3[scene.inspect]
     T --> C4[player.observe]
 
-    C1 --> P1[File / MyUnityMCP]
+    C1 --> P1[File / Unity CLI]
     C2 --> P2[Unity CLI / Native Editor]
-    C3 --> P3[MyUnityMCP / safe CLI surface]
+    C3 --> P3[UnityArtistCLI / safe CLI surface]
     C4 --> P4[Player Runtime]
 ```
 
@@ -131,9 +130,9 @@ flowchart TD
 代表例:
 
 ```text
-project.inspect -> MyUnityMCP / File
+project.inspect -> Unity CLI / File
 project.test    -> Unity CLI
-scene.inspect   -> MyUnityMCP
+domain.workflow -> UnityArtistCLI when Artist facts are verified
 player.observe  -> Player Runtime
 ```
 
@@ -167,21 +166,21 @@ Scene Mutation用の安全なCommand Surfaceが無い場合、raw YAMLへ落と�
 
 ---
 
-## 7. MCP_ONLY
+## 7. Legacy bridge profile (migration only)
 
 ```text
 File Provider
 +
-MyUnityMCP / available MCP Provider
+Legacy bridge / available compatibility Provider
 ```
 
 例:
 
 ```text
 source.read      -> File
-scene.inspect    -> MyUnityMCP
-profiler.observe -> MyUnityMCP
-visual.capture   -> MyUnityMCP
+scene.inspect    -> legacy bridge only when explicitly running a migration fixture
+profiler.observe -> legacy bridge only when explicitly running a migration fixture
+visual.capture   -> UnityArtistCLI when supported; otherwise unavailable
 project.test     -> MCPに実行可能Capabilityが証明できなければunavailable
 ```
 
@@ -285,7 +284,7 @@ flowchart LR
 
 ```text
 scene.mutate
-MyUnityMCP unavailable
+legacy bridge unavailable
         ↓
 × raw .unity edit
 × raw .prefab edit
@@ -352,7 +351,20 @@ Completionは状況に応じて:
 
 ---
 
-## 15. Environment Regression Matrix
+## 15. Unity release matrix
+
+Artist Providerの正式Supportは次の4ケースに限定します。
+
+| Unity | Render Pipeline | Support tier | First transport |
+| --- | --- | --- | --- |
+| 2022.3 LTS | Built-in | primary | Official Unity CLI + Unity Pipeline |
+| Unity 6.x+ | Built-in | primary | Official Unity CLI + Unity Pipeline |
+| Unity 6.x+ | URP | primary | Official Unity CLI + Unity Pipeline |
+| Unity 6.x+ | HDRP | primary | Official Unity CLI + Unity Pipeline |
+
+2022.3 Built-inも実測Gateを通るまで別Backendへ切り替えません。2022.3 URP/HDRP、Unity 2023、URP 14–16はMutation前にunsupportedを返します。
+
+## 16. Environment Regression Matrix
 
 Production Cutoverでは代表EnvironmentをRegression Gateとして固定します。
 
@@ -377,12 +389,14 @@ PLAYER_UNAVAILABLE
 
 ---
 
-## 16. 最終原則
+## 17. 最終原則
 
 ```text
 UnityAgentはUnity CLIを要求しない。
-UnityAgentはMCPを要求しない。
+UnityAgentはArtist Providerを要求しない。
 UnityAgentはCapabilityを要求する。
+
+2022.3 Built-inはOfficial Unity CLI + Pipelineを第一候補にする。
 
 RuntimeがEnvironmentを観測し、
 現在安全に実行できるProviderだけを使う。

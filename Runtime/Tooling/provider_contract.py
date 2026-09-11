@@ -22,6 +22,7 @@ ALLOWED_PROJECT_BINDING = {
     "environment_bound",
     "player_instance",
 }
+ALLOWED_MANAGEMENT_OPERATIONS = {"doctor", "plan", "apply"}
 MAX_STRENGTH = 5
 
 
@@ -66,6 +67,10 @@ class ProviderDescriptor:
     environment_key: str
     safety_strength: int
     evidence_strength: int
+    qualifiers_supported: dict[str, tuple[str, ...]] | None = None
+    legacy: bool = False
+    production_enabled: bool = True
+    management_operations: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -110,6 +115,16 @@ def _string_list(value: Any, *, label: str, allowed: set[str] | None = None) -> 
         if unknown:
             raise ValueError(f"{label} contains unknown values: {sorted(unknown)}")
     return result
+
+
+def _optional_string_list(value: Any, *, label: str, allowed: set[str] | None = None) -> tuple[str, ...]:
+    if value is None:
+        return ()
+    if not isinstance(value, list):
+        raise ValueError(f"{label} must be a list")
+    if not value:
+        return ()
+    return _string_list(value, label=label, allowed=allowed)
 
 
 def _parse_offer(
@@ -157,6 +172,23 @@ def _parse_offer(
         environment_requirements=tuple(sorted(normalized_requirements)),
         scope_preservation=scope_preservation,
     )
+
+
+def _qualifiers_supported(value: Any, *, label: str) -> dict[str, tuple[str, ...]]:
+    """Normalize provider semantic qualifiers without making Runtime a planner."""
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ValueError(f"{label} must be a mapping")
+    normalized: dict[str, tuple[str, ...]] = {}
+    for key, raw_values in value.items():
+        if not isinstance(key, str) or not key.strip():
+            raise ValueError(f"{label} keys must be non-empty strings")
+        normalized[key] = _string_list(
+            raw_values,
+            label=f"{label}.{key}",
+        )
+    return normalized
 
 
 def parse_provider_registry(value: Any, *, root: Path = ROOT) -> ProviderRegistry:
@@ -226,10 +258,30 @@ def parse_provider_registry(value: Any, *, root: Path = ROOT) -> ProviderRegistr
             raise ValueError(f"{provider_id}: environment_key is required")
         safety_strength = _strength(raw.get("safety_strength"), label=f"{provider_id}.safety_strength")
         evidence_strength = _strength(raw.get("evidence_strength"), label=f"{provider_id}.evidence_strength")
+        qualifiers_supported = _qualifiers_supported(
+            raw.get("qualifiers_supported"),
+            label=f"{provider_id}.qualifiers_supported",
+        )
+        legacy = raw.get("legacy", False)
+        production_enabled = raw.get("production_enabled", True)
+        if not isinstance(legacy, bool):
+            raise ValueError(f"{provider_id}: legacy must be boolean")
+        if not isinstance(production_enabled, bool):
+            raise ValueError(f"{provider_id}: production_enabled must be boolean")
+
+        management_operations = _optional_string_list(
+            raw.get("management_operations"),
+            label=f"{provider_id}.management_operations",
+            allowed=ALLOWED_MANAGEMENT_OPERATIONS,
+        )
 
         raw_capabilities = raw.get("capabilities")
-        if not isinstance(raw_capabilities, dict) or not raw_capabilities:
-            raise ValueError(f"{provider_id}: capabilities must be a non-empty mapping")
+        if not isinstance(raw_capabilities, dict):
+            raise ValueError(f"{provider_id}: capabilities must be a mapping")
+        if not raw_capabilities and not management_operations:
+            raise ValueError(
+                f"{provider_id}: provider must declare capabilities or management_operations"
+            )
         unknown_capabilities = set(raw_capabilities) - known_capabilities
         if unknown_capabilities:
             raise ValueError(f"{provider_id}: unknown capabilities {sorted(unknown_capabilities)}")
@@ -252,6 +304,10 @@ def parse_provider_registry(value: Any, *, root: Path = ROOT) -> ProviderRegistr
             environment_key=environment_key,
             safety_strength=safety_strength,
             evidence_strength=evidence_strength,
+            qualifiers_supported=qualifiers_supported,
+            legacy=legacy,
+            production_enabled=production_enabled,
+            management_operations=management_operations,
         )
 
     for capability in known_capabilities:

@@ -140,7 +140,7 @@ class CapabilityResolverTests(unittest.TestCase):
             context=context,
         )
         self.assertEqual(test_result["provider_ref"], "unity_cli")
-        self.assertEqual(scene_result["provider_ref"], "myunitymcp")
+        self.assertEqual(scene_result["provider_ref"], "coplay_mcp")
 
     def test_cli_absence_allows_native_editor_legal_fallback(self):
         result = resolve_capability(
@@ -201,8 +201,9 @@ class CapabilityResolverTests(unittest.TestCase):
             self.snapshot(
                 cli=False,
                 myunity=False,
-                coplay=False,
-                myunity_binding="ambiguous_binding",
+                coplay=True,
+                myunity_binding="bound",
+                coplay_binding="ambiguous_binding",
             ),
             context=ResolutionContext(policy_allowed=True),
         )
@@ -252,7 +253,7 @@ class CapabilityResolverTests(unittest.TestCase):
             self.snapshot(),
             context=ResolutionContext(policy_allowed=True),
         )
-        self.assertEqual(result["provider_ref"], "myunitymcp")
+        self.assertEqual(result["provider_ref"], "file")
 
     def test_project_root_mismatch_is_fail_closed(self):
         request = self.request("project.inspect")
@@ -263,6 +264,64 @@ class CapabilityResolverTests(unittest.TestCase):
             context=ResolutionContext(policy_allowed=True),
         )
         self.assertEqual(result["status"], "unavailable")
+
+    def test_visual_artist_qualifier_resolves_artist_provider_before_legacy_surfaces(self):
+        snapshot = self.snapshot(cli=True, editor=True, myunity=True, coplay=True)
+        snapshot["unity_artist_cli"] = {
+            "available": True,
+            "version": "2.0.0",
+            "executable_path": "C:/Tools/unity-artist.exe",
+            "project_bound": True,
+            "package_installed": True,
+            "package_version": "2.0.0",
+            "pipeline_reachable": True,
+            "unity_version": "6000.3.12f1",
+            "render_pipeline": "builtin",
+            "support_tier": "primary",
+            "compatibility_backend": "builtin_editor_api",
+            "capabilities": ["visual_art.lookdev_plan"],
+            "failure_class": None,
+            "binding_status": "bound",
+            "bound_instance_id": "artist-1",
+        }
+        request = self.request("domain.workflow", preferred_surface="editor", approval_ref="approval-1")
+        request["qualifiers"] = {"domain": "visual_art", "workflow": "lighting"}
+        result = resolve_capability(
+            request,
+            snapshot,
+            context=ResolutionContext(policy_allowed=True, approval_complete=True),
+        )
+        self.assertEqual(result["status"], "resolved")
+        self.assertEqual(result["provider_ref"], "unity_artist_cli")
+
+    def test_artist_provider_rejects_unowned_semantic_qualifier(self):
+        snapshot = self.snapshot(cli=True, editor=True, myunity=True, coplay=True)
+        snapshot["unity_artist_cli"] = {
+            "available": True,
+            "version": "2.0.0",
+            "executable_path": "C:/Tools/unity-artist.exe",
+            "project_bound": True,
+            "package_installed": True,
+            "package_version": "2.0.0",
+            "pipeline_reachable": True,
+            "unity_version": "6000.3.12f1",
+            "render_pipeline": "builtin",
+            "support_tier": "primary",
+            "compatibility_backend": "builtin_editor_api",
+            "capabilities": [],
+            "failure_class": None,
+            "binding_status": "bound",
+            "bound_instance_id": "artist-1",
+        }
+        request = self.request("domain.workflow", approval_ref="approval-1")
+        request["qualifiers"] = {"domain": "visual_art", "workflow": "not_a_registered_workflow"}
+        result = resolve_capability(
+            request,
+            snapshot,
+            context=ResolutionContext(policy_allowed=True, approval_complete=True),
+        )
+        self.assertEqual(result["status"], "unsupported")
+        self.assertIsNone(result["provider_ref"])
 
 
 if __name__ == "__main__":

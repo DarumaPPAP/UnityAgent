@@ -1,0 +1,30 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:runtime:toolchain-setup-request
+title: ToolchainSetupRequest
+type: object
+additionalProperties: false
+required:
+  - schema_version
+  - request_id
+  - entry_point
+  - operation
+  - project_root
+  - products
+  - channel
+  - non_interactive
+properties:
+  schema_version: {const: "1.0"}
+  request_id: {type: string, minLength: 1, pattern: "^[A-Za-z0-9._-]+$"}
+  entry_point: {enum: [unity_ui, codex_plugin]}
+  operation: {enum: [doctor, plan, apply]}
+  project_root: {type: string, minLength: 1}
+  products:
+    type: array
+    minItems: 1
+    uniqueItems: true
+    items: {enum: [official_unity_cli, unity_artist_cli]}
+  channel: {const: "0.0.1-beta"}
+  non_interactive: {type: boolean}
+  approval_ref: {type: [string, 'null']}
+  expected_plan_id: {type: [string, 'null']}
+  install_root: {type: [string, 'null']}

@@ -37,6 +37,7 @@ Policy追加の前にKnowledge / Retrieval / Tool / Harness / Eval / Architectur
 | Actual Behavior / Golden / Regression | `Eval/Behavior/` / `Eval/Golden/` / `Tools/run_regression_gate.py` |
 | Local repository validation | `Tools/validate_all.py` |
 | Architecture boundaries / handoff | `docs/architecture/architecture.md` |
+| Five-layer dependency contract | `Specs/unityagent-layer-contract.yaml` / `Tools/LayerBoundaryValidator/validate_layer_boundaries.py` |
 | Local Unity project use | `docs/local-project-development.md` / `Templates/DevelopmentRequest.md` |
 
 ## Completion and invariants
@@ -45,3 +46,5 @@ Policy追加の前にKnowledge / Retrieval / Tool / Harness / Eval / Architectur
 - Unknown Project Fact / Bindingを推測で補完しない。legacy path fallbackやGolden期待値のProduction Prompt注入を行わない。
 - Static / Compile / Editor / Player / 実機 / Visual / Performanceの検証状態を分け、未観測は`not_observed`、利用不可は`unavailable`として報告する。
 - Goal達成、変更差分、実施した検証、残る制約を報告する。実行不能な必須Gateを成功扱いしない。
+- UI / CodexはProviderへ直接到達しない。必ずEntry → UnityAgent Control Plane → Capability / Policy / Resolver → Provider → Evidenceを通る。
+- Setupは `unity-agent doctor → setup plan → approval → setup apply` の順序で行い、InstallReceiptとEvidenceを残す。

@@ -23,7 +23,7 @@ from Runtime.Tooling.provider_registry import RuntimeProviderRegistry
 class ProviderRegistryTests(unittest.TestCase):
     def test_canonical_registry_is_valid_and_complete(self):
         registry = load_provider_registry()
-        self.assertEqual(len(registry.providers), 6)
+        self.assertEqual(len(registry.providers), 8)
         self.assertEqual(len(registry.capability_requirements), 15)
         runtime = RuntimeProviderRegistry(registry=registry)
         self.assertEqual(runtime.provider("myunitymcp").transport, "mcp")
@@ -31,6 +31,11 @@ class ProviderRegistryTests(unittest.TestCase):
             runtime.provider("unity_cli").capabilities["project.test"].priority,
             runtime.provider("unity_cli").capabilities["scene.inspect"].priority,
         )
+        self.assertEqual(
+            [provider.provider_id for provider in runtime.management_candidates("doctor")],
+            ["installer"],
+        )
+        self.assertEqual(runtime.provider("installer").capabilities, {})
 
     def test_duplicate_yaml_key_is_rejected(self):
         text = """\

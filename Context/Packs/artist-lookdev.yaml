@@ -1,0 +1,114 @@
+schema_version: "3.0"
+id: artist-lookdev
+primary_skill: .agents/skills/unity-artist-cli-routing/SKILL.md
+
+metadata:
+  type: context
+  title: UnityArtistCLI LookDev
+  summary:
+    - Route visual intent, LookDev, Lighting, Environment, Camera, Capture, Evaluation, and Refine work.
+    - Preserve UnityAgent approval, revision, evidence, and human visual acceptance boundaries.
+  purpose:
+    - Keep UnityArtistCLI focused on Artist-specific capabilities while generic Unity operations remain delegated.
+  decisions:
+    - id: artist-provider-is-semantic
+      label: Provider selection is resolved from domain.workflow qualifiers
+      source_ref: Context/Packs/artist-lookdev.yaml#rules
+    - id: official-cli-first
+      label: Official Unity CLI and Unity Pipeline remain the primary transport
+      source_ref: Context/Packs/artist-lookdev.yaml#rules
+  forbidden:
+    - id: generic-unity-crud
+      label: Generic GameObject and hierarchy CRUD must not enter the Artist surface
+      source_ref: Orchestration/Contracts/TaskContracts/artist-lookdev.yaml#prohibited_mutations
+    - id: unapproved-visual-mutation
+      label: Visual mutation without exact diff, revision, and approval is forbidden
+      source_ref: Orchestration/Contracts/TaskContracts/artist-lookdev.yaml#prohibited_mutations
+    - id: automatic-visual-acceptance
+      label: Capture cannot be treated as human visual acceptance
+      source_ref: Context/Packs/artist-lookdev.yaml#rules
+  related:
+    - id: visual-direction
+      relation: specializes
+      reason: Artist work starts from explicit visual intent and human review boundaries.
+      source_ref: Context/Packs/artist-lookdev.yaml#rules
+    - id: rendering-incident
+      relation: conditions
+      reason: Rendering constraints can add technical evidence requirements.
+      source_ref: Context/Packs/artist-lookdev.yaml#rules
+    - id: asset-data-change
+      relation: conditions
+      reason: Explicit scene or asset mutation inherits the asset safety contract.
+      source_ref: Context/Packs/artist-lookdev.yaml#rules
+  priority: critical
+  tags: [unity-artist, lookdev, lighting, environment, camera, visual-review]
+
+use_when:
+  - explicit visual intent requires LookDev, Lighting, Environment, Camera, Capture, Evaluation, or Refine
+  - the task must translate mood, atmosphere, composition, or continuity into an approval-gated Unity plan
+
+required:
+  - type: binding
+    name: visual_intent
+  - type: binding
+    name: project_root
+  - type: binding
+    name: exact_scene_or_asset_scope
+  - type: binding
+    name: reference_or_visual_definition
+  - type: repository_reference
+    path: .agents/skills/unity-artist-cli-routing/SKILL.md
+  - type: repository_reference
+    path: Runtime/Contracts/capability-request.schema.yaml
+  - type: repository_reference
+    path: Runtime/Tooling/provider_registry.yaml
+  - type: repository_reference
+    path: Context/Retrieval/Knowledge/visual/unity-artist-cli.yaml
+  - type: external_reference
+    repository: DarumaPPAP/UnityArtistCLI
+    path: Specs/UnityArtistCLI/spec.md
+  - type: context_include
+    context_id: visual-direction
+
+conditional:
+  technical_rendering_work:
+    - type: context_include
+      context_id: rendering-incident
+    - type: repository_reference
+      path: .agents/skills/unity-rendering/SKILL.md
+  scene_or_asset_mutation:
+    - type: context_include
+      context_id: asset-data-change
+  project_fallback:
+    - type: repository_reference
+      path: Specs/ProjectProfile.md
+
+excluded_by_default:
+  - generic GameObject and hierarchy operation details
+  - unsupported Unity 2022.3 URP/HDRP or Unity 2023 adapter details
+  - unselected Timeline or Cinemachine implementation internals
+  - human visual acceptance claims without a review decision
+
+rules:
+  context_does_not_select_provider: true
+  semantic_qualifiers_are_provider_independent: true
+  official_cli_pipeline_is_first_transport: true
+  unsupported_matrix_row_fails_before_mutation: true
+  project_profile_is_fallback_only: true
+  capture_is_technical_evidence_not_acceptance: true
+  exact_plan_revision_and_approval_precede_apply: true
+  automatic_save_is_forbidden: true
+
+limits:
+  initial_file_reads: 8
+  context_expansion_hops: 1
+  max_external_sources: 1
+
+output:
+  - semantic_visual_art_request
+  - visual_intent_and_reference_boundary
+  - selected_artist_capabilities
+  - exact_plan_and_diff
+  - expected_revision_and_approval_state
+  - capture_and_human_review_status
+  - unresolved_editor_pipeline_conditions

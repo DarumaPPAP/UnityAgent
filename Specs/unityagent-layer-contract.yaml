@@ -1,0 +1,77 @@
+schema_version: "1.0"
+kind: unityagent_five_layer_contract
+authority: UnityAgent
+architecture_id: unityagent-entry-control-capability-provider-evidence
+layers:
+  entry:
+    title: Entry Layer
+    owner: Unity UI / Codex Plugin
+    responsibilities:
+      - accept user intent and project selection
+      - present plans, results and evidence
+      - collect explicit approval
+    allowed_dependencies: [control_plane, evidence_state_read]
+    forbidden_dependencies: [capability_orchestration, provider_layer]
+  control_plane:
+    title: Control Plane
+    owner: UnityAgent
+    responsibilities:
+      - own run identity and lifecycle
+      - coordinate semantic handoff and long-lived state
+      - expose one entry-facing facade
+    allowed_dependencies: [capability_orchestration, evidence_state]
+    forbidden_dependencies: [provider_layer_direct]
+  capability_orchestration:
+    title: Capability & Orchestration
+    owner: existing UnityAgent Orchestration / Runtime Resolver
+    responsibilities:
+      - resolve meaning into provider-independent CapabilityRequest
+      - own ParentGraph, SubGraph, Node, Edge, Gate and Loop decisions
+      - enforce Policy and route through the existing Resolver
+    allowed_dependencies: [provider_layer, evidence_state]
+    forbidden_dependencies: [entry_layer, provider_selection_in_semantic_route]
+  provider_layer:
+    title: Provider Layer
+    owner: Official Unity CLI / UnityArtistCLI / Installer Provider
+    responsibilities:
+      - perform bounded external work
+      - return structured ProviderResult or management result
+      - never own semantic intent, Policy or durable truth
+    allowed_dependencies: [evidence_state]
+    forbidden_dependencies: [entry_layer, control_plane_semantic_replan]
+  evidence_state:
+    title: Evidence & State
+    owner: existing UnityAgent Persistence / Runtime Evidence Capture
+    responsibilities:
+      - persist run state, loop state, receipts and EvidenceRecord
+      - preserve provenance, fingerprints and reproducibility
+      - expose read-only projections to Entry
+    allowed_dependencies: []
+    forbidden_dependencies: [entry_layer_mutation, provider_selection]
+
+dependency_graph:
+  - {from: entry, to: control_plane, mode: request}
+  - {from: entry, to: evidence_state_read, mode: read_only_projection}
+  - {from: control_plane, to: capability_orchestration, mode: semantic_handoff}
+  - {from: control_plane, to: evidence_state, mode: run_and_evidence_persistence}
+  - {from: capability_orchestration, to: provider_layer, mode: resolved_dispatch}
+  - {from: capability_orchestration, to: evidence_state, mode: evidence_requirements}
+  - {from: provider_layer, to: evidence_state, mode: structured_result_capture}
+
+cross_layer_contracts:
+  entry_to_control_plane: Runtime/Contracts/entry-request.schema.yaml
+  unity_ui_entry_package: Packages/com.darumappap.unity-agent/package.json
+  capability_request: Runtime/Contracts/capability-request.schema.yaml
+  capability_resolution: Runtime/Contracts/capability-resolution.schema.yaml
+  provider_result: Runtime/Contracts/dispatch-result.schema.yaml
+  toolchain_setup: Runtime/Contracts/toolchain-setup-request.schema.yaml
+  install_receipt: Runtime/Contracts/install-receipt.schema.yaml
+  durable_evidence: Persistence/Contracts/evidence-record.schema.yaml
+
+invariants:
+  no_entry_to_provider: true
+  no_semantic_provider_selection: true
+  single_provider_registry: Runtime/Tooling/provider_registry.yaml
+  single_tool_broker: Runtime/Tooling/tool_broker.py
+  evidence_is_recorded_by_all_layers: true
+  ui_and_codex_never_dispatch_external_commands: true

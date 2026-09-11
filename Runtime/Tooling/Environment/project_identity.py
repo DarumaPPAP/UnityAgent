@@ -34,6 +34,16 @@ def canonicalize_project_root(
         normalized = ntpath.normpath(raw.replace("/", "\\"))
         if not ntpath.isabs(normalized):
             normalized = ntpath.abspath(normalized)
+        # Windows may present the same directory through an 8.3 short name
+        # (for example ``RENGAM~1``) or its long form. Resolve existing roots
+        # through the filesystem so project binding and scope checks agree.
+        try:
+            if os.path.exists(normalized):
+                normalized = os.path.realpath(normalized)
+        except OSError:
+            # Preserve the normalized lexical identity when the path cannot
+            # be probed; callers still receive a deterministic comparison key.
+            pass
         return normalized.replace("\\", "/").casefold()
 
     path = Path(raw).expanduser()

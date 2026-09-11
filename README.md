@@ -56,6 +56,28 @@ Eval measures / proposes
 
 詳細は [UnityAgent Architecture](docs/architecture/architecture.md) を参照してください。
 
+製品境界は、Entry Layer、Control Plane、Capability & Orchestration、Provider
+Layer、Evidence & Stateの5層です。依存方向と禁止依存は
+[`Specs/unityagent-layer-contract.yaml`](Specs/unityagent-layer-contract.yaml) に固定し、
+`Tools/validate_all.py` から自動検証します。Unity UI / Codex PluginはProviderを
+直接呼ばず、UnityAgent Control PlaneのSetup／Execution入口だけを呼びます。
+
+### Control Planeのローカル導入
+
+UnityAgentホストはリポジトリで `python -m pip install -e .` を実行すると
+`unity-agent` コマンドとして登録できます。Setupは次の順序で実行します。
+
+```text
+unity-agent doctor --project-path <project> --format json --non-interactive
+unity-agent setup --operation plan --project-path <project> --format json --non-interactive
+外部承認
+unity-agent setup --operation apply --project-path <project> --expected-plan-id <plan_id> --approval-ref <approval_ref> --approved-plan <approved_plan.json> --format json --non-interactive
+```
+
+CLIはInstaller Providerを直接選択せず、既存Runtime Provider RegistryとToolBrokerの
+management operationを通します。Unity UIの `UnityAgent/Setup` も同じControl Plane
+コマンドを呼び出します。
+
 ### MyResourceCenter参照はLocal-first
 
 個人運用では、MyResourceCenterやGoogle Driveへ通常の依頼ごとに接続しません。必要時に一度だけSourceを確認して生成した `myresourcecenter-reference-snapshot` を、`Context/Retrieval/Reference/reference_navigator.py` でローカル検索します。通常の質問は上位3〜5件だけをContextへ入れ、不具合は一度の候補検索から仮説と読み取り専用の検証計画を作成し、以後はUnity Projectの観測を優先します。
@@ -87,7 +109,9 @@ required_evidence:
 preferred_surface: live_editor
 ```
 
-`MyUnityMCPを使う`、`Unity CLIを使う`のようなProvider製品指定をSemantic Graphの正本にしません。
+UnityAgentはこの経路のArchitect / Commander / Loop Ownerです。Providerは既存のRegistry・Resolver・Dispatcher・Adapter・Evidence chainへ接続します。UnityArtistCLIは、その上でvisual art / cinematic Capabilityを実行するspecialist Provider（概念上のPlayer）です。新しいPlayer Frameworkや第二のRegistryは追加しません。
+
+`MyUnityMCPを使う`、`Unity CLIを使う`のようなProvider製品指定をSemantic Graphの正本にしません。Artist系要求は `domain.workflow` / `visual.capture` と `qualifiers.domain` / `qualifiers.workflow` で表現します。
 
 ### 実行経路
 
@@ -148,16 +172,17 @@ player.control       -> player.mutate
 
 ## 4. ProviderはOptional
 
-UnityAgentはUnity CLIやMCPを必須依存にしません。
+UnityAgentはUnity CLIやArtist Providerを必須依存にしません。環境事実を確認できたCapabilityだけを実行します。
 
 代表Provider:
 
 - File Provider
 - Native Unity Editor Provider
 - Unity CLI Provider
-- MyUnityMCP Provider
-- Coplay MCP candidate / bridge
+- UnityArtistCLI Provider（visual art / cinematic specialist）
 - Player Runtime Provider
+
+`myunitymcp` は履歴互換の legacy adapter としてRegistryに残りますが、`production_enabled: false` であり、現行のResolverからは選択されません。旧MCP経路は移行資料とタグ `v1.1.1` の再現用に限定します。
 
 RuntimeはTask開始時またはCapability実行前にEnvironment Snapshotを確認します。
 
@@ -194,7 +219,7 @@ Provider unavailable
 
 ```text
 scene.mutate
-MyUnityMCP unavailable
+Provider unavailable
         ↓
 × raw .unity YAML edit
 × arbitrary eval
@@ -211,7 +236,7 @@ Native Unity Editorが同じtest_execution Evidenceを満たす
 同一CapabilityとしてFallback
 ```
 
-MyUnityMCP Mutationでは既存Safety Contractを維持します。
+UnityArtistCLI Mutationでは既存Safety Contractを維持します。
 
 ```mermaid
 flowchart LR
@@ -221,6 +246,8 @@ flowchart LR
     R --> A[Approval]
     A --> AP[Apply]
 ```
+
+Visual / Cinematic mutationは `Inspect -> Prepare -> Exact Diff -> Expected Revision -> Approval -> Apply -> Evidence` を必須とし、Undo登録と未保存状態をEvidenceへ残します。
 
 ---
 

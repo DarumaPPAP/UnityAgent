@@ -1,6 +1,6 @@
 # ローカルUnity Project開発ガイド
 
-この文書は、UnityAgentをローカルUnity Projectへ接続して調査・実装・検証するときの**現在の標準運用**を説明します。
+この文書は、UnityAgentをローカルUnity Projectへ接続して調査・実装・検証するときの**現在の標準運用**を説明します。UnityArtistCLI cutoverの責務境界は [UnityArtistCLI cutover](architecture/unity-artist-cli-cutover.md) を正本とします。
 
 対象:
 
@@ -10,7 +10,7 @@
 - Scene / Asset操作
 - Build / Test
 - Player / Target Device観測
-- MyUnityMCP等のDomain Tool利用
+- UnityArtistCLIによるArtist / Cinematic workflow
 
 ---
 
@@ -149,7 +149,7 @@ Assets/Shaders/GPUCulling/**
 flowchart LR
     A[UnityAgent] -->|Policy / Orchestration / Runtime Rule| W[開発Workflow]
     P[Target Unity Project] -->|Scene / Prefab / C# / Shader / Settings| PRODUCT[製品]
-    M[MyUnityMCP] -->|Tool implementation / schema| TOOL[外部Provider]
+    A[UnityArtistCLI] -->|Artist capability / schema| TOOL[外部Provider]
     W --> PRODUCT
     TOOL --> W
 ```
@@ -176,12 +176,14 @@ flowchart LR
 - ProjectSettings
 - 製品固有Package
 
-### MyUnityMCPが所有
+### UnityArtistCLIが所有
 
-- MCP Tool implementation
-- Tool schema
+- Artist CLI command implementation
+- Artist capability schema
 - Package
-- Domain-specific Safety Contract
+- Visual / Cinematic Safety Contract
+
+旧 `myunitymcp` のSourceとMCP schemaは移行履歴とv1.1.1再現用に限り保持します。現行UnityAgent Registryではlegacy / production-disabledです。
 
 UnityAgentは外部Providerの製品Sourceを複製して正本化しません。
 
@@ -240,8 +242,7 @@ flowchart TD
     P --> F[File]
     P --> N[Native Unity Editor]
     P --> U[Unity CLI]
-    P --> M[MyUnityMCP]
-    P --> C2[Coplay MCP candidate]
+    P --> A[UnityArtistCLI]
     P --> R[Player Runtime]
 ```
 
@@ -296,16 +297,16 @@ Unity公式CLIが現在利用可能な場合に使用します。
 
 CLI Surfaceはversionで変わり得るため、Runtime discoveryを使います。
 
-### MyUnityMCP Provider
+### UnityArtistCLI Provider
 
-Domain-aware Editor操作に使用します。
+Visual art / cinematicのsemantic workflowに使用します。要求はProvider名ではなく `domain.workflow` / `visual.capture` と `qualifiers` で表します。
 
 read系:
 
 - `project.inspect`
-- `scene.inspect`
-- `profiler.observe`
+- `domain.workflow`（lookdev、lighting、environment、camera、evaluate、refine）
 - `visual.capture`
+- `domain.workflow`（cinematic、timeline）
 
 Mutation:
 
@@ -313,16 +314,15 @@ Mutation:
 Inspect
  -> Prepare
  -> Exact Diff
- -> Revision
+ -> Expected Revision
  -> Approval
  -> Apply
+ -> Evidence
 ```
 
-このSafety Contractをraw mutationへdowngradeしません。
+このSafety Contractをraw mutation、arbitrary eval、暗黙保存へdowngradeしません。Captureは実測できたチャンネルだけをEvidenceにします。
 
-### Coplay MCP
-
-Editor Bridge / Provider候補として扱います。
+旧MCP Provider候補は移行互換のため定義を残しますが、UnityArtistCLIの現行Production経路ではありません。
 
 Registryに記述されていても、Concrete Production executorと現在Tool exposureが証明できなければ実行可能扱いしません。
 
@@ -382,8 +382,8 @@ Fallback可
 ### 禁止例
 
 ```text
-scene.mutate
-MyUnityMCP unavailable
+domain.workflow
+UnityArtistCLI unavailable
         ↓
 × raw YAML edit
 × arbitrary eval
@@ -524,10 +524,10 @@ not_applicable
 
 | Profile | 概要 |
 | --- | --- |
-| `FULL` | CLI + Editor Provider + Player等が利用可能 |
-| `CLI_ONLY` | CLI中心、MCP無し |
-| `MCP_ONLY` | MCP中心、CLI無し |
-| `NATIVE_EDITOR` | CLI/MCP無し、Unity Editor executableあり |
+| `FULL` | CLI + Artist / Editor Provider + Player等が利用可能 |
+| `CLI_ONLY` | CLI中心、Artist Provider無し |
+| `MCP_ONLY` | legacy bridge中心（移行互換のみ） |
+| `NATIVE_EDITOR` | CLI / Artist Provider無し、Unity Editor executableあり |
 | `FILES_ONLY` | Static/Fileのみ |
 | `SAFE_MODE` | Source recovery中心 |
 | `NO_EDITOR` | Unity実行不可、static-only |
@@ -582,14 +582,14 @@ Providerは固定せず、RuntimeのEnvironment / Safety Contractから解決し
 ### 間違い2: Provider名をGoalにする
 
 ```text
-× MyUnityMCPを必ず使う
+× UnityArtistCLIを必ず使う
 ○ scene.inspectが必要
 ```
 
 ### 間違い3: Provider障害でSafetyを落とす
 
 ```text
-× MCP unavailable -> raw scene edit
+× Provider unavailable -> raw scene edit
 ○ same-capability safe fallback / partial / block
 ```
 

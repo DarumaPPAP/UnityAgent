@@ -53,7 +53,10 @@ def execution_state(run_id="run-1", **overrides):
 class Phase5PersistenceTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
-        self.root = Path(self.temp.name)
+        # PersistenceLayout canonicalizes the root; use the same long-form
+        # Windows path so relative-reference assertions are stable with 8.3
+        # short-name TEMP paths.
+        self.root = Path(self.temp.name).resolve()
         self.states = StateStore(self.root)
         self.states.save_execution_state(execution_state())
         self.states.save_workflow_state(workflow_state_patch(

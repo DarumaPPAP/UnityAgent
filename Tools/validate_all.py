@@ -27,6 +27,7 @@ VALIDATORS = (
     Path("Context/Validators/validate_stale_paths.py"),
     Path("Runtime/Contracts/capability_contract.py"),
     Path("Tools/ProductionToolRuntime/validate_production_tool_runtime.py"),
+    Path("Tools/LayerBoundaryValidator/validate_layer_boundaries.py"),
     Path("Tools/DocumentationValidator/validate_documentation.py"),
     Path("Tools/GraphObservatory/validate_context_explorer.py"),
     Path("Tools/HarnessProjection/validate_effective_harness.py"),
@@ -65,6 +66,7 @@ TEST_SUITES = (
     Path("Eval/Tests"),
     Path("Operations/Tests"),
     Path("Tests/HarnessProjection"),
+    Path("Tests/Architecture"),
 )
 
 

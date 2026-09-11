@@ -23,9 +23,9 @@ profiles:
   FULL:
     overrides: {}
     expectations:
-      project.inspect: {status: resolved, provider_ref: myunitymcp}
+      project.inspect: {status: resolved, provider_ref: file}
       project.test: {status: resolved, provider_ref: unity_cli}
-      scene.inspect: {status: resolved, provider_ref: myunitymcp}
+      scene.inspect: {status: resolved, provider_ref: unity_cli}
       player.observe: {status: resolved, provider_ref: player_runtime}
   CLI_ONLY:
     overrides:
@@ -43,8 +43,8 @@ profiles:
       unity_cli: {available: false}
       player_runtime: {reachable: false, instance_id: null}
     expectations:
-      project.inspect: {status: resolved, provider_ref: myunitymcp}
-      scene.inspect: {status: resolved, provider_ref: myunitymcp}
+      project.inspect: {status: resolved, provider_ref: file}
+      scene.inspect: {status: unavailable, provider_ref: null}
       project.test: {status: unavailable, provider_ref: null}
       player.observe: {status: unavailable, provider_ref: null}
   NATIVE_EDITOR:
@@ -100,13 +100,14 @@ profiles:
     overrides:
       player_runtime: {reachable: false, instance_id: null}
     expectations:
-      project.inspect: {status: resolved, provider_ref: myunitymcp}
-      scene.inspect: {status: resolved, provider_ref: myunitymcp}
+      project.inspect: {status: resolved, provider_ref: file}
+      scene.inspect: {status: resolved, provider_ref: unity_cli}
       player.observe: {status: unavailable, provider_ref: null}
 rules:
   profile_hint_is_descriptive_only: true
   same_task_may_resolve_different_provider_per_capability: true
   unavailable_provider_does_not_stop_static_flow: true
+  legacy_myunitymcp_is_production_disabled: true
   safe_mode_may_resolve_but_execution_must_revalidate: true
   no_silent_safety_or_evidence_downgrade: true
   baseline_auto_update: prohibited

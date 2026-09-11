@@ -1,0 +1,115 @@
+schema_version: "3.0"
+id: artist-cinematic
+primary_skill: .agents/skills/unity-artist-cli-routing/SKILL.md
+
+metadata:
+  type: context
+  title: UnityArtistCLI Cinematic
+  summary:
+    - Route Timeline, Cinemachine Shot, Track, Clip, Binding, Marker, Signal, Activation, Control, and Animation work.
+    - Preserve exact scope, approval, Undo, Timeline evidence, capture, and human review boundaries.
+  purpose:
+    - Keep cinematic mutation bounded to an explicitly named PlayableDirector and allowlisted Timeline operations.
+  decisions:
+    - id: cinematic-provider-is-semantic
+      label: Cinematic Provider selection is resolved from domain.workflow qualifiers
+      source_ref: Context/Packs/artist-cinematic.yaml#rules
+    - id: exact-timeline-scope
+      label: Timeline changes require exact director, track, clip, and binding scope
+      source_ref: Orchestration/Contracts/TaskContracts/artist-cinematic.yaml#completion
+  forbidden:
+    - id: unbound-timeline-mutation
+      label: Unbound or unrelated Timeline mutation is forbidden
+      source_ref: Orchestration/Contracts/TaskContracts/artist-cinematic.yaml#prohibited_mutations
+    - id: cinematic-arbitrary-eval
+      label: Arbitrary evaluation and raw serialized Timeline mutation are forbidden
+      source_ref: Orchestration/Contracts/TaskContracts/artist-cinematic.yaml#prohibited_mutations
+    - id: cinematic-auto-acceptance
+      label: Capture cannot be treated as human visual acceptance
+      source_ref: Orchestration/Contracts/TaskContracts/artist-cinematic.yaml#prohibited_mutations
+  related:
+    - id: visual-direction
+      relation: specializes
+      reason: Cinematic work still requires explicit visual intent and human review boundaries.
+      source_ref: Context/Packs/artist-cinematic.yaml#rules
+    - id: artist-lookdev
+      relation: complements
+      reason: LookDev and lighting context can be required for a cinematic review.
+      source_ref: Context/Packs/artist-cinematic.yaml#rules
+    - id: rendering-incident
+      relation: conditions
+      reason: Rendering constraints can add technical evidence requirements.
+      source_ref: Context/Packs/artist-cinematic.yaml#rules
+  priority: critical
+  tags: [unity-artist, cinematic, timeline, cinemachine, bindings, visual-review]
+
+use_when:
+  - explicit cinematic intent requires Timeline, Cinemachine Shot, Track, Clip, Binding, Marker, Signal, Activation, Control, or Animation work
+  - a bounded three-shot or sequence review requires Timeline evidence and visual evaluation
+
+required:
+  - type: binding
+    name: cinematic_intent
+  - type: binding
+    name: project_root
+  - type: binding
+    name: exact_playable_director_or_timeline_scope
+  - type: binding
+    name: shot_and_binding_definition
+  - type: repository_reference
+    path: .agents/skills/unity-artist-cli-routing/SKILL.md
+  - type: repository_reference
+    path: Runtime/Contracts/capability-request.schema.yaml
+  - type: repository_reference
+    path: Runtime/Tooling/provider_registry.yaml
+  - type: repository_reference
+    path: Context/Retrieval/Knowledge/visual/unity-artist-cli.yaml
+  - type: external_reference
+    repository: DarumaPPAP/UnityArtistCLI
+    path: Specs/UnityArtistCLI/spec.md
+  - type: context_include
+    context_id: visual-direction
+
+conditional:
+  cinematic_visual_review:
+    - type: context_include
+      context_id: artist-lookdev
+  timeline_rendering_work:
+    - type: context_include
+      context_id: rendering-incident
+    - type: repository_reference
+      path: .agents/skills/unity-rendering/SKILL.md
+  project_fallback:
+    - type: repository_reference
+      path: Specs/ProjectProfile.md
+
+excluded_by_default:
+  - generic hierarchy and GameObject CRUD
+  - unrelated Timeline tracks, clips, and bindings
+  - unsupported Unity 2022.3 URP/HDRP or Unity 2023 adapter details
+  - final visual acceptance without a human review decision
+
+rules:
+  context_does_not_select_provider: true
+  semantic_qualifiers_are_provider_independent: true
+  official_cli_pipeline_is_first_transport: true
+  unsupported_matrix_row_fails_before_mutation: true
+  project_profile_is_fallback_only: true
+  exact_director_and_binding_are_required: true
+  timeline_mutation_is_allowlisted_and_approval_gated: true
+  capture_is_technical_evidence_not_acceptance: true
+  automatic_save_is_forbidden: true
+
+limits:
+  initial_file_reads: 8
+  context_expansion_hops: 1
+  max_external_sources: 1
+
+output:
+  - semantic_cinematic_request
+  - exact_director_and_timeline_scope
+  - cinematic_plan_and_diff
+  - expected_revision_and_approval_state
+  - timeline_binding_and_shot_evidence
+  - capture_and_human_review_status
+  - unresolved_editor_cinemachine_conditions

@@ -8,6 +8,72 @@ Status: **Canonical Architecture Contract / Production Tool Runtime integrated**
 
 ---
 
+## 0. 製品境界としての5層（正式契約）
+
+UnityAgentを利用する入口は、必ず次の5層を通ります。機械可読な正本は
+`Specs/unityagent-layer-contract.yaml` です。
+
+```text
+① Entry Layer
+   Unity UI / Codex Plugin
+        │ request / approval / presentation
+        ▼
+② Control Plane
+   UnityAgent
+        │ run ownership / long-lived state
+        ▼
+③ Capability & Orchestration
+   semantic intent / Graph / Loop / Policy / Resolver
+        │ provider-independent CapabilityRequest
+        ▼
+④ Provider Layer
+   Official Unity CLI / UnityArtistCLI / Installer Provider / future Providers
+        │ structured ProviderResult
+        ▼
+⑤ Evidence & State
+   Evidence / Run History / Capture / InstallReceipt / Evaluation
+```
+
+### Layer ownership
+
+- Entry Layerは入力、表示、明示承認だけを担当する。外部コマンドやProviderを直接実行しない。
+- Control PlaneはUnityAgentが担当し、run identity、run lifecycle、長期状態、Entryからの唯一の実行Facadeを所有する。
+- Capability & Orchestrationは既存のOrchestration、Policy、Resolverを担当範囲とし、意味解決、Graph、Loop、Routingを所有する。
+- Provider Layerは実作業だけを担当する。ProviderはPolicy、semantic replan、durable truthを所有しない。
+- Evidence & Stateは既存のRuntime Evidence CaptureとPersistenceが担当し、run state、loop state、ProviderResult、Capture、InstallReceiptを再現可能な形で保存する。
+
+### 許可依存と禁止依存
+
+```text
+Entry → Control Plane
+Entry → Evidence & State（read only / presentation）
+Control Plane → Capability & Orchestration
+Control Plane → Evidence & State
+Capability & Orchestration → Provider Layer
+Capability & Orchestration → Evidence & State
+Provider Layer → Evidence & State
+```
+
+禁止事項は、EntryからProviderへの直接依存、semantic routeでのProvider選択、ProviderからのPolicy変更、EntryまたはProviderによるdurable stateの直接書込みです。レビューでは変更元Layerと変更先Layerの辺を
+`Specs/unityagent-layer-contract.yaml` と照合し、未定義の辺を拒否します。
+
+### Cross-layer contract
+
+- Entry → Control Plane: `Runtime/Contracts/entry-request.schema.yaml`
+- CapabilityRequest / Resolution: 既存のRuntime契約
+- ProviderResult: 既存Dispatcher契約とProvider adapter
+- Toolchain setup: `Runtime/Contracts/toolchain-setup-request.schema.yaml`
+- InstallReceipt: `Runtime/Contracts/install-receipt.schema.yaml`
+- Durable Evidence: `Persistence/Contracts/evidence-record.schema.yaml`
+
+UI / Codexから実行する場合も、経路は必ず
+`Entry → UnityAgent → Capability / Policy / Resolver → Provider → Evidence`
+です。UnityAgentは既存のCapability → Provider Registry → Resolver →
+Dispatcher → Provider Adapter → Evidenceを再利用し、第二のPlayer Frameworkや
+第二のProvider Registryを作りません。
+
+---
+
 ## 1. Canonical Repository
 
 ```text

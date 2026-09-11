@@ -70,6 +70,7 @@ Local/
 Private/
 Working/
 WorkInProgress/
+work/
 *.local.md
 *.local.json
 *.local.yaml

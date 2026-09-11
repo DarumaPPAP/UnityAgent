@@ -42,3 +42,13 @@ class RuntimeProviderRegistry:
             for provider in self._registry.providers.values()
             if capability in provider.capabilities
         )
+
+    def management_candidates(self, operation: str) -> tuple[ProviderDescriptor, ...]:
+        """Return Runtime-owned management Providers for one setup operation."""
+        if not operation or not isinstance(operation, str):
+            raise ValueError("management operation must be a non-empty string")
+        return tuple(
+            provider
+            for provider in self._registry.providers.values()
+            if provider.production_enabled and operation in provider.management_operations
+        )

@@ -65,6 +65,21 @@ properties:
         - profiler_observation
         - visual_capture
         - domain_result
+        - visual_art_inspection
+        - pipeline_support_fact
+        - visual_direction_plan
+        - exact_diff
+        - expected_revision
+        - camera_binding
+        - capture_manifest
+        - cinematic_plan
+        - timeline_evidence
+        - artist_validation
+        - human_review_decision
+        - refinement_plan
+        - evaluation_reference
+        - undo_registration
+        - save_not_performed
         - player_observation
   mutation_scope:
     anyOf:
@@ -76,6 +91,15 @@ properties:
   preferred_surface:
     type: [string, "null"]
     enum: [project, host, editor, live_editor, player, null]
+  qualifiers:
+    type: [object, "null"]
+    additionalProperties: false
+    properties:
+      domain:
+        enum: [visual_art, cinematic]
+      workflow:
+        type: string
+        minLength: 1
 allOf:
   - if:
       properties:

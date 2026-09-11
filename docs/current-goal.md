@@ -1,22 +1,35 @@
-# Current Goal: Local Reference Navigator
+# Current Goal: UnityArtistCLI cutover
 
 ## Goal statement
 
-MyResourceCenterとUnityAgentを、常時稼働する外部検索基盤・自動同期に依存せず、必要時の一度のSource確認で生成したローカルReference Snapshotを中心に運用できる状態にする。
+既存Runtimeを再利用し、UnityAgentをArchitect / Commander / Loop Owner、UnityArtistCLIをvisual art / cinematic specialist Provider（概念上のPlayer）として運用する。Unity CLIはgeneric Unity操作の第一Provider、UnityArtistCLIはLookDev・Lighting・Environment・Camera・Cinematic・Timeline・Visual Evaluation / Refineを担当する。
 
-通常の質問はSnapshotから上位3〜5件を選び、不具合相談は一度の候補探索から仮説・確認項目・切り分け順を作成する。その後はUnity Projectの読み取り、Test、Console、Profiler、Visual observationを優先し、Snapshot外の情報や原文確認が必要な場合だけ明示的な再確認を行う。
+## Canonical runtime
+
+`CapabilityRequest -> Runtime Guard -> ToolBroker -> Resolver -> Environment Snapshot -> Provider Registry -> Dispatcher -> Provider Adapter -> ProviderResult -> Evidence Normalizer -> Persistence`
+
+Artist要求は `domain.workflow` / `visual.capture` とsemantic qualifierで表現し、UnityAgent側に第二のPlayer FrameworkやRegistryを追加しない。旧 `myunitymcp` は履歴互換のため保持するが、legacy / production-disabledとする。
+
+## Release matrix
+
+- Unity 2022.3 LTS + Built-in
+- Unity 6.x+ + Built-in
+- Unity 6.x+ + URP
+- Unity 6.x+ + HDRP
+
+2022.3 Built-inもOfficial Unity CLI + Unity Pipelineを第一候補とし、年式だけで別Backendへ切り替えない。Matrix外のUnity 2022.3 URP/HDRP、Unity 2023、URP 14–16はMutation前にtyped failureを返す。
 
 ## Non-goals
 
-- 個人運用での常時稼働外部検索サービス
-- 埋め込みAPI、ベクトルDB、常時同期worker
-- 参照文を命令として実行すること
-- 優先順位を測定済みの原因確率と誤認すること
+- UnityAgent内の第二のPlayer Framework / Provider Registry
+- UnityArtistCLIでのgeneric GameObject / hierarchy / compile / test / build / play操作
+- UnityArtistCLIへのMCP transport、arbitrary eval、raw Unity YAML mutationの追加
+- Unity 2023およびUnity 2022.3 URP/HDRPの正式サポート
 
 ## Completion
 
-- Local Reference NavigatorがネットワークなしでSnapshotを読み込める
-- 通常質問は最大5候補・最大8,000文字に収まる
-- 不具合は最大5仮説と読み取り専用の確認手順を返す
-- 空結果・古さ・矛盾・原文確認必要時は推測せず再確認を提案する
-- 既存UnityAgent全体Validationと新規Navigator testsが通る
+- UnityArtistCLIのCLI envelope、host transport、Artist package、compatibility bucket、support matrix、safe mutation lifecycleが実装されている
+- UnityAgentのsemantic routing、`unity_artist_cli` Provider、Environment facts、legacy cutover、Evidence mappingが既存Runtimeへ接続されている
+- UnityAgent / UnityArtistCLIのskill-only PluginとUnityAgent Marketplace manifestが検証可能である
+- Static、host CLI、package contract、resolver、plugin、release matrix、E2E EvidenceをPASS / FAIL / BLOCKEDで監査する
+- Unity Editor / License / Pipeline reachabilityなど未観測の条件は成功扱いせず、`blocked_by_environment` として記録する

@@ -184,6 +184,31 @@ def _environment_failure(
     return None
 
 
+def _qualifier_failure(
+    provider: ProviderDescriptor,
+    request: Mapping[str, Any],
+) -> tuple[str, str] | None:
+    """Require declared semantic compatibility before provider ranking.
+
+    Qualifiers describe the requested outcome; they never select a provider by
+    product name and they do not alter Policy, scope, or evidence floors.
+    """
+    requested = request.get("qualifiers")
+    if requested is None:
+        return None
+    if not isinstance(requested, Mapping):
+        return "unsupported", "CapabilityRequest qualifiers must be a mapping"
+    supported = provider.qualifiers_supported or {}
+    for key, value in requested.items():
+        allowed = supported.get(str(key))
+        if allowed is None or str(value) not in allowed:
+            return (
+                "unsupported",
+                f"{provider.provider_id} does not support qualifier {key}={value!r}",
+            )
+    return None
+
+
 def _choose_surface(provider: ProviderDescriptor, capability: str, preferred_surface: str | None) -> str:
     offer = provider.capabilities[capability]
     if preferred_surface and preferred_surface in offer.surfaces:
@@ -284,7 +309,17 @@ def resolve_capability(
     for provider in runtime_registry.candidates(capability):
         if provider.provider_id == fallback_from_provider_id:
             continue
+        if not provider.production_enabled:
+            rejected_classes.append("unavailable")
+            rejected_reasons.append(f"{provider.provider_id} is legacy and production-disabled")
+            continue
         offer = provider.capabilities[capability]
+
+        qualifier_failure = _qualifier_failure(provider, request)
+        if qualifier_failure is not None:
+            rejected_classes.append(qualifier_failure[0])
+            rejected_reasons.append(qualifier_failure[1])
+            continue
 
         binding_failure = _project_binding_failure(
             provider, snapshot, str(request["project_root"])

@@ -30,7 +30,7 @@ preferred_surface: live_editor
 次のようなProvider製品指定はSemantic Contractにしません。
 
 ```text
-× MyUnityMCPを使ってSceneを見る
+× UnityArtistCLIを使ってSceneを見る
 × Unity CLIでTestする
 
 ○ scene.inspect が必要
@@ -56,15 +56,13 @@ flowchart TD
     D -->|file| PF[File Provider]
     D -->|native_unity_editor| PN[Native Unity Editor Provider]
     D -->|unity_cli| PC[Unity CLI Provider]
-    D -->|myunitymcp| PM[MyUnityMCP Provider]
-    D -->|coplay_mcp| PX[Coplay MCP candidate]
+    D -->|unity_artist_cli| PA[UnityArtistCLI Provider]
     D -->|player_runtime| PP[Player Runtime Provider]
 
     PF --> X[Structured ProviderResult]
     PN --> X
     PC --> X
-    PM --> X
-    PX --> X
+    PA --> X
     PP --> X
 
     X --> F{Infrastructure failure?}
@@ -216,37 +214,31 @@ Production adapterが現在実行する中心Capability:
 
 CLIのversion / command surfaceは変化し得るため、固定想定ではなくRuntime discoveryで確認します。
 
-### MyUnityMCP Provider
+### UnityArtistCLI Provider
 
-Domain-aware Editor Providerです。
+Visual art / cinematicのsemantic workflow専用Providerです。LookDev、Lighting、Environment、Camera、Capture、Evaluation、Refine、Cinematic、Timelineを扱います。generic Unity操作はUnity CLIまたは既存の適切なProviderへ委譲します。
 
 read系では主に:
 
-- `project.inspect`
-- `scene.inspect`
-- `profiler.observe`
+- `domain.workflow`（visual_art / cinematic qualifier付き）
 - `visual.capture`
 
-MutationではMyUnityMCP固有の強いContractを維持します。
+Mutationでは次の強いContractを維持します。
 
 ```mermaid
 flowchart LR
     I[Inspect] --> P[Prepare]
     P --> D[Exact Diff]
-    D --> R[Revision]
+    D --> R[Expected Revision]
     R --> A[UnityAgent Approval]
-    A --> AP[Apply]
+    A --> AP[Apply / Evidence]
 ```
 
-`scene.mutate`はこのContractを壊してraw mutationへ落としません。
+`domain.workflow` と `visual.capture` はこのContractを壊してraw mutationへ落としません。Undo登録と未保存状態をEvidenceへ残します。
 
 `domain.workflow`はRegistry上のPotential Capabilityですが、canonical pre-approval provenanceを完全に表現できない経路はProduction adapter側でfail-closedにします。
 
-### Coplay MCP
-
-Coplay MCPはProvider / Bridge候補であり、UnityAgentのPolicy / Orchestration Authorityではありません。
-
-Registryへ存在しても、Concrete Production executorと現在Tool surfaceが証明できなければ実行可能扱いしません。
+旧MCP Provider候補は移行互換のためRegistryへ残る場合がありますが、現行Artist経路のAuthorityではありません。具体的なAdapter、Project binding、live surface、Safety / Evidence条件が揃わない限り実行可能扱いしません。
 
 ### Player Runtime Provider
 
@@ -269,7 +261,8 @@ RuntimeはProviderを選ぶ前にEnvironment Factを観測します。
 - Unity Editor install / version / running / Safe Mode / binding
 - Unity CLI availability
 - Pipeline reachability
-- MyUnityMCP / Coplay MCP binding
+- UnityArtistCLI version / package / Pipeline / render pipeline / support tier / binding
+- legacy bridge binding（移行互換のみ）
 - Test Framework
 - Build target module
 - Player Runtime
@@ -302,9 +295,9 @@ flowchart LR
     T --> C[scene.inspect]
     T --> D[player.observe]
 
-    A --> PF[File / MyUnityMCP]
+    A --> PF[File / Unity CLI]
     B --> CLI[Unity CLI / Native Editor]
-    C --> MCP[MyUnityMCP / safe CLI surface]
+    C --> ART[UnityArtistCLI / safe CLI surface]
     D --> PR[Player Runtime]
 ```
 
@@ -324,8 +317,8 @@ Native Unity Editorが同じtest_execution Evidenceを満たす
 ### 禁止するFallback
 
 ```text
-scene.mutate
-MyUnityMCP unavailable
+domain.workflow
+UnityArtistCLI unavailable
         ↓
 × raw .unity YAML edit
 × arbitrary eval

@@ -47,6 +47,12 @@ class PersistenceLayout:
     def evidence_events(self) -> Path:
         return self.root / "evidence" / "events.jsonl"
 
+    def install_receipt(self, receipt_id: str) -> Path:
+        return self.root / "install" / "receipts" / f"{safe_id(receipt_id, 'receipt_id')}.json"
+
+    def install_receipt_events(self) -> Path:
+        return self.root / "install" / "receipt-events.jsonl"
+
     def checkpoint_events(self) -> Path:
         return self.root / "migration" / "checkpoint-events.jsonl"
 
