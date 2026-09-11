@@ -26,7 +26,7 @@ class InstallReceiptStore:
         missing = sorted(required - set(receipt))
         if missing:
             raise PersistenceError("contract_missing_field", f"InstallReceipt missing required fields: {missing}")
-        if receipt.get("schema_version") != "1.0" or receipt.get("channel") != "0.0.5-beta":
+        if receipt.get("schema_version") != "1.0" or receipt.get("channel") != "0.0.6-beta":
             raise PersistenceError("invalid_install_receipt", "unsupported InstallReceipt schema or channel")
         if not isinstance(receipt.get("entries"), list) or not receipt["entries"]:
             raise PersistenceError("invalid_install_receipt", "InstallReceipt entries must be non-empty")
