@@ -212,7 +212,10 @@ def ensure_codex_plugin(codex_path: str | None, *, runner: CommandRunner = run_c
             f"Codex reported UnityAgent Plugin as {observation['status']} after installation"
         )
     return {
-        **observation,
+        "product": "unity_agent_codex_plugin",
         "status": "installed",
+        "version": observation.get("version"),
+        "location": observation.get("location"),
         "source": f"github:{MARKETPLACE_SOURCE}@{MARKETPLACE_REF}",
+        "sha256": None,
     }
