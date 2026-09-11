@@ -12,9 +12,9 @@ import os
 import subprocess
 from typing import Any, Callable, Iterable, Mapping, Sequence
 
-CHANNEL = "0.0.1-beta"
+CHANNEL = "0.0.2-beta"
 MARKETPLACE_SOURCE = "DarumaPPAP/UnityAgent"
-MARKETPLACE_NAME = "personal"
+MARKETPLACE_NAME = "unity-agent"
 MARKETPLACE_REF = f"v{CHANNEL}"
 PLUGIN_NAME = "unity-agent"
 PLUGIN_ID = f"{PLUGIN_NAME}@{MARKETPLACE_NAME}"
@@ -181,7 +181,7 @@ def ensure_codex_plugin(codex_path: str | None, *, runner: CommandRunner = run_c
         existing = _marketplace_record(marketplace_payload)
         if existing is not None and not _marketplace_matches_unityagent(existing):
             raise CodexPluginInstallError(
-                "Codex marketplace name 'personal' is already owned by another source. "
+                "Codex marketplace name 'unity-agent' is already owned by another source. "
                 "UnityAgent will not overwrite or retarget it automatically."
             )
         marketplace_ready = existing is not None
