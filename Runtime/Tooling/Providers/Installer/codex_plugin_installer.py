@@ -43,6 +43,14 @@ def _windows_command(arguments: Sequence[str]) -> list[str]:
     if os.name == "nt" and suffix in {".cmd", ".bat"}:
         comspec = os.environ.get("COMSPEC") or "cmd.exe"
         return [comspec, "/d", "/s", "/c", subprocess.list2cmdline(command)]
+    if os.name == "nt" and suffix == ".ps1":
+        powershell = os.environ.get("WINDIR")
+        powershell_exe = (
+            str(Path(powershell) / "System32/WindowsPowerShell/v1.0/powershell.exe")
+            if powershell
+            else "powershell.exe"
+        )
+        return [powershell_exe, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", command[0], *command[1:]]
     return command
 
 
