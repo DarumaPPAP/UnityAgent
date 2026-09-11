@@ -38,6 +38,10 @@ class InstallerProviderTests(unittest.TestCase):
                 package.writestr("../escape.txt", b"must not extract")
         return stream.getvalue()
 
+    @staticmethod
+    def codex_version_runner(arguments):
+        return CommandResult(0, "codex-cli 0.0-test\n", "")
+
     def test_release_archive_is_hash_verified_and_installed_to_requested_root(self) -> None:
         archive = self.archive()
         digest = hashlib.sha256(archive).hexdigest()
@@ -51,14 +55,14 @@ class InstallerProviderTests(unittest.TestCase):
             {
                 "project_root": str(ROOT),
                 "plan_id": "plan-test",
-                "channel": "0.0.3-beta",
+                "channel": "0.0.4-beta",
                 "install_root": str(self.install_root),
                 "actions": [{"product": "unity_artist_cli", "action": "install_then_verify"}],
             },
             download_fn=download,
         )
         self.assertEqual(result["status"], "passed")
-        self.assertEqual(result["channel"], "0.0.3-beta")
+        self.assertEqual(result["channel"], "0.0.4-beta")
         self.assertEqual(result["entries"][0]["version"], "0.0.1-beta")
         self.assertTrue((self.install_root / "unity-artist.exe").is_file())
         self.assertEqual(result["install_receipt"]["entries"][0]["sha256"], f"sha256:{digest}")
@@ -76,7 +80,7 @@ class InstallerProviderTests(unittest.TestCase):
                 {
                     "project_root": str(ROOT),
                     "plan_id": "plan-unsafe",
-                    "channel": "0.0.3-beta",
+                    "channel": "0.0.4-beta",
                     "install_root": str(self.install_root),
                     "actions": [{"product": "unity_artist_cli", "action": "install_then_verify"}],
                 },
@@ -97,7 +101,7 @@ class InstallerProviderTests(unittest.TestCase):
                         "pluginId": "unity-agent@unity-agent",
                         "name": "unity-agent",
                         "marketplaceName": "unity-agent",
-                        "version": "0.0.3-beta",
+                        "version": "0.0.4-beta",
                         "installed": True,
                         "enabled": True,
                         "installedPath": "C:/Users/test/.codex/plugins/unity-agent",
@@ -108,7 +112,7 @@ class InstallerProviderTests(unittest.TestCase):
 
         result = observe_codex_plugin("C:/Tools/codex.exe", runner=runner)
         self.assertEqual(result["status"], "verified")
-        self.assertEqual(result["version"], "0.0.3-beta")
+        self.assertEqual(result["version"], "0.0.4-beta")
 
     def test_codex_plugin_install_adds_pinned_marketplace_and_verifies(self) -> None:
         calls: list[list[str]] = []
@@ -132,7 +136,7 @@ class InstallerProviderTests(unittest.TestCase):
                             "pluginId": "unity-agent@unity-agent",
                             "name": "unity-agent",
                             "marketplaceName": "unity-agent",
-                            "version": "0.0.3-beta",
+                            "version": "0.0.4-beta",
                             "installed": True,
                             "enabled": True,
                             "installedPath": "C:/Users/test/.codex/plugins/unity-agent",
@@ -147,7 +151,7 @@ class InstallerProviderTests(unittest.TestCase):
         self.assertIn(
             [
                 "C:/Tools/codex.exe", "plugin", "marketplace", "add",
-                "DarumaPPAP/UnityAgent", "--ref", "v0.0.3-beta", "--json",
+                "DarumaPPAP/UnityAgent", "--ref", "v0.0.4-beta", "--json",
             ],
             calls,
         )
@@ -178,16 +182,73 @@ class InstallerProviderTests(unittest.TestCase):
             ensure_codex_plugin("C:/Tools/codex.exe", runner=runner)
 
     def test_installer_plan_blocks_plugin_install_when_codex_is_missing(self) -> None:
-        provider = InstallerProvider(ROOT, which_fn=lambda name: None)
+        provider = InstallerProvider(ROOT, which_fn=lambda name: None, env={})
         plan = provider.plan({
             "project_root": str(ROOT),
             "products": ["unity_agent_codex_plugin"],
-            "channel": "0.0.3-beta",
+            "channel": "0.0.4-beta",
             "install_root": None,
+            "codex_cli_path": None,
         })
         self.assertEqual(plan["status"], "unavailable")
         self.assertEqual(plan["actions"][0]["action"], "blocked_by_dependency")
         self.assertFalse(plan["approval_required"])
+
+    def test_installer_honors_explicit_codex_cli_path(self) -> None:
+        fake_codex = self.install_root / "codex.cmd"
+        fake_codex.parent.mkdir(parents=True, exist_ok=True)
+        fake_codex.write_text("@echo off\n", encoding="utf-8")
+        provider = InstallerProvider(
+            ROOT,
+            which_fn=lambda name: None,
+            env={},
+            command_runner=self.codex_version_runner,
+        )
+        result = provider.doctor({
+            "products": ["codex_cli"],
+            "codex_cli_path": str(fake_codex),
+        })
+        self.assertEqual(result["status"], "passed")
+        self.assertEqual(result["entries"][0]["location"], str(fake_codex.resolve()))
+        self.assertEqual(result["entries"][0]["source"], "explicit_override")
+        self.assertEqual(result["entries"][0]["version"], "codex-cli 0.0-test")
+
+    def test_installer_finds_codex_in_windows_npm_style_location(self) -> None:
+        app_data = self.install_root / "AppData/Roaming"
+        fake_codex = app_data / "npm/codex.cmd"
+        fake_codex.parent.mkdir(parents=True, exist_ok=True)
+        fake_codex.write_text("@echo off\n", encoding="utf-8")
+        provider = InstallerProvider(
+            ROOT,
+            which_fn=lambda name: None,
+            env={"APPDATA": str(app_data)},
+            command_runner=self.codex_version_runner,
+        )
+        result = provider.doctor({
+            "products": ["codex_cli"],
+            "codex_cli_path": None,
+        })
+        self.assertEqual(result["status"], "passed")
+        self.assertEqual(result["entries"][0]["location"], str(fake_codex.resolve()))
+        self.assertEqual(result["entries"][0]["source"], "windows_npm")
+
+    def test_installer_reports_codex_execution_failure_readably(self) -> None:
+        fake_codex = self.install_root / "codex.cmd"
+        fake_codex.parent.mkdir(parents=True, exist_ok=True)
+        fake_codex.write_text("@echo off\n", encoding="utf-8")
+        provider = InstallerProvider(
+            ROOT,
+            which_fn=lambda name: None,
+            env={},
+            command_runner=lambda arguments: CommandResult(7, "", "broken shim"),
+        )
+        result = provider.doctor({
+            "products": ["codex_cli"],
+            "codex_cli_path": str(fake_codex),
+        })
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["entries"][0]["reason"], "codex_cli_execution_failed")
+        self.assertIn("broken shim", result["entries"][0]["message"])
 
 
 if __name__ == "__main__":

@@ -121,6 +121,7 @@ class ControlPlaneTests(unittest.TestCase):
         installer = InstallerProvider(
             self.project,
             which_fn=lambda name: "/tools/unity.exe" if name in {"unity", "unity-artist"} else None,
+            env={},
         )
         plane = UnityAgentControlPlane(self.root / "setup-state")
         result = plane.setup(
@@ -131,7 +132,7 @@ class ControlPlaneTests(unittest.TestCase):
                 "operation": "doctor",
                 "project_root": str(self.project.resolve()),
                 "products": ["official_unity_cli", "unity_artist_cli"],
-                "channel": "0.0.3-beta",
+                "channel": "0.0.4-beta",
                 "non_interactive": True,
             },
             executors={"installer": installer.execute},
@@ -159,18 +160,19 @@ class ControlPlaneTests(unittest.TestCase):
                 "operation": "apply",
                 "status": "passed",
                 "project_root": str(self.project.resolve()),
-                "channel": "0.0.3-beta",
+                "channel": "0.0.4-beta",
                 "install_receipt": {
                     "schema_version": "1.0",
                     "receipt_id": "receipt-approved",
                     "run_id": "pending",
                     "project_root": str(self.project.resolve()),
-                    "channel": "0.0.3-beta",
+                    "channel": "0.0.4-beta",
                     "entries": [receipt_entry],
                     "verified_at": "2026-09-11T00:00:00+00:00",
                     "evidence_refs": [],
                 },
             },
+            env={},
         )
         plane = UnityAgentControlPlane(self.root / "receipt-state")
         result = plane.setup(
@@ -181,7 +183,7 @@ class ControlPlaneTests(unittest.TestCase):
                 "operation": "apply",
                 "project_root": str(self.project.resolve()),
                 "products": ["unity_artist_cli"],
-                "channel": "0.0.3-beta",
+                "channel": "0.0.4-beta",
                 "non_interactive": True,
                 "approval_ref": "approval-1",
                 "expected_plan_id": "plan-approved",

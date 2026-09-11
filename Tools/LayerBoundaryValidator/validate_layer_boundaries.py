@@ -28,7 +28,7 @@ EXPECTED_EDGES = {
     ("provider_layer", "evidence_state", "structured_result_capture"),
 }
 FORBIDDEN_ENTRY_TEXT = ("unity artist", "unity-artist")
-CANONICAL_VERSION = "0.0.3-beta"
+CANONICAL_VERSION = "0.0.4-beta"
 _GUID_PATTERN = re.compile(r"^guid:\s*([0-9a-f]{32})$", re.MULTILINE)
 
 
@@ -136,6 +136,28 @@ def validate(root: Path = ROOT) -> list[str]:
                 errors.append(f"Unity UI Entry must not invoke Official Unity CLI directly: {path.relative_to(root)}")
             if "filename = \"codex\"" in text or "codex plugin marketplace" in text or "codex plugin add" in text:
                 errors.append(f"Unity UI Entry must not invoke Codex Plugin commands directly: {path.relative_to(root)}")
+
+        resolver_path = package_path.parent / "Editor/UnityAgentCodexPathResolver.cs"
+        setup_window_path = package_path.parent / "Editor/UnityAgentSetupWindow.cs"
+        control_plane_client_path = package_path.parent / "Editor/UnityAgentControlPlaneClient.cs"
+        if not resolver_path.is_file():
+            errors.append("UnityAgent Codex path resolver is missing")
+        else:
+            resolver_text = resolver_path.read_text(encoding="utf-8").casefold()
+            for forbidden in ("system.diagnostics", "processstartinfo", "process.start", "--version"):
+                if forbidden in resolver_text:
+                    errors.append(
+                        "Unity Entry Codex path resolver must remain discovery-only and must not execute Codex: "
+                        + forbidden
+                    )
+        if setup_window_path.is_file():
+            setup_text = setup_window_path.read_text(encoding="utf-8")
+            if "UnityAgentCodexPathResolver.Resolve" not in setup_text:
+                errors.append("UnityAgent Setup Window must use the canonical Codex path resolver")
+        if control_plane_client_path.is_file():
+            client_text = control_plane_client_path.read_text(encoding="utf-8")
+            if "--codex-path" not in client_text:
+                errors.append("UnityAgent Control Plane client must pass the resolved Codex path through --codex-path")
 
     setup_skill = root / ".agents/plugins/unity-agent/skills/unity-agent-setup/SKILL.md"
     if setup_skill.is_file():

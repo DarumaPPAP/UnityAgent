@@ -9,10 +9,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 import os
+from pathlib import Path
 import subprocess
 from typing import Any, Callable, Iterable, Mapping, Sequence
 
-CHANNEL = "0.0.3-beta"
+CHANNEL = "0.0.4-beta"
 MARKETPLACE_SOURCE = "DarumaPPAP/UnityAgent"
 MARKETPLACE_NAME = "unity-agent"
 MARKETPLACE_REF = f"v{CHANNEL}"
@@ -34,13 +35,33 @@ class CommandResult:
 CommandRunner = Callable[[Sequence[str]], CommandResult]
 
 
+def _windows_command(arguments: Sequence[str]) -> list[str]:
+    command = list(arguments)
+    if not command:
+        return command
+    suffix = Path(command[0]).suffix.casefold()
+    if os.name == "nt" and suffix in {".cmd", ".bat"}:
+        comspec = os.environ.get("COMSPEC") or "cmd.exe"
+        return [comspec, "/d", "/s", "/c", subprocess.list2cmdline(command)]
+    if os.name == "nt" and suffix == ".ps1":
+        powershell = os.environ.get("WINDIR")
+        powershell_exe = (
+            str(Path(powershell) / "System32/WindowsPowerShell/v1.0/powershell.exe")
+            if powershell
+            else "powershell.exe"
+        )
+        return [powershell_exe, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", command[0], *command[1:]]
+    return command
+
+
 def run_command(arguments: Sequence[str], *, timeout_seconds: float = 90.0) -> CommandResult:
     creationflags = 0
     if os.name == "nt" and hasattr(subprocess, "CREATE_NO_WINDOW"):
         creationflags = int(subprocess.CREATE_NO_WINDOW)
+    command = _windows_command(arguments)
     try:
         completed = subprocess.run(
-            list(arguments),
+            command,
             check=False,
             capture_output=True,
             text=True,
@@ -48,7 +69,9 @@ def run_command(arguments: Sequence[str], *, timeout_seconds: float = 90.0) -> C
             creationflags=creationflags,
         )
     except (OSError, subprocess.SubprocessError) as exc:
-        raise CodexPluginInstallError(f"Codex command could not run: {exc}") from exc
+        raise CodexPluginInstallError(
+            f"Codex command could not run. Executable: {arguments[0] if arguments else '<missing>'}. Error: {exc}"
+        ) from exc
     return CommandResult(completed.returncode, completed.stdout or "", completed.stderr or "")
 
 
@@ -59,7 +82,12 @@ def _json_output(result: CommandResult, command_name: str) -> Any:
     try:
         return json.loads(result.stdout)
     except json.JSONDecodeError as exc:
-        raise CodexPluginInstallError(f"{command_name} did not return valid JSON") from exc
+        detail = result.stdout.strip()
+        if len(detail) > 240:
+            detail = detail[:240] + "..."
+        raise CodexPluginInstallError(
+            f"{command_name} did not return valid JSON. Output: {detail or '<empty>'}"
+        ) from exc
 
 
 def _objects(value: Any) -> Iterable[Mapping[str, Any]]:
@@ -102,9 +130,10 @@ def observe_codex_plugin(codex_path: str | None, *, runner: CommandRunner = run_
             "status": "unavailable",
             "version": None,
             "location": None,
-            "source": "requires Codex CLI on PATH",
+            "source": "requires Codex CLI",
             "sha256": None,
             "reason": "codex_cli_unavailable",
+            "message": "Codex CLI is required before the UnityAgent plugin can be inspected.",
         }
     try:
         payload = _json_output(runner([codex_path, "plugin", "list", "--json"]), "codex plugin list --json")
@@ -117,6 +146,7 @@ def observe_codex_plugin(codex_path: str | None, *, runner: CommandRunner = run_
             "source": f"codex:{codex_path}",
             "sha256": None,
             "reason": str(exc),
+            "message": "Codex CLI was found, but UnityAgent could not query the plugin list.",
         }
 
     record = _plugin_record(payload)
@@ -129,6 +159,7 @@ def observe_codex_plugin(codex_path: str | None, *, runner: CommandRunner = run_
             "source": f"github:{MARKETPLACE_SOURCE}@{MARKETPLACE_REF}",
             "sha256": None,
             "reason": "plugin_not_installed",
+            "message": "Codex CLI is available, but the UnityAgent plugin is not installed yet.",
         }
 
     installed = record.get("installed")
@@ -142,6 +173,7 @@ def observe_codex_plugin(codex_path: str | None, *, runner: CommandRunner = run_
             "source": f"codex:{PLUGIN_ID}",
             "sha256": None,
             "reason": "plugin_not_enabled",
+            "message": "The UnityAgent plugin is installed but not enabled in Codex.",
         }
 
     version = str(record.get("version") or "") or None
@@ -154,6 +186,11 @@ def observe_codex_plugin(codex_path: str | None, *, runner: CommandRunner = run_
         "source": f"codex:{PLUGIN_ID}",
         "sha256": None,
         "reason": None if status == "verified" else "plugin_version_mismatch",
+        "message": (
+            "UnityAgent Codex plugin is ready."
+            if status == "verified"
+            else f"UnityAgent Codex plugin version does not match {CHANNEL}."
+        ),
     }
 
 

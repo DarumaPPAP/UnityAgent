@@ -17,7 +17,7 @@ import uuid
 
 REPOSITORY = "DarumaPPAP/UnityArtistCLI"
 RELEASE_TAG = "v0.0.1-beta"
-CONTROL_PLANE_CHANNEL = "0.0.3-beta"
+CONTROL_PLANE_CHANNEL = "0.0.4-beta"
 ARCHIVE_NAME = "UnityArtistCLI-host-windows-x64.zip"
 DEFAULT_INSTALL_ROOT = Path(os.environ.get("LOCALAPPDATA") or (Path.home() / "AppData/Local")) / "UnityArtistCLI/Beta"
 

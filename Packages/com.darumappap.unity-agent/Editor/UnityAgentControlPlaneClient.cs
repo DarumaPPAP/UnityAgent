@@ -15,6 +15,7 @@ namespace DarumaPPAP.UnityAgent.Editor
             string expectedPlanId,
             string approvalRef,
             string approvedPlanPath,
+            string codexCliPath,
             out string output,
             out string error)
         {
@@ -53,14 +54,19 @@ namespace DarumaPPAP.UnityAgent.Editor
             {
                 arguments.Append(" --approved-plan ").Append(Quote(approvedPlanPath));
             }
+            if (!string.IsNullOrWhiteSpace(codexCliPath))
+            {
+                arguments.Append(" --codex-path ").Append(Quote(codexCliPath.Trim()));
+            }
 
+            var command = string.IsNullOrWhiteSpace(hostCommand) ? "unity-agent" : hostCommand.Trim();
             try
             {
                 using (var process = new Process())
                 {
                     process.StartInfo = new ProcessStartInfo
                     {
-                        FileName = string.IsNullOrEmpty(hostCommand) ? "unity-agent" : hostCommand,
+                        FileName = command,
                         Arguments = arguments.ToString(),
                         UseShellExecute = false,
                         CreateNoWindow = true,
@@ -69,27 +75,42 @@ namespace DarumaPPAP.UnityAgent.Editor
                     };
                     if (!process.Start())
                     {
-                        error = "UnityAgent Control Plane process could not start.";
+                        error = "UnityAgent Control Planeを起動できませんでした。\nControl Plane command: " + command;
                         return false;
                     }
 
                     output = process.StandardOutput.ReadToEnd();
-                    error = process.StandardError.ReadToEnd();
+                    var standardError = process.StandardError.ReadToEnd();
                     process.WaitForExit();
                     if (process.ExitCode != 0)
                     {
-                        if (string.IsNullOrEmpty(error))
+                        var builder = new StringBuilder();
+                        builder.Append("UnityAgent Control Planeが失敗しました。 ExitCode=")
+                            .Append(process.ExitCode)
+                            .Append("\nControl Plane command: ")
+                            .Append(command);
+                        if (!string.IsNullOrWhiteSpace(standardError))
                         {
-                            error = "UnityAgent Control Plane returned exit code " + process.ExitCode + ".";
+                            builder.Append("\n\n").Append(standardError.Trim());
                         }
+                        else if (string.IsNullOrWhiteSpace(output))
+                        {
+                            builder.Append("\n\n標準出力・標準エラー出力がありませんでした。");
+                        }
+                        error = builder.ToString();
                         return false;
                     }
+
+                    error = standardError.Trim();
                     return true;
                 }
             }
             catch (Exception exception)
             {
-                error = exception.Message;
+                error =
+                    "UnityAgent Control Planeを起動できません。\n" +
+                    "Control Plane command: " + command + "\n\n" +
+                    exception.GetType().Name + ": " + exception.Message;
                 return false;
             }
         }
