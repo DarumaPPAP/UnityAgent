@@ -67,12 +67,17 @@ jobs:
       - name: Install validation and build dependencies
         run: python3 -m pip install --disable-pip-version-check -e . build
 
-      - name: Validate repository contracts
+      - name: Validate repository and regression contracts
         run: |
           set -euo pipefail
           python3 Tools/validate_all.py
-          python3 Tools/run_regression_gate.py
           python3 Tools/ProductionToolRuntime/validate_production_tool_runtime.py
+          python3 Eval/Rebaseline/validate_baseline_freeze.py Eval/Rebaseline/Baselines/phase9-baseline-20260830-09.yaml
+          python3 -m unittest Eval.Tests.test_baseline_comparator Eval.Tests.test_local_regression_gate
+          python3 -m py_compile \
+            Eval/Regression/baseline_comparator.py \
+            Eval/Regression/compare_baseline.py \
+            Tools/run_regression_gate.py
 
       - name: Verify pinned UnityArtistCLI release
         env:
