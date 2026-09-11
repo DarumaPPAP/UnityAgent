@@ -28,7 +28,7 @@ EXPECTED_EDGES = {
     ("provider_layer", "evidence_state", "structured_result_capture"),
 }
 FORBIDDEN_ENTRY_TEXT = ("unity artist", "unity-artist")
-CANONICAL_VERSION = "0.0.4-beta"
+CANONICAL_VERSION = "0.0.5-beta"
 _GUID_PATTERN = re.compile(r"^guid:\s*([0-9a-f]{32})$", re.MULTILINE)
 
 
@@ -112,7 +112,12 @@ def validate(root: Path = ROOT) -> list[str]:
         if invariants.get(key) is not True:
             errors.append(f"invariant must be true: {key}")
 
-    for relative in ("Runtime/Contracts/entry-request.schema.yaml", "Runtime/Contracts/toolchain-setup-request.schema.yaml", "Runtime/Contracts/install-receipt.schema.yaml", "Packages/com.darumappap.unity-agent/package.json"):
+    for relative in (
+        "Runtime/Contracts/entry-request.schema.yaml",
+        "Runtime/Contracts/toolchain-setup-request.schema.yaml",
+        "Runtime/Contracts/install-receipt.schema.yaml",
+        "Packages/com.darumappap.unity-agent/package.json",
+    ):
         if not (root / relative).is_file():
             errors.append(f"cross-layer contract is missing: {relative}")
 
@@ -137,23 +142,45 @@ def validate(root: Path = ROOT) -> list[str]:
             if "filename = \"codex\"" in text or "codex plugin marketplace" in text or "codex plugin add" in text:
                 errors.append(f"Unity UI Entry must not invoke Codex Plugin commands directly: {path.relative_to(root)}")
 
-        resolver_path = package_path.parent / "Editor/UnityAgentCodexPathResolver.cs"
+        codex_resolver_path = package_path.parent / "Editor/UnityAgentCodexPathResolver.cs"
+        control_plane_resolver_path = package_path.parent / "Editor/UnityAgentControlPlanePathResolver.cs"
         setup_window_path = package_path.parent / "Editor/UnityAgentSetupWindow.cs"
         control_plane_client_path = package_path.parent / "Editor/UnityAgentControlPlaneClient.cs"
-        if not resolver_path.is_file():
+
+        if not codex_resolver_path.is_file():
             errors.append("UnityAgent Codex path resolver is missing")
         else:
-            resolver_text = resolver_path.read_text(encoding="utf-8").casefold()
+            resolver_text = codex_resolver_path.read_text(encoding="utf-8").casefold()
             for forbidden in ("system.diagnostics", "processstartinfo", "process.start", "--version"):
                 if forbidden in resolver_text:
                     errors.append(
                         "Unity Entry Codex path resolver must remain discovery-only and must not execute Codex: "
                         + forbidden
                     )
+
+        if not control_plane_resolver_path.is_file():
+            errors.append("UnityAgent Control Plane path resolver is missing")
+        else:
+            resolver_text = control_plane_resolver_path.read_text(encoding="utf-8").casefold()
+            for forbidden in ("system.diagnostics", "processstartinfo", "process.start"):
+                if forbidden in resolver_text:
+                    errors.append(
+                        "Unity Entry Control Plane path resolver must remain discovery-only: " + forbidden
+                    )
+            if "unity_agent_control_plane" not in resolver_text:
+                errors.append("Control Plane path resolver must read the stable UNITY_AGENT_CONTROL_PLANE hint")
+            if "environmentvariabletarget.user" not in resolver_text:
+                errors.append("Control Plane path resolver must inspect the persisted User environment")
+
         if setup_window_path.is_file():
             setup_text = setup_window_path.read_text(encoding="utf-8")
             if "UnityAgentCodexPathResolver.Resolve" not in setup_text:
                 errors.append("UnityAgent Setup Window must use the canonical Codex path resolver")
+            if "UnityAgentControlPlanePathResolver.Resolve" not in setup_text:
+                errors.append("UnityAgent Setup Window must use the canonical Control Plane path resolver")
+            if 'hostCommand = "unity-agent"' in setup_text:
+                errors.append("UnityAgent Setup Window must not fall back to a bare unity-agent command")
+
         if control_plane_client_path.is_file():
             client_text = control_plane_client_path.read_text(encoding="utf-8")
             if "--codex-path" not in client_text:
