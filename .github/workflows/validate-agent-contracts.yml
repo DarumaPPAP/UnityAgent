@@ -64,6 +64,27 @@ jobs:
       - name: Validate UnityAgent canonical contracts
         run: python Tools/validate_all.py
 
+      - name: Validate Unity Editor PackageInfo qualification
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("Packages/com.darumappap.unity-agent/Editor/UnityAgentControlPlaneBootstrap.cs")
+          text = path.read_text(encoding="utf-8")
+          required = "UnityEditor.PackageManager.PackageInfo.FindForAssembly"
+          if required not in text:
+              raise SystemExit(
+                  "UnityAgentControlPlaneBootstrap.cs must fully qualify "
+                  "UnityEditor.PackageManager.PackageInfo.FindForAssembly to avoid CS0104."
+              )
+          if "using UnityEditor.PackageManager;" in text:
+              raise SystemExit(
+                  "UnityAgentControlPlaneBootstrap.cs must not import UnityEditor.PackageManager "
+                  "while UnityEditor is also imported; PackageInfo becomes ambiguous on Unity 6."
+              )
+          print("Unity PackageInfo qualification validation passed.")
+          PY
+
       - name: Enforce Skill authoring quality
         run: python Tools/SkillValidator/validate_skills.py --strict
 
