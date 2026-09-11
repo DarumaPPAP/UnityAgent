@@ -23,7 +23,7 @@ $headers = @{
 }
 
 if ($requestedTag -and $requestedTag -notmatch '^v[A-Za-z0-9._-]+$') {
-    throw "UNITY_AGENT_TAG must be a release tag such as v0.0.5-beta."
+    throw "UNITY_AGENT_TAG must be a release tag such as v0.0.6-beta."
 }
 
 function Resolve-Python {

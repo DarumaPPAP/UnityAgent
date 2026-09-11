@@ -4,8 +4,11 @@ on:
   pull_request:
     paths:
       - ".agents/skills/**"
+      - ".agents/plugins/**"
       - "AGENTS.md"
       - "README.md"
+      - "VERSION"
+      - "Packages/com.darumappap.unity-agent/**"
       - "Policy/**"
       - "Context/**"
       - "Orchestration/**"
@@ -17,14 +20,18 @@ on:
       - "Tools/**"
       - "scripts/**"
       - ".github/workflows/validate-agent-contracts.yml"
+      - ".github/workflows/release-tag.yml"
       - ".github/workflows/actual-behavior-eval.yml"
   push:
     branches:
       - main
     paths:
       - ".agents/skills/**"
+      - ".agents/plugins/**"
       - "AGENTS.md"
       - "README.md"
+      - "VERSION"
+      - "Packages/com.darumappap.unity-agent/**"
       - "Policy/**"
       - "Context/**"
       - "Orchestration/**"
@@ -36,6 +43,7 @@ on:
       - "Tools/**"
       - "scripts/**"
       - ".github/workflows/validate-agent-contracts.yml"
+      - ".github/workflows/release-tag.yml"
       - ".github/workflows/actual-behavior-eval.yml"
 
 jobs:
@@ -62,15 +70,58 @@ jobs:
       - name: Validate PowerShell installer syntax
         shell: pwsh
         run: |
-          $tokens = $null
-          $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile(
+          $scripts = @(
             "scripts/install.ps1",
-            [ref]$tokens,
-            [ref]$errors
-          ) | Out-Null
-          if ($errors.Count -gt 0) {
-            $errors | ForEach-Object { Write-Error $_.Message }
-            exit 1
+            "Packages/com.darumappap.unity-agent/Editor/Bootstrap~/install-control-plane.ps1"
+          )
+          foreach ($script in $scripts) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              $script,
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error "$script`: $($_.Message)" }
+              exit 1
+            }
+            Write-Host "PowerShell syntax validation passed: $script"
           }
-          Write-Host "PowerShell installer syntax validation passed."
+
+      - name: Validate packed UPM bootstrap contents
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .tmp-upm
+          (
+            cd Packages/com.darumappap.unity-agent
+            npm pack --pack-destination "$GITHUB_WORKSPACE/.tmp-upm" >/dev/null
+          )
+          archive="$(find .tmp-upm -maxdepth 1 -type f -name 'com.darumappap.unity-agent-*.tgz' -print -quit)"
+          test -n "$archive"
+          python3 - "$archive" <<'PY'
+          import sys
+          import tarfile
+
+          archive = sys.argv[1]
+          required = {
+              "package/package.json",
+              "package/package.json.meta",
+              "package/Editor.meta",
+              "package/Editor/DarumaPPAP.UnityAgent.Editor.asmdef.meta",
+              "package/Editor/UnityAgentCodexPathResolver.cs.meta",
+              "package/Editor/UnityAgentControlPlanePathResolver.cs.meta",
+              "package/Editor/UnityAgentControlPlaneBootstrap.cs",
+              "package/Editor/UnityAgentControlPlaneBootstrap.cs.meta",
+              "package/Editor/UnityAgentControlPlaneClient.cs.meta",
+              "package/Editor/UnityAgentSetupWindow.cs.meta",
+              "package/Editor/Bootstrap~/install-control-plane.ps1",
+          }
+          with tarfile.open(archive, "r:gz") as package:
+              names = set(package.getnames())
+          missing = sorted(required - names)
+          if missing:
+              raise SystemExit("Packed UPM is missing bootstrap/meta files: " + ", ".join(missing))
+          print(f"Packed UPM bootstrap validation passed: {len(required)} required files")
+          PY
