@@ -9,8 +9,6 @@ namespace DarumaPPAP.UnityAgent.Editor
     internal sealed class UnityAgentSetupWindow : EditorWindow
     {
         private const string CODEX_PLUGIN_SOURCE = "DarumaPPAP/UnityAgent@v0.0.4-beta";
-        private const string CODEX_PATH_PREF = "DarumaPPAP.UnityAgent.CodexCliPath";
-        private static readonly string[] CODEX_CLI_PRODUCTS = { "codex_cli" };
         private static readonly string[] CODEX_INTEGRATION_PRODUCTS = { "codex_cli", "unity_agent_codex_plugin" };
         private static readonly string[] ALL_PRODUCTS =
         {
@@ -22,9 +20,11 @@ namespace DarumaPPAP.UnityAgent.Editor
 
         private string hostCommand = "unity-agent";
         private string codexCliPath = string.Empty;
+        private string codexPathSource = string.Empty;
+        private string codexPathDiagnostic = string.Empty;
         private string output = string.Empty;
         private string error = string.Empty;
-        private string statusMessage = "Codex CLIはまだ確認していません。";
+        private string statusMessage = "Codex CLIを確認しています。";
         private MessageType statusType = MessageType.Info;
         private bool showAdvanced;
         private bool showRaw;
@@ -38,7 +38,7 @@ namespace DarumaPPAP.UnityAgent.Editor
 
         private void OnEnable()
         {
-            codexCliPath = EditorPrefs.GetString(CODEX_PATH_PREF, string.Empty);
+            RefreshCodexPath();
         }
 
         private void OnGUI()
@@ -61,36 +61,58 @@ namespace DarumaPPAP.UnityAgent.Editor
         {
             EditorGUILayout.LabelField("Codex CLI", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Unity Editorは起動時のPATHを保持するため、後からCodex CLIをインストールすると見つからない場合があります。自動検出はPATHに加えてWindowsの一般的なnpm配置先も確認します。",
+                "Unity Hubから起動したEditorはShellのPATHを完全に継承しない場合があります。UnityAgentは手動Override、環境変数、npm/NVM、一般的な配置先、PATH/where.exeの順でCodex CLIを探します。",
                 MessageType.None);
 
             using (new EditorGUILayout.HorizontalScope())
             {
-                codexCliPath = EditorGUILayout.TextField("Codex CLI Path", codexCliPath);
-                if (GUILayout.Button("自動検出", GUILayout.Width(90)))
+                using (new EditorGUI.DisabledScope(true))
                 {
-                    AutoDetectCodex();
+                    EditorGUILayout.TextField("Resolved Path", string.IsNullOrWhiteSpace(codexCliPath) ? "Not Found" : codexCliPath);
                 }
+
+                if (GUILayout.Button("再検出", GUILayout.Width(70)))
+                {
+                    if (UnityAgentCodexPathResolver.HasOverride)
+                    {
+                        UnityAgentCodexPathResolver.ClearOverride();
+                    }
+                    RefreshCodexPath();
+                }
+
                 if (GUILayout.Button("参照...", GUILayout.Width(70)))
                 {
                     BrowseCodex();
                 }
             }
 
-            if (string.IsNullOrWhiteSpace(codexCliPath))
+            if (UnityAgentCodexPathResolver.HasOverride)
             {
-                EditorGUILayout.HelpBox(
-                    "Path未指定。Control PlaneがPATHと一般的なWindows npm配置先から自動検出します。",
-                    MessageType.Info);
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    EditorGUILayout.LabelField("Source: Manual override");
+                    if (GUILayout.Button("Override解除", GUILayout.Width(100)))
+                    {
+                        UnityAgentCodexPathResolver.ClearOverride();
+                        RefreshCodexPath();
+                    }
+                }
             }
-            else if (File.Exists(codexCliPath))
+            else if (!string.IsNullOrWhiteSpace(codexPathSource))
             {
-                EditorGUILayout.HelpBox("使用するCodex CLI: " + codexCliPath, MessageType.Info);
+                EditorGUILayout.LabelField("Source: " + codexPathSource);
+            }
+
+            if (!string.IsNullOrWhiteSpace(codexCliPath))
+            {
+                EditorGUILayout.HelpBox("Codex CLI detected ✓\n" + codexCliPath, MessageType.Info);
             }
             else
             {
                 EditorGUILayout.HelpBox(
-                    "指定されたCodex CLIが存在しません。自動検出または参照から選び直してください。\n" + codexCliPath,
+                    string.IsNullOrWhiteSpace(codexPathDiagnostic)
+                        ? "Codex CLI Not Found。『再検出』または『参照...』を使用してください。"
+                        : codexPathDiagnostic,
                     MessageType.Warning);
             }
         }
@@ -179,33 +201,17 @@ namespace DarumaPPAP.UnityAgent.Editor
             }
         }
 
-        private void AutoDetectCodex()
+        private void RefreshCodexPath()
         {
-            error = string.Empty;
-            var projectPath = Directory.GetParent(Application.dataPath).FullName;
-            var success = UnityAgentControlPlaneClient.TryRun(
-                "doctor",
-                projectPath,
-                hostCommand,
-                CODEX_CLI_PRODUCTS,
-                string.Empty,
-                string.Empty,
-                string.Empty,
-                string.Empty,
-                out output,
-                out error);
-
-            var detected = ExtractProductLocation(output, "codex_cli");
-            if (!string.IsNullOrEmpty(detected))
+            codexCliPath = UnityAgentCodexPathResolver.Resolve(out codexPathSource, out codexPathDiagnostic) ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(codexCliPath))
             {
-                codexCliPath = detected;
-                EditorPrefs.SetString(CODEX_PATH_PREF, codexCliPath);
-                statusMessage = "Codex CLIを検出しました。\n" + codexCliPath;
+                statusMessage = "Codex CLIを検出しました。状態確認またはPluginのインストールを実行できます。";
                 statusType = MessageType.Info;
             }
             else
             {
-                statusMessage = BuildReadableMessage(success, output, error);
+                statusMessage = "Codex CLIを検出できません。Codex欄の『再検出』または『参照...』を使用してください。";
                 statusType = MessageType.Warning;
             }
             Repaint();
@@ -232,15 +238,26 @@ namespace DarumaPPAP.UnityAgent.Editor
                 return;
             }
 
-            codexCliPath = selected;
-            EditorPrefs.SetString(CODEX_PATH_PREF, codexCliPath);
-            statusMessage = "Codex CLI Pathを設定しました。状態を確認してください。\n" + codexCliPath;
-            statusType = File.Exists(codexCliPath) ? MessageType.Info : MessageType.Warning;
+            if (!UnityAgentCodexPathResolver.TrySetOverride(selected, out var overrideError))
+            {
+                error = overrideError;
+                statusMessage = overrideError;
+                statusType = MessageType.Error;
+                showRaw = true;
+                Repaint();
+                return;
+            }
+
+            error = string.Empty;
+            RefreshCodexPath();
+            statusMessage = "Codex CLIを固定しました。\n" + codexCliPath;
+            statusType = MessageType.Info;
         }
 
         private void Run(string operation, string[] products)
         {
             error = string.Empty;
+            EnsureCodexPathBeforeRequest();
             var projectPath = Directory.GetParent(Application.dataPath).FullName;
             var success = UnityAgentControlPlaneClient.TryRun(
                 operation,
@@ -253,15 +270,27 @@ namespace DarumaPPAP.UnityAgent.Editor
                 codexCliPath,
                 out output,
                 out error);
-            SyncDetectedCodexPath(output);
             statusMessage = BuildReadableMessage(success, output, error);
             statusType = ResolveMessageType(success, output, error);
+            if (!success)
+            {
+                showRaw = true;
+            }
             Repaint();
         }
 
         private void InstallCodexPlugin()
         {
             error = string.Empty;
+            EnsureCodexPathBeforeRequest();
+            if (string.IsNullOrWhiteSpace(codexCliPath))
+            {
+                statusMessage = "Codex CLIが必要です。『再検出』または『参照...』でCodex CLIを指定してください。";
+                statusType = MessageType.Warning;
+                Repaint();
+                return;
+            }
+
             var projectPath = Directory.GetParent(Application.dataPath).FullName;
             EditorUtility.DisplayProgressBar("UnityAgent Setup", "Codex Plugin setup planを確認しています...", 0.25f);
             try
@@ -280,21 +309,22 @@ namespace DarumaPPAP.UnityAgent.Editor
 
                 output = planOutput;
                 error = planError;
-                SyncDetectedCodexPath(planOutput);
                 if (!planSuccess)
                 {
                     statusMessage = BuildReadableMessage(false, planOutput, planError);
                     statusType = MessageType.Error;
+                    showRaw = true;
                     Repaint();
                     return;
                 }
 
-                var planId = ExtractPlanId(planOutput);
+                var planId = ExtractJsonString(planOutput, "plan_id");
                 if (string.IsNullOrEmpty(planId))
                 {
                     error = "Control Plane responseからplan_idを取得できませんでした。";
                     statusMessage = error;
                     statusType = MessageType.Error;
+                    showRaw = true;
                     Repaint();
                     return;
                 }
@@ -314,7 +344,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                 if (!EditorUtility.DisplayDialog(
                         "UnityAgent Codex Plugin",
                         "Codex CLIのユーザースコープへUnityAgent Pluginをインストールします。\n\n" +
-                        "Codex: " + (string.IsNullOrWhiteSpace(codexCliPath) ? "自動検出" : codexCliPath) + "\n" +
+                        "Codex: " + codexCliPath + "\n" +
                         "Source: " + CODEX_PLUGIN_SOURCE + "\n" +
                         "MutationはUnityAgent Control Plane / Installer Provider経由で実行されます。",
                         "インストール",
@@ -346,6 +376,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                     statusType = ResolveMessageType(applySuccess, output, error);
                     if (!applySuccess)
                     {
+                        showRaw = true;
                         Repaint();
                         return;
                     }
@@ -370,23 +401,13 @@ namespace DarumaPPAP.UnityAgent.Editor
             }
         }
 
-        private void SyncDetectedCodexPath(string json)
+        private void EnsureCodexPathBeforeRequest()
         {
-            if (!string.IsNullOrWhiteSpace(codexCliPath))
+            if (!string.IsNullOrWhiteSpace(codexCliPath) && File.Exists(codexCliPath))
             {
                 return;
             }
-            var detected = ExtractProductLocation(json, "codex_cli");
-            if (string.IsNullOrWhiteSpace(detected))
-            {
-                detected = ExtractCodexCliPath(json);
-            }
-            if (string.IsNullOrWhiteSpace(detected))
-            {
-                return;
-            }
-            codexCliPath = detected;
-            EditorPrefs.SetString(CODEX_PATH_PREF, codexCliPath);
+            codexCliPath = UnityAgentCodexPathResolver.Resolve(out codexPathSource, out codexPathDiagnostic) ?? string.Empty;
         }
 
         private string BuildRawLog()
@@ -408,11 +429,11 @@ namespace DarumaPPAP.UnityAgent.Editor
             var combined = (json ?? string.Empty) + "\n" + (processError ?? string.Empty);
             if (combined.IndexOf("codex_cli_override_missing", StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                return "指定したCodex CLI Pathが存在しません。『自動検出』または『参照...』から選び直してください。";
+                return "指定したCodex CLI Pathが存在しません。『参照...』から選び直すかOverrideを解除してください。";
             }
             if (combined.IndexOf("codex_cli_unavailable", StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                return "Codex CLIを検出できません。『自動検出』を試すか、『参照...』から codex.exe / codex.cmd を指定してください。";
+                return "Codex CLIを検出できません。『再検出』を試すか、『参照...』から codex.exe / codex.cmd を指定してください。";
             }
             if (combined.IndexOf("plugin_not_installed", StringComparison.OrdinalIgnoreCase) >= 0)
             {
@@ -465,29 +486,6 @@ namespace DarumaPPAP.UnityAgent.Editor
                 return MessageType.Warning;
             }
             return MessageType.Info;
-        }
-
-        private static string ExtractPlanId(string json)
-        {
-            return ExtractJsonString(json, "plan_id");
-        }
-
-        private static string ExtractProductLocation(string json, string product)
-        {
-            if (string.IsNullOrWhiteSpace(json))
-            {
-                return string.Empty;
-            }
-            var pattern =
-                "\\\"product\\\"\\s*:\\s*\\\"" + Regex.Escape(product) +
-                "\\\"(?s:.*?)\\\"location\\\"\\s*:\\s*\\\"(?<value>(?:\\\\.|[^\\\"])*)\\\"";
-            var match = Regex.Match(json, pattern, RegexOptions.IgnoreCase);
-            return match.Success ? DecodeJsonString(match.Groups["value"].Value) : string.Empty;
-        }
-
-        private static string ExtractCodexCliPath(string json)
-        {
-            return ExtractJsonString(json, "codex_cli_path");
         }
 
         private static string ExtractJsonString(string json, string key)
