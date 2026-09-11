@@ -22,7 +22,7 @@ PRODUCTS = (
     "codex_cli",
     "unity_agent_codex_plugin",
 )
-CHANNEL = "0.0.3-beta"
+CHANNEL = "0.0.4-beta"
 
 
 def _fingerprint() -> dict[str, str]:
@@ -70,6 +70,7 @@ def _parse_args() -> argparse.Namespace:
         subparser.add_argument("--expected-plan-id")
         subparser.add_argument("--approved-plan", type=Path)
         subparser.add_argument("--install-root", type=Path)
+        subparser.add_argument("--codex-path", type=Path)
         subparser.add_argument("--state-root", type=Path, default=_default_state_root())
         subparser.add_argument("--format", choices=("json",), default="json")
         subparser.add_argument("--non-interactive", action="store_true")
@@ -93,6 +94,7 @@ def main() -> int:
         "approval_ref": args.approval_ref,
         "expected_plan_id": args.expected_plan_id,
         "install_root": None if args.install_root is None else str(args.install_root.expanduser().resolve(strict=False)),
+        "codex_cli_path": None if args.codex_path is None else str(args.codex_path.expanduser().resolve(strict=False)),
     }
     approved_plan = None
     if args.approved_plan:
