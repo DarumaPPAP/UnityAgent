@@ -23,11 +23,12 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Check release tag and version contract
+      - name: Check release source, tag, and version contract
         env:
           REQUESTED_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/main"
           version="$(tr -d '\r\n' < VERSION)"
           test "$REQUESTED_TAG" = "v$version"
 
