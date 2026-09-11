@@ -78,6 +78,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                 return null;
             }
 
+            var legacyDetected = false;
             foreach (var candidate in EnumerateCandidates())
             {
                 if (string.IsNullOrWhiteSpace(candidate.Path) || !File.Exists(candidate.Path))
@@ -85,12 +86,19 @@ namespace DarumaPPAP.UnityAgent.Editor
                     continue;
                 }
 
+                if (IsLegacyPythonUserInstall(candidate.Path))
+                {
+                    legacyDetected = true;
+                    continue;
+                }
+
                 source = candidate.Source;
                 return Path.GetFullPath(candidate.Path);
             }
 
-            diagnostic =
-                "UnityAgent Control Planeを検出できませんでした。専用LocalAppData runtime、User環境変数、User PATH、旧Python User Scripts、現在のPATHを確認しました。";
+            diagnostic = legacyDetected
+                ? "旧pip --user形式のControl Planeを検出しました。『Install Control Plane』を実行して専用LocalAppData runtimeへ移行してください。旧インストールは自動削除しません。"
+                : "UnityAgent Control Planeを検出できませんでした。専用LocalAppData runtime、User環境変数、User PATH、現在のPATHを確認しました。";
             return null;
         }
 
