@@ -17,6 +17,7 @@ import uuid
 
 REPOSITORY = "DarumaPPAP/UnityArtistCLI"
 RELEASE_TAG = "v0.0.1-beta"
+CONTROL_PLANE_CHANNEL = "0.0.2-beta"
 ARCHIVE_NAME = "UnityArtistCLI-host-windows-x64.zip"
 DEFAULT_INSTALL_ROOT = Path(os.environ.get("LOCALAPPDATA") or (Path.home() / "AppData/Local")) / "UnityArtistCLI/Beta"
 
@@ -26,7 +27,7 @@ class ReleaseInstallError(RuntimeError):
 
 
 def _download(url: str, *, timeout_seconds: float = 60.0) -> bytes:
-    request = Request(url, headers={"User-Agent": "UnityAgent-Installer/0.0.1-beta"})
+    request = Request(url, headers={"User-Agent": f"UnityAgent-Installer/{CONTROL_PLANE_CHANNEL}"})
     with urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310 - URL is built from the fixed release contract.
         return response.read()
 
@@ -131,12 +132,13 @@ def install_plan(
         })
 
     status = "passed" if all(str(entry["status"]) in {"installed", "verified"} for entry in entries) else "unavailable"
+    channel = str(plan.get("channel") or CONTROL_PLANE_CHANNEL)
     return {
         "schema_version": "1.0",
         "operation": "apply",
         "status": status,
         "project_root": str(plan.get("project_root") or ""),
-        "channel": RELEASE_TAG.removeprefix("v"),
+        "channel": channel,
         "plan_id": plan.get("plan_id"),
         "entries": entries,
         "install_receipt": {
@@ -144,7 +146,7 @@ def install_plan(
             "receipt_id": f"receipt-{plan.get('plan_id') or 'unknown'}",
             "run_id": "pending",
             "project_root": str(plan.get("project_root") or ""),
-            "channel": RELEASE_TAG.removeprefix("v"),
+            "channel": channel,
             "entries": entries,
             "verified_at": "1970-01-01T00:00:00+00:00",
             "evidence_refs": [],
