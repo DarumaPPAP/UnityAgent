@@ -13,7 +13,7 @@ from pathlib import Path
 import subprocess
 from typing import Any, Callable, Iterable, Mapping, Sequence
 
-CHANNEL = "0.0.4-beta"
+CHANNEL = "0.0.5-beta"
 MARKETPLACE_SOURCE = "DarumaPPAP/UnityAgent"
 MARKETPLACE_NAME = "unity-agent"
 MARKETPLACE_REF = f"v{CHANNEL}"
@@ -44,13 +44,15 @@ def _windows_command(arguments: Sequence[str]) -> list[str]:
         comspec = os.environ.get("COMSPEC") or "cmd.exe"
         return [comspec, "/d", "/s", "/c", subprocess.list2cmdline(command)]
     if os.name == "nt" and suffix == ".ps1":
-        powershell = os.environ.get("WINDIR")
-        powershell_exe = (
-            str(Path(powershell) / "System32/WindowsPowerShell/v1.0/powershell.exe")
-            if powershell
-            else "powershell.exe"
-        )
-        return [powershell_exe, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", command[0], *command[1:]]
+        return [
+            "powershell.exe",
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            command[0],
+            *command[1:],
+        ]
     return command
 
 
