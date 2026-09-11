@@ -14,9 +14,9 @@ if ($PSVersionTable.PSVersion.Major -lt 5) {
 }
 
 $repository = "DarumaPPAP/UnityAgent"
-$requestedRef = if ($env:UNITY_AGENT_REF) { $env:UNITY_AGENT_REF.Trim() } else { "migration/unity-artist-cli-v2" }
+$requestedRef = if ($env:UNITY_AGENT_REF) { $env:UNITY_AGENT_REF.Trim() } else { "v0.0.1-beta" }
 if ([string]::IsNullOrWhiteSpace($requestedRef) -or $requestedRef -notmatch '^[A-Za-z0-9._/-]+$') {
-    throw "UNITY_AGENT_REF must be a safe Git ref such as migration/unity-artist-cli-v2 or main."
+    throw "UNITY_AGENT_REF must be a safe Git ref such as v0.0.1-beta or main."
 }
 
 $python = Get-Command py -ErrorAction SilentlyContinue

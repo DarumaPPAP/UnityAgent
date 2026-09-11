@@ -18,7 +18,9 @@ irm https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/migration/unity-arti
 The remote bootstrap installs the host Control Plane into the current user's Python environment
 and adds its Scripts directory to User PATH. A repository checkout may instead use
 `python -m pip install -e .`. The UnityAgent UPM package and this Codex Plugin are separate GitHub
-surfaces. Both Entry surfaces use the same Control Plane contracts.
+surfaces. The bootstrap is pinned to the `v0.0.1-beta` release tag by default; set
+`UNITY_AGENT_REF` only when intentionally testing another ref. Both Entry surfaces use the same
+Control Plane contracts.
 
 ## Control Plane setup
 
