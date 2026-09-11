@@ -28,13 +28,9 @@ if ($requestedTag -and $requestedTag -notmatch '^v[A-Za-z0-9._-]+$') {
 
 function Resolve-Python {
     $py = Get-Command py -ErrorAction SilentlyContinue
-    if ($py) {
-        return @{ Command = $py.Source; Prefix = @("-3") }
-    }
+    if ($py) { return @{ Command = $py.Source; Prefix = @("-3") } }
     $python = Get-Command python -ErrorAction SilentlyContinue
-    if ($python) {
-        return @{ Command = $python.Source; Prefix = @() }
-    }
+    if ($python) { return @{ Command = $python.Source; Prefix = @() } }
     throw "Python 3.10 or newer was not found. Install Python, then rerun the installer."
 }
 
@@ -71,12 +67,25 @@ function Resolve-ExpectedHash {
     return $null
 }
 
+function Add-UserPathEntry {
+    param([Parameter(Mandatory = $true)][string]$Directory)
+
+    $currentUserPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    $pathParts = @()
+    if ($currentUserPath) {
+        $pathParts = @($currentUserPath -split ';' | Where-Object { $_ -and $_.Trim() })
+    }
+    $alreadyPresent = @($pathParts | Where-Object {
+        [string]::Equals($_.TrimEnd('\'), $Directory.TrimEnd('\'), [StringComparison]::OrdinalIgnoreCase)
+    }).Count -gt 0
+    if (-not $alreadyPresent) {
+        [Environment]::SetEnvironmentVariable("Path", (($pathParts + $Directory) -join ';'), "User")
+    }
+}
+
 $python = Resolve-Python
 & $python.Command @($python.Prefix + @("-c", "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)"))
-if ($LASTEXITCODE -ne 0) {
-    throw "Python 3.10 or newer is required."
-}
-Invoke-Python -Python $python -Arguments @("-m", "pip", "--version")
+if ($LASTEXITCODE -ne 0) { throw "Python 3.10 or newer is required." }
 
 if ($requestedTag) {
     Write-Host "Resolving UnityAgent release $requestedTag..."
@@ -86,24 +95,31 @@ else {
     Write-Host "Resolving latest published UnityAgent prerelease..."
     $releases = @(Invoke-RestMethod -Uri "https://api.github.com/repos/$repository/releases?per_page=20" -Headers $headers -UseBasicParsing)
     $release = @($releases | Where-Object { -not $_.draft -and $_.prerelease }) | Select-Object -First 1
-    if (-not $release) {
-        throw "No published UnityAgent prerelease was found."
-    }
+    if (-not $release) { throw "No published UnityAgent prerelease was found." }
 }
 
 $releaseTag = [string]$release.tag_name
 if ([string]::IsNullOrWhiteSpace($releaseTag) -or $releaseTag -notmatch '^v[A-Za-z0-9._-]+$') {
     throw "Resolved UnityAgent release returned an invalid tag."
 }
-if ($release.draft) {
-    throw "Release $releaseTag is still a draft and cannot be installed."
-}
+if ($release.draft) { throw "Release $releaseTag is still a draft and cannot be installed." }
 
 Write-Host "Resolved UnityAgent $releaseTag."
 $wheelAsset = @($release.assets | Where-Object { $_.name -match '^unityagent_control_plane-.*\.whl$' }) | Select-Object -First 1
 $checksumAsset = @($release.assets | Where-Object { $_.name -eq 'SHA256SUMS.txt' }) | Select-Object -First 1
 if (-not $wheelAsset) { throw "Release $releaseTag does not contain a UnityAgent Control Plane wheel." }
 if (-not $checksumAsset) { throw "Release $releaseTag does not contain SHA256SUMS.txt." }
+
+$localAppData = [Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData)
+if ([string]::IsNullOrWhiteSpace($localAppData)) { $localAppData = $env:LOCALAPPDATA }
+if ([string]::IsNullOrWhiteSpace($localAppData)) { throw "LOCALAPPDATA could not be resolved." }
+
+$controlPlaneRoot = Join-Path $localAppData ("UnityAgent\ControlPlane\" + $releaseTag)
+$venvRoot = Join-Path $controlPlaneRoot "venv"
+$venvPython = Join-Path $venvRoot "Scripts\python.exe"
+$controlPlanePath = Join-Path $venvRoot "Scripts\unity-agent.exe"
+$binRoot = Join-Path $localAppData "UnityAgent\bin"
+$shimPath = Join-Path $binRoot "unity-agent.cmd"
 
 $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ("UnityAgent-" + [Guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
@@ -121,52 +137,45 @@ try {
         throw "SHA-256 verification failed for $($wheelAsset.name). Expected $expectedHash but got $actualHash."
     }
 
-    Write-Host "SHA-256 verified. Installing UnityAgent Control Plane..."
-    Invoke-Python -Python $python -Arguments @("-m", "pip", "install", "--user", "--upgrade", $wheelPath)
+    Write-Host "SHA-256 verified. Preparing isolated Control Plane runtime..."
+    New-Item -ItemType Directory -Path $controlPlaneRoot -Force | Out-Null
+    if (-not (Test-Path -LiteralPath $venvPython)) {
+        Invoke-Python -Python $python -Arguments @("-m", "venv", $venvRoot)
+    }
+    if (-not (Test-Path -LiteralPath $venvPython)) {
+        throw "Python virtual environment could not be created at $venvRoot."
+    }
+
+    & $venvPython -m pip install --disable-pip-version-check --upgrade $wheelPath
+    if ($LASTEXITCODE -ne 0) { throw "Control Plane installation failed with exit code $LASTEXITCODE." }
 }
 finally {
     Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-$scriptsRootOutput = & $python.Command @($python.Prefix + @("-c", "import sysconfig; print(sysconfig.get_path('scripts', scheme='nt_user'))"))
-if ($LASTEXITCODE -ne 0) { throw "Unable to determine the current user's Python Scripts directory." }
-$scriptsRoot = ($scriptsRootOutput | Out-String).Trim()
-if ([string]::IsNullOrWhiteSpace($scriptsRoot)) { throw "Unable to determine the current user's Python Scripts directory." }
-
-$env:Path = "$scriptsRoot;$env:Path"
-$unityAgent = Get-Command unity-agent -ErrorAction SilentlyContinue
-if (-not $unityAgent) {
-    throw "UnityAgent was installed but unity-agent was not found in $scriptsRoot."
+if (-not (Test-Path -LiteralPath $controlPlanePath)) {
+    throw "Control Plane was installed but unity-agent.exe could not be resolved at $controlPlanePath."
 }
-& $unityAgent.Source --help | Out-Host
+& $controlPlanePath --help | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Installed unity-agent failed its help verification." }
 
-$currentUserPath = [Environment]::GetEnvironmentVariable("Path", "User")
-$pathParts = @()
-if ($currentUserPath) {
-    $pathParts = @($currentUserPath -split ';' | Where-Object { $_ -and $_.Trim() })
-}
-$alreadyPresent = @($pathParts | Where-Object {
-    [string]::Equals($_.TrimEnd('\'), $scriptsRoot.TrimEnd('\'), [StringComparison]::OrdinalIgnoreCase)
-}).Count -gt 0
-if (-not $alreadyPresent) {
-    [Environment]::SetEnvironmentVariable("Path", (($pathParts + $scriptsRoot) -join ';'), "User")
-}
+New-Item -ItemType Directory -Path $binRoot -Force | Out-Null
+$shimContent = "@echo off`r`n`"$controlPlanePath`" %*`r`n"
+Set-Content -LiteralPath $shimPath -Value $shimContent -Encoding ASCII
+Add-UserPathEntry -Directory $binRoot
 
-# Persist the exact executable path separately from PATH. Unity Hub / Editor processes
-# that were started before this installer ran can read the User-scoped value directly.
-$controlPlanePath = [IO.Path]::GetFullPath($unityAgent.Source)
 $env:UNITY_AGENT_CONTROL_PLANE = $controlPlanePath
 [Environment]::SetEnvironmentVariable("UNITY_AGENT_CONTROL_PLANE", $controlPlanePath, "User")
+$env:Path = "$binRoot;$env:Path"
 
 Write-Host ""
 Write-Host "UnityAgent $releaseTag installed successfully."
 Write-Host "Control Plane: $controlPlanePath"
-Write-Host "Control Plane hint: UNITY_AGENT_CONTROL_PLANE=$controlPlanePath"
-Write-Host "Python Scripts: $scriptsRoot"
+Write-Host "Stable command shim: $shimPath"
+Write-Host "Runtime root: $controlPlaneRoot"
 Write-Host ""
 Write-Host "Next:"
 Write-Host '  1. Add the UnityAgent UPM package to your Unity project.'
 Write-Host '  2. Open UnityAgent > Setup.'
-Write-Host '  3. Confirm that Control Plane and Codex CLI show a Resolved Path.'
+Write-Host '  3. Confirm that Control Plane and Codex Local runtime show a Resolved Path.'
 Write-Host '  4. Use Codex Plugin install / repair from the UnityAgent window.'
