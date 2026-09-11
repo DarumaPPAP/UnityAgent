@@ -93,8 +93,10 @@ def validate(root: Path = ROOT) -> list[str]:
             text = path.read_text(encoding="utf-8").casefold()
             if "unity-artist" in text or "unity artist" in text:
                 errors.append(f"Unity UI Entry must not invoke UnityArtistCLI directly: {path.relative_to(root)}")
-            if "fileName = \"unity\"" in text:
+            if "filename = \"unity\"" in text:
                 errors.append(f"Unity UI Entry must not invoke Official Unity CLI directly: {path.relative_to(root)}")
+            if "filename = \"codex\"" in text or "codex plugin marketplace" in text or "codex plugin add" in text:
+                errors.append(f"Unity UI Entry must not invoke Codex Plugin commands directly: {path.relative_to(root)}")
 
     setup_skill = root / ".agents/plugins/unity-agent/skills/unity-agent-setup/SKILL.md"
     if setup_skill.is_file():
