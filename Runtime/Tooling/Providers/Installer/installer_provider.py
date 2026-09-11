@@ -13,9 +13,20 @@ import shutil
 from typing import Any, Callable, Mapping, Sequence
 
 from Runtime.Contracts.toolchain_setup_contract import validate_toolchain_setup_request
-from Runtime.Tooling.Providers.Installer.release_installer import ReleaseInstallError, install_plan
+from Runtime.Tooling.Providers.Installer.codex_plugin_installer import (
+    CommandRunner,
+    observe_codex_plugin,
+    run_command,
+)
+from Runtime.Tooling.Providers.Installer.release_installer import ReleaseInstallError
+from Runtime.Tooling.Providers.Installer.toolchain_installer import install_toolchain_plan
 
-PRODUCTS = frozenset({"official_unity_cli", "unity_artist_cli"})
+PRODUCTS = frozenset({
+    "official_unity_cli",
+    "unity_artist_cli",
+    "codex_cli",
+    "unity_agent_codex_plugin",
+})
 PACKAGE_IDS = ("com.unity-artist", "com.darumappap.unity-artist")
 CHANNEL = "0.0.1-beta"
 
@@ -61,11 +72,19 @@ class InstallerProvider:
         project_root: str | Path,
         *,
         which_fn: Callable[[str], str | None] = shutil.which,
+        command_runner: CommandRunner = run_command,
         installer_fn: Callable[[Mapping[str, Any]], Mapping[str, Any]] | None = None,
     ) -> None:
         self.project_root = Path(project_root).expanduser().resolve(strict=False)
         self.which_fn = which_fn
-        self.installer_fn = installer_fn or install_plan
+        self.command_runner = command_runner
+        self.installer_fn = installer_fn or (
+            lambda plan: install_toolchain_plan(
+                plan,
+                which_fn=self.which_fn,
+                command_runner=self.command_runner,
+            )
+        )
 
     def _product_observation(self, product: str) -> dict[str, Any]:
         if product == "official_unity_cli":
@@ -90,6 +109,19 @@ class InstallerProvider:
                 "source": package_id or "project manifest",
                 "sha256": None,
             }
+        if product == "codex_cli":
+            executable = self.which_fn("codex")
+            return {
+                "product": product,
+                "status": "verified" if executable else "unavailable",
+                "version": None,
+                "location": executable,
+                "source": "PATH",
+                "sha256": None,
+                "reason": None if executable else "codex_cli_unavailable",
+            }
+        if product == "unity_agent_codex_plugin":
+            return observe_codex_plugin(self.which_fn("codex"), runner=self.command_runner)
         raise ValueError(f"unsupported setup product: {product}")
 
     def doctor(self, request: Mapping[str, Any]) -> dict[str, Any]:
@@ -108,23 +140,40 @@ class InstallerProvider:
             "errors": [] if status == "passed" else ["one or more requested toolchain products are unavailable"],
         }
 
+    @staticmethod
+    def _action_for(entry: Mapping[str, Any]) -> str:
+        status = str(entry.get("status") or "")
+        product = str(entry.get("product") or "")
+        if status == "verified":
+            return "verify"
+        if product == "codex_cli":
+            return "manual_required"
+        if product == "unity_agent_codex_plugin" and entry.get("reason") == "codex_cli_unavailable":
+            return "blocked_by_dependency"
+        if product == "unity_agent_codex_plugin" and status == "failed":
+            return "blocked_by_observation"
+        return "install_then_verify"
+
     def plan(self, request: Mapping[str, Any]) -> dict[str, Any]:
         report = self.doctor(request)
         actions = [
             {
                 "product": entry["product"],
-                "action": "verify" if entry["status"] == "verified" else "install_then_verify",
+                "action": self._action_for(entry),
                 "target": "user_scope",
                 "location": entry.get("location"),
                 "version": entry.get("version"),
+                "source": entry.get("source"),
+                "reason": entry.get("reason"),
             }
             for entry in report["entries"]
         ]
         plan_id = _plan_id(str(self.project_root), request["products"], report)
+        blocked = any(action["action"] in {"manual_required", "blocked_by_dependency", "blocked_by_observation"} for action in actions)
         return {
             "schema_version": "1.0",
             "operation": "plan",
-            "status": "passed",
+            "status": "unavailable" if blocked else "passed",
             "project_root": str(self.project_root),
             "channel": CHANNEL,
             "plan_id": plan_id,
@@ -154,10 +203,11 @@ class InstallerProvider:
                 "failure_class": "stale_revision", "reason": "expected_plan_id does not match the approved plan",
                 "project_root": str(self.project_root), "channel": CHANNEL,
             }
-        if self.installer_fn is None:
+        approved_status = approved_plan.get("status")
+        if approved_status is not None and str(approved_status) != "passed":
             return {
                 "schema_version": "1.0", "operation": "apply", "status": "failed",
-                "failure_class": "backend_not_implemented", "reason": "no approved installation adapter is registered",
+                "failure_class": "blocked_by_environment", "reason": "approved setup plan is not executable",
                 "project_root": str(self.project_root), "channel": CHANNEL,
             }
         try:

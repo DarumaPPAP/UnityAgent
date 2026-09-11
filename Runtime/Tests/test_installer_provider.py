@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import json
 import shutil
 import sys
 import unittest
@@ -13,6 +14,13 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from Runtime.Tooling.Providers.Installer.codex_plugin_installer import (
+    CodexPluginInstallError,
+    CommandResult,
+    ensure_codex_plugin,
+    observe_codex_plugin,
+)
+from Runtime.Tooling.Providers.Installer.installer_provider import InstallerProvider
 from Runtime.Tooling.Providers.Installer.release_installer import ReleaseInstallError, install_plan
 
 
@@ -70,6 +78,112 @@ class InstallerProviderTests(unittest.TestCase):
                 },
                 download_fn=download,
             )
+
+    def test_codex_plugin_observation_requires_codex_cli(self) -> None:
+        result = observe_codex_plugin(None)
+        self.assertEqual(result["status"], "unavailable")
+        self.assertEqual(result["reason"], "codex_cli_unavailable")
+
+    def test_codex_plugin_observation_reports_installed_plugin(self) -> None:
+        def runner(arguments):
+            return CommandResult(
+                0,
+                json.dumps([
+                    {
+                        "pluginId": "unity-agent@personal",
+                        "name": "unity-agent",
+                        "marketplaceName": "personal",
+                        "version": "0.0.1-beta",
+                        "installed": True,
+                        "enabled": True,
+                        "installedPath": "C:/Users/test/.codex/plugins/unity-agent",
+                    }
+                ]),
+                "",
+            )
+
+        result = observe_codex_plugin("C:/Tools/codex.exe", runner=runner)
+        self.assertEqual(result["status"], "verified")
+        self.assertEqual(result["version"], "0.0.1-beta")
+
+    def test_codex_plugin_install_adds_pinned_marketplace_and_verifies(self) -> None:
+        calls: list[list[str]] = []
+
+        def runner(arguments):
+            args = list(arguments)
+            calls.append(args)
+            if args[2:5] == ["list", "--available", "--json"]:
+                return CommandResult(0, "[]", "")
+            if args[2:5] == ["marketplace", "list", "--json"]:
+                return CommandResult(0, "[]", "")
+            if args[2:5] == ["marketplace", "add", "DarumaPPAP/UnityAgent"]:
+                return CommandResult(0, json.dumps({"name": "personal"}), "")
+            if args[2:4] == ["add", "unity-agent@personal"]:
+                return CommandResult(0, json.dumps({"pluginId": "unity-agent@personal"}), "")
+            if args[2:4] == ["list", "--json"]:
+                return CommandResult(
+                    0,
+                    json.dumps([
+                        {
+                            "pluginId": "unity-agent@personal",
+                            "name": "unity-agent",
+                            "marketplaceName": "personal",
+                            "version": "0.0.1-beta",
+                            "installed": True,
+                            "enabled": True,
+                            "installedPath": "C:/Users/test/.codex/plugins/unity-agent",
+                        }
+                    ]),
+                    "",
+                )
+            return CommandResult(1, "", f"unexpected command: {args}")
+
+        result = ensure_codex_plugin("C:/Tools/codex.exe", runner=runner)
+        self.assertEqual(result["status"], "installed")
+        self.assertIn(
+            [
+                "C:/Tools/codex.exe", "plugin", "marketplace", "add",
+                "DarumaPPAP/UnityAgent", "--ref", "v0.0.1-beta", "--json",
+            ],
+            calls,
+        )
+        self.assertIn(
+            ["C:/Tools/codex.exe", "plugin", "add", "unity-agent@personal", "--json"],
+            calls,
+        )
+
+    def test_codex_marketplace_collision_fails_closed(self) -> None:
+        def runner(arguments):
+            args = list(arguments)
+            if args[2:5] == ["list", "--available", "--json"]:
+                return CommandResult(0, "[]", "")
+            if args[2:5] == ["marketplace", "list", "--json"]:
+                return CommandResult(
+                    0,
+                    json.dumps([
+                        {
+                            "name": "personal",
+                            "source": {"url": "https://github.com/Other/PluginRepo", "ref": "main"},
+                        }
+                    ]),
+                    "",
+                )
+            return CommandResult(1, "", "must not mutate a conflicting marketplace")
+
+        with self.assertRaises(CodexPluginInstallError):
+            ensure_codex_plugin("C:/Tools/codex.exe", runner=runner)
+
+    def test_installer_plan_blocks_plugin_install_when_codex_is_missing(self) -> None:
+        provider = InstallerProvider(ROOT, which_fn=lambda name: None)
+        plan = provider.plan({
+            "project_root": str(ROOT),
+            "products": ["unity_agent_codex_plugin"],
+            "channel": "0.0.1-beta",
+            "install_root": None,
+        })
+        self.assertEqual(plan["status"], "unavailable")
+        self.assertEqual(plan["actions"][0]["action"], "blocked_by_dependency")
+        self.assertFalse(plan["approval_required"])
 
 
 if __name__ == "__main__":

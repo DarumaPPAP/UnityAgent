@@ -18,7 +18,7 @@ properties:
       additionalProperties: false
       required: [product, status, version, location, source, sha256]
       properties:
-        product: {enum: [official_unity_cli, unity_artist_cli]}
+        product: {enum: [official_unity_cli, unity_artist_cli, codex_cli, unity_agent_codex_plugin]}
         status: {enum: [installed, verified, unavailable, failed]}
         version: {type: [string, 'null']}
         location: {type: [string, 'null']}
