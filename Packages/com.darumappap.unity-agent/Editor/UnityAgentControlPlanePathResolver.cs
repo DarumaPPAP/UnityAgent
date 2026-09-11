@@ -90,8 +90,20 @@ namespace DarumaPPAP.UnityAgent.Editor
             }
 
             diagnostic =
-                "UnityAgent Control Planeを検出できませんでした。User環境変数、User PATH、Python User Scripts、現在のPATHを確認しました。";
+                "UnityAgent Control Planeを検出できませんでした。専用LocalAppData runtime、User環境変数、User PATH、旧Python User Scripts、現在のPATHを確認しました。";
             return null;
+        }
+
+        internal static bool IsLegacyPythonUserInstall(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path) || !RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                return false;
+            }
+
+            var normalized = path.Replace('/', '\\');
+            return normalized.IndexOf("\\AppData\\Roaming\\Python\\", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                   normalized.IndexOf("\\Scripts\\unity-agent", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private static IEnumerable<(string Path, string Source)> EnumerateCandidates()
@@ -103,6 +115,11 @@ namespace DarumaPPAP.UnityAgent.Editor
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
+                foreach (var candidate in WindowsManagedCandidates())
+                {
+                    yield return candidate;
+                }
+
                 foreach (var candidate in WindowsPythonCandidates())
                 {
                     yield return candidate;
@@ -172,6 +189,48 @@ namespace DarumaPPAP.UnityAgent.Editor
             }
         }
 
+        private static IEnumerable<(string Path, string Source)> WindowsManagedCandidates()
+        {
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(localAppData))
+            {
+                yield break;
+            }
+
+            foreach (var fileName in WindowsExecutableNames())
+            {
+                yield return (Path.Combine(localAppData, "UnityAgent", "bin", fileName), "UnityAgent stable bin");
+            }
+
+            var root = Path.Combine(localAppData, "UnityAgent", "ControlPlane");
+            if (!Directory.Exists(root))
+            {
+                yield break;
+            }
+
+            IEnumerable<string> versionDirectories;
+            try
+            {
+                versionDirectories = Directory.EnumerateDirectories(root)
+                    .OrderByDescending(path => path, StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+            }
+            catch
+            {
+                yield break;
+            }
+
+            foreach (var versionDirectory in versionDirectories)
+            {
+                foreach (var fileName in WindowsExecutableNames())
+                {
+                    yield return (
+                        Path.Combine(versionDirectory, "venv", "Scripts", fileName),
+                        "UnityAgent LocalAppData runtime");
+                }
+            }
+        }
+
         private static IEnumerable<(string Path, string Source)> WindowsPythonCandidates()
         {
             var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) ?? string.Empty;
@@ -208,7 +267,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                     {
                         yield return (
                             Path.Combine(versionDirectory, "Scripts", fileName),
-                            "Python User Scripts");
+                            "Legacy Python User Scripts");
                     }
                 }
             }
