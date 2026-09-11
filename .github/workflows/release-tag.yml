@@ -45,17 +45,34 @@ jobs:
           codex_plugin = json.loads(pathlib.Path(".agents/plugins/unity-agent/.codex-plugin/plugin.json").read_text(encoding="utf-8"))
           pyproject = tomllib.loads(pathlib.Path("pyproject.toml").read_text(encoding="utf-8"))
           marketplace = json.loads(pathlib.Path(".agents/plugins/marketplace.json").read_text(encoding="utf-8"))
+          license_text = pathlib.Path("LICENSE").read_text(encoding="utf-8")
+          readme = pathlib.Path("README.md").read_text(encoding="utf-8")
+          codex_installer = pathlib.Path("Runtime/Tooling/Providers/Installer/codex_plugin_installer.py").read_text(encoding="utf-8")
 
           assert upm["version"] == version, (upm["version"], version)
           assert plugin["version"] == version, (plugin["version"], version)
           assert codex_plugin["version"] == version, (codex_plugin["version"], version)
           assert pyproject["project"]["version"] == expected_python, (pyproject["project"]["version"], expected_python)
 
+          assert upm.get("license") == "MIT", upm.get("license")
+          assert plugin.get("license") == "MIT", plugin.get("license")
+          assert codex_plugin.get("license") == "MIT", codex_plugin.get("license")
+          assert license_text.startswith("MIT License\n"), "LICENSE is not the canonical MIT license text"
+
+          assert marketplace.get("name") == "unity-agent", marketplace.get("name")
+          assert marketplace.get("interface", {}).get("displayName") == "UnityAgent"
+          assert 'MARKETPLACE_NAME = "unity-agent"' in codex_installer
+          assert f'CHANNEL = "{version}"' in codex_installer
+          assert "unity-agent@unity-agent" in readme
+          assert "unity-agent@personal" not in readme
+
           artist = next(item for item in marketplace["plugins"] if item["name"] == "unity-artist")
           artist_ref = artist["source"].get("ref", "")
           assert artist_ref.startswith("v") and artist_ref != "main", artist_ref
           print(f"Release version: {version}")
           print(f"Python version: {expected_python}")
+          print("Codex marketplace: unity-agent")
+          print("License: MIT")
           print(f"Pinned UnityArtistCLI ref: {artist_ref}")
           PY
 
