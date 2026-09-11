@@ -72,8 +72,10 @@ irm https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/migration/unity-arti
 ```
 
 このスクリプトはUnityAgent Control PlaneをGitHubの指定refから現在ユーザーのPython環境へ導入し、
-`unity-agent` をUser PATHへ追加します。Python 3.10以上とpipが必要です。現在の移行ブランチを
-直接指定しており、mainへmergeされた後はURLのrefを `main` に変更できます。ローカルcheckoutを
+`unity-agent` をUser PATHへ追加します。Python 3.10以上とpipが必要です。既定でRelease tag
+`v0.0.1-beta` を使用するため、mainの状態に依存せず再現できます。現在のRelease tagには
+bootstrap自身がまだ含まれていないため、bootstrapのraw URLだけは移行ブランチを参照します。
+別のControl Plane refを試す場合だけ `$env:UNITY_AGENT_REF` を設定してください。ローカルcheckoutを
 使う場合は `python -m pip install -e .` でも導入できます。
 
 Unity UPM PackageはUnityのPackage Managerへ、Codex PluginはMarketplace／GitHub plugin入口へ
