@@ -15,6 +15,7 @@ on:
       - "Eval/**"
       - "SkillReferences/**"
       - "Tools/**"
+      - "scripts/**"
       - ".github/workflows/validate-agent-contracts.yml"
       - ".github/workflows/actual-behavior-eval.yml"
   push:
@@ -33,6 +34,7 @@ on:
       - "Eval/**"
       - "SkillReferences/**"
       - "Tools/**"
+      - "scripts/**"
       - ".github/workflows/validate-agent-contracts.yml"
       - ".github/workflows/actual-behavior-eval.yml"
 
@@ -41,10 +43,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -56,3 +58,19 @@ jobs:
 
       - name: Enforce Skill authoring quality
         run: python Tools/SkillValidator/validate_skills.py --strict
+
+      - name: Validate PowerShell installer syntax
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            "scripts/install.ps1",
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+          Write-Host "PowerShell installer syntax validation passed."
