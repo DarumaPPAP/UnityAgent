@@ -1,0 +1,31 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:runtime:install-receipt
+title: InstallReceipt
+type: object
+additionalProperties: false
+required: [schema_version, receipt_id, run_id, project_root, channel, entries, verified_at, evidence_refs]
+properties:
+  schema_version: {const: "1.0"}
+  receipt_id: {type: string, minLength: 1}
+  run_id: {type: string, minLength: 1}
+  project_root: {type: string, minLength: 1}
+  channel: {const: "0.0.1-beta"}
+  entries:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      additionalProperties: false
+      required: [product, status, version, location, source, sha256]
+      properties:
+        product: {enum: [official_unity_cli, unity_artist_cli]}
+        status: {enum: [installed, verified, unavailable, failed]}
+        version: {type: [string, 'null']}
+        location: {type: [string, 'null']}
+        source: {type: [string, 'null']}
+        sha256: {type: [string, 'null']}
+  verified_at: {type: string, format: date-time}
+  evidence_refs:
+    type: array
+    items: {type: string, minLength: 1}
+    uniqueItems: true

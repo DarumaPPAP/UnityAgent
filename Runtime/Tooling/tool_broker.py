@@ -56,6 +56,88 @@ class ToolBroker:
             fallback_from_provider_id=previous_provider_id,
         )
 
+    def resolve_management(self, operation: str, *, project_root: str) -> dict[str, Any]:
+        """Resolve one Control Plane management operation through the same Registry."""
+        candidates = self._registry.management_candidates(operation)
+        if len(candidates) != 1:
+            status = "unavailable" if not candidates else "ambiguous_binding"
+            return {
+                "schema_version": "1.0",
+                "operation": operation,
+                "status": status,
+                "provider_ref": None,
+                "observed_surface": "host",
+                "evidence_supported": ["install_receipt", "toolchain_observation"],
+                "failure_class": status,
+                "reason": "expected exactly one enabled management Provider",
+            }
+        provider = candidates[0]
+        return {
+            "schema_version": "1.0",
+            "operation": operation,
+            "status": "resolved",
+            "provider_ref": provider.provider_id,
+            "observed_surface": "host",
+            "evidence_supported": ["install_receipt", "toolchain_observation"],
+            "failure_class": None,
+            "reason": None,
+            "project_root": str(project_root),
+        }
+
+    def dispatch_management(
+        self,
+        request: Mapping[str, Any],
+        *,
+        executors: Mapping[str, Any],
+        executor_arguments: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Dispatch setup only after Registry resolution; Entry never supplies provider id."""
+        operation = str(request.get("operation") or "")
+        project_root = str(request.get("project_root") or "")
+        resolution = self.resolve_management(operation, project_root=project_root)
+        if resolution.get("status") != "resolved":
+            return {"schema_version": "1.0", "status": "blocked", "resolution": resolution, "provider_result": None}
+        provider_ref = str(resolution["provider_ref"])
+        executor = executors.get(provider_ref)
+        if executor is None:
+            return {
+                "schema_version": "1.0",
+                "status": "blocked",
+                "resolution": resolution,
+                "provider_result": {
+                    "schema_version": "1.0",
+                    "operation": operation,
+                    "status": "failed",
+                    "failure_class": "backend_not_implemented",
+                    "reason": f"no management executor registered for {provider_ref}",
+                },
+            }
+        try:
+            result = executor(request, **dict(executor_arguments or {}))
+        except (OSError, PermissionError, ConnectionError) as exc:
+            result = {
+                "schema_version": "1.0",
+                "operation": operation,
+                "status": "failed",
+                "failure_class": "unhealthy",
+                "reason": str(exc),
+            }
+        if not isinstance(result, dict):
+            result = {
+                "schema_version": "1.0",
+                "operation": operation,
+                "status": "failed",
+                "failure_class": "not_observed",
+                "reason": "management Provider did not return a structured result",
+            }
+        result.setdefault("provider_ref", provider_ref)
+        return {
+            "schema_version": "1.0",
+            "status": "completed" if result.get("status") == "passed" else "blocked",
+            "resolution": resolution,
+            "provider_result": result,
+        }
+
     def dispatch(
         self,
         request: dict[str, Any],

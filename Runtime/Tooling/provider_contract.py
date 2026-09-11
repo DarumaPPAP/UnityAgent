@@ -22,6 +22,7 @@ ALLOWED_PROJECT_BINDING = {
     "environment_bound",
     "player_instance",
 }
+ALLOWED_MANAGEMENT_OPERATIONS = {"doctor", "plan", "apply"}
 MAX_STRENGTH = 5
 
 
@@ -69,6 +70,7 @@ class ProviderDescriptor:
     qualifiers_supported: dict[str, tuple[str, ...]] | None = None
     legacy: bool = False
     production_enabled: bool = True
+    management_operations: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -113,6 +115,16 @@ def _string_list(value: Any, *, label: str, allowed: set[str] | None = None) -> 
         if unknown:
             raise ValueError(f"{label} contains unknown values: {sorted(unknown)}")
     return result
+
+
+def _optional_string_list(value: Any, *, label: str, allowed: set[str] | None = None) -> tuple[str, ...]:
+    if value is None:
+        return ()
+    if not isinstance(value, list):
+        raise ValueError(f"{label} must be a list")
+    if not value:
+        return ()
+    return _string_list(value, label=label, allowed=allowed)
 
 
 def _parse_offer(
@@ -257,9 +269,19 @@ def parse_provider_registry(value: Any, *, root: Path = ROOT) -> ProviderRegistr
         if not isinstance(production_enabled, bool):
             raise ValueError(f"{provider_id}: production_enabled must be boolean")
 
+        management_operations = _optional_string_list(
+            raw.get("management_operations"),
+            label=f"{provider_id}.management_operations",
+            allowed=ALLOWED_MANAGEMENT_OPERATIONS,
+        )
+
         raw_capabilities = raw.get("capabilities")
-        if not isinstance(raw_capabilities, dict) or not raw_capabilities:
-            raise ValueError(f"{provider_id}: capabilities must be a non-empty mapping")
+        if not isinstance(raw_capabilities, dict):
+            raise ValueError(f"{provider_id}: capabilities must be a mapping")
+        if not raw_capabilities and not management_operations:
+            raise ValueError(
+                f"{provider_id}: provider must declare capabilities or management_operations"
+            )
         unknown_capabilities = set(raw_capabilities) - known_capabilities
         if unknown_capabilities:
             raise ValueError(f"{provider_id}: unknown capabilities {sorted(unknown_capabilities)}")
@@ -285,6 +307,7 @@ def parse_provider_registry(value: Any, *, root: Path = ROOT) -> ProviderRegistr
             qualifiers_supported=qualifiers_supported,
             legacy=legacy,
             production_enabled=production_enabled,
+            management_operations=management_operations,
         )
 
     for capability in known_capabilities:

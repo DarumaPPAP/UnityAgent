@@ -5,16 +5,28 @@ description: Set up and verify the UnityAgent runtime plus the UnityArtistCLI pr
 
 # UnityAgent setup
 
-Use this skill when a project needs the UnityAgent runtime or the UnityArtistCLI provider enabled.
+Use this skill when a project needs the UnityAgent runtime or a Unity toolchain
+configured. This skill is an Entry Layer and must call the UnityAgent Control
+Plane only.
 
-## Provider-first setup
+Install the UnityAgent host once with `python -m pip install -e .` from the
+UnityAgent repository, or add the `com.darumappap.unity-agent` UPM package to a
+Unity project. Both Entry surfaces use the same Control Plane contracts.
 
-1. Check `unity --version` and `unity artist version --format json --non-interactive`.
-2. Inspect `unity artist doctor --project-path <project> --format json --non-interactive` before mutation.
-3. If the project is supported, install or verify the `com.darumappap.unity-artist` package with `unity artist install`.
-4. Re-run doctor and keep the JSON response as environment evidence.
+## Control Plane setup
+
+1. Run `unity-agent doctor --project-path <project> --format json --non-interactive`.
+2. Request an exact setup plan with `unity-agent setup --operation plan --project-path <project> --format json --non-interactive`.
+3. Present the plan and obtain explicit approval in Unity UI or Codex.
+4. Apply only with the returned `plan_id` and approval reference:
+   `unity-agent setup --operation apply --expected-plan-id <plan_id> --approval-ref <approval_ref> --project-path <project> --format json --non-interactive`.
+5. Keep the returned `InstallReceipt` and Evidence references; re-run `unity-agent doctor` through the same Control Plane.
 
 UnityAgent remains the Architect, Commander and Loop Owner. It must submit a semantic `CapabilityRequest`; it must not call a provider directly or create another Player/Provider registry.
+
+The underlying Official Unity CLI, UnityArtistCLI and Installer Provider
+commands are never invoked from this Entry skill. Provider identity is resolved
+inside the existing Runtime Provider Registry and ToolBroker.
 
 ## Safety
 

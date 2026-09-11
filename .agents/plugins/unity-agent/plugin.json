@@ -1,7 +1,7 @@
 {
   "name": "unity-agent",
-  "version": "2.0.0",
-  "description": "Skill-only Codex plugin for UnityAgent architecture, routing and evidence-backed execution.",
+  "version": "0.0.1-beta",
+  "description": "Skill-only Codex plugin for UnityAgent's five-layer architecture, setup, routing and evidence-backed execution.",
   "author": {
     "name": "DarumaPPAP",
     "url": "https://github.com/DarumaPPAP"
@@ -19,7 +19,8 @@
     "category": "Developer Tools",
     "capabilities": ["capability routing", "provider resolution", "evidence-backed Unity execution"],
     "defaultPrompt": [
-      "Route this Unity task through the correct capability and provider.",
+      "Route this Unity task through the UnityAgent Control Plane and correct capability.",
+      "Set up the Unity toolchain through an approval-gated UnityAgent plan.",
       "Inspect the Unity environment and report verified evidence.",
       "Run a safe approval-gated Unity change and capture the diff."
     ]

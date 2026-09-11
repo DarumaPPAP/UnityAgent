@@ -416,6 +416,18 @@ providers:
           player_runtime.reachable: true
         scope_preservation: true
 
+  installer:
+    id: installer
+    transport: subprocess
+    surfaces: [host, project]
+    health: environment_fact
+    project_binding: explicit_project_path
+    environment_key: installer
+    safety_strength: 5
+    evidence_strength: 5
+    management_operations: [doctor, plan, apply]
+    capabilities: {}
+
 rules:
   capability_priority_is_local_not_global_mode: true
   eligibility_precedes_ranking: true
