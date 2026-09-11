@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 import json
+import re
 
 import yaml
 
@@ -27,7 +28,8 @@ EXPECTED_EDGES = {
     ("provider_layer", "evidence_state", "structured_result_capture"),
 }
 FORBIDDEN_ENTRY_TEXT = ("unity artist", "unity-artist")
-CANONICAL_VERSION = "0.0.2-beta"
+CANONICAL_VERSION = "0.0.3-beta"
+_GUID_PATTERN = re.compile(r"^guid:\s*([0-9a-f]{32})$", re.MULTILINE)
 
 
 def _load(path: Path) -> dict[str, Any]:
@@ -35,6 +37,41 @@ def _load(path: Path) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError(f"expected mapping: {path}")
     return value
+
+
+def _validate_upm_meta_files(package_root: Path, root: Path) -> list[str]:
+    """Ensure every imported package asset/folder ships with a stable Unity .meta file."""
+    errors: list[str] = []
+    guid_owners: dict[str, Path] = {}
+    for path in sorted(package_root.rglob("*")):
+        relative = path.relative_to(package_root)
+        if path.name.endswith(".meta") or any(part.endswith("~") for part in relative.parts):
+            continue
+        meta_path = path.with_name(path.name + ".meta")
+        if not meta_path.is_file():
+            errors.append(f"UnityAgent UPM asset is missing .meta: {path.relative_to(root)}")
+            continue
+        try:
+            meta_text = meta_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            errors.append(f"UnityAgent UPM meta is unreadable: {meta_path.relative_to(root)}: {exc}")
+            continue
+        match = _GUID_PATTERN.search(meta_text)
+        if match is None:
+            errors.append(f"UnityAgent UPM meta has no canonical 32-hex guid: {meta_path.relative_to(root)}")
+            continue
+        guid = match.group(1)
+        owner = guid_owners.get(guid)
+        if owner is not None:
+            errors.append(
+                "UnityAgent UPM meta GUID is duplicated: "
+                f"{owner.relative_to(root)} and {meta_path.relative_to(root)}"
+            )
+        else:
+            guid_owners[guid] = meta_path
+        if path.is_dir() and "folderAsset: yes" not in meta_text:
+            errors.append(f"UnityAgent UPM folder meta must declare folderAsset: yes: {meta_path.relative_to(root)}")
+    return errors
 
 
 def validate(root: Path = ROOT) -> list[str]:
@@ -90,6 +127,7 @@ def validate(root: Path = ROOT) -> list[str]:
                 errors.append("UnityAgent UPM package name is not canonical")
             if package.get("version") != CANONICAL_VERSION:
                 errors.append(f"UnityAgent UPM package version is not {CANONICAL_VERSION}")
+        errors.extend(_validate_upm_meta_files(package_path.parent, root))
         for path in sorted(package_path.parent.glob("Editor/*.cs")):
             text = path.read_text(encoding="utf-8").casefold()
             if "unity-artist" in text or "unity artist" in text:

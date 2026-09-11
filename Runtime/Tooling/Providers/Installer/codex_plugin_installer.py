@@ -12,7 +12,7 @@ import os
 import subprocess
 from typing import Any, Callable, Iterable, Mapping, Sequence
 
-CHANNEL = "0.0.2-beta"
+CHANNEL = "0.0.3-beta"
 MARKETPLACE_SOURCE = "DarumaPPAP/UnityAgent"
 MARKETPLACE_NAME = "unity-agent"
 MARKETPLACE_REF = f"v{CHANNEL}"

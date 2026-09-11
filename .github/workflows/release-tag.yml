@@ -126,7 +126,28 @@ jobs:
           )
           upm_source="$(find artifacts -maxdepth 1 -type f -name 'com.darumappap.unity-agent-*.tgz' -print -quit)"
           test -n "$upm_source"
-          mv "$upm_source" "artifacts/UnityAgent-UPM-$version.tgz"
+          upm_target="artifacts/UnityAgent-UPM-$version.tgz"
+          mv "$upm_source" "$upm_target"
+
+          python3 - "$upm_target" <<'PY'
+          import sys
+          import tarfile
+
+          archive = sys.argv[1]
+          required = {
+              "package/package.json.meta",
+              "package/Editor.meta",
+              "package/Editor/DarumaPPAP.UnityAgent.Editor.asmdef.meta",
+              "package/Editor/UnityAgentControlPlaneClient.cs.meta",
+              "package/Editor/UnityAgentSetupWindow.cs.meta",
+          }
+          with tarfile.open(archive, "r:gz") as package:
+              names = set(package.getnames())
+          missing = sorted(required - names)
+          if missing:
+              raise SystemExit("UPM artifact is missing Unity .meta files: " + ", ".join(missing))
+          print(f"UPM artifact meta validation passed: {len(required)} required .meta files")
+          PY
 
       - name: Pack Codex plugin
         run: |
