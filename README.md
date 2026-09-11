@@ -1,348 +1,233 @@
 # UnityAgent
 
-[▶ **3分でUnityAgentを理解する — Architecture Explorer**](https://darumappap.github.io/UnityAgent/)  
-*Guided Tour / Task Demo / Context Explorer*
+**AIにUnity開発を任せるためのControl Plane。**  
+Unityの設計・実装・検証を、Policy / Capability / Provider / Evidenceに分離して安全に回します。
 
-UnityAgentは、**個人のUnity開発に特化したAI開発エージェント基盤**です。
+> **Status:** `v0.0.1-beta`  
+> Betaでは破壊的変更が入る可能性があります。
 
-Coding Rule集ではなく、ユーザー依頼を受けてからPolicy確認、Task分類、Context選択、設計確認、実行、検証、Evidence保存、品質評価までを責務分離して扱います。
-
-主な目的は次です。
-
-- ユーザー固有の開発方針を最優先する
-- 必要なContextだけを選ぶ
-- 設計が重要なTaskでは実装前にArchitectureを確認できるようにする
-- Taskごとに許可された範囲だけを変更する
-- 実際に観測したEvidenceだけを根拠にする
-- Unity / C# / Rendering / Performance等の専門判断をSkillへ委譲する
-- Unity環境やTool構成が違ってもCapability単位で安全に適応する
-- Behavior RegressionをBaselineと比較できるようにする
+[Architecture Explorer](https://darumappap.github.io/UnityAgent/) · [Latest Release](https://github.com/DarumaPPAP/UnityAgent/releases/latest) · [Architecture](docs/architecture/architecture.md)
 
 ---
 
-## 1. 全体像
+## Concept
 
-```mermaid
-flowchart LR
-    U[ユーザー依頼] --> P[Policy]
-    P --> R[Orchestration Routing]
-    R --> T[Task Contract]
-    T --> C[Context / Skill]
-    C --> D{Design Review?}
+UnityAgentは「Unityを操作するCLI」そのものではありません。
 
-    D -->|必要| H[Human Review]
-    H -->|承認| X[Runtime]
-    H -->|修正| C
-    H -->|却下| O[結果]
-
-    D -->|不要| X
-    X --> V[Verification / Evidence]
-    V --> S[Persistence]
-    S --> E[Eval / Regression]
-    E --> O
-```
-
-責務の基本原則は次です。
+ユーザーの依頼を受けて、**何をするか・どこまで変更してよいか・誰に実行させるか・何を証拠として残すか**を管理するAI開発Control Planeです。
 
 ```text
-Policy defines
-Orchestration decides
-Context materializes
-Runtime executes
-Persistence remembers
-Operations observes / controls
-Eval measures / proposes
+User / Codex / Unity UI
+          │
+          ▼
+      UnityAgent
+   Architect / Commander
+       Loop Owner
+          │
+          ▼
+ Capability / Policy / Approval
+          │
+          ▼
+       Providers
+   ├─ Official Unity CLI
+   ├─ UnityArtistCLI
+   └─ Future Providers
+          │
+          ▼
+   Evidence / Run State
 ```
 
-詳細は [UnityAgent Architecture](docs/architecture/architecture.md) を参照してください。
+UnityAgentは次の考え方を中心に設計しています。
 
-製品境界は、Entry Layer、Control Plane、Capability & Orchestration、Provider
-Layer、Evidence & Stateの5層です。依存方向と禁止依存は
-[`Specs/unityagent-layer-contract.yaml`](Specs/unityagent-layer-contract.yaml) に固定し、
-`Tools/validate_all.py` から自動検証します。Unity UI / Codex PluginはProviderを
-直接呼ばず、UnityAgent Control PlaneのSetup／Execution入口だけを呼びます。
-
-### Control Planeのローカル導入
-
-UnityAgentホストはリポジトリで `python -m pip install -e .` を実行すると
-`unity-agent` コマンドとして登録できます。Setupは次の順序で実行します。
-
-```text
-unity-agent doctor --project-path <project> --format json --non-interactive
-unity-agent setup --operation plan --project-path <project> --format json --non-interactive
-外部承認
-unity-agent setup --operation apply --project-path <project> --expected-plan-id <plan_id> --approval-ref <approval_ref> --approved-plan <approved_plan.json> --format json --non-interactive
-```
-
-CLIはInstaller Providerを直接選択せず、既存Runtime Provider RegistryとToolBrokerの
-management operationを通します。Unity UIの `UnityAgent/Setup` も同じControl Plane
-コマンドを呼び出します。
-
-### MyResourceCenter参照はLocal-first
-
-個人運用では、MyResourceCenterやGoogle Driveへ通常の依頼ごとに接続しません。必要時に一度だけSourceを確認して生成した `myresourcecenter-reference-snapshot` を、`Context/Retrieval/Reference/reference_navigator.py` でローカル検索します。通常の質問は上位3〜5件だけをContextへ入れ、不具合は一度の候補検索から仮説と読み取り専用の検証計画を作成し、以後はUnity Projectの観測を優先します。
-
-外部検索サーバー、埋め込みAPI、ベクトルDB、常時同期は現行の個人運用に含めません。Snapshotに候補がない、古い、原文確認が必要、またはSource間に矛盾がある場合だけ明示的な再確認へ切り替えます。詳細は [Local Reference Navigator](docs/architecture/local-reference-navigator.md) を参照してください。
+1. **1つのControl Plane** — Codex PluginとUnity Editor UIで別実装を持たない。
+2. **Capability-first** — `何をしたいか` を先に決め、実行ProviderはRuntimeが解決する。
+3. **Approval-gated mutation** — 変更系処理はPlan / Scope / Approvalを通す。
+4. **Evidence-first** — 観測できていない結果をPASSとして扱わない。
+5. **Providerを増やしてもCoreを肥大化させない** — 実処理はProviderへ分離する。
 
 ---
 
-## 2. Production Tool Runtime
+# Installation
 
-Production Cutover後のUnity Tool実行は、**Provider製品名ではなくCapabilityを起点**にします。
+## Requirements
+
+- Windows PowerShell 5.1 以上
+- Python 3.10 以上
+- Unity 2022.3 以上
+- Codex Pluginを使う場合はCodex
+
+## Recommended — PowerShell one-liner
+
+```powershell
+irm https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/main/scripts/install.ps1 | iex
+```
+
+このBootstrapは `main/scripts/install.ps1` から起動しますが、実際にインストールするControl Planeは公開済みGitHub Releaseを使用します。
+
+現在の既定Releaseは `v0.0.1-beta` です。ReleaseのPython wheelを取得し、`SHA256SUMS.txt` と照合した後にインストールします。
+
+インストール後:
+
+```powershell
+unity-agent --help
+```
+
+正常なら `unity-agent` コマンドが利用できます。
+
+### インストーラを確認してから実行する場合
+
+```powershell
+irm https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/main/scripts/install.ps1 -OutFile $env:TEMP\unityagent-install.ps1
+notepad $env:TEMP\unityagent-install.ps1
+& $env:TEMP\unityagent-install.ps1
+```
+
+---
+
+# Quickstart
+
+## Step 1 — Unity Projectを指定する
+
+`Assets` フォルダではなく、`Assets / Packages / ProjectSettings` を含むUnity Project Rootを指定します。
+
+```powershell
+$Project = "D:\Projects\MyGame"
+```
+
+## Step 2 — Environmentを確認する
+
+```powershell
+unity-agent doctor `
+  --project-path "$Project" `
+  --format json `
+  --non-interactive
+```
+
+`unavailable` が出ても、それだけでUnityAgent全体の異常とは限りません。
+
+UnityAgentは利用できないProviderや未観測の結果を、勝手に成功へ変換しません。
+
+## Step 3 — Setup Planを作る
+
+```powershell
+unity-agent setup `
+  --operation plan `
+  --project-path "$Project" `
+  --format json `
+  --non-interactive
+```
+
+Planには次のような情報が含まれます。
+
+- 利用可能 / 不足しているToolchain
+- `verify` または `install_then_verify`
+- `plan_id`
+- Approvalの要否
+
+変更が必要なSetupは、Plan確認後にApproval付きでApplyします。
+
+---
+
+# Unity Editor integration
+
+UnityAgentにはEntry Layer用のUPM Packageがあります。
+
+## Via Unity Package Manager
+
+Unity Editorで:
+
+1. `Window > Package Manager`
+2. `+`
+3. `Add package from git URL...`
+4. 次を入力
+
+```text
+https://github.com/DarumaPPAP/UnityAgent.git?path=/Packages/com.darumappap.unity-agent#v0.0.1-beta
+```
+
+導入後:
+
+```text
+UnityAgent > Setup
+```
+
+からControl Planeへ接続できます。
+
+Unity側のWindowはEntry Layerです。Official Unity CLIやUnityArtistCLIへ直接接続せず、`unity-agent` Control Planeを呼び出します。
+
+---
+
+# Codex integration
+
+UnityAgentはCodex Pluginとしても利用できます。
+
+Marketplaceを追加:
+
+```powershell
+codex plugin marketplace add DarumaPPAP/UnityAgent --ref v0.0.1-beta
+```
+
+Pluginを追加:
+
+```powershell
+codex plugin add unity-agent@personal
+```
+
+確認:
+
+```powershell
+codex plugin list
+```
+
+Plugin導入後は新しいCodex threadでテストすることを推奨します。
+
+UnityAgent PluginはProviderそのものではなく、Architecture / Routing / Approval / Evidence-backed executionの入口です。
+
+---
+
+# What UnityAgent does
+
+| Area | UnityAgentの役割 |
+| --- | --- |
+| Architecture | Taskの責務・境界・依存方向を決める |
+| Routing | IntentをCapabilityへ変換する |
+| Policy | Mutation Scope / Approval / Safetyを適用する |
+| Runtime | Provider Registry / Resolver / Dispatcherを統括する |
+| Unity operations | Official Unity CLI等へ実行を委譲する |
+| Visual / Cinematic | UnityArtistCLIへ専門処理を委譲する |
+| Evidence | ProviderResultを正規化し、実行結果を永続化する |
+| Regression | Frozen BaselineとのBehavior比較を行う |
+
+---
+
+# Provider model
+
+UnityAgentはProvider製品名をGraphの正本にしません。
 
 ```text
 Skill      = どう作業するか
 Capability = 何を実現したいか
-Provider   = 誰が実行できるか
-Transport  = どう接続するか
+Provider   = 誰が実行するか
 Evidence   = 実際に何を観測したか
 ```
-
-Orchestrationは通常、次のような要求をRuntimeへ渡します。
-
-```yaml
-capability: scene.inspect
-project_root: D:/Projects/MyGame/Project
-operation_kind: read
-required_evidence:
-  - editor_observation
-preferred_surface: live_editor
-```
-
-UnityAgentはこの経路のArchitect / Commander / Loop Ownerです。Providerは既存のRegistry・Resolver・Dispatcher・Adapter・Evidence chainへ接続します。UnityArtistCLIは、その上でvisual art / cinematic Capabilityを実行するspecialist Provider（概念上のPlayer）です。新しいPlayer Frameworkや第二のRegistryは追加しません。
-
-`MyUnityMCPを使う`、`Unity CLIを使う`のようなProvider製品指定をSemantic Graphの正本にしません。Artist系要求は `domain.workflow` / `visual.capture` と `qualifiers.domain` / `qualifiers.workflow` で表現します。
-
-### 実行経路
-
-```mermaid
-flowchart TD
-    O[Orchestration] -->|CapabilityRequest| H[Runtime Handoff<br/>authoritative]
-    H --> G[Runtime Guard]
-    G --> B[ToolBroker]
-    B --> R[Capability Resolver]
-    R --> E[Environment Snapshot]
-    E --> P[Provider Registry]
-    P --> D[Production Dispatcher]
-    D --> X[Concrete Provider Adapter]
-    X --> V[Structured ProviderResult]
-    V --> N[Evidence Normalizer]
-    N --> S[Persistence Evidence]
-```
-
-Production Dispatcherは、Resolverが選んだProviderにConcrete executorが無い場合も成功扱いしません。`backend_not_implemented`として扱い、安全性とEvidence強度を維持できる**同一Capability**だけをFallback候補にします。
-
-詳細は [Production Tool Runtime](docs/architecture/production-tool-runtime.md) を参照してください。
-
----
-
-## 3. Canonical Capability
-
-現在のCapability語彙は次の15個です。
-
-| Capability | 目的 |
-| --- | --- |
-| `project.inspect` | Project Fact観測 |
-| `source.read` | Source read |
-| `source.patch` | Source mutation |
-| `static.review` | Static review |
-| `git.diff` | Git diff観測 |
-| `compile.observe` | Compile観測 |
-| `project.test` | Unity Test |
-| `project.build` | Unity Build |
-| `scene.inspect` | Scene / Editor観測 |
-| `scene.mutate` | Approval付きEditor mutation |
-| `profiler.observe` | Profiler観測 |
-| `visual.capture` | Visual evidence取得 |
-| `domain.workflow` | Domain-specific workflow |
-| `player.observe` | Player観測 |
-| `player.mutate` | Approval付きPlayer control |
-
-旧資料で見られた次の名称はCanonical Capabilityではありません。
-
-```text
-source.inspect       -> source.read
-project.compile      -> compile.observe
-editor.capture       -> visual.capture
-performance.capture  -> profiler.observe 等へTaskごとに分解
-player.control       -> player.mutate
-```
-
----
-
-## 4. ProviderはOptional
-
-UnityAgentはUnity CLIやArtist Providerを必須依存にしません。環境事実を確認できたCapabilityだけを実行します。
 
 代表Provider:
 
 - File Provider
 - Native Unity Editor Provider
-- Unity CLI Provider
-- UnityArtistCLI Provider（visual art / cinematic specialist）
+- Official Unity CLI Provider
+- UnityArtistCLI Provider
 - Player Runtime Provider
+- Installer Provider
 
-`myunitymcp` は履歴互換の legacy adapter としてRegistryに残りますが、`production_enabled: false` であり、現行のResolverからは選択されません。旧MCP経路は移行資料とタグ `v1.1.1` の再現用に限定します。
-
-RuntimeはTask開始時またはCapability実行前にEnvironment Snapshotを確認します。
-
-```text
-Unity CLIあり / なし
-MCPあり / なし
-Unity Editorあり / なし
-Safe Mode
-Player接続あり / なし
-Test Frameworkあり / なし
-Build Moduleあり / なし
-```
-
-はすべてEnvironment Factです。
-
-どれか1つが無いだけでUnityAgent全体を停止しません。一方で、利用不能な検証をPASS扱いしません。
-
-詳しくは [Unity環境への適応](docs/unity-environment-adaptation.md) を参照してください。
+UnityArtistCLIはLookDev / Lighting / Camera / Cinematic等を担当するspecialist Providerです。
+UnityAgentのGraph / Loop / Policyを持つ第二のAgent Frameworkにはしません。
 
 ---
 
-## 5. Safety Contract
+# Safety & Evidence
 
-Provider unavailableはSafety Contractを弱める理由になりません。
-
-```text
-Provider unavailable
-!= Mutation Scopeを広げてよい
-!= Approvalを省略してよい
-!= Required Evidenceを弱めてよい
-```
-
-禁止例:
-
-```text
-scene.mutate
-Provider unavailable
-        ↓
-× raw .unity YAML edit
-× arbitrary eval
-```
-
-許可できるFallback例:
-
-```text
-project.test
-Unity CLI unavailable
-        ↓
-Native Unity Editorが同じtest_execution Evidenceを満たす
-        ↓
-同一CapabilityとしてFallback
-```
-
-UnityArtistCLI Mutationでは既存Safety Contractを維持します。
-
-```mermaid
-flowchart LR
-    I[Inspect] --> P[Prepare]
-    P --> D[Exact Diff]
-    D --> R[Revision]
-    R --> A[Approval]
-    A --> AP[Apply]
-```
-
-Visual / Cinematic mutationは `Inspect -> Prepare -> Exact Diff -> Expected Revision -> Approval -> Apply -> Evidence` を必須とし、Undo登録と未保存状態をEvidenceへ残します。
-
----
-
-## 6. Project Root / Mutation Scope
-
-UnityAgent本体とTarget Unity Projectは別Repository / 別Directoryを推奨します。
-
-```text
-D:\
-├─ UnityAgent\
-└─ Projects\
-   └─ MyGame\
-      └─ Project\
-         ├─ Assets\
-         ├─ Packages\
-         └─ ProjectSettings\
-```
-
-標準:
-
-```text
-Read Scope
-= Target Unity Project Root
-
-Mutation Scope
-= Taskに必要な最小範囲
-```
-
-`Assets/`だけではUnity Version、Packages、ProjectSettings等のProject Factが不足するため、原則Project Rootを読み取り対象にします。
-
-詳細は [ローカルUnity Project開発ガイド](docs/local-project-development.md) を参照してください。
-
----
-
-## 7. Design Review
-
-新Feature、Architecture、MCP、Portable Tool、Visual Direction等の設計が重要なTaskではDesign Reviewを使います。
-
-主なOutput:
-
-1. **関連図** — Route / Component / Runtime boundaryをMermaidで表示
-2. **設計チェック** — Responsibility / Source of Truth / Scope / Approval / Evidence / Non-goalを確認
-3. **最終イメージ仕様** — 完成後のBehaviorとAcceptance Criteriaを固定
-
-```mermaid
-flowchart TD
-    A[設計プレビュー] --> B[関連図]
-    A --> C[チェック項目]
-    A --> D[最終イメージ]
-    B --> H{Human Review}
-    C --> H
-    D --> H
-    H -->|承認| X[実装]
-    H -->|修正| A
-    H -->|却下| S[停止]
-```
-
-Design Reviewが必須なら、承認前にImplementation Mutationへ進みません。
-
----
-
-## 8. Graph / Loop
-
-小さなTaskはFast Pathを優先します。
-
-```text
-Policy
-  ↓
-Routing
-  ↓
-Context
-  ↓
-Runtime
-  ↓
-Verification
-  ↓
-Result
-```
-
-複数判断や再計画が必要なTaskだけParentGraph / SubGraphを使用します。
-
-```text
-Parent Graph
-  -> SubGraph
-      -> Node / Edge / Gate
-          -> 必要な場所だけLocal Loop
-```
-
-LoopはGraphと並ぶ別Control Planeではありません。
-
----
-
-## 9. Evidence
-
-Evidence stateを混同しません。
+UnityAgentは「動いた気がする」を成功にしません。
 
 ```text
 Compile PASS
@@ -353,122 +238,123 @@ Compile PASS
 != Visual PASS
 ```
 
-Runtimeが取得したProviderResultはcanonical Evidenceへ正規化され、`Persistence/Evidence/`へappendされて初めてdurable Evidenceになります。
+Providerが利用できない場合も、Safety Contractを弱めません。
 
-代表Completion:
+```text
+Provider unavailable
+!= Approvalを省略してよい
+!= Mutation Scopeを広げてよい
+!= Evidenceを推測してよい
+```
 
-- `verified`
-- `partial_verified`
-- `implemented_unverified`
-- `blocked_by_environment`
-- `not_applicable`
+Visual / Cinematic mutationでは次の流れを維持します。
 
-`unavailable`や`not_observed`を成功として補完しません。
+```text
+Inspect
+  ↓
+Prepare
+  ↓
+Exact Diff
+  ↓
+Expected Revision
+  ↓
+Approval
+  ↓
+Apply
+  ↓
+Evidence
+```
 
 ---
 
-## 10. Regression / DefinitionFingerprint
+# Architecture
 
-Production BehaviorはFrozen Baselineと比較できます。
+UnityAgentの製品境界は5層です。
 
 ```text
-Production Smoke
-    ↓
-Behavior Eval
-    ↓
-Candidate Summary
-    ↓
-Baseline Comparator
-    ↓
-PASS / BLOCK_REGRESSION / BLOCK_INCONCLUSIVE / REBASELINE_REQUIRED
+① Entry Layer
+   Unity UI / Codex Plugin
+
+② Control Plane
+   UnityAgent
+
+③ Capability & Orchestration Layer
+   Graph / Loop / Runtime Guard / Policy / Approval
+   Provider Registry / Resolver / Dispatcher
+
+④ Provider Layer
+   Official Unity CLI / UnityArtistCLI / Installer / Future Providers
+
+⑤ Evidence & State Layer
+   ProviderResult / Run History / Capture / InstallReceipt / Evaluation
 ```
 
-Production Tool Runtime CutoverのようにRuntime / Tool / Evidence定義が変わる場合、DefinitionFingerprint driftによって `REBASELINE_REQUIRED` になるのが正常です。
+重要なルール:
 
-BaselineをCandidate PASSだけで自動更新しません。
+> **Unity UI / Codex PluginからProviderへ直接接続しない。**
 
-ローカルRegression Gate:
+詳細:
 
-```powershell
-python .\Tools\run_regression_gate.py
-```
+- [Architecture](docs/architecture/architecture.md)
+- [Production Tool Runtime](docs/architecture/production-tool-runtime.md)
+- [Unity Environment Adaptation](docs/unity-environment-adaptation.md)
+- [Local Unity Project Development](docs/local-project-development.md)
+- [Layer Contract](Specs/unityagent-layer-contract.yaml)
+- [Architecture Explorer](https://darumappap.github.io/UnityAgent/)
 
-Repository全体Validation:
+---
+
+# Development & Validation
+
+Repository全体:
 
 ```powershell
 python .\Tools\validate_all.py
 ```
 
-Production Tool Runtime専用Validation:
+Skill authoring quality:
+
+```powershell
+python .\Tools\SkillValidator\validate_skills.py --strict
+```
+
+Production Tool Runtime:
 
 ```powershell
 python .\Tools\ProductionToolRuntime\validate_production_tool_runtime.py
 ```
 
----
+Local Regression Gate:
 
-## 11. Repository構成
+```powershell
+python .\Tools\run_regression_gate.py
+```
 
-| Area | Responsibility |
-| --- | --- |
-| `Policy/` | User Policy / Risk / Security / Approval / Evidence requirement |
-| `Orchestration/` | Task Routing / Graph / Gate / Semantic Replan |
-| `Context/` | Context selection / Retrieval / Budget / Materialization |
-| `Runtime/` | Tool resolution / dispatch / timeout / cancellation / mutation guard / harness |
-| `Persistence/` | State / Checkpoint / Memory / durable Evidence |
-| `Operations/` | Observability / Incident / Runtime Control / Change Management |
-| `Eval/` | Behavior Eval / Regression / Attribution / Rebaseline |
-| `.agents/skills/` | Domain-specific work procedures |
-| `SkillReferences/` | Coding / Architecture / Rendering standards |
-| `Specs/` | Supporting specification。Production Authorityの代替ではない |
-| `Tools/` | Validation / Visualization / Regression entrypoints |
+> Local Regression GateはローカルのCodex CLI / 認証済み環境を前提とします。GitHub-hosted Release Workflowの必須Gateとは分離されています。
 
 ---
 
-## 12. 主要Entry Point
+# Beta release
 
-| File / Directory | 用途 |
-| --- | --- |
-| `AGENTS.md` | Bootstrap Map |
-| `Policy/User/user-policy.yaml` | User Policy |
-| `Orchestration/Routing/task-routes.yaml` | Primary Route |
-| `Orchestration/ToolRouting/capability-routing.yaml` | Semantic Capability requirement |
-| `Context/Selection/context-catalog.yaml` | Context selection |
-| `Context/Selection/tool-capability-catalog.yaml` | Capability description |
-| `Runtime/Contracts/` | Capability / Environment contracts |
-| `Runtime/Tooling/provider_registry.yaml` | Runtime Provider Registry |
-| `Runtime/Tooling/capability_resolver.py` | Provider resolution |
-| `Runtime/Tooling/tool_broker.py` | Runtime Tool Broker |
-| `Runtime/Dispatcher/tool_runtime_dispatcher.py` | Production capability dispatch |
-| `Runtime/Guardrails/tool_runtime_guard.py` | Last-mile safety guard |
-| `Runtime/Tooling/fallback_policy.py` | Infrastructure-only fallback |
-| `Runtime/Tooling/Providers/` | Concrete Provider adapters |
-| `Runtime/EvidenceCapture/tool_runtime_evidence.py` | Provider Evidence normalization |
-| `docs/architecture/production-tool-runtime.md` | Production Tool Runtimeの人間向け解説 |
-| `docs/local-project-development.md` | Local Unity Project運用 |
-| `Templates/DevelopmentRequest.md` | 開発依頼Template |
-| `Tools/validate_all.py` | Canonical local validation |
+現在の公開Beta:
+
+**[`v0.0.1-beta`](https://github.com/DarumaPPAP/UnityAgent/releases/tag/v0.0.1-beta)**
+
+Releaseには以下を同一タグから生成して公開します。
+
+- UnityAgent UPM package
+- Codex Plugin archive
+- Python Control Plane wheel / source distribution
+- `SHA256SUMS.txt`
+
+UnityArtistCLIもBetaでは固定Releaseへpinし、UnityAgent Releaseの再現性を維持します。
 
 ---
 
-## 13. Migration文書について
+# Project status
 
-`docs/migration/`は**過去のArchitecture移行・監査証跡**です。
+UnityAgentは現在Betaです。
 
-そこに旧Path、旧Phase名、削除済みContractが書かれていても、current Production Authorityとして解決しません。
+目標は、Unity Editor、Codex、Official Unity CLI、UnityArtistCLIなどの入口や実行手段が増えても、**UnityAgentのControl Plane / Graph / Loop / Evidence契約を作り直さず拡張できる構成**を維持することです。
 
-現在仕様を確認するときは次を優先してください。
-
-1. `AGENTS.md`
-2. Canonical `Policy / Orchestration / Context / Runtime / Persistence / Operations / Eval`
-3. `docs/architecture/architecture.md`
-4. `docs/architecture/production-tool-runtime.md`
-5. Supporting `Specs/`
-
----
-
-## 14. READMEの役割
-
-このREADMEはUnityAgentの**目的、現在Architecture、主要Runtime境界、利用入口**を説明する文書です。
-
-一時的なPR番号、Run ID、特定CI結果、Model Version等はREADMEに固定せず、Git履歴 / PR / Eval Artifact / Migration記録で管理します。
+Bug / Proposal / Beta feedbackはGitHub Issuesへお願いします。
