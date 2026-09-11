@@ -2,14 +2,14 @@
 
 [![Unity](https://img.shields.io/badge/Unity-2022.3%2B-000000?logo=unity&logoColor=white)](https://unity.com/)
 [![Codex](https://img.shields.io/badge/Codex-Plugin-111827?logo=openai&logoColor=white)](https://github.com/openai/codex)
-[![Release](https://img.shields.io/badge/Release-v0.0.5--beta-orange)](https://github.com/DarumaPPAP/UnityAgent/releases)
+[![Release](https://img.shields.io/badge/Release-v0.0.6--beta-orange)](https://github.com/DarumaPPAP/UnityAgent/releases)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![UnityAgent CI](https://github.com/DarumaPPAP/UnityAgent/actions/workflows/validate-agent-contracts.yml/badge.svg)](https://github.com/DarumaPPAP/UnityAgent/actions/workflows/validate-agent-contracts.yml)
 
 **AIにUnity開発を任せるためのControl Plane。**  
 Unityの設計・実装・検証を、Policy / Capability / Provider / Evidenceに分離して安全に回します。
 
-> **Current source version:** `v0.0.5-beta`  
+> **Current source version:** `v0.0.6-beta`  
 > Betaでは破壊的変更が入る可能性があります。
 
 [Architecture Explorer](https://darumappap.github.io/UnityAgent/) · [Releases](https://github.com/DarumaPPAP/UnityAgent/releases) · [Architecture](docs/architecture/architecture.md) · [MIT License](LICENSE)
@@ -18,7 +18,7 @@ Unityの設計・実装・検証を、Policy / Capability / Provider / Evidence�
 
 ## What is UnityAgent?
 
-UnityAgentは単なる「Unity操作CLI」ではありません。
+UnityAgentは単なるUnity操作CLIではありません。
 
 ユーザーやCodexから受けた要求に対して、**何をするか / どこまで変更してよいか / どのProviderへ実行させるか / 何をEvidenceとして残すか**を管理するUnity開発Control Planeです。
 
@@ -43,8 +43,6 @@ User / Codex / Unity UI
    Evidence / Run State
 ```
 
-UnityAgentは次の原則で構成されています。
-
 - **One Control Plane** — Unity EditorとCodexで別の実行基盤を持たない。
 - **Capability-first** — Provider名ではなく「何を実現したいか」を正本にする。
 - **Approval-gated mutation** — 変更系処理はPlan / Scope / Approvalを通す。
@@ -62,34 +60,9 @@ UnityAgentは次の原則で構成されています。
 - Unity 2022.3+
 - Codex Pluginを利用する場合はCodex CLI
 
-## Recommended setup
+## Recommended: Unity-first setup
 
-### 1. Install UnityAgent Control Plane
-
-PowerShell:
-
-```powershell
-irm https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/main/scripts/install.ps1 | iex
-```
-
-このBootstrap URLは常に `main/scripts/install.ps1` を使用します。既定では**最新の公開UnityAgent Prerelease**を解決し、ReleaseのPython wheelを `SHA256SUMS.txt` で検証してからインストールします。
-
-`v0.0.5-beta` 以降は、Installerが実際に導入した `unity-agent.exe` の絶対PathをUser環境変数 `UNITY_AGENT_CONTROL_PLANE` にも保存します。Unity Hubから既に起動済みのEditorでも、Shell PATHの再継承だけに頼らずControl Planeを解決できます。
-
-特定Releaseを固定したい場合:
-
-```powershell
-$env:UNITY_AGENT_TAG = "v0.0.5-beta"
-irm https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/main/scripts/install.ps1 | iex
-```
-
-確認:
-
-```powershell
-unity-agent --help
-```
-
-### 2. Add the UnityAgent UPM package
+### 1. Add the UnityAgent UPM package
 
 Unity Editor:
 
@@ -99,60 +72,85 @@ Unity Editor:
 4. 次を入力
 
 ```text
-https://github.com/DarumaPPAP/UnityAgent.git?path=/Packages/com.darumappap.unity-agent#v0.0.5-beta
+https://github.com/DarumaPPAP/UnityAgent.git?path=/Packages/com.darumappap.unity-agent#v0.0.6-beta
 ```
 
-> **Important:** `v0.0.2-beta` のUPM artifactにはUnity `.meta` ファイルが不足しており、Package Managerのimmutable packageとしてEditor assetsが無視される問題があります。Unity integrationの検証には `v0.0.3-beta` 以降を使用してください。
+> `v0.0.2-beta` のUPM artifactにはUnity `.meta` 不足があるため使用しないでください。`v0.0.6-beta` ではBootstrap/UIを含む現在のSetup導線を使用できます。
 
-### 3. Open UnityAgent Setup
+### 2. Open UnityAgent Setup
 
 ```text
 UnityAgent > Setup
 ```
 
-### 4. Confirm Control Plane and Codex CLI
-
-`v0.0.5-beta` からSetup Windowは、**Control PlaneとCodex CLIを別々に解決してResolved Pathを表示**します。
+`v0.0.6-beta` ではSetup Windowを、依存関係と次の操作が一目で分かるカード型UIへ再設計しています。
 
 ```text
-UnityAgent Setup
+UnityAgent Setup                                  v0.0.6-beta
 
-UnityAgent Control Plane
-├─ Resolved Path
-├─ 再検出
-├─ 参照...
-└─ Override解除
+Setup Readiness                                  1/2 READY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Codex CLI
-├─ Resolved Path
-├─ 再検出
-├─ 参照...
-└─ Override解除
+1. UnityAgent Control Plane              ACTION REQUIRED
+Resolved Path: Not Found
+[ Install Control Plane ]
+[ 再検出 ] [ 参照... ]
 
-Codex Integration
-├─ 状態を確認
-└─ Codex Pluginをインストール / 修復
+2. Codex CLI                                      READY
+Resolved Path: C:\...\codex.exe
+[ 再検出 ] [ 参照... ]
 
-Status
-└─ 人間向けの短い診断
+3. Codex Integration                      READY TO CHECK
+[ 状態を確認 ] [ Codex Pluginをインストール / 修復 ]
 
-詳細ログ / Raw response
-└─ 必要な時だけ展開・コピー
+Current Status
+Diagnostics / Raw response
+Advanced
 ```
 
-Control Planeは概ね次の順で解決します。
+### 3. Install the Control Plane from Unity
+
+Control Planeがまだ無い場合は、Setup WindowのPrimary actionを使用します。
 
 ```text
-Manual Override
+Install Control Plane
+```
+
+Bootstrapは**Control Plane自身だけ**を導入します。
+
+```text
+UnityAgent UPM
+  ↓ bootstrap-only path
+Package-local PowerShell installer
+  ↓
+GitHub Release wheel + SHA256SUMS.txt
+  ↓ SHA-256 verify
+pip --user
+  ↓
+unity-agent.exe
   ↓
 UNITY_AGENT_CONTROL_PLANE
-  ↓
-User environment
-  ↓
-Python User Scripts
-  ↓
-Process PATH / User PATH
 ```
+
+BootstrapからCodex PluginやUnityArtistCLI等のProviderを直接変更することは禁止しています。Control Plane導入後の通常処理は従来どおりです。
+
+```text
+Unity Window
+  ↓
+UnityAgent Control Plane
+  ↓
+Setup Plan / Approval
+  ↓
+Installer Provider
+  ↓
+Provider / Codex CLI
+  ↓
+InstallReceipt / Evidence
+```
+
+### 4. Detect Codex CLI and install the Codex Plugin
+
+Control PlaneがReadyになったら、Codex CLIを確認します。
 
 Codex CLIは概ね次の順で解決します。
 
@@ -170,47 +168,34 @@ PATH / where.exe / which
 Installer Providerで codex --version を実行確認
 ```
 
-Unity WindowはCodex Pluginを直接Mutationしません。
+その後、
 
 ```text
-Unity Window
-  ↓
-UnityAgent Control Plane
-  ↓
-Setup Plan / Approval
-  ↓
-Installer Provider
-  ↓
-Codex CLI
-  ↓
-UnityAgent Codex Plugin
-  ↓
-InstallReceipt / Evidence
+Codex Pluginをインストール / 修復
 ```
 
-インストール後はCodexで**新しいThread**を開始してPluginを読み直してください。
+を実行します。Plugin導入後はCodexで**新しいThread**を開始してください。
 
-### Control Planeが見つからない場合
+---
 
-1. 最新の `install.ps1` をもう一度実行
-2. `UnityAgent > Setup` のControl Plane欄で `再検出`
-3. まだ見つからなければ `参照...` から `unity-agent.exe` を選択
-4. 壊れた手動指定が残っている場合は `Override解除`
-5. `Resolved Path` が表示されたことを確認してからSetupを実行
+## Alternative: PowerShell / Headless install
 
-Windowsの標準的な`pip --user`構成では、Control Planeは概ね次のようなPython User Scripts配下にあります。
+Unity Editorを使わずControl Planeを入れる場合、またはRepair用途では従来のBootstrapも利用できます。
 
-```text
-%APPDATA%\Python\Python3xx\Scripts\unity-agent.exe
+```powershell
+irm https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/main/scripts/install.ps1 | iex
 ```
 
-### Codex CLIが見つからない場合
+既定では最新の公開UnityAgent Prereleaseを解決し、Release wheelを `SHA256SUMS.txt` で検証してからインストールします。
 
-1. `UnityAgent > Setup` を開く
-2. Codex欄の `再検出` を押す
-3. 見つからなければ `参照...` から `codex.exe` / `codex.cmd` / `codex.ps1` を選択
-4. 壊れた手動指定が残っている場合は `Override解除`
-5. 失敗理由は `詳細ログ / Raw response` を開いて確認・コピー
+特定Releaseを固定する場合:
+
+```powershell
+$env:UNITY_AGENT_TAG = "v0.0.6-beta"
+irm https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/main/scripts/install.ps1 | iex
+```
+
+Installerは導入した `unity-agent.exe` の絶対PathをUser環境変数 `UNITY_AGENT_CONTROL_PLANE` に保存します。
 
 ---
 
@@ -219,12 +204,10 @@ Windowsの標準的な`pip --user`構成では、Control Planeは概ね次のよ
 Unity Editorを使わず手動で導入する場合:
 
 ```powershell
-codex plugin marketplace add DarumaPPAP/UnityAgent --ref v0.0.5-beta --json
+codex plugin marketplace add DarumaPPAP/UnityAgent --ref v0.0.6-beta --json
 codex plugin add unity-agent@unity-agent --json
 codex plugin list --json
 ```
-
-Marketplace IDは **`unity-agent`** 専用です。
 
 ```text
 Marketplace : unity-agent
@@ -232,6 +215,47 @@ Plugin      : unity-agent@unity-agent
 ```
 
 旧Betaで使用していた汎用的な `personal` Marketplace名には依存しません。
+
+---
+
+# Troubleshooting
+
+## Control Planeが見つからない
+
+Setup WindowのControl Planeカードから順に確認してください。
+
+```text
+Install Control Plane
+→ 再検出
+→ 参照...
+→ Override解除
+→ Diagnostics
+```
+
+Control Plane Resolverは概ね次の順で探索します。
+
+```text
+Manual Override
+  ↓
+UNITY_AGENT_CONTROL_PLANE
+  ↓
+User environment
+  ↓
+Python User Scripts
+  ↓
+Process PATH / User PATH
+```
+
+## Codex CLIが見つからない
+
+```text
+再検出
+→ 参照...
+→ Override解除
+→ Diagnostics
+```
+
+Windowsでは `codex.exe / codex.cmd / codex.bat / codex.ps1` を考慮します。
 
 ---
 
@@ -243,7 +267,7 @@ Unity Project Rootは `Assets / Packages / ProjectSettings` を含むディレ�
 $Project = "D:\Projects\MyGame"
 ```
 
-Environmentを確認:
+Environment確認:
 
 ```powershell
 unity-agent doctor `
@@ -252,7 +276,7 @@ unity-agent doctor `
   --non-interactive
 ```
 
-Setup Planを作成:
+Setup Plan:
 
 ```powershell
 unity-agent setup `
@@ -262,19 +286,19 @@ unity-agent setup `
   --non-interactive
 ```
 
-Codex CLIを明示したい場合:
+Codex CLIを明示する場合:
 
 ```powershell
 unity-agent setup `
   --operation doctor `
   --project-path "$Project" `
   --product codex_cli `
-  --codex-path "C:\Users\YOU\AppData\Roaming\npm\codex.cmd" `
+  --codex-path "C:\Path\To\codex.exe" `
   --format json `
   --non-interactive
 ```
 
-`unavailable` は必ずしもUnityAgent自体の異常ではありません。UnityAgentは利用できないProviderや未観測の結果を、勝手に成功へ変換しません。
+`unavailable` は必ずしもUnityAgent自体の異常ではありません。未観測・利用不可の結果を勝手にPASSへ変換しません。
 
 ---
 
@@ -312,15 +336,13 @@ Evidence   = 実際に何を観測したか
 - Player Runtime Provider
 - Installer Provider
 
-UnityArtistCLIはLookDev / Lighting / Camera / Cinematic等を担当するspecialist Providerです。UnityAgentのGraph / Loop / Policyを持つ第二のAgent Frameworkにはしません。
+UnityArtistCLIはLookDev / Lighting / Camera / Cinematic等を担当するspecialist Providerです。第二のAgent Frameworkにはしません。
 
-`v0.0.5-beta` のUnityAgentはUnityArtistCLI `v0.0.1-beta` をimmutable dependencyとしてpinしています。UnityAgentのRelease channelとProvider製品versionは別契約として扱います。
+`v0.0.6-beta` のUnityAgentはUnityArtistCLI `v0.0.1-beta` をimmutable dependencyとしてpinしています。UnityAgentのRelease channelとProvider製品versionは別契約です。
 
 ---
 
 # Safety & Evidence
-
-UnityAgentは「動いた気がする」を成功にしません。
 
 ```text
 Compile PASS
@@ -331,8 +353,6 @@ Compile PASS
 != Visual PASS
 ```
 
-Providerが利用できない場合もSafety Contractを弱めません。
-
 ```text
 Provider unavailable
 != Approvalを省略してよい
@@ -340,7 +360,7 @@ Provider unavailable
 != Evidenceを推測してよい
 ```
 
-Mutationは原則として次の経路を維持します。
+通常Mutationは原則として次の経路を維持します。
 
 ```text
 Inspect
@@ -358,11 +378,11 @@ Apply
 Evidence
 ```
 
+Control Plane未導入時の**Control Plane自身のBootstrapだけ**が、この通常経路の前段にある限定例外です。
+
 ---
 
 # Architecture
-
-UnityAgentの製品境界は5層です。
 
 ```text
 ① Entry Layer
@@ -397,31 +417,14 @@ UnityAgentの製品境界は5層です。
 
 # Development & Validation
 
-Repository全体:
-
 ```powershell
 python .\Tools\validate_all.py
-```
-
-Skill authoring quality:
-
-```powershell
 python .\Tools\SkillValidator\validate_skills.py --strict
-```
-
-Production Tool Runtime:
-
-```powershell
 python .\Tools\ProductionToolRuntime\validate_production_tool_runtime.py
-```
-
-Local Regression Gate:
-
-```powershell
 python .\Tools\run_regression_gate.py
 ```
 
-> Local Regression GateはローカルのCodex CLI / 認証済み環境を前提とします。GitHub-hosted Release Workflowの必須Gateとは分離されています。
+Local Regression GateはローカルのCodex CLI / 認証済み環境を前提とし、GitHub-hosted Release Workflowの必須Gateとは分離されています。
 
 ---
 
@@ -430,8 +433,20 @@ python .\Tools\run_regression_gate.py
 Canonical version:
 
 ```text
-0.0.5-beta
+0.0.6-beta
 ```
+
+Release Workflowは**tag文字列を手入力しません**。`main/VERSION`からcanonical tag `v0.0.6-beta` を自動生成します。
+
+Actionsでは:
+
+```text
+UnityAgent Release
+→ Run workflow from main
+→ confirm_release = true
+```
+
+だけを指定します。旧versionのコピペや先頭`v`忘れでReleaseが落ちる経路を排除しています。
 
 Release Workflowは同一tagから以下を生成します。
 
@@ -440,9 +455,7 @@ Release Workflowは同一tagから以下を生成します。
 - Python Control Plane wheel / source distribution
 - `SHA256SUMS.txt`
 
-UPM artifactはRelease前に、Editor assetsと対応するUnity `.meta` ファイルがpack後の`.tgz`へ含まれていることを検証します。
-
-Releaseはimmutable tagとして作成し、GitHubではPrereleaseとして公開します。
+UPM artifactはRelease前に、Editor assetsの`.meta`とpackage-local Bootstrap scriptがpack後の`.tgz`へ含まれていることを検証します。
 
 ---
 
