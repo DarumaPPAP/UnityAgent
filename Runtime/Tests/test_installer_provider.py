@@ -38,6 +38,10 @@ class InstallerProviderTests(unittest.TestCase):
                 package.writestr("../escape.txt", b"must not extract")
         return stream.getvalue()
 
+    @staticmethod
+    def codex_version_runner(arguments):
+        return CommandResult(0, "codex-cli 0.0-test\n", "")
+
     def test_release_archive_is_hash_verified_and_installed_to_requested_root(self) -> None:
         archive = self.archive()
         digest = hashlib.sha256(archive).hexdigest()
@@ -194,7 +198,12 @@ class InstallerProviderTests(unittest.TestCase):
         fake_codex = self.install_root / "codex.cmd"
         fake_codex.parent.mkdir(parents=True, exist_ok=True)
         fake_codex.write_text("@echo off\n", encoding="utf-8")
-        provider = InstallerProvider(ROOT, which_fn=lambda name: None, env={})
+        provider = InstallerProvider(
+            ROOT,
+            which_fn=lambda name: None,
+            env={},
+            command_runner=self.codex_version_runner,
+        )
         result = provider.doctor({
             "products": ["codex_cli"],
             "codex_cli_path": str(fake_codex),
@@ -202,6 +211,7 @@ class InstallerProviderTests(unittest.TestCase):
         self.assertEqual(result["status"], "passed")
         self.assertEqual(result["entries"][0]["location"], str(fake_codex.resolve()))
         self.assertEqual(result["entries"][0]["source"], "explicit_override")
+        self.assertEqual(result["entries"][0]["version"], "codex-cli 0.0-test")
 
     def test_installer_finds_codex_in_windows_npm_style_location(self) -> None:
         app_data = self.install_root / "AppData/Roaming"
@@ -212,6 +222,7 @@ class InstallerProviderTests(unittest.TestCase):
             ROOT,
             which_fn=lambda name: None,
             env={"APPDATA": str(app_data)},
+            command_runner=self.codex_version_runner,
         )
         result = provider.doctor({
             "products": ["codex_cli"],
@@ -219,7 +230,25 @@ class InstallerProviderTests(unittest.TestCase):
         })
         self.assertEqual(result["status"], "passed")
         self.assertEqual(result["entries"][0]["location"], str(fake_codex.resolve()))
-        self.assertEqual(result["entries"][0]["source"], "well_known_windows_location")
+        self.assertEqual(result["entries"][0]["source"], "windows_npm")
+
+    def test_installer_reports_codex_execution_failure_readably(self) -> None:
+        fake_codex = self.install_root / "codex.cmd"
+        fake_codex.parent.mkdir(parents=True, exist_ok=True)
+        fake_codex.write_text("@echo off\n", encoding="utf-8")
+        provider = InstallerProvider(
+            ROOT,
+            which_fn=lambda name: None,
+            env={},
+            command_runner=lambda arguments: CommandResult(7, "", "broken shim"),
+        )
+        result = provider.doctor({
+            "products": ["codex_cli"],
+            "codex_cli_path": str(fake_codex),
+        })
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["entries"][0]["reason"], "codex_cli_execution_failed")
+        self.assertIn("broken shim", result["entries"][0]["message"])
 
 
 if __name__ == "__main__":
