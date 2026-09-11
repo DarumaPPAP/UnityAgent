@@ -85,6 +85,26 @@ jobs:
           print("Unity PackageInfo qualification validation passed.")
           PY
 
+      - name: Validate checksum parser hardening
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          paths = [
+              Path("scripts/install.ps1"),
+              Path("Packages/com.darumappap.unity-agent/Editor/Bootstrap~/install-control-plane.ps1"),
+          ]
+          for path in paths:
+              text = path.read_text(encoding="utf-8")
+              if "Resolve-ExpectedHash" not in text:
+                  raise SystemExit(f"{path} must use the canonical checksum parser")
+              if "[IO.Path]::GetFileName" not in text:
+                  raise SystemExit(f"{path} must normalize checksum entry paths to basenames")
+              if "^[.][\\\\/]+" not in text:
+                  raise SystemExit(f"{path} must accept legacy ./ or .\\ checksum prefixes")
+          print("Checksum parser hardening validation passed.")
+          PY
+
       - name: Enforce Skill authoring quality
         run: python Tools/SkillValidator/validate_skills.py --strict
 
@@ -146,3 +166,27 @@ jobs:
               raise SystemExit("Packed UPM is missing bootstrap/meta files: " + ", ".join(missing))
           print(f"Packed UPM bootstrap validation passed: {len(required)} required files")
           PY
+
+  windows-bootstrap-smoke:
+    name: Windows Bootstrap Smoke
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Bootstrap published v0.0.6 through UPM installer
+        shell: pwsh
+        run: |
+          & "Packages/com.darumappap.unity-agent/Editor/Bootstrap~/install-control-plane.ps1" -ReleaseTag "v0.0.6-beta"
+
+      - name: Bootstrap published v0.0.6 through stable installer
+        shell: pwsh
+        env:
+          UNITY_AGENT_TAG: v0.0.6-beta
+        run: |
+          & "scripts/install.ps1"
