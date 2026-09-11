@@ -203,7 +203,8 @@ class InstallerProvider:
                 "failure_class": "stale_revision", "reason": "expected_plan_id does not match the approved plan",
                 "project_root": str(self.project_root), "channel": CHANNEL,
             }
-        if str(approved_plan.get("status") or "") != "passed":
+        approved_status = approved_plan.get("status")
+        if approved_status is not None and str(approved_status) != "passed":
             return {
                 "schema_version": "1.0", "operation": "apply", "status": "failed",
                 "failure_class": "blocked_by_environment", "reason": "approved setup plan is not executable",
