@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 import json
+import re
 
 import yaml
 
@@ -78,6 +79,16 @@ def validate(root: Path = ROOT) -> list[str]:
         if not (root / relative).is_file():
             errors.append(f"cross-layer contract is missing: {relative}")
 
+    remote_installer = root / "scripts/install-remote.ps1"
+    if not remote_installer.is_file():
+        errors.append("GitHub remote bootstrap installer is missing: scripts/install-remote.ps1")
+    else:
+        installer_text = remote_installer.read_text(encoding="utf-8").casefold()
+        if "raw.githubusercontent.com/darumappap/unityagent" not in installer_text:
+            errors.append("remote bootstrap must be hosted by the canonical UnityAgent GitHub repository")
+        if "python" not in installer_text or "pip install" not in installer_text:
+            errors.append("remote bootstrap must install the host Control Plane through Python pip")
+
     package_path = root / "Packages/com.darumappap.unity-agent/package.json"
     if package_path.is_file():
         try:
@@ -99,8 +110,9 @@ def validate(root: Path = ROOT) -> list[str]:
     setup_skill = root / ".agents/plugins/unity-agent/skills/unity-agent-setup/SKILL.md"
     if setup_skill.is_file():
         text = setup_skill.read_text(encoding="utf-8").casefold()
+        executable_text = re.sub(r"https?://\S+", "", text)
         for token in FORBIDDEN_ENTRY_TEXT:
-            if token in text:
+            if token in executable_text:
                 errors.append(f"Entry setup skill must not directly invoke Provider: {token}")
         if "unity-agent setup" not in text:
             errors.append("Entry setup skill must route through unity-agent setup")

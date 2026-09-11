@@ -64,8 +64,23 @@ Layer、Evidence & Stateの5層です。依存方向と禁止依存は
 
 ### Control Planeのローカル導入
 
-UnityAgentホストはリポジトリで `python -m pip install -e .` を実行すると
-`unity-agent` コマンドとして登録できます。Setupは次の順序で実行します。
+リポジトリをcloneせずにWindows PowerShellから導入する場合は、GitHubのremote bootstrapを
+実行できます。
+
+```powershell
+irm https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/migration/unity-artist-cli-v2/scripts/install-remote.ps1 | iex
+```
+
+このスクリプトはUnityAgent Control PlaneをGitHubの指定refから現在ユーザーのPython環境へ導入し、
+`unity-agent` をUser PATHへ追加します。Python 3.10以上とpipが必要です。現在の移行ブランチを
+直接指定しており、mainへmergeされた後はURLのrefを `main` に変更できます。ローカルcheckoutを
+使う場合は `python -m pip install -e .` でも導入できます。
+
+Unity UPM PackageはUnityのPackage Managerへ、Codex PluginはMarketplace／GitHub plugin入口へ
+同じリポジトリから追加します。remote bootstrapはホストControl Planeを担当し、これらを勝手に
+コピーしたり、Providerを直接実行したりしません。
+
+Setupは次の順序で実行します。
 
 ```text
 unity-agent doctor --project-path <project> --format json --non-interactive

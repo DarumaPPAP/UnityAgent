@@ -9,9 +9,16 @@ Use this skill when a project needs the UnityAgent runtime or a Unity toolchain
 configured. This skill is an Entry Layer and must call the UnityAgent Control
 Plane only.
 
-Install the UnityAgent host once with `python -m pip install -e .` from the
-UnityAgent repository, or add the `com.darumappap.unity-agent` UPM package to a
-Unity project. Both Entry surfaces use the same Control Plane contracts.
+Install the UnityAgent host directly from GitHub on Windows PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/migration/unity-artist-cli-v2/scripts/install-remote.ps1 | iex
+```
+
+The remote bootstrap installs the host Control Plane into the current user's Python environment
+and adds its Scripts directory to User PATH. A repository checkout may instead use
+`python -m pip install -e .`. The UnityAgent UPM package and this Codex Plugin are separate GitHub
+surfaces. Both Entry surfaces use the same Control Plane contracts.
 
 ## Control Plane setup
 
