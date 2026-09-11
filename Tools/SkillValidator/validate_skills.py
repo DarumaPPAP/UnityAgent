@@ -24,6 +24,14 @@ REQUIRED_QUALITY_SECTIONS = (
     "common mistakes",
 )
 MUTATING_TOOLS = {"Write", "Edit"}
+READ_ONLY_SCOPE_PATTERNS = (
+    re.compile(r"\bread[- ]only\s+(?:audit|auditor|skill|workflow|operation|mode)\b", re.IGNORECASE),
+    re.compile(r"\b(?:this|the)\s+skill\s+(?:is|remains)\s+read[- ]only\b", re.IGNORECASE),
+    re.compile(r"\bdo not modify\s+(?:files|source files|project files|the repository|the project)\b", re.IGNORECASE),
+    re.compile(r"\bdoes not (?:modify|change)\s+(?:files|source files|project files|the repository|the project)\b", re.IGNORECASE),
+    re.compile(r"(?:このSkill|本Skill).{0,24}(?:変更しない|変更を行わない|読み取り専用)"),
+    re.compile(r"(?:ファイル|ソース|コード)(?:本体)?(?:を|は)\s*(?:変更しない|変更を行わない)"),
+)
 
 
 @dataclass(frozen=True)
@@ -150,6 +158,23 @@ def read_skill(path: Path) -> tuple[SkillDocument | None, list[Finding]]:
     return document, findings
 
 
+def declares_read_only_scope(document: SkillDocument) -> bool:
+    """Detect an explicit whole-Skill read-only contract, not local safety rules.
+
+    Phrases such as "do not modify public API" or Japanese "変更しない" often
+    describe compatibility boundaries inside a mutating Skill. They must not be
+    mistaken for a declaration that the entire Skill is read-only.
+    """
+
+    description = document.description or ""
+    introduction = "\n".join(document.body.splitlines()[:40])
+    scope_text = f"{description}\n{introduction}"
+
+    if "without changing files" in description.lower():
+        return True
+    return any(pattern.search(scope_text) for pattern in READ_ONLY_SCOPE_PATTERNS)
+
+
 def validate_document(document: SkillDocument, root: Path) -> list[Finding]:
     findings: list[Finding] = []
     relative_path = document.path.relative_to(root).as_posix()
@@ -222,14 +247,8 @@ def validate_document(document: SkillDocument, root: Path) -> list[Finding]:
                 )
             )
 
-    read_only_language = (
-        "read-only" in lowered_body
-        or "do not modify" in lowered_body
-        or "without changing" in (document.description or "").lower()
-        or "変更しない" in document.body
-    )
     mutating_tools = sorted(MUTATING_TOOLS.intersection(document.allowed_tools))
-    if read_only_language and mutating_tools:
+    if declares_read_only_scope(document) and mutating_tools:
         findings.append(
             Finding(
                 "warning",

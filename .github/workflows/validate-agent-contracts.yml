@@ -53,3 +53,6 @@ jobs:
 
       - name: Validate UnityAgent canonical contracts
         run: python Tools/validate_all.py
+
+      - name: Enforce Skill authoring quality
+        run: python Tools/SkillValidator/validate_skills.py --strict
