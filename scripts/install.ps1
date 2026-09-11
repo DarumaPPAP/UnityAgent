@@ -49,6 +49,28 @@ function Invoke-Python {
     }
 }
 
+function Resolve-ExpectedHash {
+    param(
+        [Parameter(Mandatory = $true)][string]$ChecksumPath,
+        [Parameter(Mandatory = $true)][string]$AssetName
+    )
+
+    foreach ($line in Get-Content -LiteralPath $ChecksumPath) {
+        if ($line -notmatch '^\s*([0-9a-fA-F]{64})\s+\*?(.+?)\s*$') {
+            continue
+        }
+
+        $entryPath = $Matches[2].Trim()
+        $entryPath = $entryPath -replace '^[.][\\/]+', ''
+        $entryName = [IO.Path]::GetFileName($entryPath)
+        if ([string]::Equals($entryName, $AssetName, [StringComparison]::Ordinal)) {
+            return $Matches[1].ToLowerInvariant()
+        }
+    }
+
+    return $null
+}
+
 $python = Resolve-Python
 & $python.Command @($python.Prefix + @("-c", "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)"))
 if ($LASTEXITCODE -ne 0) {
@@ -92,13 +114,7 @@ try {
     Invoke-WebRequest -Uri $wheelAsset.browser_download_url -Headers $headers -OutFile $wheelPath -UseBasicParsing
     Invoke-WebRequest -Uri $checksumAsset.browser_download_url -Headers $headers -OutFile $checksumPath -UseBasicParsing
 
-    $expectedHash = $null
-    foreach ($line in Get-Content -LiteralPath $checksumPath) {
-        if ($line -match '^\s*([0-9a-fA-F]{64})\s+\*?(.+?)\s*$' -and $Matches[2].Trim() -eq $wheelAsset.name) {
-            $expectedHash = $Matches[1].ToLowerInvariant()
-            break
-        }
-    }
+    $expectedHash = Resolve-ExpectedHash -ChecksumPath $checksumPath -AssetName ([string]$wheelAsset.name)
     if (-not $expectedHash) { throw "SHA256SUMS.txt does not contain an entry for $($wheelAsset.name)." }
     $actualHash = (Get-FileHash -LiteralPath $wheelPath -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($actualHash -ne $expectedHash) {
