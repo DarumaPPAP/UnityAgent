@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 
@@ -10,8 +11,10 @@ namespace DarumaPPAP.UnityAgent.Editor
             string operation,
             string projectPath,
             string hostCommand,
+            IReadOnlyList<string> products,
             string expectedPlanId,
             string approvalRef,
+            string approvedPlanPath,
             out string output,
             out string error)
         {
@@ -26,7 +29,18 @@ namespace DarumaPPAP.UnityAgent.Editor
             var arguments = new StringBuilder();
             arguments.Append("setup --operation ").Append(Quote(operation));
             arguments.Append(" --project-path ").Append(Quote(projectPath));
+            arguments.Append(" --entry-point unity_ui");
             arguments.Append(" --format json --non-interactive");
+            if (products != null)
+            {
+                for (var index = 0; index < products.Count; index++)
+                {
+                    if (!string.IsNullOrEmpty(products[index]))
+                    {
+                        arguments.Append(" --product ").Append(Quote(products[index]));
+                    }
+                }
+            }
             if (!string.IsNullOrEmpty(expectedPlanId))
             {
                 arguments.Append(" --expected-plan-id ").Append(Quote(expectedPlanId));
@@ -34,6 +48,10 @@ namespace DarumaPPAP.UnityAgent.Editor
             if (!string.IsNullOrEmpty(approvalRef))
             {
                 arguments.Append(" --approval-ref ").Append(Quote(approvalRef));
+            }
+            if (!string.IsNullOrEmpty(approvedPlanPath))
+            {
+                arguments.Append(" --approved-plan ").Append(Quote(approvedPlanPath));
             }
 
             try
