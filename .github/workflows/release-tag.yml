@@ -138,6 +138,7 @@ jobs:
               "package/package.json.meta",
               "package/Editor.meta",
               "package/Editor/DarumaPPAP.UnityAgent.Editor.asmdef.meta",
+              "package/Editor/UnityAgentCodexPathResolver.cs.meta",
               "package/Editor/UnityAgentControlPlaneClient.cs.meta",
               "package/Editor/UnityAgentSetupWindow.cs.meta",
           }
