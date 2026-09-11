@@ -11,7 +11,7 @@ namespace DarumaPPAP.UnityAgent.Editor
 {
     /// <summary>
     /// Bootstrap-only path for installing the Control Plane when it does not exist yet.
-    /// It never installs Codex plugins or Providers; normal mutations stay behind the Control Plane.
+    /// It installs only the Control Plane; all normal toolchain mutations remain behind it.
     /// </summary>
     internal static class UnityAgentControlPlaneBootstrap
     {
