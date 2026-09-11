@@ -30,7 +30,7 @@ READ_ONLY_SCOPE_PATTERNS = (
     re.compile(r"\bdo not modify\s+(?:files|source files|project files|the repository|the project)\b", re.IGNORECASE),
     re.compile(r"\bdoes not (?:modify|change)\s+(?:files|source files|project files|the repository|the project)\b", re.IGNORECASE),
     re.compile(r"(?:このSkill|本Skill).{0,24}(?:変更しない|変更を行わない|読み取り専用)"),
-    re.compile(r"(?:ファイル|ソース|コード).{0,12}(?:変更しない|変更を行わない)"),
+    re.compile(r"(?:ファイル|ソース|コード)(?:本体)?(?:を|は)\s*(?:変更しない|変更を行わない)"),
 )
 
 
