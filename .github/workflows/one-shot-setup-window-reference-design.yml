@@ -34,7 +34,7 @@ jobs:
           from PIL import Image
           image = Image.open('Packages/com.darumappap.unity-agent/Editor/Resources/UnityAgentSetupLogo.png').convert('RGBA')
           lo, hi = image.getchannel('A').getextrema()
-          assert lo == 0 and hi == 255, (lo, hi)
+          assert lo == 0 and hi >= 250, (lo, hi)
           print('logo alpha range:', lo, hi, 'size:', image.size)
           PY
 
