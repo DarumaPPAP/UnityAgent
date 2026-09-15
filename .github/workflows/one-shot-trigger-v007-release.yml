@@ -1,0 +1,22 @@
+name: One-shot Trigger v0.0.7-beta Release
+
+on:
+  push:
+    branches:
+      - release/trigger-v0.0.7-beta
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch canonical UnityAgent Release workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run release-tag.yml --repo "$GITHUB_REPOSITORY" --ref main -f confirm_release=true
+          echo "Dispatched UnityAgent Release for main."
