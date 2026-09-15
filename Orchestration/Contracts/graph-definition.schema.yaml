@@ -70,9 +70,12 @@ properties:
         continue_on:
           type: array
           items: {type: string, minLength: 1}
+          uniqueItems: true
         replan_on:
           type: array
           items: {type: string, minLength: 1}
+          uniqueItems: true
         exit_on:
           type: array
           items: {type: string, minLength: 1}
+          uniqueItems: true
