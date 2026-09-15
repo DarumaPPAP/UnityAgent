@@ -47,17 +47,19 @@ namespace DarumaPPAP.UnityAgent.Editor
         private GUIStyle secondaryButtonStyle;
         private GUIStyle heroSubtitleStyle;
         private GUIStyle heroVersionStyle;
+        private GUIStyle cardStyle;
+        private GUIStyle fieldLabelStyle;
 
         [MenuItem("UnityAgent/Setup")]
         private static void Open()
         {
             var window = GetWindow<UnityAgentSetupWindow>("UnityAgent Setup");
-            window.minSize = new Vector2(620f, 520f);
+            window.minSize = new Vector2(700f, 540f);
         }
 
         private void OnEnable()
         {
-            minSize = new Vector2(620f, 520f);
+            minSize = new Vector2(700f, 540f);
             setupLogoTexture = LoadSetupLogoTexture();
             EditorApplication.delayCall += RetrySetupLogoLoad;
             RefreshAllPaths();
@@ -104,23 +106,33 @@ namespace DarumaPPAP.UnityAgent.Editor
         {
             EnsureStyles();
             windowScroll = EditorGUILayout.BeginScrollView(windowScroll);
-            EditorGUILayout.Space(6);
-            DrawHeader();
-            EditorGUILayout.Space(14);
-            DrawOverview();
-            EditorGUILayout.Space(12);
-            DrawControlPlaneCard();
-            EditorGUILayout.Space(10);
-            DrawCodexCard();
-            EditorGUILayout.Space(10);
-            DrawIntegrationCard();
-            EditorGUILayout.Space(12);
-            DrawStatusCard();
-            EditorGUILayout.Space(10);
-            DrawDiagnostics();
-            EditorGUILayout.Space(10);
-            DrawAdvanced();
-            EditorGUILayout.Space(18);
+            EditorGUILayout.Space(4);
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                GUILayout.Space(8f);
+                using (new EditorGUILayout.VerticalScope())
+                {
+                    DrawHeader();
+                    EditorGUILayout.Space(12);
+                    DrawOverview();
+                    EditorGUILayout.Space(10);
+                    DrawControlPlaneCard();
+                    EditorGUILayout.Space(10);
+                    DrawCodexCard();
+                    EditorGUILayout.Space(10);
+                    DrawIntegrationCard();
+                    EditorGUILayout.Space(10);
+                    DrawStatusCard();
+                    EditorGUILayout.Space(10);
+                    DrawDiagnostics();
+                    EditorGUILayout.Space(8);
+                    DrawAdvanced();
+                    EditorGUILayout.Space(16);
+                }
+                GUILayout.Space(8f);
+            }
+
             EditorGUILayout.EndScrollView();
         }
 
@@ -134,10 +146,12 @@ namespace DarumaPPAP.UnityAgent.Editor
             titleStyle = new GUIStyle(EditorStyles.boldLabel)
             {
                 alignment = TextAnchor.MiddleCenter,
-                fontSize = 26,
+                fontSize = 30,
                 fontStyle = FontStyle.Bold,
             };
-            titleStyle.normal.textColor = EditorGUIUtility.isProSkin ? new Color(0.94f, 0.94f, 0.95f) : new Color(0.08f, 0.08f, 0.09f);
+            titleStyle.normal.textColor = EditorGUIUtility.isProSkin
+                ? new Color(0.96f, 0.96f, 0.97f)
+                : new Color(0.08f, 0.08f, 0.09f);
 
             subtitleStyle = new GUIStyle(EditorStyles.label)
             {
@@ -145,95 +159,125 @@ namespace DarumaPPAP.UnityAgent.Editor
                 wordWrap = true,
             };
             subtitleStyle.normal.textColor = EditorGUIUtility.isProSkin
-                ? new Color(0.76f, 0.77f, 0.80f)
+                ? new Color(0.78f, 0.80f, 0.83f)
                 : new Color(0.25f, 0.27f, 0.30f);
 
             cardTitleStyle = new GUIStyle(EditorStyles.boldLabel)
             {
-                fontSize = 14,
+                fontSize = 16,
                 fontStyle = FontStyle.Bold,
             };
+            cardTitleStyle.normal.textColor = EditorGUIUtility.isProSkin
+                ? new Color(0.94f, 0.95f, 0.97f)
+                : new Color(0.12f, 0.13f, 0.15f);
+
             cardSubtitleStyle = new GUIStyle(EditorStyles.label)
             {
-                fontSize = 10,
+                fontSize = 11,
                 wordWrap = true,
             };
             cardSubtitleStyle.normal.textColor = EditorGUIUtility.isProSkin
-                ? new Color(0.70f, 0.72f, 0.76f)
+                ? new Color(0.70f, 0.73f, 0.78f)
                 : new Color(0.32f, 0.34f, 0.38f);
 
             badgeStyle = new GUIStyle(EditorStyles.miniBoldLabel)
             {
                 alignment = TextAnchor.MiddleRight,
+                fontSize = 11,
                 fontStyle = FontStyle.Bold,
             };
+
             pathStyle = new GUIStyle(EditorStyles.textField)
             {
-                fontSize = 10,
+                fontSize = 11,
+                fixedHeight = 24f,
             };
+
             primaryButtonStyle = new GUIStyle(GUI.skin.button)
             {
-                fixedHeight = 34f,
+                fixedHeight = 36f,
+                fontSize = 12,
                 fontStyle = FontStyle.Bold,
             };
+
             secondaryButtonStyle = new GUIStyle(GUI.skin.button)
             {
-                fixedHeight = 26f,
+                fixedHeight = 30f,
+                fontSize = 11,
             };
+
             heroSubtitleStyle = new GUIStyle(EditorStyles.miniBoldLabel)
             {
                 alignment = TextAnchor.MiddleCenter,
-                fontSize = 10,
+                fontSize = 11,
                 fontStyle = FontStyle.Bold,
             };
             heroSubtitleStyle.normal.textColor = EditorGUIUtility.isProSkin
-                ? new Color(0.72f, 0.73f, 0.76f)
+                ? new Color(0.74f, 0.76f, 0.80f)
                 : new Color(0.24f, 0.24f, 0.26f);
+
             heroVersionStyle = new GUIStyle(EditorStyles.miniBoldLabel)
             {
-                alignment = TextAnchor.UpperRight,
-                fontSize = 9,
+                alignment = TextAnchor.MiddleRight,
+                fontSize = 10,
                 fontStyle = FontStyle.Bold,
             };
             heroVersionStyle.normal.textColor = BrandRed;
+
+            cardStyle = new GUIStyle(EditorStyles.helpBox)
+            {
+                padding = new RectOffset(14, 14, 12, 12),
+                margin = new RectOffset(0, 0, 0, 0),
+            };
+
+            fieldLabelStyle = new GUIStyle(EditorStyles.miniLabel)
+            {
+                alignment = TextAnchor.MiddleLeft,
+                fontSize = 11,
+            };
+            fieldLabelStyle.normal.textColor = EditorGUIUtility.isProSkin
+                ? new Color(0.72f, 0.74f, 0.78f)
+                : new Color(0.34f, 0.36f, 0.40f);
         }
 
         private void DrawHeader()
         {
-            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            var heroRect = GUILayoutUtility.GetRect(0f, 178f, GUILayout.ExpandWidth(true));
+            EditorGUI.DrawRect(heroRect, HeroBackgroundColor);
 
-            var accentRect = EditorGUILayout.GetControlRect(false, 4f);
-            EditorGUI.DrawRect(accentRect, BrandRed);
-            EditorGUILayout.Space(8);
+            EditorGUI.DrawRect(
+                new Rect(heroRect.x, heroRect.y, heroRect.width, 4f),
+                BrandRed);
+            EditorGUI.DrawRect(
+                new Rect(heroRect.x + 12f, heroRect.yMax - 1f, heroRect.width - 24f, 1f),
+                HeroDividerColor);
 
-            var logoSlot = GUILayoutUtility.GetRect(0f, 84f, GUILayout.ExpandWidth(true));
             var logoTexture = setupLogoTexture ?? LoadSetupLogoTexture();
+            var logoSlot = new Rect(
+                heroRect.x + 38f,
+                heroRect.y + 16f,
+                Mathf.Max(0f, heroRect.width - 76f),
+                116f);
+
             if (logoTexture != null)
             {
                 setupLogoTexture = logoTexture;
-                var logoRect = new Rect(
-                    logoSlot.x + 18f,
-                    logoSlot.y + 4f,
-                    Mathf.Max(0f, logoSlot.width - 36f),
-                    Mathf.Max(0f, logoSlot.height - 8f));
-                GUI.DrawTexture(logoRect, logoTexture, ScaleMode.ScaleToFit, true);
+                GUI.DrawTexture(logoSlot, logoTexture, ScaleMode.ScaleToFit, true);
             }
             else
             {
                 GUI.Label(logoSlot, "UNITYAGENT", titleStyle);
             }
 
-            EditorGUILayout.Space(4);
-            EditorGUILayout.LabelField("SETUP  /  CONTROL PLANE  /  CODEX", heroSubtitleStyle);
+            GUI.Label(
+                new Rect(heroRect.x + 40f, heroRect.y + 132f, heroRect.width - 80f, 22f),
+                "SETUP  /  CONTROL PLANE  /  CODEX",
+                heroSubtitleStyle);
 
-            using (new EditorGUILayout.HorizontalScope())
-            {
-                GUILayout.FlexibleSpace();
-                GUILayout.Label("v" + CHANNEL + "  BETA", heroVersionStyle);
-            }
-
-            EditorGUILayout.Space(6);
-            EditorGUILayout.EndVertical();
+            GUI.Label(
+                new Rect(heroRect.xMax - 190f, heroRect.yMax - 27f, 174f, 18f),
+                "v" + CHANNEL + "  BETA",
+                heroVersionStyle);
         }
 
         private void DrawOverview()
@@ -243,26 +287,18 @@ namespace DarumaPPAP.UnityAgent.Editor
             var readyCount = (controlPlaneReady ? 1 : 0) + (codexReady ? 1 : 0);
 
             BeginCard();
-            using (new EditorGUILayout.HorizontalScope())
-            {
-                using (new EditorGUILayout.VerticalScope())
-                {
-                    EditorGUILayout.LabelField("Setup Readiness", cardTitleStyle);
-                    EditorGUILayout.LabelField(
-                        controlPlaneReady && codexReady
-                            ? "Core dependencies are ready. Codex Pluginの状態確認・Installへ進めます。"
-                            : "不足している依存を上から順に解決してください。",
-                        cardSubtitleStyle);
-                }
-                GUILayout.FlexibleSpace();
-                DrawBadge(readyCount + "/2 READY", readyCount == 2 ? ReadyColor : ActionColor);
-            }
+            DrawCardHeader(
+                "Setup Readiness",
+                controlPlaneReady && codexReady
+                    ? "Core dependencies are ready. Codex Pluginの状態確認・Installへ進めます。"
+                    : "不足している依存を上から順に解決してください。",
+                readyCount + "/2 READY",
+                readyCount == 2 ? ReadyColor : ActionColor);
 
-            EditorGUILayout.Space(6);
-            var rect = EditorGUILayout.GetControlRect(false, 6f);
-            var background = rect;
-            background.height = 4f;
-            EditorGUI.DrawRect(background, EditorGUIUtility.isProSkin ? new Color(0.16f, 0.17f, 0.19f) : new Color(0.82f, 0.83f, 0.85f));
+            EditorGUILayout.Space(4);
+            var rect = EditorGUILayout.GetControlRect(false, 7f);
+            var background = new Rect(rect.x + 2f, rect.y + 1f, rect.width - 4f, 5f);
+            EditorGUI.DrawRect(background, ProgressBackgroundColor);
             if (readyCount > 0)
             {
                 var progress = background;
@@ -543,28 +579,58 @@ namespace DarumaPPAP.UnityAgent.Editor
 
         private void DrawResolvedPath(string path, string source)
         {
-            using (new EditorGUI.DisabledScope(true))
+            var displayPath = string.IsNullOrWhiteSpace(path) ? "Not Found" : path;
+
+            using (new EditorGUILayout.HorizontalScope())
             {
-                EditorGUILayout.TextField("Resolved Path", string.IsNullOrWhiteSpace(path) ? "Not Found" : path, pathStyle);
+                GUILayout.Label("Resolved Path", fieldLabelStyle, GUILayout.Width(112f));
+                using (new EditorGUI.DisabledScope(true))
+                {
+                    EditorGUILayout.TextField(displayPath, pathStyle);
+                }
+                using (new EditorGUI.DisabledScope(string.IsNullOrWhiteSpace(path)))
+                {
+                    if (GUILayout.Button("Copy", GUILayout.Width(52f), GUILayout.Height(24f)))
+                    {
+                        EditorGUIUtility.systemCopyBuffer = path;
+                    }
+                }
             }
-            EditorGUILayout.LabelField("Source: " + (string.IsNullOrWhiteSpace(source) ? "-" : source), cardSubtitleStyle);
+
+            EditorGUILayout.Space(3f);
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                GUILayout.Label("Source", fieldLabelStyle, GUILayout.Width(112f));
+                GUILayout.Label(string.IsNullOrWhiteSpace(source) ? "-" : source, cardSubtitleStyle);
+            }
         }
 
         private void DrawCardHeader(string title, string subtitle, string badge, Color color)
         {
-            var accentRect = EditorGUILayout.GetControlRect(false, 2f);
-            EditorGUI.DrawRect(new Rect(accentRect.x, accentRect.y, accentRect.width, 2f), BrandRed);
-            EditorGUILayout.Space(5);
-            using (new EditorGUILayout.HorizontalScope())
-            {
-                using (new EditorGUILayout.VerticalScope())
-                {
-                    EditorGUILayout.LabelField(title, cardTitleStyle);
-                    EditorGUILayout.LabelField(subtitle, cardSubtitleStyle);
-                }
-                GUILayout.FlexibleSpace();
-                DrawBadge(badge, color);
-            }
+            var rect = GUILayoutUtility.GetRect(0f, 54f, GUILayout.ExpandWidth(true));
+
+            EditorGUI.DrawRect(
+                new Rect(rect.x, rect.y + 5f, 4f, rect.height - 10f),
+                BrandRed);
+            EditorGUI.DrawRect(
+                new Rect(rect.x + 10f, rect.y, rect.width - 10f, 1f),
+                CardTopLineColor);
+
+            var textWidth = Mathf.Max(120f, rect.width - 178f);
+            GUI.Label(
+                new Rect(rect.x + 14f, rect.y + 4f, textWidth, 24f),
+                title,
+                cardTitleStyle);
+            GUI.Label(
+                new Rect(rect.x + 14f, rect.y + 28f, textWidth, 22f),
+                subtitle,
+                cardSubtitleStyle);
+
+            var style = new GUIStyle(badgeStyle) { normal = { textColor = color } };
+            GUI.Label(
+                new Rect(rect.xMax - 158f, rect.y + 5f, 148f, 22f),
+                badge,
+                style);
         }
 
         private void DrawBadge(string text, Color color)
@@ -581,9 +647,9 @@ namespace DarumaPPAP.UnityAgent.Editor
             GUI.Label(labelRect, message, cardSubtitleStyle);
         }
 
-        private static void BeginCard()
+        private void BeginCard()
         {
-            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            EditorGUILayout.BeginVertical(cardStyle);
         }
 
         private static void EndCard()
@@ -954,6 +1020,10 @@ namespace DarumaPPAP.UnityAgent.Editor
             }
         }
 
+        private static Color HeroBackgroundColor => EditorGUIUtility.isProSkin ? new Color(0.095f, 0.105f, 0.12f) : new Color(0.90f, 0.91f, 0.93f);
+        private static Color HeroDividerColor => EditorGUIUtility.isProSkin ? new Color(0.20f, 0.22f, 0.25f) : new Color(0.72f, 0.74f, 0.78f);
+        private static Color ProgressBackgroundColor => EditorGUIUtility.isProSkin ? new Color(0.15f, 0.17f, 0.19f) : new Color(0.80f, 0.82f, 0.85f);
+        private static Color CardTopLineColor => EditorGUIUtility.isProSkin ? new Color(0.42f, 0.16f, 0.18f) : new Color(0.72f, 0.20f, 0.22f);
         private static Color ReadyColor => EditorGUIUtility.isProSkin ? new Color(0.38f, 0.86f, 0.58f) : new Color(0.05f, 0.50f, 0.22f);
         private static Color WarningColor => EditorGUIUtility.isProSkin ? new Color(1.0f, 0.72f, 0.28f) : new Color(0.72f, 0.42f, 0.02f);
         private static Color BrandRed => EditorGUIUtility.isProSkin ? new Color(0.96f, 0.16f, 0.18f) : new Color(0.80f, 0.06f, 0.08f);

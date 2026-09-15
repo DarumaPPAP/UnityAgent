@@ -24,7 +24,7 @@ TextureImporter:
   nPOTScale: 0
   compressionQuality: 50
   spriteMode: 0
-  alphaIsTransparency: 0
+  alphaIsTransparency: 1
   platformSettings: []
   userData:
   assetBundleName:
