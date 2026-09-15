@@ -10,6 +10,7 @@ namespace DarumaPPAP.UnityAgent.Editor
     {
         private const string CHANNEL = "0.0.6-beta";
         private const string CODEX_PLUGIN_SOURCE = "DarumaPPAP/UnityAgent@v0.0.6-beta";
+        private const string SETUP_LOGO_ASSET_PATH = "Packages/com.darumappap.unity-agent/Editor/Resources/UnityAgentSetupLogo.png";
         private static readonly string[] CODEX_INTEGRATION_PRODUCTS = { "codex_cli", "unity_agent_codex_plugin" };
         private static readonly string[] ALL_PRODUCTS =
         {
@@ -33,6 +34,7 @@ namespace DarumaPPAP.UnityAgent.Editor
         private bool showAdvanced;
         private Vector2 windowScroll;
         private Vector2 diagnosticsScroll;
+        private Texture2D setupLogoTexture;
 
         private GUIStyle titleStyle;
         private GUIStyle subtitleStyle;
@@ -42,6 +44,8 @@ namespace DarumaPPAP.UnityAgent.Editor
         private GUIStyle pathStyle;
         private GUIStyle primaryButtonStyle;
         private GUIStyle secondaryButtonStyle;
+        private GUIStyle heroSubtitleStyle;
+        private GUIStyle heroVersionStyle;
 
         [MenuItem("UnityAgent/Setup")]
         private static void Open()
@@ -53,6 +57,7 @@ namespace DarumaPPAP.UnityAgent.Editor
         private void OnEnable()
         {
             minSize = new Vector2(620f, 520f);
+            setupLogoTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(SETUP_LOGO_ASSET_PATH);
             RefreshAllPaths();
             UpdateIdleStatus();
         }
@@ -60,23 +65,25 @@ namespace DarumaPPAP.UnityAgent.Editor
         private void OnGUI()
         {
             EnsureStyles();
+            DrawWindowBackdrop();
             windowScroll = EditorGUILayout.BeginScrollView(windowScroll);
+            EditorGUILayout.Space(6);
             DrawHeader();
-            EditorGUILayout.Space(10);
+            EditorGUILayout.Space(14);
             DrawOverview();
-            EditorGUILayout.Space(10);
+            EditorGUILayout.Space(12);
             DrawControlPlaneCard();
-            EditorGUILayout.Space(8);
-            DrawCodexCard();
-            EditorGUILayout.Space(8);
-            DrawIntegrationCard();
             EditorGUILayout.Space(10);
+            DrawCodexCard();
+            EditorGUILayout.Space(10);
+            DrawIntegrationCard();
+            EditorGUILayout.Space(12);
             DrawStatusCard();
-            EditorGUILayout.Space(8);
+            EditorGUILayout.Space(10);
             DrawDiagnostics();
-            EditorGUILayout.Space(8);
+            EditorGUILayout.Space(10);
             DrawAdvanced();
-            EditorGUILayout.Space(16);
+            EditorGUILayout.Space(18);
             EditorGUILayout.EndScrollView();
         }
 
@@ -89,29 +96,39 @@ namespace DarumaPPAP.UnityAgent.Editor
 
             titleStyle = new GUIStyle(EditorStyles.boldLabel)
             {
-                fontSize = 20,
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 26,
                 fontStyle = FontStyle.Bold,
             };
+            titleStyle.normal.textColor = Color.black;
+
             subtitleStyle = new GUIStyle(EditorStyles.label)
             {
                 fontSize = 11,
                 wordWrap = true,
-                normal = { textColor = EditorGUIUtility.isProSkin ? new Color(0.72f, 0.74f, 0.78f) : new Color(0.28f, 0.30f, 0.34f) },
             };
+            subtitleStyle.normal.textColor = EditorGUIUtility.isProSkin
+                ? new Color(0.76f, 0.77f, 0.80f)
+                : new Color(0.25f, 0.27f, 0.30f);
+
             cardTitleStyle = new GUIStyle(EditorStyles.boldLabel)
             {
-                fontSize = 13,
+                fontSize = 14,
                 fontStyle = FontStyle.Bold,
             };
             cardSubtitleStyle = new GUIStyle(EditorStyles.label)
             {
                 fontSize = 10,
                 wordWrap = true,
-                normal = { textColor = EditorGUIUtility.isProSkin ? new Color(0.68f, 0.70f, 0.74f) : new Color(0.34f, 0.36f, 0.40f) },
             };
+            cardSubtitleStyle.normal.textColor = EditorGUIUtility.isProSkin
+                ? new Color(0.70f, 0.72f, 0.76f)
+                : new Color(0.32f, 0.34f, 0.38f);
+
             badgeStyle = new GUIStyle(EditorStyles.miniBoldLabel)
             {
                 alignment = TextAnchor.MiddleRight,
+                fontStyle = FontStyle.Bold,
             };
             pathStyle = new GUIStyle(EditorStyles.textField)
             {
@@ -119,34 +136,60 @@ namespace DarumaPPAP.UnityAgent.Editor
             };
             primaryButtonStyle = new GUIStyle(GUI.skin.button)
             {
-                fixedHeight = 32f,
+                fixedHeight = 34f,
                 fontStyle = FontStyle.Bold,
             };
             secondaryButtonStyle = new GUIStyle(GUI.skin.button)
             {
-                fixedHeight = 25f,
+                fixedHeight = 26f,
             };
+            heroSubtitleStyle = new GUIStyle(EditorStyles.miniBoldLabel)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 10,
+                fontStyle = FontStyle.Bold,
+            };
+            heroSubtitleStyle.normal.textColor = new Color(0.18f, 0.18f, 0.18f);
+            heroVersionStyle = new GUIStyle(EditorStyles.miniBoldLabel)
+            {
+                alignment = TextAnchor.UpperRight,
+                fontSize = 9,
+                fontStyle = FontStyle.Bold,
+            };
+            heroVersionStyle.normal.textColor = BrandRed;
+        }
+
+        private void DrawWindowBackdrop()
+        {
+            var background = EditorGUIUtility.isProSkin
+                ? new Color(0.105f, 0.11f, 0.12f)
+                : new Color(0.91f, 0.92f, 0.94f);
+            EditorGUI.DrawRect(new Rect(0f, 0f, position.width, position.height), background);
         }
 
         private void DrawHeader()
         {
-            using (new EditorGUILayout.HorizontalScope())
+            var heroRect = GUILayoutUtility.GetRect(0f, 138f, GUILayout.ExpandWidth(true));
+            var panelRect = new Rect(heroRect.x + 8f, heroRect.y + 4f, heroRect.width - 16f, heroRect.height - 8f);
+            EditorGUI.DrawRect(panelRect, Color.white);
+            EditorGUI.DrawRect(new Rect(panelRect.x, panelRect.y, 4f, panelRect.height), BrandRed);
+            EditorGUI.DrawRect(new Rect(panelRect.x, panelRect.yMax - 4f, panelRect.width, 4f), BrandRed);
+
+            var logoRect = new Rect(panelRect.x + 28f, panelRect.y + 10f, panelRect.width - 56f, 88f);
+            if (setupLogoTexture != null)
             {
-                using (new EditorGUILayout.VerticalScope())
-                {
-                    EditorGUILayout.LabelField("UnityAgent Setup", titleStyle);
-                    EditorGUILayout.LabelField(
-                        "Control PlaneとCodexを1つの画面で検出・導入・診断します。通常のMutationはControl Plane経由、Control Plane未導入時だけBootstrapを使用します。",
-                        subtitleStyle);
-                }
-                GUILayout.FlexibleSpace();
-                var versionStyle = new GUIStyle(EditorStyles.miniBoldLabel)
-                {
-                    alignment = TextAnchor.UpperRight,
-                    normal = { textColor = EditorGUIUtility.isProSkin ? new Color(0.55f, 0.75f, 1f) : new Color(0.12f, 0.38f, 0.72f) },
-                };
-                GUILayout.Label("v" + CHANNEL + "\nBETA", versionStyle, GUILayout.Width(90f));
+                GUI.DrawTexture(logoRect, setupLogoTexture, ScaleMode.ScaleToFit, false);
             }
+            else
+            {
+                GUI.Label(logoRect, "UNITYAGENT", titleStyle);
+            }
+
+            var subtitleRect = new Rect(panelRect.x + 24f, panelRect.yMax - 34f, panelRect.width - 48f, 18f);
+            GUI.Label(subtitleRect, "SETUP  /  CONTROL PLANE  /  CODEX", heroSubtitleStyle);
+
+            var versionRect = new Rect(panelRect.xMax - 96f, panelRect.y + 10f, 78f, 32f);
+            GUI.Label(versionRect, "v" + CHANNEL + "\nBETA", heroVersionStyle);
         }
 
         private void DrawOverview()
@@ -207,7 +250,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                     using (new EditorGUI.DisabledScope(running))
                     {
                         var previous = GUI.backgroundColor;
-                        GUI.backgroundColor = new Color(0.30f, 0.58f, 0.95f);
+                        GUI.backgroundColor = BrandRed;
                         if (GUILayout.Button(running ? "Control Planeをインストール中..." : "Install Control Plane", primaryButtonStyle))
                         {
                             InstallControlPlaneBootstrap();
@@ -311,7 +354,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                 using (new EditorGUI.DisabledScope(!codexReady))
                 {
                     var previous = GUI.backgroundColor;
-                    GUI.backgroundColor = codexReady ? new Color(0.30f, 0.58f, 0.95f) : previous;
+                    GUI.backgroundColor = codexReady ? BrandRed : previous;
                     if (GUILayout.Button("Codex Pluginをインストール / 修復", primaryButtonStyle))
                     {
                         InstallCodexPlugin();
@@ -465,6 +508,9 @@ namespace DarumaPPAP.UnityAgent.Editor
 
         private void DrawCardHeader(string title, string subtitle, string badge, Color color)
         {
+            var accentRect = EditorGUILayout.GetControlRect(false, 2f);
+            EditorGUI.DrawRect(new Rect(accentRect.x, accentRect.y, accentRect.width, 2f), BrandRed);
+            EditorGUILayout.Space(5);
             using (new EditorGUILayout.HorizontalScope())
             {
                 using (new EditorGUILayout.VerticalScope())
@@ -866,7 +912,8 @@ namespace DarumaPPAP.UnityAgent.Editor
 
         private static Color ReadyColor => EditorGUIUtility.isProSkin ? new Color(0.38f, 0.86f, 0.58f) : new Color(0.05f, 0.50f, 0.22f);
         private static Color WarningColor => EditorGUIUtility.isProSkin ? new Color(1.0f, 0.72f, 0.28f) : new Color(0.72f, 0.42f, 0.02f);
-        private static Color ActionColor => EditorGUIUtility.isProSkin ? new Color(0.42f, 0.68f, 1.0f) : new Color(0.08f, 0.38f, 0.78f);
+        private static Color BrandRed => EditorGUIUtility.isProSkin ? new Color(0.96f, 0.16f, 0.18f) : new Color(0.80f, 0.06f, 0.08f);
+        private static Color ActionColor => BrandRed;
         private static Color BusyColor => EditorGUIUtility.isProSkin ? new Color(0.70f, 0.58f, 1.0f) : new Color(0.42f, 0.24f, 0.74f);
         private static Color ErrorColor => EditorGUIUtility.isProSkin ? new Color(1.0f, 0.42f, 0.42f) : new Color(0.72f, 0.08f, 0.08f);
         private static Color MutedColor => EditorGUIUtility.isProSkin ? new Color(0.62f, 0.64f, 0.68f) : new Color(0.40f, 0.42f, 0.46f);
