@@ -10,7 +10,6 @@ namespace DarumaPPAP.UnityAgent.Editor
     {
         private const string CHANNEL = "0.0.6-beta";
         private const string CODEX_PLUGIN_SOURCE = "DarumaPPAP/UnityAgent@v0.0.6-beta";
-        private const string SETUP_LOGO_ASSET_PATH = "Packages/com.darumappap.unity-agent/Editor/Resources/UnityAgentSetupLogo.png";
         private static readonly string[] CODEX_INTEGRATION_PRODUCTS = { "codex_cli", "unity_agent_codex_plugin" };
         private static readonly string[] ALL_PRODUCTS =
         {
@@ -34,7 +33,6 @@ namespace DarumaPPAP.UnityAgent.Editor
         private bool showAdvanced;
         private Vector2 windowScroll;
         private Vector2 diagnosticsScroll;
-        private Texture2D setupLogoTexture;
 
         private GUIStyle titleStyle;
         private GUIStyle subtitleStyle;
@@ -57,7 +55,6 @@ namespace DarumaPPAP.UnityAgent.Editor
         private void OnEnable()
         {
             minSize = new Vector2(620f, 520f);
-            setupLogoTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(SETUP_LOGO_ASSET_PATH);
             RefreshAllPaths();
             UpdateIdleStatus();
         }
@@ -65,7 +62,6 @@ namespace DarumaPPAP.UnityAgent.Editor
         private void OnGUI()
         {
             EnsureStyles();
-            DrawWindowBackdrop();
             windowScroll = EditorGUILayout.BeginScrollView(windowScroll);
             EditorGUILayout.Space(6);
             DrawHeader();
@@ -100,7 +96,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                 fontSize = 26,
                 fontStyle = FontStyle.Bold,
             };
-            titleStyle.normal.textColor = Color.black;
+            titleStyle.normal.textColor = EditorGUIUtility.isProSkin ? new Color(0.94f, 0.94f, 0.95f) : new Color(0.08f, 0.08f, 0.09f);
 
             subtitleStyle = new GUIStyle(EditorStyles.label)
             {
@@ -149,7 +145,9 @@ namespace DarumaPPAP.UnityAgent.Editor
                 fontSize = 10,
                 fontStyle = FontStyle.Bold,
             };
-            heroSubtitleStyle.normal.textColor = new Color(0.18f, 0.18f, 0.18f);
+            heroSubtitleStyle.normal.textColor = EditorGUIUtility.isProSkin
+                ? new Color(0.72f, 0.73f, 0.76f)
+                : new Color(0.24f, 0.24f, 0.26f);
             heroVersionStyle = new GUIStyle(EditorStyles.miniBoldLabel)
             {
                 alignment = TextAnchor.UpperRight,
@@ -159,37 +157,25 @@ namespace DarumaPPAP.UnityAgent.Editor
             heroVersionStyle.normal.textColor = BrandRed;
         }
 
-        private void DrawWindowBackdrop()
-        {
-            var background = EditorGUIUtility.isProSkin
-                ? new Color(0.105f, 0.11f, 0.12f)
-                : new Color(0.91f, 0.92f, 0.94f);
-            EditorGUI.DrawRect(new Rect(0f, 0f, position.width, position.height), background);
-        }
-
         private void DrawHeader()
         {
-            var heroRect = GUILayoutUtility.GetRect(0f, 138f, GUILayout.ExpandWidth(true));
-            var panelRect = new Rect(heroRect.x + 8f, heroRect.y + 4f, heroRect.width - 16f, heroRect.height - 8f);
-            EditorGUI.DrawRect(panelRect, Color.white);
-            EditorGUI.DrawRect(new Rect(panelRect.x, panelRect.y, 4f, panelRect.height), BrandRed);
-            EditorGUI.DrawRect(new Rect(panelRect.x, panelRect.yMax - 4f, panelRect.width, 4f), BrandRed);
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
-            var logoRect = new Rect(panelRect.x + 28f, panelRect.y + 10f, panelRect.width - 56f, 88f);
-            if (setupLogoTexture != null)
+            var accentRect = EditorGUILayout.GetControlRect(false, 4f);
+            EditorGUI.DrawRect(accentRect, BrandRed);
+            EditorGUILayout.Space(8);
+
+            EditorGUILayout.LabelField("UNITYAGENT", titleStyle, GUILayout.Height(40f));
+            EditorGUILayout.LabelField("SETUP  /  CONTROL PLANE  /  CODEX", heroSubtitleStyle);
+
+            using (new EditorGUILayout.HorizontalScope())
             {
-                GUI.DrawTexture(logoRect, setupLogoTexture, ScaleMode.ScaleToFit, false);
-            }
-            else
-            {
-                GUI.Label(logoRect, "UNITYAGENT", titleStyle);
+                GUILayout.FlexibleSpace();
+                GUILayout.Label("v" + CHANNEL + "  BETA", heroVersionStyle);
             }
 
-            var subtitleRect = new Rect(panelRect.x + 24f, panelRect.yMax - 34f, panelRect.width - 48f, 18f);
-            GUI.Label(subtitleRect, "SETUP  /  CONTROL PLANE  /  CODEX", heroSubtitleStyle);
-
-            var versionRect = new Rect(panelRect.xMax - 96f, panelRect.y + 10f, 78f, 32f);
-            GUI.Label(versionRect, "v" + CHANNEL + "\nBETA", heroVersionStyle);
+            EditorGUILayout.Space(6);
+            EditorGUILayout.EndVertical();
         }
 
         private void DrawOverview()
