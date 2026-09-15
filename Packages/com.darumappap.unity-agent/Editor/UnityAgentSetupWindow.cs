@@ -10,6 +10,7 @@ namespace DarumaPPAP.UnityAgent.Editor
     {
         private const string CHANNEL = "0.0.6-beta";
         private const string CODEX_PLUGIN_SOURCE = "DarumaPPAP/UnityAgent@v0.0.6-beta";
+        private const string SETUP_LOGO_ASSET_PATH = "Packages/com.darumappap.unity-agent/Editor/Resources/UnityAgentSetupLogo.png";
         private static readonly string[] CODEX_INTEGRATION_PRODUCTS = { "codex_cli", "unity_agent_codex_plugin" };
         private static readonly string[] ALL_PRODUCTS =
         {
@@ -33,6 +34,7 @@ namespace DarumaPPAP.UnityAgent.Editor
         private bool showAdvanced;
         private Vector2 windowScroll;
         private Vector2 diagnosticsScroll;
+        private Texture2D setupLogoTexture;
 
         private GUIStyle titleStyle;
         private GUIStyle subtitleStyle;
@@ -55,6 +57,7 @@ namespace DarumaPPAP.UnityAgent.Editor
         private void OnEnable()
         {
             minSize = new Vector2(620f, 520f);
+            setupLogoTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(SETUP_LOGO_ASSET_PATH);
             RefreshAllPaths();
             UpdateIdleStatus();
         }
@@ -165,7 +168,22 @@ namespace DarumaPPAP.UnityAgent.Editor
             EditorGUI.DrawRect(accentRect, BrandRed);
             EditorGUILayout.Space(8);
 
-            EditorGUILayout.LabelField("UNITYAGENT", titleStyle, GUILayout.Height(40f));
+            var logoSlot = GUILayoutUtility.GetRect(0f, 84f, GUILayout.ExpandWidth(true));
+            if (setupLogoTexture != null)
+            {
+                var logoRect = new Rect(
+                    logoSlot.x + 18f,
+                    logoSlot.y + 4f,
+                    Mathf.Max(0f, logoSlot.width - 36f),
+                    Mathf.Max(0f, logoSlot.height - 8f));
+                GUI.DrawTexture(logoRect, setupLogoTexture, ScaleMode.ScaleToFit, true);
+            }
+            else
+            {
+                GUI.Label(logoSlot, "UNITYAGENT", titleStyle);
+            }
+
+            EditorGUILayout.Space(4);
             EditorGUILayout.LabelField("SETUP  /  CONTROL PLANE  /  CODEX", heroSubtitleStyle);
 
             using (new EditorGUILayout.HorizontalScope())
