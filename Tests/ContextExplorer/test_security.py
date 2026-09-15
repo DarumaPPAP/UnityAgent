@@ -52,8 +52,10 @@ class ContextExplorerSecurityTests(unittest.TestCase):
         app = (ROOT / "Tools/ContextExplorer/frontend/app.js").read_text(encoding="utf-8")
         self.assertIn("explicitOneHopRelations", app)
         self.assertIn("edge.source === nodeId || edge.target === nodeId", app)
+        self.assertIn("dataset.direction", app)
         self.assertIn("metadata.related only", html)
-        self.assertIn('data-direction', app.replace("dataset.direction", "data-direction"))
+        self.assertIn("one hop", app)
+        self.assertIn("read-only", app)
 
     def test_repository_path_validation_rejects_traversal_and_urls(self) -> None:
         for value in ("../secret.yaml", "javascript:alert(1)", "https://example.com/context.yaml"):
