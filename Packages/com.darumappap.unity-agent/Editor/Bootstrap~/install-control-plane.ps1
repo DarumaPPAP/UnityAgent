@@ -19,6 +19,9 @@ $headers = @{
     "User-Agent" = "UnityAgent-Unity-Bootstrap"
     "Accept" = "application/vnd.github+json"
 }
+if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_TOKEN)) {
+    $headers["Authorization"] = "Bearer $($env:GITHUB_TOKEN)"
+}
 
 function Resolve-Python {
     $py = Get-Command py -ErrorAction SilentlyContinue

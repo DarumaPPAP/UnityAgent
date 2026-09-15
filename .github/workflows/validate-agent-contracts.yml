@@ -123,6 +123,8 @@ jobs:
                   "UnityAgent\\bin",
                   "UNITY_AGENT_CONTROL_PLANE",
                   "--disable-pip-version-check",
+                  "GITHUB_TOKEN",
+                  'headers["Authorization"]',
               )
               for token in required:
                   if token not in text:
@@ -206,6 +208,8 @@ jobs:
   windows-bootstrap-smoke:
     name: Windows Bootstrap Smoke
     runs-on: windows-latest
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7

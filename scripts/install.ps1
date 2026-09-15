@@ -21,6 +21,9 @@ $headers = @{
     "User-Agent" = "UnityAgent-Installer"
     "Accept" = "application/vnd.github+json"
 }
+if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_TOKEN)) {
+    $headers["Authorization"] = "Bearer $($env:GITHUB_TOKEN)"
+}
 
 if ($requestedTag -and $requestedTag -notmatch '^v[A-Za-z0-9._-]+$') {
     throw "UNITY_AGENT_TAG must be a release tag such as v0.0.7-beta."
