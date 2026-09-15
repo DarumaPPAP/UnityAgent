@@ -12,15 +12,15 @@ ACTIVE_DOC_PATHS = (
     Path("AGENTS.md"),
     Path("README.md"),
     Path("docs/architecture"),
-    Path("docs/graph-observatory-spec.md"),
+    Path("docs/context-explorer.md"),
     Path("docs/local-project-development.md"),
     Path("docs/unity-environment-adaptation.md"),
     Path("Templates/DevelopmentRequest.md"),
     Path("Specs"),
     Path("SkillReferences"),
-    Path("Tools/GraphObservatory"),
+    Path("Tools/ContextExplorer"),
     Path("Tests/SkillRouting/README.md"),
-    Path("Tests/GraphObservatory/README.md"),
+    Path("Tests/ContextExplorer/README.md"),
 )
 
 README_GLOB = "README.md"
@@ -56,10 +56,6 @@ HISTORICAL_LINE_MARKERS = (
     "復活", "戻さ", "当時", "過去", "ではありません", "使用しない", "×",
 )
 
-# These names existed in pre-cutover human-facing material but are not members of
-# the canonical 15 CapabilityRequest vocabulary. A fenced migration table may
-# mention them only when the immediately preceding prose explicitly states that
-# those names are non-canonical.
 STALE_CAPABILITY_NAMES = (
     "source.inspect",
     "project.compile",

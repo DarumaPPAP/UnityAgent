@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/DarumaPPAP/UnityAgent/Tools/ContextExplorer/schema/context-map.schema.json",
+  "title": "UnityAgent Context Explorer Map",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["metadata", "nodes", "edges"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "kind", "generated_from", "generated_by", "read_only"],
+      "properties": {
+        "schema_version": {"const": "1.0"},
+        "kind": {"const": "unityagent-context-map"},
+        "generated_from": {"const": "Context/Packs"},
+        "generated_by": {"const": "ContextExplorer"},
+        "read_only": {"const": true}
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "type", "label", "metadata"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "type": {"const": "context"},
+          "label": {"type": "string", "minLength": 1},
+          "metadata": {
+            "type": "object",
+            "required": ["provenance"],
+            "properties": {
+              "provenance": {
+                "type": "object",
+                "required": ["source_path", "source_hash"],
+                "properties": {
+                  "source_path": {"type": "string", "pattern": "^Context/Packs/"},
+                  "source_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source", "target", "relation", "metadata"],
+        "properties": {
+          "source": {"type": "string", "minLength": 1},
+          "target": {"type": "string", "minLength": 1},
+          "relation": {"type": "string", "minLength": 1},
+          "metadata": {"type": "object"}
+        }
+      }
+    }
+  }
+}
