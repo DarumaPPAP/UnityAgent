@@ -1,0 +1,97 @@
+name: Restyle UnityAgent Setup Window Once
+
+on:
+  push:
+    branches:
+      - feat/aura-inspired-setup-window
+
+permissions:
+  contents: write
+
+jobs:
+  restyle:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: feat/aura-inspired-setup-window
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: '3.12'
+      - name: Apply bounded Aura-inspired visual adaptation
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('Packages/com.darumappap.unity-agent/Editor/UnityAgentSetupWindow.cs')
+          text = path.read_text(encoding='utf-8')
+
+          def replace_once(old: str, new: str) -> None:
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'Expected exactly one match, got {count}: {old[:80]!r}')
+              text = text.replace(old, new, 1)
+
+          replace_once(
+              '        private const string CODEX_PLUGIN_SOURCE = "DarumaPPAP/UnityAgent@v0.0.6-beta";\n',
+              '        private const string CODEX_PLUGIN_SOURCE = "DarumaPPAP/UnityAgent@v0.0.6-beta";\n'
+              '        private const string SETUP_LOGO_ASSET_PATH = "Packages/com.darumappap.unity-agent/Editor/Resources/UnityAgentSetupLogo.png";\n')
+
+          replace_once(
+              '        private Vector2 diagnosticsScroll;\n\n        private GUIStyle titleStyle;\n',
+              '        private Vector2 diagnosticsScroll;\n        private Texture2D setupLogoTexture;\n\n        private GUIStyle titleStyle;\n')
+
+          replace_once(
+              '        private GUIStyle secondaryButtonStyle;\n',
+              '        private GUIStyle secondaryButtonStyle;\n        private GUIStyle heroSubtitleStyle;\n        private GUIStyle heroVersionStyle;\n')
+
+          replace_once(
+              '            minSize = new Vector2(620f, 520f);\n            RefreshAllPaths();\n',
+              '            minSize = new Vector2(620f, 520f);\n            setupLogoTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(SETUP_LOGO_ASSET_PATH);\n            RefreshAllPaths();\n')
+
+          old_on_gui = '''        private void OnGUI()\n        {\n            EnsureStyles();\n            windowScroll = EditorGUILayout.BeginScrollView(windowScroll);\n            DrawHeader();\n            EditorGUILayout.Space(10);\n            DrawOverview();\n            EditorGUILayout.Space(10);\n            DrawControlPlaneCard();\n            EditorGUILayout.Space(8);\n            DrawCodexCard();\n            EditorGUILayout.Space(8);\n            DrawIntegrationCard();\n            EditorGUILayout.Space(10);\n            DrawStatusCard();\n            EditorGUILayout.Space(8);\n            DrawDiagnostics();\n            EditorGUILayout.Space(8);\n            DrawAdvanced();\n            EditorGUILayout.Space(16);\n            EditorGUILayout.EndScrollView();\n        }\n'''
+          new_on_gui = '''        private void OnGUI()\n        {\n            EnsureStyles();\n            DrawWindowBackdrop();\n            windowScroll = EditorGUILayout.BeginScrollView(windowScroll);\n            EditorGUILayout.Space(6);\n            DrawHeader();\n            EditorGUILayout.Space(14);\n            DrawOverview();\n            EditorGUILayout.Space(12);\n            DrawControlPlaneCard();\n            EditorGUILayout.Space(10);\n            DrawCodexCard();\n            EditorGUILayout.Space(10);\n            DrawIntegrationCard();\n            EditorGUILayout.Space(12);\n            DrawStatusCard();\n            EditorGUILayout.Space(10);\n            DrawDiagnostics();\n            EditorGUILayout.Space(10);\n            DrawAdvanced();\n            EditorGUILayout.Space(18);\n            EditorGUILayout.EndScrollView();\n        }\n'''
+          replace_once(old_on_gui, new_on_gui)
+
+          old_styles = '''            titleStyle = new GUIStyle(EditorStyles.boldLabel)\n            {\n                fontSize = 20,\n                fontStyle = FontStyle.Bold,\n            };\n            subtitleStyle = new GUIStyle(EditorStyles.label)\n            {\n                fontSize = 11,\n                wordWrap = true,\n                normal = { textColor = EditorGUIUtility.isProSkin ? new Color(0.72f, 0.74f, 0.78f) : new Color(0.28f, 0.30f, 0.34f) },\n            };\n            cardTitleStyle = new GUIStyle(EditorStyles.boldLabel)\n            {\n                fontSize = 13,\n                fontStyle = FontStyle.Bold,\n            };\n            cardSubtitleStyle = new GUIStyle(EditorStyles.label)\n            {\n                fontSize = 10,\n                wordWrap = true,\n                normal = { textColor = EditorGUIUtility.isProSkin ? new Color(0.68f, 0.70f, 0.74f) : new Color(0.34f, 0.36f, 0.40f) },\n            };\n            badgeStyle = new GUIStyle(EditorStyles.miniBoldLabel)\n            {\n                alignment = TextAnchor.MiddleRight,\n            };\n            pathStyle = new GUIStyle(EditorStyles.textField)\n            {\n                fontSize = 10,\n            };\n            primaryButtonStyle = new GUIStyle(GUI.skin.button)\n            {\n                fixedHeight = 32f,\n                fontStyle = FontStyle.Bold,\n            };\n            secondaryButtonStyle = new GUIStyle(GUI.skin.button)\n            {\n                fixedHeight = 25f,\n            };\n'''
+          new_styles = '''            titleStyle = new GUIStyle(EditorStyles.boldLabel)\n            {\n                alignment = TextAnchor.MiddleCenter,\n                fontSize = 26,\n                fontStyle = FontStyle.Bold,\n            };\n            titleStyle.normal.textColor = Color.black;\n\n            subtitleStyle = new GUIStyle(EditorStyles.label)\n            {\n                fontSize = 11,\n                wordWrap = true,\n            };\n            subtitleStyle.normal.textColor = EditorGUIUtility.isProSkin\n                ? new Color(0.76f, 0.77f, 0.80f)\n                : new Color(0.25f, 0.27f, 0.30f);\n\n            cardTitleStyle = new GUIStyle(EditorStyles.boldLabel)\n            {\n                fontSize = 14,\n                fontStyle = FontStyle.Bold,\n            };\n            cardSubtitleStyle = new GUIStyle(EditorStyles.label)\n            {\n                fontSize = 10,\n                wordWrap = true,\n            };\n            cardSubtitleStyle.normal.textColor = EditorGUIUtility.isProSkin\n                ? new Color(0.70f, 0.72f, 0.76f)\n                : new Color(0.32f, 0.34f, 0.38f);\n\n            badgeStyle = new GUIStyle(EditorStyles.miniBoldLabel)\n            {\n                alignment = TextAnchor.MiddleRight,\n                fontStyle = FontStyle.Bold,\n            };\n            pathStyle = new GUIStyle(EditorStyles.textField)\n            {\n                fontSize = 10,\n            };\n            primaryButtonStyle = new GUIStyle(GUI.skin.button)\n            {\n                fixedHeight = 34f,\n                fontStyle = FontStyle.Bold,\n            };\n            secondaryButtonStyle = new GUIStyle(GUI.skin.button)\n            {\n                fixedHeight = 26f,\n            };\n            heroSubtitleStyle = new GUIStyle(EditorStyles.miniBoldLabel)\n            {\n                alignment = TextAnchor.MiddleCenter,\n                fontSize = 10,\n                fontStyle = FontStyle.Bold,\n            };\n            heroSubtitleStyle.normal.textColor = new Color(0.18f, 0.18f, 0.18f);\n            heroVersionStyle = new GUIStyle(EditorStyles.miniBoldLabel)\n            {\n                alignment = TextAnchor.UpperRight,\n                fontSize = 9,\n                fontStyle = FontStyle.Bold,\n            };\n            heroVersionStyle.normal.textColor = BrandRed;\n'''
+          replace_once(old_styles, new_styles)
+
+          start = text.index('        private void DrawHeader()\n')
+          end = text.index('        private void DrawOverview()\n', start)
+          new_header = '''        private void DrawWindowBackdrop()\n        {\n            var background = EditorGUIUtility.isProSkin\n                ? new Color(0.105f, 0.11f, 0.12f)\n                : new Color(0.91f, 0.92f, 0.94f);\n            EditorGUI.DrawRect(new Rect(0f, 0f, position.width, position.height), background);\n        }\n\n        private void DrawHeader()\n        {\n            var heroRect = GUILayoutUtility.GetRect(0f, 138f, GUILayout.ExpandWidth(true));\n            var panelRect = new Rect(heroRect.x + 8f, heroRect.y + 4f, heroRect.width - 16f, heroRect.height - 8f);\n            EditorGUI.DrawRect(panelRect, Color.white);\n            EditorGUI.DrawRect(new Rect(panelRect.x, panelRect.y, 4f, panelRect.height), BrandRed);\n            EditorGUI.DrawRect(new Rect(panelRect.x, panelRect.yMax - 4f, panelRect.width, 4f), BrandRed);\n\n            var logoRect = new Rect(panelRect.x + 28f, panelRect.y + 10f, panelRect.width - 56f, 88f);\n            if (setupLogoTexture != null)\n            {\n                GUI.DrawTexture(logoRect, setupLogoTexture, ScaleMode.ScaleToFit, false);\n            }\n            else\n            {\n                GUI.Label(logoRect, "UNITYAGENT", titleStyle);\n            }\n\n            var subtitleRect = new Rect(panelRect.x + 24f, panelRect.yMax - 34f, panelRect.width - 48f, 18f);\n            GUI.Label(subtitleRect, "SETUP  /  CONTROL PLANE  /  CODEX", heroSubtitleStyle);\n\n            var versionRect = new Rect(panelRect.xMax - 96f, panelRect.y + 10f, 78f, 32f);\n            GUI.Label(versionRect, "v" + CHANNEL + "\\nBETA", heroVersionStyle);\n        }\n\n'''
+          text = text[:start] + new_header + text[end:]
+
+          replace_once(
+              '        private void DrawCardHeader(string title, string subtitle, string badge, Color color)\n        {\n            using (new EditorGUILayout.HorizontalScope())\n',
+              '        private void DrawCardHeader(string title, string subtitle, string badge, Color color)\n        {\n            var accentRect = EditorGUILayout.GetControlRect(false, 2f);\n            EditorGUI.DrawRect(new Rect(accentRect.x, accentRect.y, accentRect.width, 2f), BrandRed);\n            EditorGUILayout.Space(5);\n            using (new EditorGUILayout.HorizontalScope())\n')
+
+          text = text.replace('GUI.backgroundColor = new Color(0.30f, 0.58f, 0.95f);', 'GUI.backgroundColor = BrandRed;')
+          text = text.replace('GUI.backgroundColor = codexReady ? new Color(0.30f, 0.58f, 0.95f) : previous;', 'GUI.backgroundColor = codexReady ? BrandRed : previous;')
+
+          replace_once(
+              '        private static Color ActionColor => EditorGUIUtility.isProSkin ? new Color(0.42f, 0.68f, 1.0f) : new Color(0.08f, 0.38f, 0.78f);\n',
+              '        private static Color BrandRed => EditorGUIUtility.isProSkin ? new Color(0.96f, 0.16f, 0.18f) : new Color(0.80f, 0.06f, 0.08f);\n        private static Color ActionColor => BrandRed;\n')
+
+          path.write_text(text, encoding='utf-8')
+      - name: Static UI checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          file='Packages/com.darumappap.unity-agent/Editor/UnityAgentSetupWindow.cs'
+          grep -q 'UnityAgentSetupLogo.png' "$file"
+          grep -q 'SETUP  /  CONTROL PLANE  /  CODEX' "$file"
+          grep -q 'private static Color BrandRed' "$file"
+          test -f 'Packages/com.darumappap.unity-agent/Editor/Resources/UnityAgentSetupLogo.png'
+      - name: Commit bounded UI change
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/restyle-unityagent-window-once.yml
+          git add Packages/com.darumappap.unity-agent/Editor/UnityAgentSetupWindow.cs
+          git commit -m 'Restyle UnityAgent Setup window'
+          git push origin HEAD:feat/aura-inspired-setup-window
