@@ -11,6 +11,7 @@ namespace DarumaPPAP.UnityAgent.Editor
         private const string CHANNEL = "0.0.6-beta";
         private const string CODEX_PLUGIN_SOURCE = "DarumaPPAP/UnityAgent@v0.0.6-beta";
         private const string SETUP_LOGO_ASSET_GUID = "3238c045646b49f9b00513e4f21cfee1";
+        private const string SETUP_LOGO_ASSET_PATH = "Packages/com.darumappap.unity-agent/Editor/Resources/UnityAgentSetupLogo.png";
         private static readonly string[] CODEX_INTEGRATION_PRODUCTS = { "codex_cli", "unity_agent_codex_plugin" };
         private static readonly string[] ALL_PRODUCTS =
         {
@@ -58,12 +59,38 @@ namespace DarumaPPAP.UnityAgent.Editor
         {
             minSize = new Vector2(620f, 520f);
             setupLogoTexture = LoadSetupLogoTexture();
+            EditorApplication.delayCall += RetrySetupLogoLoad;
             RefreshAllPaths();
             UpdateIdleStatus();
         }
 
+        private void OnFocus()
+        {
+            RetrySetupLogoLoad();
+        }
+
+        private void RetrySetupLogoLoad()
+        {
+            if (setupLogoTexture != null)
+            {
+                return;
+            }
+
+            setupLogoTexture = LoadSetupLogoTexture();
+            if (setupLogoTexture != null)
+            {
+                Repaint();
+            }
+        }
+
         private static Texture2D LoadSetupLogoTexture()
         {
+            var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(SETUP_LOGO_ASSET_PATH);
+            if (texture != null)
+            {
+                return texture;
+            }
+
             var assetPath = AssetDatabase.GUIDToAssetPath(SETUP_LOGO_ASSET_GUID);
             if (string.IsNullOrWhiteSpace(assetPath))
             {
@@ -180,14 +207,16 @@ namespace DarumaPPAP.UnityAgent.Editor
             EditorGUILayout.Space(8);
 
             var logoSlot = GUILayoutUtility.GetRect(0f, 84f, GUILayout.ExpandWidth(true));
-            if (setupLogoTexture != null)
+            var logoTexture = setupLogoTexture ?? LoadSetupLogoTexture();
+            if (logoTexture != null)
             {
+                setupLogoTexture = logoTexture;
                 var logoRect = new Rect(
                     logoSlot.x + 18f,
                     logoSlot.y + 4f,
                     Mathf.Max(0f, logoSlot.width - 36f),
                     Mathf.Max(0f, logoSlot.height - 8f));
-                GUI.DrawTexture(logoRect, setupLogoTexture, ScaleMode.ScaleToFit, true);
+                GUI.DrawTexture(logoRect, logoTexture, ScaleMode.ScaleToFit, true);
             }
             else
             {
