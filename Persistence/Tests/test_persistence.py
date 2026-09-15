@@ -5,7 +5,8 @@ from copy import deepcopy
 from pathlib import Path
 
 from Context.Retrieval.Memory.project_memory import retrieve_projections
-from Orchestration.Graph.state_mapping import loop_control_state_patch, workflow_state_patch
+from Orchestration.Graph.state_mapping import workflow_state_patch
+from Orchestration.Loop.state_mapping import loop_control_state_patch
 from Persistence.Checkpoint.checkpoint_store import CheckpointStore
 from Persistence.Evidence.evidence_store import EvidenceStore
 from Persistence.Evidence.runtime_adapter import from_runtime_execution_evidence
