@@ -11,7 +11,7 @@ if ($PSVersionTable.PSVersion.Major -lt 5) {
     throw "PowerShell 5.1 or newer is required."
 }
 if ($ReleaseTag -notmatch '^v[A-Za-z0-9._-]+$') {
-    throw "ReleaseTag must look like v0.0.6-beta."
+    throw "ReleaseTag must look like v0.0.7-beta."
 }
 
 $repository = "DarumaPPAP/UnityAgent"
