@@ -31,10 +31,10 @@ jobs:
         run: python -m pip install --disable-pip-version-check PyYAML
 
       - name: Validate Context Explorer
-        run: python Tools/GraphObservatory/validate_context_explorer.py
+        run: python Tools/ContextExplorer/validate.py
 
       - name: Build static Context Explorer bundle
-        run: python Tools/GraphObservatory/build.py --view context --bundle _site
+        run: python Tools/ContextExplorer/build.py --bundle _site
 
       - name: Disable Jekyll processing
         run: touch _site/.nojekyll
