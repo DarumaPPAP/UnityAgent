@@ -80,12 +80,12 @@ Quality
   Regressionと改善結果を確認
 ```
 
-## Architecture Explorer
+## Context Explorer
 
-`Tools/GraphObservatory/` のContext Explorerは、このMental Modelをアニメーション付きで表示します。
+`Tools/ContextExplorer/` は、このMental ModelとCanonical Context Packを読み取り専用で表示するHuman Maintenance Viewerです。
 
 ```powershell
-python .\Tools\GraphObservatory\build.py --view context --bundle .\Artifacts\GraphObservatory\ContextExplorer
+python .\Tools\ContextExplorer\build.py --bundle .\Artifacts\ContextExplorer\viewer
 ```
 
 生成Bundleは次の4段階で情報を開示します。
