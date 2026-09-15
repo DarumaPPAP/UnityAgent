@@ -34,6 +34,8 @@ def main() -> int:
     loop_dir = ROOT / "Orchestration/Loop"
     forbidden = ("from Runtime", "import Runtime", "subprocess.", "os.kill", "taskkill")
     for path in loop_dir.glob("*.py"):
+        if path.name == "validate.py":
+            continue
         text = path.read_text(encoding="utf-8")
         for token in forbidden:
             if token in text:
