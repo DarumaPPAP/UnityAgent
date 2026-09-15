@@ -8,8 +8,8 @@ namespace DarumaPPAP.UnityAgent.Editor
 {
     internal sealed class UnityAgentSetupWindow : EditorWindow
     {
-        private const string CHANNEL = "0.0.6-beta";
-        private const string CODEX_PLUGIN_SOURCE = "DarumaPPAP/UnityAgent@v0.0.6-beta";
+        private const string CHANNEL = "0.0.7-beta";
+        private const string CODEX_PLUGIN_SOURCE = "DarumaPPAP/UnityAgent@v0.0.7-beta";
         private const string SETUP_LOGO_ASSET_GUID = "3238c045646b49f9b00513e4f21cfee1";
         private const string SETUP_LOGO_ASSET_PATH = "Packages/com.darumappap.unity-agent/Editor/Resources/UnityAgentSetupLogo.png";
         private static readonly string[] CODEX_INTEGRATION_PRODUCTS = { "codex_cli", "unity_agent_codex_plugin" };

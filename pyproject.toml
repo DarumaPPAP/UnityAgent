@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "unityagent-control-plane"
-version = "0.0.6b0"
+version = "0.0.7b0"
 description = "UnityAgent Control Plane and evidence-backed Unity provider routing"
 requires-python = ">=3.10"
 dependencies = ["PyYAML>=6.0", "jsonschema>=4.0"]

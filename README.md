@@ -9,7 +9,7 @@
 **AIにUnity開発を任せるためのControl Plane。**  
 Unityの設計・実装・検証を、Policy / Capability / Provider / Evidenceに分離して安全に回します。
 
-> **Current source version:** `v0.0.6-beta`  
+> **Current source version:** `v0.0.7-beta`  
 > Betaでは破壊的変更が入る可能性があります。
 
 [Architecture Explorer](https://darumappap.github.io/UnityAgent/) · [Releases](https://github.com/DarumaPPAP/UnityAgent/releases) · [Architecture](docs/architecture/architecture.md) · [MIT License](LICENSE)
@@ -72,10 +72,10 @@ Unity Editor:
 4. 次を入力
 
 ```text
-https://github.com/DarumaPPAP/UnityAgent.git?path=/Packages/com.darumappap.unity-agent#v0.0.6-beta
+https://github.com/DarumaPPAP/UnityAgent.git?path=/Packages/com.darumappap.unity-agent#v0.0.7-beta
 ```
 
-> `v0.0.2-beta` のUPM artifactにはUnity `.meta` 不足があるため使用しないでください。`v0.0.6-beta` ではBootstrap/UIを含む現在のSetup導線を使用できます。
+> `v0.0.2-beta` のUPM artifactにはUnity `.meta` 不足があるため使用しないでください。`v0.0.7-beta` ではBootstrap/UIを含む現在のSetup導線を使用できます。
 
 ### 2. Open UnityAgent Setup
 
@@ -83,10 +83,10 @@ https://github.com/DarumaPPAP/UnityAgent.git?path=/Packages/com.darumappap.unity
 UnityAgent > Setup
 ```
 
-`v0.0.6-beta` ではSetup Windowを、依存関係と次の操作が一目で分かるカード型UIへ再設計しています。
+`v0.0.7-beta` ではSetup Windowを、依存関係と次の操作が一目で分かるカード型UIへ再設計しています。
 
 ```text
-UnityAgent Setup                                  v0.0.6-beta
+UnityAgent Setup                                  v0.0.7-beta
 
 Setup Readiness                                  1/2 READY
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -191,7 +191,7 @@ irm https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/main/scripts/install
 特定Releaseを固定する場合:
 
 ```powershell
-$env:UNITY_AGENT_TAG = "v0.0.6-beta"
+$env:UNITY_AGENT_TAG = "v0.0.7-beta"
 irm https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/main/scripts/install.ps1 | iex
 ```
 
@@ -204,7 +204,7 @@ Installerは導入した `unity-agent.exe` の絶対PathをUser環境変数 `UNI
 Unity Editorを使わず手動で導入する場合:
 
 ```powershell
-codex plugin marketplace add DarumaPPAP/UnityAgent --ref v0.0.6-beta --json
+codex plugin marketplace add DarumaPPAP/UnityAgent --ref v0.0.7-beta --json
 codex plugin add unity-agent@unity-agent --json
 codex plugin list --json
 ```
@@ -338,7 +338,7 @@ Evidence   = 実際に何を観測したか
 
 UnityArtistCLIはLookDev / Lighting / Camera / Cinematic等を担当するspecialist Providerです。第二のAgent Frameworkにはしません。
 
-`v0.0.6-beta` のUnityAgentはUnityArtistCLI `v0.0.1-beta` をimmutable dependencyとしてpinしています。UnityAgentのRelease channelとProvider製品versionは別契約です。
+`v0.0.7-beta` のUnityAgentはUnityArtistCLI `v0.0.1-beta` をimmutable dependencyとしてpinしています。UnityAgentのRelease channelとProvider製品versionは別契約です。
 
 ---
 
@@ -433,10 +433,10 @@ Local Regression GateはローカルのCodex CLI / 認証済み環境を前提�
 Canonical version:
 
 ```text
-0.0.6-beta
+0.0.7-beta
 ```
 
-Release Workflowは**tag文字列を手入力しません**。`main/VERSION`からcanonical tag `v0.0.6-beta` を自動生成します。
+Release Workflowは**tag文字列を手入力しません**。`main/VERSION`からcanonical tag `v0.0.7-beta` を自動生成します。
 
 Actionsでは:
 

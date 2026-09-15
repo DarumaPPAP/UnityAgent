@@ -1,160 +1,74 @@
-# UnityAgent 0.0.6-beta
+# UnityAgent 0.0.7-beta
 
-UnityAgent 0.0.6-beta turns `UnityAgent > Setup` into the primary installation surface instead of requiring users to preinstall the Control Plane from a terminal.
+UnityAgent 0.0.7-beta focuses on a cleaner Unity-side setup experience and a more reliable managed runtime/bootstrap path.
 
-## Unity-side Control Plane Bootstrap
+## Branded Setup Window
 
-When the Control Plane is not installed, the Setup Window now presents an explicit primary action:
+`UnityAgent > Setup` now uses the UnityAgent visual identity directly inside the Editor.
 
-```text
-Install Control Plane
-```
+- Added the UnityAgent logo as a package asset and hardened Git UPM loading.
+- Removed the baked white logo background and enabled alpha transparency.
+- Enlarged the hero/header area and strengthened the red/charcoal visual hierarchy.
+- Refined Setup Readiness, Control Plane, Codex CLI, Codex Integration, and Current Status cards.
+- Added clearer path presentation, copy action, spacing, badges, and action hierarchy.
+- Kept Diagnostics / Raw response and Advanced collapsed so the primary setup path remains readable.
 
-The Bootstrap path is intentionally narrow. It installs only the UnityAgent Control Plane and does not install Codex plugins or mutate other Providers.
+The underlying Control Plane / approval / installer-provider / evidence flow remains unchanged.
 
-```text
-UnityAgent UPM
-  ↓ bootstrap-only path
-package-local install-control-plane.ps1
-  ↓
-GitHub Release wheel + SHA256SUMS.txt
-  ↓ SHA-256 verification
-pip --user
-  ↓
-unity-agent.exe
-  ↓
-UNITY_AGENT_CONTROL_PLANE
-```
+## Managed Control Plane runtime
 
-The package-local PowerShell script is shipped inside the immutable UPM package and downloads only the pinned Release wheel and checksum file.
-
-## Setup Window redesign
-
-The Editor window was reorganized around setup state instead of raw logs.
+The Control Plane bootstrap and stable installer now use an isolated LocalAppData runtime instead of a legacy `pip --user` layout.
 
 ```text
-UnityAgent Setup
-
-Setup Readiness
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-1. UnityAgent Control Plane
-   READY / ACTION REQUIRED / INSTALLING
-   Resolved Path
-   Install / Rediscover / Browse / Clear Override
-
-2. Codex CLI
-   READY / NOT FOUND
-   Resolved Path
-   Rediscover / Browse / Clear Override
-
-3. Codex Integration
-   Check Status
-   Install / Repair Plugin
-
-Current Status
-Diagnostics / Raw response
-Advanced
+%LOCALAPPDATA%/UnityAgent/ControlPlane/v0.0.7-beta/venv/
 ```
 
-The layout is responsive to Unity's light/dark Editor themes and keeps actionable state visible while raw stdout/stderr remains collapsed under Diagnostics.
-
-## Bootstrap boundary
-
-The existing five-layer runtime remains unchanged after bootstrap:
+A stable shim remains available under:
 
 ```text
-Unity Window
-  ↓
-UnityAgent Control Plane
-  ↓
-Setup Plan / Approval
-  ↓
-Installer Provider
-  ↓
-Provider / Codex CLI
-  ↓
-InstallReceipt / Evidence
+%LOCALAPPDATA%/UnityAgent/bin/unity-agent.cmd
 ```
 
-CI now enforces that:
+`UNITY_AGENT_CONTROL_PLANE` continues to be persisted as the stable discovery hint used by the Unity Editor package.
 
-- Control Plane bootstrap is present and version-pinned.
-- Bootstrap executes the package-local script.
-- Bootstrap cannot contain direct Codex Plugin or UnityArtistCLI mutation commands.
-- The bootstrap script verifies `SHA256SUMS.txt` with `Get-FileHash`.
-- The bootstrap script installs with `pip --user` and persists `UNITY_AGENT_CONTROL_PLANE`.
-- Normal Unity Entry code still cannot invoke Codex Plugin or Provider commands directly.
+## Codex Desktop discovery
 
-## Release Workflow UX fix
+UnityAgent now searches additional managed Codex Desktop locations before requiring a manual override, including standalone/package-managed Desktop runtimes and the normal OpenAI Codex program location.
 
-The Release Workflow no longer asks for a free-text tag.
+The resolver remains discovery-only: Unity Entry code still does not execute Codex directly.
 
-Previously a stale or malformed value such as:
+## Installer and checksum hardening
 
-```text
-0.0.2-beta
-```
+Both the package-local bootstrap installer and the stable installer now share stricter release verification behavior.
 
-could make the initial `set -euo pipefail` contract check terminate with only a generic exit code.
+- Canonical checksum parsing accepts normalized basename entries and legacy `./` / `.\` prefixes.
+- Release artifacts are SHA-256 verified before installation.
+- Managed runtime installation remains isolated from user Python package state.
+- UPM package validation checks required bootstrap and `.meta` files before release.
 
-The workflow now derives the immutable release tag directly from `main/VERSION`:
+## Unity package reliability
 
-```text
-VERSION = 0.0.6-beta
-        ↓
-RELEASE_TAG = v0.0.6-beta
-```
+Additional safeguards cover Git UPM and Unity 6 Editor behavior.
 
-The only manual input is:
+- Stable `.meta` coverage for package assets/folders.
+- Fully-qualified `UnityEditor.PackageManager.PackageInfo` usage to avoid `PackageInfo` ambiguity.
+- Setup logo loading retries package-path/GUID resolution across import and focus timing.
+- Packed UPM contents are validated in CI.
 
-```text
-confirm_release = true
-```
+## Release artifacts
 
-Wrong historical tags and missing `v` prefixes are therefore no longer user-entered release state.
+The v0.0.7-beta prerelease publishes:
 
-## Distribution
-
-This release publishes:
-
-- UnityAgent UPM package (`com.darumappap.unity-agent`)
-- Codex `unity-agent` plugin archive
-- Python Control Plane wheel and source distribution
+- `UnityAgent-UPM-0.0.7-beta.tgz`
+- `UnityAgent-CodexPlugin-0.0.7-beta.zip`
+- `unityagent_control_plane-0.0.7b0-py3-none-any.whl`
+- `unityagent_control_plane-0.0.7b0.tar.gz`
 - `SHA256SUMS.txt`
 
-The Release Workflow verifies that the packed UPM `.tgz` contains the Control Plane Bootstrap runner, its `.meta`, and the package-local bootstrap script before the immutable tag is created.
-
-## Provider pinning
-
-UnityAgent `0.0.6-beta` continues to pin UnityArtistCLI independently to `v0.0.1-beta`.
+UPM Git URL:
 
 ```text
-UnityAgent channel      = 0.0.6-beta
-UnityAgent Codex plugin = 0.0.6-beta
-UnityArtistCLI provider = 0.0.1-beta
+https://github.com/DarumaPPAP/UnityAgent.git?path=/Packages/com.darumappap.unity-agent#v0.0.7-beta
 ```
 
-## Safety and compatibility
-
-- Toolchain mutation remains `Plan -> Approval -> Apply -> Evidence` after the Control Plane exists.
-- Codex Marketplace ID remains `unity-agent`.
-- Canonical Codex plugin identifier remains `unity-agent@unity-agent`.
-- Control Plane Bootstrap is the only pre-Control-Plane mutation path and is scoped to the Control Plane itself.
-- Unknown, stale, unavailable, or conflicting Marketplace states continue to fail closed.
-- Existing beta releases remain immutable.
-
-## License
-
-UnityAgent is distributed under the MIT License.
-
-## Version contract
-
-The canonical release version is `0.0.6-beta`.
-
-- UPM package: `0.0.6-beta`
-- Codex plugin: `0.0.6-beta`
-- Python package: `0.0.6b0`
-- Codex Marketplace: `unity-agent`
-- UnityArtistCLI provider: `v0.0.1-beta`
-- License: `MIT`
+This remains a beta release and may include breaking changes before 1.0.
