@@ -23,7 +23,7 @@ def write_bundle(root: Path, context_map: ContextMap, architecture: dict, output
 
     for name in ("index.html", "styles.css", "app.js"):
         text = (frontend / name).read_text(encoding="utf-8")
-        text = text.replace("window.__CONTEXT_GRAPH__ = null;", f"window.__CONTEXT_GRAPH__ = {map_json};")
+        text = text.replace("window.__CONTEXT_MAP__ = null;", f"window.__CONTEXT_MAP__ = {map_json};")
         text = text.replace(
             "window.__HUMAN_ARCHITECTURE__ = null;",
             f"window.__HUMAN_ARCHITECTURE__ = {architecture_json};",

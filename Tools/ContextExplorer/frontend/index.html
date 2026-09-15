@@ -144,11 +144,12 @@
           <p id="context-count" class="context-count"></p>
           <ul id="context-list" role="listbox" aria-label="Contexts"></ul>
         </aside>
-        <section class="context-main" aria-label="Selected context relations">
-          <p class="eyebrow">CONTEXT</p>
+        <section class="context-main" aria-label="Selected context relation projection">
+          <p class="eyebrow">CONTEXT MAP / ONE-HOP PROJECTION</p>
           <h3 id="selected-title">Select a context</h3>
           <p id="selected-summary" class="detail-summary"></p>
-          <div id="relations" class="relations"></div>
+          <p id="relation-projection-note" class="context-count">Explicit metadata.related only · deterministic · read-only</p>
+          <div id="relations" class="relations" aria-label="Explicit one-hop context relations"></div>
         </section>
         <aside class="context-details" aria-label="Context details">
           <section><h3>Purpose</h3><ul id="purpose"></ul></section>
@@ -170,7 +171,7 @@
     <span>Canonical Authority stays in Policy / Orchestration / Context / Runtime / Persistence / Operations / Eval</span>
   </footer>
 
-  <script>window.__CONTEXT_GRAPH__ = null;</script>
+  <script>window.__CONTEXT_MAP__ = null;</script>
   <script>window.__HUMAN_ARCHITECTURE__ = null;</script>
   <script src="app.js"></script>
 </body>

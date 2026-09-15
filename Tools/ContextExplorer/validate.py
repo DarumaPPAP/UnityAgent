@@ -61,26 +61,53 @@ def main() -> int:
     app = (frontend / "app.js").read_text(encoding="utf-8")
     html = (frontend / "index.html").read_text(encoding="utf-8")
     css = (frontend / "styles.css").read_text(encoding="utf-8")
+    build = (root / "Tools/ContextExplorer/build.py").read_text(encoding="utf-8")
 
     forbidden_frontend_tokens = (
         "innerHTML",
         "fetch(",
         "XMLHttpRequest",
+        "WebSocket",
+        "EventSource",
         "localStorage.setItem",
         "sessionStorage.setItem",
         'method: "POST"',
         'method: "DELETE"',
+        "function execute(",
+        "function dispatch(",
+        "function route(",
+        "function approve(",
+        "function apply(",
     )
+    frontend_source = app + "\n" + html
     for token in forbidden_frontend_tokens:
-        if token in app:
-            errors.append(f"Frontend must remain offline/read-only; forbidden token: {token}")
+        if token in frontend_source:
+            errors.append(f"Frontend must remain offline/read-only and non-authoritative; forbidden token: {token}")
 
-    if "__CONTEXT_GRAPH__" not in html:
-        errors.append("Frontend Context data injection marker is missing")
+    if "__CONTEXT_MAP__" not in html or "__CONTEXT_MAP__" not in app or "__CONTEXT_MAP__" not in build:
+        errors.append("Frontend Context Map data injection marker is missing")
+    for source_name, source in (("HTML", html), ("App", app), ("Build", build)):
+        if "__CONTEXT_GRAPH__" in source:
+            errors.append(f"{source_name} must not use legacy Context Graph injection vocabulary")
+    if "const graph =" in app:
+        errors.append("Frontend must use Context Map vocabulary instead of a generic graph runtime variable")
+    if "explicitOneHopRelations" not in app:
+        errors.append("Frontend must expose only the deterministic one-hop relation projection")
+    if "metadata.related only" not in html:
+        errors.append("Frontend must disclose that relation projection comes only from explicit metadata.related")
     if "__HUMAN_ARCHITECTURE__" not in html:
         errors.append("Frontend Human Architecture data injection marker is missing")
 
-    required_surface_ids = ("overview", "task-demo", "explore", "concept-flow", "tour-panel", "system-stack")
+    required_surface_ids = (
+        "overview",
+        "task-demo",
+        "explore",
+        "concept-flow",
+        "tour-panel",
+        "system-stack",
+        "relations",
+        "relation-projection-note",
+    )
     for surface_id in required_surface_ids:
         if f'id="{surface_id}"' not in html:
             errors.append(f"Human Architecture surface is missing: {surface_id}")

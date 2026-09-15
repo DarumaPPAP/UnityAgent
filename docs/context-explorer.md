@@ -70,9 +70,46 @@ Task DemoはExecution Traceではなく、Architecture理解のための説明Sc
 
 - Context Pack検索
 - Priority filter
+- Deterministic one-hop Relation projection
+- incoming / outgoing Relationの `←` / `→` 表示
 - Relation traversal
 - Purpose / Decision / Forbidden / Related表示
 - Provenance Source Path表示・Copy
+
+Relation projectionは `metadata.related` に明示されたEdgeだけを使います。Force-directed layout、physics、runtime graph traversal、hidden edge inferenceは持ちません。
+
+## Graph Visualization Contract
+
+Graph Visualizationの最終形は **Graph EngineではなくContext Map Projection** です。
+
+```text
+Context/Packs metadata.related
+          │
+          ▼
+   deterministic ContextMap
+          │
+          ▼
+ selected Context + explicit 1-hop relations
+          │
+          ├─ ← incoming
+          └─ → outgoing
+```
+
+Viewer内部の正規語彙は `ContextMap` / `__CONTEXT_MAP__` です。旧 `Context Graph` / `__CONTEXT_GRAPH__` は使いません。
+
+Viewerが許可されるのはSelection、Filter、Navigation、Source Path Copyだけです。次はAuthority境界として禁止します。
+
+- Route決定
+- Graph/Loop continuation決定
+- Provider dispatch
+- Tool execution
+- Approval
+- Canonical file mutation
+- Runtime state write
+- Evidence write
+- Browser state persistence
+
+`Orchestration/Graph` はPlanner TopologyのCanonical実装として独立しており、Context Explorerはimport・execute・mutateしません。
 
 ## Human Architecture Contract
 
@@ -94,8 +131,9 @@ BundleはStatic / Offline / Read-onlyです。
 
 禁止:
 
-- `fetch()` / `XMLHttpRequest`
+- `fetch()` / `XMLHttpRequest` / WebSocket / EventSource
 - Canonical FileへのSave / Apply
+- Routing / Dispatch / Approval / Execution control
 - Browser StorageへのState persist
 - External CDN依存
 - `innerHTML`を使ったProjected Data描画
@@ -106,6 +144,7 @@ BundleはStatic / Offline / Read-onlyです。
 - Keyboard操作可能なControls
 - `prefers-reduced-motion`で自動Animationを抑制
 - Source PathはCopyのみで、ExplorerからMutationしない
+- Relation projectionは1-hopかつ決定的順序
 
 ## Build / Validation
 
@@ -127,6 +166,16 @@ python .\Tools\ContextExplorer\build.py --bundle .\Artifacts\ContextExplorer\vie
 
 Context Explorerは `Context/Packs` -> `ContextMap` -> Static Viewer の一方向Projectionだけを所有します。Context / Harness / LoopのCanonical Authorityを奪いません。
 
+## #131 Final Visualization Result
+
+Graph Visualizationの残存語彙をContext Mapへ統一し、Viewer上のRelation表示をexplicit one-hop projectionとして固定します。
+
+- `__CONTEXT_GRAPH__` を廃止
+- generic `graph` runtime variableを廃止
+- incoming / outgoing relationを明示
+- runtime execution/routing/mutation authorityの再侵入をvalidator/testで禁止
+- `Orchestration/Graph` とViewerを明示分離
+
 ## 非目標
 
 - 第二のRouting System / Runtime Graph Engineを作ること
@@ -134,5 +183,6 @@ Context Explorerは `Context/Packs` -> `ContextMap` -> Static Viewer の一方�
 - GraphだけでRoot CauseやRegressionを確定すること
 - Frozen BaselineやBaseline Comparatorを代替すること
 - MyResourceCenterをUnityAgent内部Runtimeとして扱うこと
+- Force-directed / editable node graphを導入すること
 
 Human-facing Mental Modelの詳細は [`architecture/three-minute-architecture.md`](architecture/three-minute-architecture.md) を参照してください。
