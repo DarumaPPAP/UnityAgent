@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Patch setup logo loading and UPM validation
+      - name: Patch setup logo loading
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -37,41 +37,30 @@ jobs:
 
           new_loader = '''        private void OnEnable()\n        {\n            minSize = new Vector2(620f, 520f);\n            setupLogoTexture = LoadSetupLogoTexture();\n            EditorApplication.delayCall += RetrySetupLogoLoad;\n            RefreshAllPaths();\n            UpdateIdleStatus();\n        }\n\n        private void OnFocus()\n        {\n            RetrySetupLogoLoad();\n        }\n\n        private void RetrySetupLogoLoad()\n        {\n            if (setupLogoTexture != null)\n            {\n                return;\n            }\n\n            setupLogoTexture = LoadSetupLogoTexture();\n            if (setupLogoTexture != null)\n            {\n                Repaint();\n            }\n        }\n\n        private static Texture2D LoadSetupLogoTexture()\n        {\n            var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(SETUP_LOGO_ASSET_PATH);\n            if (texture != null)\n            {\n                return texture;\n            }\n\n            var assetPath = AssetDatabase.GUIDToAssetPath(SETUP_LOGO_ASSET_GUID);\n            if (string.IsNullOrWhiteSpace(assetPath))\n            {\n                return null;\n            }\n\n            return AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);\n        }\n'''
 
-          if old_loader not in text:
-              raise SystemExit('Expected OnEnable/LoadSetupLogoTexture block not found')
-          text = text.replace(old_loader, new_loader, 1)
+          if old_loader in text:
+              text = text.replace(old_loader, new_loader, 1)
 
           old_draw = '''            var logoSlot = GUILayoutUtility.GetRect(0f, 84f, GUILayout.ExpandWidth(true));\n            if (setupLogoTexture != null)\n            {\n                var logoRect = new Rect(\n                    logoSlot.x + 18f,\n                    logoSlot.y + 4f,\n                    Mathf.Max(0f, logoSlot.width - 36f),\n                    Mathf.Max(0f, logoSlot.height - 8f));\n                GUI.DrawTexture(logoRect, setupLogoTexture, ScaleMode.ScaleToFit, true);\n            }\n            else\n            {\n                GUI.Label(logoSlot, "UNITYAGENT", titleStyle);\n            }\n'''
 
           new_draw = '''            var logoSlot = GUILayoutUtility.GetRect(0f, 84f, GUILayout.ExpandWidth(true));\n            var logoTexture = setupLogoTexture ?? LoadSetupLogoTexture();\n            if (logoTexture != null)\n            {\n                setupLogoTexture = logoTexture;\n                var logoRect = new Rect(\n                    logoSlot.x + 18f,\n                    logoSlot.y + 4f,\n                    Mathf.Max(0f, logoSlot.width - 36f),\n                    Mathf.Max(0f, logoSlot.height - 8f));\n                GUI.DrawTexture(logoRect, logoTexture, ScaleMode.ScaleToFit, true);\n            }\n            else\n            {\n                GUI.Label(logoSlot, "UNITYAGENT", titleStyle);\n            }\n'''
 
-          if old_draw not in text:
-              raise SystemExit('Expected DrawHeader logo block not found')
-          text = text.replace(old_draw, new_draw, 1)
+          if old_draw in text:
+              text = text.replace(old_draw, new_draw, 1)
+
+          if 'SETUP_LOGO_ASSET_PATH' not in text or 'RetrySetupLogoLoad' not in text or 'setupLogoTexture ?? LoadSetupLogoTexture()' not in text:
+              raise SystemExit('Setup logo patch did not apply')
+
           setup.write_text(text, encoding='utf-8')
-
-          required_insert = '''              "package/Editor/UnityAgentSetupWindow.cs.meta",\n              "package/Editor/Resources.meta",\n              "package/Editor/Resources/UnityAgentSetupLogo.png",\n              "package/Editor/Resources/UnityAgentSetupLogo.png.meta",\n'''
-          target = '              "package/Editor/UnityAgentSetupWindow.cs.meta",\n'
-
-          for workflow in [
-              Path('.github/workflows/validate-agent-contracts.yml'),
-              Path('.github/workflows/release-tag.yml'),
-          ]:
-              wf = workflow.read_text(encoding='utf-8')
-              if 'package/Editor/Resources/UnityAgentSetupLogo.png' not in wf:
-                  if target not in wf:
-                      raise SystemExit(f'UPM required-files anchor not found in {workflow}')
-                  wf = wf.replace(target, required_insert, 1)
-              workflow.write_text(wf, encoding='utf-8')
-
-          one_shot = Path('.github/workflows/one-shot-fix-setup-logo.yml')
-          one_shot.unlink()
           PY
 
       - name: Commit patch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Packages/com.darumappap.unity-agent/Editor/UnityAgentSetupWindow.cs .github/workflows/validate-agent-contracts.yml .github/workflows/release-tag.yml .github/workflows/one-shot-fix-setup-logo.yml
+          git add Packages/com.darumappap.unity-agent/Editor/UnityAgentSetupWindow.cs
+          if git diff --cached --quiet; then
+            echo "No patch needed"
+            exit 0
+          fi
           git commit -m "fix: retry Setup logo loading in UPM"
           git push origin HEAD:fix/setup-logo-loader-retry
