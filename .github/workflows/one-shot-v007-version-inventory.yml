@@ -1,0 +1,24 @@
+name: One-shot v0.0.7 Version Inventory
+
+on:
+  push:
+    branches:
+      - release/0.0.7-beta-prep
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: List current canonical version references
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== 0.0.6-beta files ==='
+          git grep -l '0.0.6-beta' || true
+          echo '=== 0.0.6b0 files ==='
+          git grep -l '0.0.6b0' || true
+          echo '=== v0.0.6-beta files ==='
+          git grep -l 'v0.0.6-beta' || true
