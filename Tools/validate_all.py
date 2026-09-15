@@ -25,6 +25,7 @@ YAML_ROOTS = (
 VALIDATORS = (
     Path("Policy/Validators/validate_user_policy_integrity.py"),
     Path("Context/Validators/validate_stale_paths.py"),
+    Path("Orchestration/Loop/validate.py"),
     Path("Runtime/Contracts/capability_contract.py"),
     Path("Tools/ProductionToolRuntime/validate_production_tool_runtime.py"),
     Path("Tools/LayerBoundaryValidator/validate_layer_boundaries.py"),
