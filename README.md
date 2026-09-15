@@ -2,7 +2,7 @@
 
 [![Unity](https://img.shields.io/badge/Unity-2022.3%2B-000000?logo=unity&logoColor=white)](https://unity.com/)
 [![Codex](https://img.shields.io/badge/Codex-Plugin-111827?logo=openai&logoColor=white)](https://github.com/openai/codex)
-[![Release](https://img.shields.io/badge/Release-v0.0.6--beta-orange)](https://github.com/DarumaPPAP/UnityAgent/releases)
+[![Release](https://img.shields.io/badge/Release-v0.0.7--beta-orange)](https://github.com/DarumaPPAP/UnityAgent/releases)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![UnityAgent CI](https://github.com/DarumaPPAP/UnityAgent/actions/workflows/validate-agent-contracts.yml/badge.svg)](https://github.com/DarumaPPAP/UnityAgent/actions/workflows/validate-agent-contracts.yml)
 
@@ -12,7 +12,7 @@ Unityの設計・実装・検証を、Policy / Capability / Provider / Evidence�
 > **Current source version:** `v0.0.7-beta`  
 > Betaでは破壊的変更が入る可能性があります。
 
-[Architecture Explorer](https://darumappap.github.io/UnityAgent/) · [Releases](https://github.com/DarumaPPAP/UnityAgent/releases) · [Architecture](docs/architecture/architecture.md) · [MIT License](LICENSE)
+[Context Explorer](https://darumappap.github.io/UnityAgent/) · [Releases](https://github.com/DarumaPPAP/UnityAgent/releases) · [Architecture](docs/architecture/architecture.md) · [MIT License](LICENSE)
 
 ---
 
@@ -125,12 +125,14 @@ Package-local PowerShell installer
   ↓
 GitHub Release wheel + SHA256SUMS.txt
   ↓ SHA-256 verify
-pip --user
-  ↓
-unity-agent.exe
-  ↓
+%LOCALAPPDATA%\UnityAgent\ControlPlane\v0.0.7-beta\venv
+  ↓ isolated install
+%LOCALAPPDATA%\UnityAgent\bin\unity-agent.cmd
+  ↓ stable discovery hint
 UNITY_AGENT_CONTROL_PLANE
 ```
+
+旧 `pip --user` 形式はmigration-requiredとして検出しますが、自動選択も自動削除もしません。`Install Control Plane` を実行すると専用LocalAppData runtimeへ移行します。
 
 BootstrapからCodex PluginやUnityArtistCLI等のProviderを直接変更することは禁止しています。Control Plane導入後の通常処理は従来どおりです。
 
@@ -195,7 +197,7 @@ $env:UNITY_AGENT_TAG = "v0.0.7-beta"
 irm https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/main/scripts/install.ps1 | iex
 ```
 
-Installerは導入した `unity-agent.exe` の絶対PathをUser環境変数 `UNITY_AGENT_CONTROL_PLANE` に保存します。
+Installerは専用LocalAppData runtimeへControl Planeを導入し、stable shimを生成したうえで、解決用の絶対PathをUser環境変数 `UNITY_AGENT_CONTROL_PLANE` に保存します。
 
 ---
 
@@ -237,14 +239,16 @@ Control Plane Resolverは概ね次の順で探索します。
 ```text
 Manual Override
   ↓
-UNITY_AGENT_CONTROL_PLANE
+UNITY_AGENT_CONTROL_PLANE (process / user)
   ↓
-User environment
+%LOCALAPPDATA%\UnityAgent\bin
   ↓
-Python User Scripts
+%LOCALAPPDATA%\UnityAgent\ControlPlane\<release-tag>\venv\Scripts
   ↓
 Process PATH / User PATH
 ```
+
+旧Python User Scriptsの `pip --user` インストールはmigration候補としてのみ検出され、通常のControl Planeとしては選択しません。
 
 ## Codex CLIが見つからない
 
@@ -411,7 +415,7 @@ Control Plane未導入時の**Control Plane自身のBootstrapだけ**が、こ�
 - [Unity Environment Adaptation](docs/unity-environment-adaptation.md)
 - [Local Unity Project Development](docs/local-project-development.md)
 - [Layer Contract](Specs/unityagent-layer-contract.yaml)
-- [Architecture Explorer](https://darumappap.github.io/UnityAgent/)
+- [Context Explorer](https://darumappap.github.io/UnityAgent/)
 
 ---
 
