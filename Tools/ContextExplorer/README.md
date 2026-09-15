@@ -9,6 +9,7 @@ Context Explorer自身はRouting、Execution、Policy、RegressionのAuthority�
 1. `Context/Packs/*.yaml` を決定的に読み取り、`context-map.json` を生成する。
 2. UnityAgentを7つのHuman Conceptへ投影し、Canonical Source Pathまでdrill-downできるようにする。
 3. Static / Offline / Read-only HTML ViewerとしてContext relationとProvenanceを表示する。
+4. 選択Contextについて、Canonical `metadata.related` に存在するRelationだけを **deterministic one-hop projection** として表示する。
 
 ```text
 Canonical Contract
@@ -62,15 +63,30 @@ Context Explorerでは次を禁止します。
 
 - Canonical YAML / Policy / Runtime Stateの編集
 - Save / Apply / Agent Control
-- `fetch()` / `XMLHttpRequest`による外部通信
+- Routing / Dispatch / Approval / ExecutionのAuthority
+- `fetch()` / `XMLHttpRequest` / WebSocket / EventSourceによる外部通信
 - Browser StorageへのState persist
 - External CDN依存
 - Projected Dataを`innerHTML`で描画
+- Force-directed layout / physics / generic graph runtime
 
 Frontendは`textContent`を使い、Source PathはCopyだけを提供します。
+
+## Visualization Contract
+
+Viewer内部の正規語彙は **Context Map** です。旧 `Context Graph` / `__CONTEXT_GRAPH__` は使用しません。
+
+選択ContextのRelation表示は次だけを行います。
+
+- `metadata.related` 由来の既存Edgeだけを表示
+- incoming / outgoingを `←` / `→` で区別
+- 1-hopだけを決定的順序で表示
+- Relation先ContextへのNavigationだけを許可
+
+Visualizationは追加のRelationを推測せず、Route、Loop、Runtime State、Execution結果を計算しません。
 
 ## Graphの扱い
 
 旧`GraphObservatory`に存在したgeneric graph builder、projection runner、expansion gateは削除しました。Context Explorerが保持するNode / Relationは **表示用Context Map** に限定されます。
 
-UnityAgent Runtime全体をGraph Engineとして扱いません。Graph / Loopは引き続きPlannerがTask complexityに応じて必要時だけ使うStrategyです。
+`Orchestration/Graph` はPlanner内のTopology責務として独立したままです。Context Explorerはそれをimport・execute・mutateしません。Graph / LoopはTask complexityに応じて必要時だけ使うStrategyであり、UnityAgent Runtime全体をGraph Engineとして扱いません。
