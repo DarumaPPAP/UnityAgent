@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Any
 
 DECISIONS = frozenset({"continue", "replan", "exit", "blocked"})
+REQUIRED_LOOP_KEYS = frozenset({"id", "continue_on", "replan_on", "exit_on"})
 FORBIDDEN_CONTROL_KEYS = frozenset(
     {
         "timeout_seconds",
@@ -25,7 +26,7 @@ FORBIDDEN_CONTROL_KEYS = frozenset(
 
 
 def _outcomes(loop: dict[str, Any], key: str) -> tuple[str, ...]:
-    values = loop.get(key) or []
+    values = loop[key]
     if not isinstance(values, list):
         raise ValueError(f"{key} must be a list")
     normalized = tuple(str(item) for item in values)
@@ -39,6 +40,12 @@ def _outcomes(loop: dict[str, Any], key: str) -> tuple[str, ...]:
 def validate_loop_definition(loop: dict[str, Any]) -> None:
     if not isinstance(loop, dict):
         raise ValueError("semantic loop definition must be an object")
+
+    missing = sorted(REQUIRED_LOOP_KEYS - set(loop))
+    if missing:
+        raise ValueError("semantic loop is missing required keys: " + ", ".join(missing))
+    if not str(loop.get("id") or "").strip():
+        raise ValueError("semantic loop id must not be empty")
 
     forbidden = sorted(FORBIDDEN_CONTROL_KEYS & set(loop))
     if forbidden:
@@ -72,7 +79,7 @@ def decide_semantic_loop(
     if semantic_attempt < 0:
         raise ValueError("semantic_attempt must not be negative")
 
-    loop_id = str(loop.get("id") or "anonymous-loop")
+    loop_id = str(loop["id"])
     outcome_value = str(outcome or "")
     continue_on = set(_outcomes(loop, "continue_on"))
     replan_on = set(_outcomes(loop, "replan_on"))
