@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const graph = window.__CONTEXT_GRAPH__ || { nodes: [], edges: [] };
+  const contextMap = window.__CONTEXT_MAP__ || { nodes: [], edges: [] };
   const architecture = window.__HUMAN_ARCHITECTURE__ || {
     concepts: [],
     tour: [],
@@ -295,7 +295,7 @@
   renderDemoSteps();
   if (prefersReducedMotion) text(byId("demo-play"), "Stepを見る →");
 
-  const contextNodes = graph.nodes.filter((node) => node.type === "context");
+  const contextNodes = contextMap.nodes.filter((node) => node.type === "context");
   const contextById = new Map(contextNodes.map((node) => [node.id, node]));
   const contextList = byId("context-list");
   const search = byId("search");
@@ -319,6 +319,51 @@
     renderContextDetails(node);
   }
 
+  function explicitOneHopRelations(nodeId) {
+    return contextMap.edges
+      .filter((edge) => edge.source === nodeId || edge.target === nodeId)
+      .slice()
+      .sort((left, right) => {
+        const leftDirection = left.source === nodeId ? "out" : "in";
+        const rightDirection = right.source === nodeId ? "out" : "in";
+        const leftOther = left.source === nodeId ? left.target : left.source;
+        const rightOther = right.source === nodeId ? right.target : right.source;
+        return `${leftDirection}:${left.relation}:${leftOther}`.localeCompare(`${rightDirection}:${right.relation}:${rightOther}`);
+      });
+  }
+
+  function renderRelationProjection(node) {
+    const relationBox = byId("relations");
+    clear(relationBox);
+    const relations = explicitOneHopRelations(node.id);
+    text(
+      byId("relation-projection-note"),
+      `${relations.length} explicit relation${relations.length === 1 ? "" : "s"} · metadata.related only · one hop · read-only`
+    );
+
+    if (!relations.length) {
+      const empty = document.createElement("span");
+      empty.className = "context-count";
+      text(empty, "No explicit one-hop relations.");
+      relationBox.appendChild(empty);
+      return;
+    }
+
+    relations.forEach((edge) => {
+      const outgoing = edge.source === node.id;
+      const otherId = outgoing ? edge.target : edge.source;
+      const other = contextById.get(otherId);
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "relation";
+      button.dataset.direction = outgoing ? "outgoing" : "incoming";
+      button.setAttribute("aria-label", `${outgoing ? "Outgoing" : "Incoming"} ${edge.relation} relation to ${(other && other.label) || otherId}`);
+      text(button, `${outgoing ? "→" : "←"} ${edge.relation} · ${(other && other.label) || otherId}`);
+      if (other) button.addEventListener("click", () => selectContext(otherId));
+      relationBox.appendChild(button);
+    });
+  }
+
   function renderContextDetails(node) {
     const meta = node.metadata || {};
     text(byId("selected-title"), node.label);
@@ -329,21 +374,7 @@
     renderList("related", meta.related);
     const source = meta.provenance || {};
     text(byId("source-path"), source.source_path || "");
-
-    const relationBox = byId("relations");
-    clear(relationBox);
-    graph.edges
-      .filter((edge) => edge.source === node.id || edge.target === node.id)
-      .forEach((edge) => {
-        const otherId = edge.source === node.id ? edge.target : edge.source;
-        const other = contextById.get(otherId);
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "relation";
-        text(button, `${edge.relation}: ${(other && other.label) || otherId}`);
-        if (other) button.addEventListener("click", () => selectContext(otherId));
-        relationBox.appendChild(button);
-      });
+    renderRelationProjection(node);
   }
 
   function renderContextList() {
