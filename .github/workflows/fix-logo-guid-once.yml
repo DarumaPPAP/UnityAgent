@@ -1,0 +1,62 @@
+name: Fix Setup Logo GUID Once
+
+on:
+  push:
+    branches:
+      - fix/use-logo-guid
+    paths:
+      - .github/workflows/fix-logo-guid-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/use-logo-guid
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Resolve Setup logo by GUID
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('Packages/com.darumappap.unity-agent/Editor/UnityAgentSetupWindow.cs')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+              '        private const string SETUP_LOGO_ASSET_PATH = "Packages/com.darumappap.unity-agent/Editor/Resources/UnityAgentSetupLogo.png";\n',
+              '        private const string SETUP_LOGO_ASSET_GUID = "3238c045646b49f9b00513e4f21cfee1";\n')
+          text = text.replace(
+              '            setupLogoTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(SETUP_LOGO_ASSET_PATH);\n',
+              '            setupLogoTexture = LoadSetupLogoTexture();\n')
+          marker = '        private void OnGUI()\n'
+          helper = '''        private static Texture2D LoadSetupLogoTexture()\n        {\n            var assetPath = AssetDatabase.GUIDToAssetPath(SETUP_LOGO_ASSET_GUID);\n            if (string.IsNullOrWhiteSpace(assetPath))\n            {\n                return null;\n            }\n\n            return AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);\n        }\n\n'''
+          if helper not in text:
+              text = text.replace(marker, helper + marker, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+      - name: Static checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILE='Packages/com.darumappap.unity-agent/Editor/UnityAgentSetupWindow.cs'
+          grep -q 'SETUP_LOGO_ASSET_GUID = "3238c045646b49f9b00513e4f21cfee1"' "$FILE"
+          grep -q 'AssetDatabase.GUIDToAssetPath(SETUP_LOGO_ASSET_GUID)' "$FILE"
+          grep -q 'setupLogoTexture = LoadSetupLogoTexture();' "$FILE"
+          ! grep -q 'SETUP_LOGO_ASSET_PATH' "$FILE"
+      - name: Commit fix and remove one-shot workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/fix-logo-guid-once.yml
+          git add Packages/com.darumappap.unity-agent/Editor/UnityAgentSetupWindow.cs
+          git commit -m 'Resolve UnityAgent Setup logo by GUID'
+          git push origin HEAD:fix/use-logo-guid
