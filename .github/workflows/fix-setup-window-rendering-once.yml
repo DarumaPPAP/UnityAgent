@@ -1,0 +1,90 @@
+name: Fix Setup Window Rendering Once
+
+on:
+  push:
+    branches:
+      - fix/setup-window-rendering
+    paths:
+      - .github/workflows/fix-setup-window-rendering-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/setup-window-rendering
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Replace fragile hero rendering with layout-safe IMGUI
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('Packages/com.darumappap.unity-agent/Editor/UnityAgentSetupWindow.cs')
+          text = path.read_text(encoding='utf-8')
+
+          text = text.replace('        private const string SETUP_LOGO_ASSET_PATH = "Packages/com.darumappap.unity-agent/Editor/Resources/UnityAgentSetupLogo.png";\n', '')
+          text = text.replace('        private Texture2D setupLogoTexture;\n', '')
+          text = text.replace('            setupLogoTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(SETUP_LOGO_ASSET_PATH);\n', '')
+          text = text.replace('            DrawWindowBackdrop();\n', '')
+          text = text.replace('            titleStyle.normal.textColor = Color.black;\n', '            titleStyle.normal.textColor = EditorGUIUtility.isProSkin ? new Color(0.94f, 0.94f, 0.95f) : new Color(0.08f, 0.08f, 0.09f);\n')
+          text = text.replace('            heroSubtitleStyle.normal.textColor = new Color(0.18f, 0.18f, 0.18f);\n', '            heroSubtitleStyle.normal.textColor = EditorGUIUtility.isProSkin\n                ? new Color(0.72f, 0.73f, 0.76f)\n                : new Color(0.24f, 0.24f, 0.26f);\n')
+
+          replacement = '''        private void DrawHeader()
+        {
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+
+            var accentRect = EditorGUILayout.GetControlRect(false, 4f);
+            EditorGUI.DrawRect(accentRect, BrandRed);
+            EditorGUILayout.Space(8);
+
+            EditorGUILayout.LabelField("UNITYAGENT", titleStyle, GUILayout.Height(40f));
+            EditorGUILayout.LabelField("SETUP  /  CONTROL PLANE  /  CODEX", heroSubtitleStyle);
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                GUILayout.FlexibleSpace();
+                GUILayout.Label("v" + CHANNEL + "  BETA", heroVersionStyle);
+            }
+
+            EditorGUILayout.Space(6);
+            EditorGUILayout.EndVertical();
+        }
+
+        private void DrawOverview()'''
+
+          pattern = r'        private void DrawWindowBackdrop\(\)\n        \{.*?\n        \}\n\n        private void DrawOverview\(\)'
+          text, count = re.subn(pattern, replacement, text, count=1, flags=re.S)
+          if count != 1:
+              raise SystemExit('failed to replace fragile header block')
+
+          path.write_text(text, encoding='utf-8')
+          PY
+      - name: Static checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILE='Packages/com.darumappap.unity-agent/Editor/UnityAgentSetupWindow.cs'
+          grep -q 'private void DrawHeader()' "$FILE"
+          grep -q 'EditorGUILayout.BeginVertical(EditorStyles.helpBox)' "$FILE"
+          grep -q 'UNITYAGENT' "$FILE"
+          ! grep -q 'GUI.DrawTexture' "$FILE"
+          ! grep -q 'DrawWindowBackdrop' "$FILE"
+      - name: Commit fix and remove one-shot workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/fix-setup-window-rendering-once.yml
+          git add Packages/com.darumappap.unity-agent/Editor/UnityAgentSetupWindow.cs
+          git commit -m 'Fix UnityAgent Setup window rendering'
+          git push origin HEAD:fix/setup-window-rendering
