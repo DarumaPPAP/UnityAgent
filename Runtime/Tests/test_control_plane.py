@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from ControlPlane.unity_agent_control_plane import UnityAgentControlPlane
+from ControlPlane.unity_agent_control_plane import UnityAgentControlPlane, validate_entry_request
 from Runtime.Tooling.Environment.discovery import discover_environment
 from Runtime.Tooling.Environment.environment_snapshot import UnityCliSnapshot
 from Runtime.Tooling.capability_resolver import ResolutionContext
@@ -67,7 +67,6 @@ class ControlPlaneTests(unittest.TestCase):
             "intent": {"kind": "project_inspection"},
             "route_id": "inspect_project",
             "node_id": "inspect-project",
-            "loop_id": "inspect-loop",
             "execution_profile": "generic_planning",
             "context_id": "context-1",
             "context_fingerprint": "context-fingerprint-1",
@@ -108,11 +107,16 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertEqual(len(result["evidence_refs"]), 1)
         state = plane.state_store.load_execution_state(result["run_id"])
         self.assertEqual(state["status"], "completed")
-        loop = plane.state_store.load_loop_control_state(result["run_id"], "inspect-loop")
-        self.assertEqual(loop["decision"], "exit")
+        self.assertNotIn("loop_state_ref", result)
         evidence = plane.evidence_store.get(result["evidence_refs"][0])
         self.assertEqual(evidence["provider_ref"], "file")
         self.assertEqual(evidence["durability"], "durable")
+
+    def test_runtime_entry_rejects_semantic_loop_identity(self) -> None:
+        request = self.entry_request()
+        request["loop_id"] = "inspect-loop"
+        with self.assertRaises(Exception):
+            validate_entry_request(request)
 
     def test_setup_uses_registry_resolved_installer_and_evidence(self) -> None:
         (self.project / "Packages/manifest.json").write_text(

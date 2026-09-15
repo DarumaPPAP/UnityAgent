@@ -1,0 +1,24 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:orchestration:semantic-loop-decision
+title: SemanticLoopDecision
+type: object
+additionalProperties: false
+required:
+  - schema_version
+  - loop_id
+  - outcome
+  - decision
+  - semantic_attempt
+  - progress_marker
+  - replan_reason
+  - reason
+properties:
+  schema_version: {const: '1.0'}
+  loop_id: {type: string, minLength: 1}
+  outcome: {type: string}
+  decision:
+    enum: [continue, replan, exit, blocked]
+  semantic_attempt: {type: integer, minimum: 0}
+  progress_marker: {type: [string, 'null']}
+  replan_reason: {type: [string, 'null']}
+  reason: {type: string, minLength: 1}

@@ -2,7 +2,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from Orchestration.Graph.state_mapping import loop_control_state_patch, workflow_state_patch
+from Orchestration.Graph.state_mapping import workflow_state_patch
+from Orchestration.Loop.state_mapping import loop_control_state_patch
 from Persistence.Checkpoint.checkpoint_store import CheckpointStore
 from Persistence.Evidence.evidence_store import EvidenceStore
 from Persistence.Migrations.checkpoint_migrations import migrate_v1_0_to_v1_1

@@ -10,10 +10,11 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from Orchestration.Graph.health_checks import execute_health_check
-from Orchestration.Graph.local_loop import decide_local_loop
 from Orchestration.Graph.parallel import plan_parallel
-from Orchestration.Graph.state_mapping import loop_control_state_patch, workflow_state_patch
-from Orchestration.Graph.todo_selector import select_todo
+from Orchestration.Graph.state_mapping import workflow_state_patch
+from Orchestration.Loop.semantic_loop import decide_semantic_loop
+from Orchestration.Loop.state_mapping import loop_control_state_patch
+from Orchestration.Loop.todo_selector import select_todo
 from Orchestration.Orchestrator.orchestrator import fast_path, load_graph, transition
 from Orchestration.Routing.route_selector import load_routes, select_route
 
@@ -48,18 +49,18 @@ class OrchestrationTests(unittest.TestCase):
             self.assertIn(loop["from_node_id"], nodes)
 
     def test_semantic_loop_has_no_runtime_limits(self):
-        loop = {"continue_on": ["more"], "replan_on": ["invalid"], "exit_on": ["done"]}
-        value = decide_local_loop(loop, outcome="more", semantic_attempt=0, progress_marker="p", progress_made=True)
+        loop = {"id": "fixture-loop", "continue_on": ["more"], "replan_on": ["invalid"], "exit_on": ["done"]}
+        value = decide_semantic_loop(loop, outcome="more", semantic_attempt=0, progress_marker="p", progress_made=True)
         self.assertEqual(value["decision"], "continue")
-        value = decide_local_loop(loop, outcome="more", semantic_attempt=1, progress_marker="p", progress_made=False)
+        value = decide_semantic_loop(loop, outcome="more", semantic_attempt=1, progress_marker="p", progress_made=False)
         self.assertEqual(value["decision"], "replan")
         with self.assertRaises(ValueError):
-            decide_local_loop({**loop, "timeout_seconds": 10}, outcome="more", semantic_attempt=0, progress_marker=None)
+            decide_semantic_loop({**loop, "timeout_seconds": 10}, outcome="more", semantic_attempt=0, progress_marker=None)
 
     def test_todo_selection_is_semantic_not_quota_or_lease(self):
         todos = [{"id": "done", "status": "completed"}, {"id": "b", "status": "ready", "priority": 1, "depends_on": ["done"]}, {"id": "a", "status": "ready", "priority": 2, "depends_on": ["done"]}]
         self.assertEqual(select_todo(todos)["id"], "a")
-        text = (ROOT / "Orchestration/Graph/todo_selector.py").read_text(encoding="utf-8")
+        text = (ROOT / "Orchestration/Loop/todo_selector.py").read_text(encoding="utf-8")
         self.assertNotIn("quota.", text)
         self.assertNotIn("lease_", text)
 

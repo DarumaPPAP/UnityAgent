@@ -1,9 +1,10 @@
 """Thin UnityAgent Control Plane over the existing Runtime chain.
 
 This module is the only Entry-facing execution facade. It owns run identity and
-durable state, asks Orchestration for a provider-independent handoff, and sends
-capabilities to the existing ToolBroker. It deliberately contains no Provider
-selection or direct subprocess invocation.
+durable execution/workflow state, asks Orchestration for a provider-independent
+handoff, and sends capabilities to the existing ToolBroker. Semantic Local Loop
+decisions are owned by Orchestration/Loop and are never inferred from Runtime
+capability iteration here.
 """
 from __future__ import annotations
 
@@ -17,7 +18,7 @@ import yaml
 from jsonschema import Draft202012Validator
 
 from Orchestration.Orchestrator.orchestrator import runtime_handoff
-from Orchestration.Graph.state_mapping import loop_control_state_patch, workflow_state_patch
+from Orchestration.Graph.state_mapping import workflow_state_patch
 from Persistence.Evidence.evidence_store import EvidenceStore
 from Persistence.Evidence.runtime_adapter import append_runtime_execution_evidence
 from Persistence.Install.receipt_store import InstallReceiptStore
@@ -131,25 +132,6 @@ class UnityAgentControlPlane:
             )
         )
 
-    def _save_loop_state(
-        self,
-        *,
-        run_id: str,
-        loop_id: str,
-        attempt: int,
-        decision: str,
-        progress_marker: str | None,
-    ) -> str:
-        return self.state_store.save_loop_control_state(
-            loop_control_state_patch(
-                run_id=run_id,
-                loop_id=loop_id,
-                semantic_attempt=attempt,
-                progress_marker=progress_marker,
-                decision=decision,
-            )
-        )
-
     def execute(
         self,
         entry_request: dict[str, Any],
@@ -194,16 +176,6 @@ class UnityAgentControlPlane:
             node_id=node_id,
             evidence_refs=evidence_refs,
         )
-        loop_id = str(entry_request.get("loop_id") or "") or None
-        loop_state_ref = None
-        if loop_id:
-            loop_state_ref = self._save_loop_state(
-                run_id=resolved_run_id,
-                loop_id=loop_id,
-                attempt=0,
-                decision="continue",
-                progress_marker=node_id,
-            )
         results: list[dict[str, Any]] = []
         for index, request in enumerate(entry_request["capability_requests"]):
             capability_step_id = f"{node_id}-{index + 1}"
@@ -248,14 +220,6 @@ class UnityAgentControlPlane:
                 node_id=capability_step_id,
                 evidence_refs=evidence_refs,
             )
-            if loop_id:
-                loop_state_ref = self._save_loop_state(
-                    run_id=resolved_run_id,
-                    loop_id=loop_id,
-                    attempt=index + 1,
-                    decision="continue",
-                    progress_marker=capability_step_id,
-                )
 
         final_status = "completed" if all(item.get("status") == "completed" for item in results) else "blocked"
         state_ref = self._save_execution_state(
@@ -271,14 +235,6 @@ class UnityAgentControlPlane:
             node_id=node_id,
             evidence_refs=evidence_refs,
         )
-        if loop_id:
-            loop_state_ref = self._save_loop_state(
-                run_id=resolved_run_id,
-                loop_id=loop_id,
-                attempt=len(results),
-                decision="exit" if final_status == "completed" else "blocked",
-                progress_marker=node_id,
-            )
         return {
             "schema_version": "1.0",
             "status": final_status,
@@ -290,7 +246,6 @@ class UnityAgentControlPlane:
             "evidence_refs": evidence_refs,
             "state_ref": state_ref,
             "workflow_state_ref": workflow_state_ref,
-            "loop_state_ref": loop_state_ref,
         }
 
     def setup(
