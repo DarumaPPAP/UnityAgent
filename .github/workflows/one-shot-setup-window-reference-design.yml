@@ -1,0 +1,392 @@
+name: One-shot Setup Window Reference Design
+
+on:
+  push:
+    branches:
+      - feat/setup-window-reference-design
+
+permissions:
+  contents: write
+
+jobs:
+  implement:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install image tooling
+        run: python -m pip install --quiet pillow
+
+      - name: Implement reference design
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+
+          setup_path = Path('Packages/com.darumappap.unity-agent/Editor/UnityAgentSetupWindow.cs')
+          logo_path = Path('Packages/com.darumappap.unity-agent/Editor/Resources/UnityAgentSetupLogo.png')
+          meta_path = Path('Packages/com.darumappap.unity-agent/Editor/Resources/UnityAgentSetupLogo.png.meta')
+
+          text = setup_path.read_text(encoding='utf-8')
+
+          def replace_between(source: str, start_marker: str, end_marker: str, replacement: str) -> str:
+              start = source.find(start_marker)
+              if start < 0:
+                  raise SystemExit(f'start marker not found: {start_marker!r}')
+              end = source.find(end_marker, start)
+              if end < 0:
+                  raise SystemExit(f'end marker not found: {end_marker!r}')
+              return source[:start] + replacement.rstrip() + '\n\n' + source[end:]
+
+          text = text.replace(
+              '        private GUIStyle heroVersionStyle;\n',
+              '        private GUIStyle heroVersionStyle;\n'
+              '        private GUIStyle cardStyle;\n'
+              '        private GUIStyle fieldLabelStyle;\n',
+              1)
+
+          text = text.replace('window.minSize = new Vector2(620f, 520f);', 'window.minSize = new Vector2(700f, 540f);', 1)
+          text = text.replace('minSize = new Vector2(620f, 520f);', 'minSize = new Vector2(700f, 540f);', 1)
+
+          on_gui = r'''        private void OnGUI()
+        {
+            EnsureStyles();
+            windowScroll = EditorGUILayout.BeginScrollView(windowScroll);
+            EditorGUILayout.Space(4);
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                GUILayout.Space(8f);
+                using (new EditorGUILayout.VerticalScope())
+                {
+                    DrawHeader();
+                    EditorGUILayout.Space(12);
+                    DrawOverview();
+                    EditorGUILayout.Space(10);
+                    DrawControlPlaneCard();
+                    EditorGUILayout.Space(10);
+                    DrawCodexCard();
+                    EditorGUILayout.Space(10);
+                    DrawIntegrationCard();
+                    EditorGUILayout.Space(10);
+                    DrawStatusCard();
+                    EditorGUILayout.Space(10);
+                    DrawDiagnostics();
+                    EditorGUILayout.Space(8);
+                    DrawAdvanced();
+                    EditorGUILayout.Space(16);
+                }
+                GUILayout.Space(8f);
+            }
+
+            EditorGUILayout.EndScrollView();
+        }'''
+          text = replace_between(text, '        private void OnGUI()\n', '        private void EnsureStyles()\n', on_gui)
+
+          ensure_styles = r'''        private void EnsureStyles()
+        {
+            if (titleStyle != null)
+            {
+                return;
+            }
+
+            titleStyle = new GUIStyle(EditorStyles.boldLabel)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 30,
+                fontStyle = FontStyle.Bold,
+            };
+            titleStyle.normal.textColor = EditorGUIUtility.isProSkin
+                ? new Color(0.96f, 0.96f, 0.97f)
+                : new Color(0.08f, 0.08f, 0.09f);
+
+            subtitleStyle = new GUIStyle(EditorStyles.label)
+            {
+                fontSize = 11,
+                wordWrap = true,
+            };
+            subtitleStyle.normal.textColor = EditorGUIUtility.isProSkin
+                ? new Color(0.78f, 0.80f, 0.83f)
+                : new Color(0.25f, 0.27f, 0.30f);
+
+            cardTitleStyle = new GUIStyle(EditorStyles.boldLabel)
+            {
+                fontSize = 16,
+                fontStyle = FontStyle.Bold,
+            };
+            cardTitleStyle.normal.textColor = EditorGUIUtility.isProSkin
+                ? new Color(0.94f, 0.95f, 0.97f)
+                : new Color(0.12f, 0.13f, 0.15f);
+
+            cardSubtitleStyle = new GUIStyle(EditorStyles.label)
+            {
+                fontSize = 11,
+                wordWrap = true,
+            };
+            cardSubtitleStyle.normal.textColor = EditorGUIUtility.isProSkin
+                ? new Color(0.70f, 0.73f, 0.78f)
+                : new Color(0.32f, 0.34f, 0.38f);
+
+            badgeStyle = new GUIStyle(EditorStyles.miniBoldLabel)
+            {
+                alignment = TextAnchor.MiddleRight,
+                fontSize = 11,
+                fontStyle = FontStyle.Bold,
+            };
+
+            pathStyle = new GUIStyle(EditorStyles.textField)
+            {
+                fontSize = 11,
+                fixedHeight = 24f,
+            };
+
+            primaryButtonStyle = new GUIStyle(GUI.skin.button)
+            {
+                fixedHeight = 36f,
+                fontSize = 12,
+                fontStyle = FontStyle.Bold,
+            };
+
+            secondaryButtonStyle = new GUIStyle(GUI.skin.button)
+            {
+                fixedHeight = 30f,
+                fontSize = 11,
+            };
+
+            heroSubtitleStyle = new GUIStyle(EditorStyles.miniBoldLabel)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 11,
+                fontStyle = FontStyle.Bold,
+            };
+            heroSubtitleStyle.normal.textColor = EditorGUIUtility.isProSkin
+                ? new Color(0.74f, 0.76f, 0.80f)
+                : new Color(0.24f, 0.24f, 0.26f);
+
+            heroVersionStyle = new GUIStyle(EditorStyles.miniBoldLabel)
+            {
+                alignment = TextAnchor.MiddleRight,
+                fontSize = 10,
+                fontStyle = FontStyle.Bold,
+            };
+            heroVersionStyle.normal.textColor = BrandRed;
+
+            cardStyle = new GUIStyle(EditorStyles.helpBox)
+            {
+                padding = new RectOffset(14, 14, 12, 12),
+                margin = new RectOffset(0, 0, 0, 0),
+            };
+
+            fieldLabelStyle = new GUIStyle(EditorStyles.miniLabel)
+            {
+                alignment = TextAnchor.MiddleLeft,
+                fontSize = 11,
+            };
+            fieldLabelStyle.normal.textColor = EditorGUIUtility.isProSkin
+                ? new Color(0.72f, 0.74f, 0.78f)
+                : new Color(0.34f, 0.36f, 0.40f);
+        }'''
+          text = replace_between(text, '        private void EnsureStyles()\n', '        private void DrawHeader()\n', ensure_styles)
+
+          draw_header = r'''        private void DrawHeader()
+        {
+            var heroRect = GUILayoutUtility.GetRect(0f, 178f, GUILayout.ExpandWidth(true));
+            EditorGUI.DrawRect(heroRect, HeroBackgroundColor);
+
+            EditorGUI.DrawRect(
+                new Rect(heroRect.x, heroRect.y, heroRect.width, 4f),
+                BrandRed);
+            EditorGUI.DrawRect(
+                new Rect(heroRect.x + 12f, heroRect.yMax - 1f, heroRect.width - 24f, 1f),
+                HeroDividerColor);
+
+            var logoTexture = setupLogoTexture ?? LoadSetupLogoTexture();
+            var logoSlot = new Rect(
+                heroRect.x + 38f,
+                heroRect.y + 16f,
+                Mathf.Max(0f, heroRect.width - 76f),
+                116f);
+
+            if (logoTexture != null)
+            {
+                setupLogoTexture = logoTexture;
+                GUI.DrawTexture(logoSlot, logoTexture, ScaleMode.ScaleToFit, true);
+            }
+            else
+            {
+                GUI.Label(logoSlot, "UNITYAGENT", titleStyle);
+            }
+
+            GUI.Label(
+                new Rect(heroRect.x + 40f, heroRect.y + 132f, heroRect.width - 80f, 22f),
+                "SETUP  /  CONTROL PLANE  /  CODEX",
+                heroSubtitleStyle);
+
+            GUI.Label(
+                new Rect(heroRect.xMax - 190f, heroRect.yMax - 27f, 174f, 18f),
+                "v" + CHANNEL + "  BETA",
+                heroVersionStyle);
+        }'''
+          text = replace_between(text, '        private void DrawHeader()\n', '        private void DrawOverview()\n', draw_header)
+
+          draw_overview = r'''        private void DrawOverview()
+        {
+            var controlPlaneReady = !string.IsNullOrWhiteSpace(controlPlanePath);
+            var codexReady = !string.IsNullOrWhiteSpace(codexCliPath);
+            var readyCount = (controlPlaneReady ? 1 : 0) + (codexReady ? 1 : 0);
+
+            BeginCard();
+            DrawCardHeader(
+                "Setup Readiness",
+                controlPlaneReady && codexReady
+                    ? "Core dependencies are ready. Codex Pluginの状態確認・Installへ進めます。"
+                    : "不足している依存を上から順に解決してください。",
+                readyCount + "/2 READY",
+                readyCount == 2 ? ReadyColor : ActionColor);
+
+            EditorGUILayout.Space(4);
+            var rect = EditorGUILayout.GetControlRect(false, 7f);
+            var background = new Rect(rect.x + 2f, rect.y + 1f, rect.width - 4f, 5f);
+            EditorGUI.DrawRect(background, ProgressBackgroundColor);
+            if (readyCount > 0)
+            {
+                var progress = background;
+                progress.width *= readyCount / 2f;
+                EditorGUI.DrawRect(progress, ReadyColor);
+            }
+            EndCard();
+        }'''
+          text = replace_between(text, '        private void DrawOverview()\n', '        private void DrawControlPlaneCard()\n', draw_overview)
+
+          draw_resolved = r'''        private void DrawResolvedPath(string path, string source)
+        {
+            var displayPath = string.IsNullOrWhiteSpace(path) ? "Not Found" : path;
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                GUILayout.Label("Resolved Path", fieldLabelStyle, GUILayout.Width(112f));
+                using (new EditorGUI.DisabledScope(true))
+                {
+                    EditorGUILayout.TextField(displayPath, pathStyle);
+                }
+                using (new EditorGUI.DisabledScope(string.IsNullOrWhiteSpace(path)))
+                {
+                    if (GUILayout.Button("Copy", GUILayout.Width(52f), GUILayout.Height(24f)))
+                    {
+                        EditorGUIUtility.systemCopyBuffer = path;
+                    }
+                }
+            }
+
+            EditorGUILayout.Space(3f);
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                GUILayout.Label("Source", fieldLabelStyle, GUILayout.Width(112f));
+                GUILayout.Label(string.IsNullOrWhiteSpace(source) ? "-" : source, cardSubtitleStyle);
+            }
+        }'''
+          text = replace_between(text, '        private void DrawResolvedPath(string path, string source)\n', '        private void DrawCardHeader(string title, string subtitle, string badge, Color color)\n', draw_resolved)
+
+          draw_card_header = r'''        private void DrawCardHeader(string title, string subtitle, string badge, Color color)
+        {
+            var rect = GUILayoutUtility.GetRect(0f, 54f, GUILayout.ExpandWidth(true));
+
+            EditorGUI.DrawRect(
+                new Rect(rect.x, rect.y + 5f, 4f, rect.height - 10f),
+                BrandRed);
+            EditorGUI.DrawRect(
+                new Rect(rect.x + 10f, rect.y, rect.width - 10f, 1f),
+                CardTopLineColor);
+
+            var textWidth = Mathf.Max(120f, rect.width - 178f);
+            GUI.Label(
+                new Rect(rect.x + 14f, rect.y + 4f, textWidth, 24f),
+                title,
+                cardTitleStyle);
+            GUI.Label(
+                new Rect(rect.x + 14f, rect.y + 28f, textWidth, 22f),
+                subtitle,
+                cardSubtitleStyle);
+
+            var style = new GUIStyle(badgeStyle) { normal = { textColor = color } };
+            GUI.Label(
+                new Rect(rect.xMax - 158f, rect.y + 5f, 148f, 22f),
+                badge,
+                style);
+        }'''
+          text = replace_between(text, '        private void DrawCardHeader(string title, string subtitle, string badge, Color color)\n', '        private void DrawBadge(string text, Color color)\n', draw_card_header)
+
+          old_begin = '''        private static void BeginCard()\n        {\n            EditorGUILayout.BeginVertical(EditorStyles.helpBox);\n        }'''
+          new_begin = '''        private void BeginCard()\n        {\n            EditorGUILayout.BeginVertical(cardStyle);\n        }'''
+          if old_begin not in text:
+              raise SystemExit('BeginCard block not found')
+          text = text.replace(old_begin, new_begin, 1)
+
+          color_anchor = '        private static Color ReadyColor => '
+          color_insert = '''        private static Color HeroBackgroundColor => EditorGUIUtility.isProSkin ? new Color(0.095f, 0.105f, 0.12f) : new Color(0.90f, 0.91f, 0.93f);\n        private static Color HeroDividerColor => EditorGUIUtility.isProSkin ? new Color(0.20f, 0.22f, 0.25f) : new Color(0.72f, 0.74f, 0.78f);\n        private static Color ProgressBackgroundColor => EditorGUIUtility.isProSkin ? new Color(0.15f, 0.17f, 0.19f) : new Color(0.80f, 0.82f, 0.85f);\n        private static Color CardTopLineColor => EditorGUIUtility.isProSkin ? new Color(0.42f, 0.16f, 0.18f) : new Color(0.72f, 0.20f, 0.22f);\n'''
+          if color_insert not in text:
+              text = text.replace(color_anchor, color_insert + color_anchor, 1)
+
+          setup_path.write_text(text, encoding='utf-8')
+
+          # Remove the baked white background from the supplied logo while preserving
+          # anti-aliased black/red edges. Treat the source as foreground composited on white,
+          # recover alpha from the darkest channel, then un-premultiply the foreground colour.
+          image = Image.open(logo_path).convert('RGBA')
+          out = Image.new('RGBA', image.size)
+          src = image.load()
+          dst = out.load()
+          for y in range(image.height):
+              for x in range(image.width):
+                  r, g, b, _ = src[x, y]
+                  alpha = 255 - min(r, g, b)
+                  if alpha <= 3:
+                      dst[x, y] = (255, 255, 255, 0)
+                      continue
+                  a = alpha / 255.0
+                  fr = round((r - 255 * (1.0 - a)) / a)
+                  fg = round((g - 255 * (1.0 - a)) / a)
+                  fb = round((b - 255 * (1.0 - a)) / a)
+                  dst[x, y] = (
+                      max(0, min(255, fr)),
+                      max(0, min(255, fg)),
+                      max(0, min(255, fb)),
+                      alpha,
+                  )
+          out.save(logo_path, format='PNG', optimize=True)
+
+          meta = meta_path.read_text(encoding='utf-8')
+          meta = meta.replace('  alphaIsTransparency: 0', '  alphaIsTransparency: 1')
+          meta_path.write_text(meta, encoding='utf-8')
+          PY
+
+      - name: Validate modified files
+        run: |
+          grep -q 'HeroBackgroundColor' Packages/com.darumappap.unity-agent/Editor/UnityAgentSetupWindow.cs
+          grep -q 'alphaIsTransparency: 1' Packages/com.darumappap.unity-agent/Editor/Resources/UnityAgentSetupLogo.png.meta
+          python3 - <<'PY'
+          from PIL import Image
+          p = 'Packages/com.darumappap.unity-agent/Editor/Resources/UnityAgentSetupLogo.png'
+          image = Image.open(p).convert('RGBA')
+          alpha = image.getchannel('A')
+          lo, hi = alpha.getextrema()
+          assert lo == 0, (lo, hi)
+          assert hi == 255, (lo, hi)
+          print('logo alpha range:', lo, hi, 'size:', image.size)
+          PY
+
+      - name: Commit implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Packages/com.darumappap.unity-agent/Editor/UnityAgentSetupWindow.cs \
+                  Packages/com.darumappap.unity-agent/Editor/Resources/UnityAgentSetupLogo.png \
+                  Packages/com.darumappap.unity-agent/Editor/Resources/UnityAgentSetupLogo.png.meta
+          git commit -m "feat: polish UnityAgent Setup window"
+          git push origin HEAD:feat/setup-window-reference-design
