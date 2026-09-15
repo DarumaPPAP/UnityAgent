@@ -1,5 +1,10 @@
-schema_version: "1.0"
+schema_version: "1.1"
 harnesses:
+  effective_harness:
+    owner: Runtime/Harnesses/effective_harness.py
+    kind: enforcement_projection
+    execution: deterministic
+    selection: supplied_by_orchestration
   codex:
     owner: Runtime/Runner/Codex
     kind: agent_runner
@@ -34,3 +39,5 @@ rules:
   no_semantic_fallback_inside_runtime: true
   unavailable_is_not_pass: true
   graph_selection_is_not_runtime_authority: true
+  route_selection_is_orchestration_owned: true
+  runtime_does_not_reverse_lookup_context_routes: true
