@@ -10,7 +10,7 @@ namespace DarumaPPAP.UnityAgent.Editor
     {
         private const string CHANNEL = "0.0.6-beta";
         private const string CODEX_PLUGIN_SOURCE = "DarumaPPAP/UnityAgent@v0.0.6-beta";
-        private const string SETUP_LOGO_ASSET_PATH = "Packages/com.darumappap.unity-agent/Editor/Resources/UnityAgentSetupLogo.png";
+        private const string SETUP_LOGO_ASSET_GUID = "3238c045646b49f9b00513e4f21cfee1";
         private static readonly string[] CODEX_INTEGRATION_PRODUCTS = { "codex_cli", "unity_agent_codex_plugin" };
         private static readonly string[] ALL_PRODUCTS =
         {
@@ -57,9 +57,20 @@ namespace DarumaPPAP.UnityAgent.Editor
         private void OnEnable()
         {
             minSize = new Vector2(620f, 520f);
-            setupLogoTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(SETUP_LOGO_ASSET_PATH);
+            setupLogoTexture = LoadSetupLogoTexture();
             RefreshAllPaths();
             UpdateIdleStatus();
+        }
+
+        private static Texture2D LoadSetupLogoTexture()
+        {
+            var assetPath = AssetDatabase.GUIDToAssetPath(SETUP_LOGO_ASSET_GUID);
+            if (string.IsNullOrWhiteSpace(assetPath))
+            {
+                return null;
+            }
+
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
         }
 
         private void OnGUI()
