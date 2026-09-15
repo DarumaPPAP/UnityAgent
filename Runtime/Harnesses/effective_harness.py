@@ -1,5 +1,9 @@
-"""Build and validate the read-only Effective Harness projection."""
+"""Resolve an already-selected task contract into Runtime-enforceable harness state.
 
+Selection is intentionally external to this module. Orchestration supplies the route,
+task contract and execution profile; Runtime only enforces those selected inputs against
+canonical Policy and Runtime contracts.
+"""
 from __future__ import annotations
 
 from pathlib import Path
@@ -9,12 +13,12 @@ import yaml
 
 REQUEST_BOUND = "request"
 NO_CHANNEL_BOUND = "none"
-CONTEXT_CATALOG = "Context/Selection/context-catalog.yaml"
 RUNTIME_PROFILES = "Runtime/Profiles/runtime-profiles.yaml"
 RISK_LEVELS = "Policy/Risk/risk-levels.yaml"
 QUALITY_GATES = "Policy/Evidence/quality-gates.yaml"
 MUTATION_CHANNELS = "Runtime/Guardrails/mutation-channels.yaml"
 MCP_ACTIVATION = "Runtime/Permissions/mcp-activation.yaml"
+TASK_CONTRACT_ROOT = "Orchestration/Contracts/TaskContracts/"
 
 APPROVAL_POLICIES = {
     "not_required",
@@ -36,12 +40,14 @@ def read_yaml(root: Path, relative: str) -> dict[str, Any]:
     return yaml.safe_load((root / relative).read_text(encoding="utf-8")) or {}
 
 
-def route_for_contract(root: Path, contract_path: str) -> tuple[str, dict[str, Any]]:
-    catalog = read_yaml(root, CONTEXT_CATALOG)
-    for route_id, route in (catalog.get("routes", {}) or {}).items():
-        if route.get("task_contract") == contract_path:
-            return str(route_id), route
-    raise ValueError(f"No route binds task contract: {contract_path}")
+def load_task_contract(root: Path, contract_path: str) -> dict[str, Any]:
+    normalized = Path(contract_path).as_posix()
+    if not normalized.startswith(TASK_CONTRACT_ROOT):
+        raise ValueError("task contract must come from canonical Orchestration/Contracts/TaskContracts")
+    contract = read_yaml(root, normalized)
+    if not contract.get("id"):
+        raise ValueError("selected task contract is missing id")
+    return contract
 
 
 def validate_task_contract_channels(
@@ -66,7 +72,6 @@ def validate_task_contract_channels(
         errors.append(f"Unknown mutation channels: {unknown}")
     if binding not in {None, REQUEST_BOUND, NO_CHANNEL_BOUND}:
         errors.append(f"Unknown mutation_channel_binding: {binding}")
-
     return errors
 
 
@@ -91,7 +96,6 @@ def resolve_mutation_channels(
     unknown = sorted(set(channels) - known)
     if unknown:
         raise ValueError(f"Unknown mutation channels: {unknown}")
-
     return sorted(set(channels))
 
 
@@ -133,6 +137,21 @@ def resolve_human_approval(
         "satisfied": not required or granted,
         "reason": reason,
     }
+
+
+def profile_allows_direct_mutation(
+    profile: dict[str, Any],
+    mutation_channels: Iterable[str],
+) -> bool:
+    mode = profile.get("direct_mutation", False)
+    channels = set(mutation_channels)
+    if mode is False:
+        return False
+    if mode == "authorized_only":
+        return True
+    if mode == "portable_import_only":
+        return bool(channels) and channels <= {"package"}
+    raise ValueError(f"Unknown runtime direct_mutation mode: {mode}")
 
 
 def build_permission_projection(
@@ -179,16 +198,27 @@ def build_permission_projection(
 def build_effective_harness(
     root: Path,
     contract_path: str,
-    execution_profile: str | None = None,
+    *,
+    route_id: str,
+    execution_profile: str,
     request: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    """Build Runtime enforcement from explicit Orchestration selections.
+
+    Runtime does not discover or infer route/profile choices. Callers must pass the
+    already-selected route and execution profile.
+    """
+    if not str(route_id or "").strip():
+        raise ValueError("explicit selected route_id is required")
+    if not str(execution_profile or "").strip():
+        raise ValueError("explicit selected execution_profile is required")
+
     request = request or {}
-    contract = read_yaml(root, contract_path)
-    route_id, _ = route_for_contract(root, contract_path)
+    contract = load_task_contract(root, contract_path)
+
     profiles = read_yaml(root, RUNTIME_PROFILES).get("profiles", {})
-    profile_id = execution_profile or contract.get("default_execution_profile")
-    if profile_id not in profiles:
-        raise ValueError(f"Unknown execution profile: {profile_id}")
+    if execution_profile not in profiles:
+        raise ValueError(f"Unknown execution profile: {execution_profile}")
 
     risk_id = str(contract.get("risk_level", "R0"))
     risks = read_yaml(root, RISK_LEVELS).get("levels", {})
@@ -204,7 +234,9 @@ def build_effective_harness(
     channel_catalog = read_yaml(root, MUTATION_CHANNELS).get("channels", {})
     mutation_channels = resolve_mutation_channels(contract, request, channel_catalog)
 
-    direct_mutation_authorized = profile_id == "personal_full_control" and risk_id != "R0"
+    direct_mutation_authorized = profile_allows_direct_mutation(
+        profiles[execution_profile], mutation_channels
+    )
     if contract.get("mutation_channel_binding") == REQUEST_BOUND and not mutation_channels:
         direct_mutation_authorized = False
 
@@ -230,14 +262,11 @@ def build_effective_harness(
         ],
     }
 
-    human_gates = list(permission_projection.get("human_gates", []) or [])
-    if "visual" in contract.get("id", ""):
-        human_gates.append({"id": "visual_review", "status": "required"})
-
     return {
         "task_contract": contract.get("id"),
-        "execution_profile": profile_id,
+        "task_contract_path": Path(contract_path).as_posix(),
         "route_id": route_id,
+        "execution_profile": execution_profile,
         "risk_level": risk_id,
         "permission": permission_projection["permission"],
         "allowed_mutations": permission_projection["allowed_mutations"],
@@ -249,18 +278,17 @@ def build_effective_harness(
         },
         "quality_gates": quality_gates,
         "human_approval": permission_projection["human_approval"],
-        "human_gates": human_gates,
+        "human_gates": permission_projection["human_gates"],
         "stop_conditions": list(contract.get("stop_conditions", []) or []),
         "unresolved_bindings": list(request.get("unresolved_bindings", []) or []),
         "provenance": [
-            {"source_path": contract_path, "reason": "harness_contract"},
-            {"source_path": CONTEXT_CATALOG, "reason": "route_binding"},
-            {"source_path": RUNTIME_PROFILES, "reason": "execution_profile"},
-            {"source_path": RISK_LEVELS, "reason": "risk_level"},
-            {"source_path": QUALITY_GATES, "reason": "quality_gate"},
-            {"source_path": MUTATION_CHANNELS, "reason": "mutation_channel"},
-            {"source_path": MCP_ACTIVATION, "reason": "tool_access"},
-            {"source_path": "Tools/HarnessProjection/effective_harness.py", "reason": "harness_semantics"},
+            {"source_path": Path(contract_path).as_posix(), "reason": "selected_task_contract"},
+            {"source_path": RUNTIME_PROFILES, "reason": "runtime_execution_profile"},
+            {"source_path": RISK_LEVELS, "reason": "policy_risk_level"},
+            {"source_path": QUALITY_GATES, "reason": "policy_quality_gate_catalog"},
+            {"source_path": MUTATION_CHANNELS, "reason": "runtime_mutation_channel"},
+            {"source_path": MCP_ACTIVATION, "reason": "runtime_tool_access"},
+            {"source_path": "Runtime/Harnesses/effective_harness.py", "reason": "runtime_enforcement_projection"},
         ],
     }
 
@@ -271,6 +299,10 @@ def validate_effective_harness(document: dict[str, Any]) -> list[str]:
     prohibited = set(document.get("prohibited_mutations", []) or [])
     mutate_permission = document.get("permission", {}).get("mutate")
 
+    if not str(document.get("route_id") or "").strip():
+        errors.append("Explicit route_id is required")
+    if not str(document.get("execution_profile") or "").strip():
+        errors.append("Explicit execution_profile is required")
     if allowed & prohibited:
         errors.append("Mutation cannot be both allowed and prohibited")
     if document.get("risk_level") == "R0" and mutate_permission != "blocked":
