@@ -220,12 +220,12 @@ providers:
     evidence_strength: 5
     qualifiers_supported:
       domain: [visual_art, cinematic]
-      workflow: [lookdev_refine, lighting, environment, camera, capture, evaluate, refine, timeline, cinematic]
+      workflow: [lookdev_refine, lighting, environment, camera, camera_fov_reference, capture, evaluate, refine, timeline, cinematic]
     capabilities:
       domain.workflow:
         priority: 140
         surfaces: [editor, live_editor]
-        evidence_supported: [domain_result, mutation_evidence, visual_direction_plan, exact_diff, expected_revision, cinematic_plan, timeline_evidence, artist_validation, refinement_plan, evaluation_reference, undo_registration, save_not_performed]
+        evidence_supported: [domain_result, mutation_evidence, visual_direction_plan, exact_diff, expected_revision, cinematic_plan, timeline_evidence, artist_validation, refinement_plan, evaluation_reference, camera_binding, visual_capture, undo_registration, save_not_performed]
         environment_requirements:
           project.exists: true
           unity_artist_cli.available: true

@@ -1,0 +1,230 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:reference-implementation:v1.1
+title: UnityAgent UnityArtist Reference Implementation v1.1
+description: Strict contract vocabulary for the Windows Camera FOV Golden Task.
+type: object
+additionalProperties: false
+required: [contract_type, value]
+properties:
+  contract_type:
+    enum: [TaskContract, ApprovalDecision, SurfaceGrant, TypedAction, ProviderResult, EvidenceRecord, CompletionDecision]
+  value:
+    type: object
+allOf:
+  - if:
+      properties: {contract_type: {const: TaskContract}}
+    then: {properties: {value: {$ref: '#/$defs/task_contract'}}}
+  - if:
+      properties: {contract_type: {const: ApprovalDecision}}
+    then: {properties: {value: {$ref: '#/$defs/approval_decision'}}}
+  - if:
+      properties: {contract_type: {const: SurfaceGrant}}
+    then: {properties: {value: {$ref: '#/$defs/surface_grant'}}}
+  - if:
+      properties: {contract_type: {const: TypedAction}}
+    then: {properties: {value: {$ref: '#/$defs/typed_action'}}}
+  - if:
+      properties: {contract_type: {const: ProviderResult}}
+    then: {properties: {value: {$ref: '#/$defs/provider_result'}}}
+  - if:
+      properties: {contract_type: {const: EvidenceRecord}}
+    then: {properties: {value: {$ref: '#/$defs/evidence_record'}}}
+  - if:
+      properties: {contract_type: {const: CompletionDecision}}
+    then: {properties: {value: {$ref: '#/$defs/completion_decision'}}}
+$defs:
+  digest: {type: string, pattern: '^[0-9a-f]{64}$'}
+  timestamp: {type: string, format: date-time, minLength: 1}
+  project:
+    type: object
+    additionalProperties: false
+    required: [root, name]
+    properties:
+      root: {type: string, minLength: 1}
+      name: {type: string, minLength: 1}
+  scope:
+    type: object
+    additionalProperties: false
+    required: [target_guids, component_type, property_paths, mutation_channels]
+    properties:
+      target_guids: {type: array, minItems: 1, maxItems: 1, items: {type: string, minLength: 1}}
+      component_type: {const: UnityEngine.Camera}
+      property_paths: {const: [Camera.fieldOfView]}
+      mutation_channels: {const: [serialized_property]}
+  budgets:
+    type: object
+    additionalProperties: false
+    required: [max_parent_total_calls, max_parent_reentries, max_global_replans, max_escalations, max_child_llm_calls, max_tool_calls, max_wall_clock_ms, max_child_wall_clock_ms, max_child_input_tokens, max_child_output_tokens, max_parent_input_tokens, max_parent_output_tokens, max_process_restarts, max_provider_retries]
+    properties:
+      max_parent_total_calls: {type: integer, minimum: 0}
+      max_parent_reentries: {type: integer, minimum: 0}
+      max_global_replans: {type: integer, minimum: 0}
+      max_escalations: {type: integer, minimum: 0}
+      max_child_llm_calls: {type: integer, minimum: 0}
+      max_tool_calls: {type: integer, minimum: 0}
+      max_wall_clock_ms: {type: integer, minimum: 0}
+      max_child_wall_clock_ms: {type: integer, minimum: 0}
+      max_child_input_tokens: {type: integer, minimum: 0}
+      max_child_output_tokens: {type: integer, minimum: 0}
+      max_parent_input_tokens: {type: integer, minimum: 0}
+      max_parent_output_tokens: {type: integer, minimum: 0}
+      max_process_restarts: {type: integer, minimum: 0}
+      max_provider_retries: {type: integer, minimum: 0}
+  evidence_union:
+    type: array
+    minItems: 3
+    uniqueItems: true
+    items: {enum: [mutation_diff, editor_observation, visual_capture]}
+  task_contract:
+    type: object
+    additionalProperties: false
+    required: [schema_version, task_id, run_id, goal_type, project, project_fingerprint, scope, required_evidence, budgets, issued_at, contract_digest]
+    properties:
+      schema_version: {const: '1.1'}
+      task_id: {type: string, minLength: 1}
+      run_id: {type: string, minLength: 1}
+      goal_type: {const: artist.camera.refine}
+      project: {$ref: '#/$defs/project'}
+      project_fingerprint: {$ref: '#/$defs/digest'}
+      scope: {$ref: '#/$defs/scope'}
+      required_evidence: {$ref: '#/$defs/evidence_union'}
+      budgets: {$ref: '#/$defs/budgets'}
+      issued_at: {$ref: '#/$defs/timestamp'}
+      contract_digest: {$ref: '#/$defs/digest'}
+  approval_decision:
+    type: object
+    additionalProperties: false
+    required: [schema_version, approval_decision_id, task_id, run_id, project, project_fingerprint, contract_digest, capability, scope, parameter_envelope, required_evidence, status, expires_at, revocation_epoch, human_review, decision_digest]
+    properties:
+      schema_version: {const: '1.1'}
+      approval_decision_id: {type: string, minLength: 1}
+      task_id: {type: string, minLength: 1}
+      run_id: {type: string, minLength: 1}
+      project: {$ref: '#/$defs/project'}
+      project_fingerprint: {$ref: '#/$defs/digest'}
+      contract_digest: {$ref: '#/$defs/digest'}
+      capability: {const: artist.camera.refine}
+      scope: {$ref: '#/$defs/scope'}
+      parameter_envelope:
+        type: object
+        additionalProperties: false
+        required: [min, max]
+        properties:
+          min: {type: number, exclusiveMinimum: 0, maximum: 179}
+          max: {type: number, exclusiveMinimum: 0, maximum: 179}
+      required_evidence: {$ref: '#/$defs/evidence_union'}
+      status: {enum: [active, revoked, expired]}
+      expires_at: {$ref: '#/$defs/timestamp'}
+      revocation_epoch: {type: integer, minimum: 0}
+      human_review: {enum: [approved, pending, rejected]}
+      decision_digest: {$ref: '#/$defs/digest'}
+  surface_grant:
+    type: object
+    additionalProperties: false
+    required: [schema_version, grant_id, audience, subagent_instance_id, task_id, run_id, project, project_fingerprint, contract_digest, approval_decision_id, approval_digest, capabilities, issued_at, expires_at, revocation_epoch, grant_digest]
+    properties:
+      schema_version: {const: '1.1'}
+      grant_id: {type: string, minLength: 1}
+      audience: {const: unity_artist}
+      subagent_instance_id: {type: string, minLength: 1}
+      task_id: {type: string, minLength: 1}
+      run_id: {type: string, minLength: 1}
+      project: {$ref: '#/$defs/project'}
+      project_fingerprint: {$ref: '#/$defs/digest'}
+      contract_digest: {$ref: '#/$defs/digest'}
+      approval_decision_id: {type: string, minLength: 1}
+      approval_digest: {$ref: '#/$defs/digest'}
+      capabilities:
+        type: array
+        minItems: 1
+        uniqueItems: true
+        items: {enum: [artist.camera.inspect, artist.camera.refine, visual.capture]}
+      issued_at: {$ref: '#/$defs/timestamp'}
+      expires_at: {$ref: '#/$defs/timestamp'}
+      revocation_epoch: {type: integer, minimum: 0}
+      grant_digest: {$ref: '#/$defs/digest'}
+  typed_action:
+    type: object
+    additionalProperties: false
+    required: [schema_version, action_id, idempotency_key, task_id, run_id, contract_digest, approval_decision_id, approval_digest, grant_id, grant_digest, project, project_fingerprint, capability, target, property_path, mutation_channel, value, value_type, unit, expected_revision, additional_required_evidence, action_digest]
+    properties:
+      schema_version: {const: '1.1'}
+      action_id: {type: string, minLength: 1}
+      idempotency_key: {type: string, minLength: 1}
+      task_id: {type: string, minLength: 1}
+      run_id: {type: string, minLength: 1}
+      contract_digest: {$ref: '#/$defs/digest'}
+      approval_decision_id: {type: string, minLength: 1}
+      approval_digest: {$ref: '#/$defs/digest'}
+      grant_id: {type: string, minLength: 1}
+      grant_digest: {$ref: '#/$defs/digest'}
+      project: {$ref: '#/$defs/project'}
+      project_fingerprint: {$ref: '#/$defs/digest'}
+      capability: {const: artist.camera.refine}
+      target:
+        type: object
+        additionalProperties: false
+        required: [guid, component_type]
+        properties:
+          guid: {type: string, minLength: 1}
+          component_type: {const: UnityEngine.Camera}
+      property_path: {const: Camera.fieldOfView}
+      mutation_channel: {const: serialized_property}
+      value: {type: number, minimum: 0, maximum: 179}
+      value_type: {const: float}
+      unit: {const: degree}
+      expected_revision: {type: string, minLength: 1}
+      additional_required_evidence: {type: array, uniqueItems: true, items: {enum: [mutation_diff, editor_observation, visual_capture]}}
+      action_digest: {$ref: '#/$defs/digest'}
+  provider_result:
+    type: object
+    additionalProperties: false
+    required: [schema_version, status, provider_ref, action_id, project, target, property_path, before_value, after_value, observed_revision, exact_diff, evidence, mutation_count, boundary_violations, failure_class, provider_result_digest]
+    properties:
+      schema_version: {const: '1.1'}
+      status: {enum: [passed, failed]}
+      provider_ref: {const: unity_artist_cli}
+      action_id: {type: string, minLength: 1}
+      project: {$ref: '#/$defs/project'}
+      target: {type: object, additionalProperties: false, required: [guid, component_type], properties: {guid: {type: string, minLength: 1}, component_type: {const: UnityEngine.Camera}}}
+      property_path: {const: Camera.fieldOfView}
+      before_value: {type: number}
+      after_value: {type: number}
+      observed_revision: {type: string, minLength: 1}
+      exact_diff: {type: object, additionalProperties: false, required: [target, property, before, after]}
+      evidence: {type: array, uniqueItems: true, items: {type: string}}
+      mutation_count: {type: integer, minimum: 0}
+      boundary_violations: {type: array, uniqueItems: true, items: {type: string}}
+      failure_class: {type: [string, 'null']}
+      provider_result_digest: {$ref: '#/$defs/digest'}
+  evidence_record:
+    type: object
+    additionalProperties: false
+    required: [schema_version, evidence_id, task_id, run_id, action_id, evidence_type, payload, durability, observation_state, evidence_digest]
+    properties:
+      schema_version: {const: '1.1'}
+      evidence_id: {type: string, minLength: 1}
+      task_id: {type: string, minLength: 1}
+      run_id: {type: string, minLength: 1}
+      action_id: {type: string, minLength: 1}
+      evidence_type: {enum: [mutation_diff, editor_observation, visual_capture]}
+      payload: {type: object, minProperties: 1}
+      durability: {const: durable}
+      observation_state: {const: observed}
+      evidence_digest: {$ref: '#/$defs/digest'}
+  completion_decision:
+    type: object
+    additionalProperties: false
+    required: [schema_version, task_id, run_id, state, final_revision, evidence_ids, committed_action_ids, budget, boundary_violations, reason, decision_digest]
+    properties:
+      schema_version: {const: '1.1'}
+      task_id: {type: string, minLength: 1}
+      run_id: {type: string, minLength: 1}
+      state: {enum: [eligible, blocked]}
+      final_revision: {type: [string, 'null']}
+      evidence_ids: {type: array, uniqueItems: true, items: {type: string, minLength: 1}}
+      committed_action_ids: {type: array, uniqueItems: true, items: {type: string, minLength: 1}}
+      budget: {type: object, additionalProperties: {type: integer, minimum: 0}}
+      boundary_violations: {type: array, uniqueItems: true, items: {type: string}}
+      reason: {type: string, minLength: 1}
+      decision_digest: {$ref: '#/$defs/digest'}

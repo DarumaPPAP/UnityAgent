@@ -18,7 +18,8 @@ import yaml
 from jsonschema import Draft202012Validator
 
 from Orchestration.Orchestrator.orchestrator import runtime_handoff
-from Orchestration.Graph.state_mapping import workflow_state_patch
+from Orchestration.Graph.state_mapping import loop_control_state_patch, workflow_state_patch
+from Persistence.Approval.approval_store import ApprovalDecisionStore
 from Persistence.Evidence.evidence_store import EvidenceStore
 from Persistence.Evidence.runtime_adapter import append_runtime_execution_evidence
 from Persistence.Install.receipt_store import InstallReceiptStore
@@ -33,6 +34,8 @@ from Runtime.Tooling.provider_registry import RuntimeProviderRegistry
 from Runtime.Tooling.tool_broker import ToolBroker
 from Runtime.Contracts.capability_contract import validate_capability_request
 from Runtime.Contracts.toolchain_setup_contract import validate_toolchain_setup_request
+from Runtime.ReferenceImplementation.authority import ApprovalDecisionResolver
+from ControlPlane.reference_camera_fov import execute_camera_fov_reference, is_camera_fov_reference_request
 
 ROOT = Path(__file__).resolve().parents[1]
 ENTRY_SCHEMA_PATH = Path("Runtime/Contracts/entry-request.schema.yaml")
@@ -87,11 +90,13 @@ class UnityAgentControlPlane:
         state_store: StateStore | None = None,
         evidence_store: EvidenceStore | None = None,
         receipt_store: InstallReceiptStore | None = None,
+        approval_resolver: ApprovalDecisionResolver | None = None,
     ) -> None:
         self.broker = broker or ToolBroker()
         self.state_store = state_store or StateStore(persistence_root)
         self.evidence_store = evidence_store or EvidenceStore(persistence_root)
         self.receipt_store = receipt_store or InstallReceiptStore(persistence_root)
+        self.approval_resolver = approval_resolver or ApprovalDecisionResolver(ApprovalDecisionStore(persistence_root))
 
     def _save_execution_state(
         self,
@@ -129,6 +134,25 @@ class UnityAgentControlPlane:
                 active_subgraph_id=route_id,
                 active_node_id=node_id,
                 shared_state_refs=list(dict.fromkeys(evidence_refs)),
+            )
+        )
+
+    def _save_loop_state(
+        self,
+        *,
+        run_id: str,
+        loop_id: str,
+        attempt: int,
+        decision: str,
+        progress_marker: str | None,
+    ) -> str:
+        return self.state_store.save_loop_control_state(
+            loop_control_state_patch(
+                run_id=run_id,
+                loop_id=loop_id,
+                semantic_attempt=attempt,
+                progress_marker=progress_marker,
+                decision=decision,
             )
         )
 
@@ -176,6 +200,68 @@ class UnityAgentControlPlane:
             node_id=node_id,
             evidence_refs=evidence_refs,
         )
+        loop_id = str(entry_request.get("loop_id") or "") or None
+        loop_state_ref = None
+        if loop_id:
+            loop_state_ref = self._save_loop_state(
+                run_id=resolved_run_id,
+                loop_id=loop_id,
+                attempt=0,
+                decision="continue",
+                progress_marker=node_id,
+            )
+
+        if is_camera_fov_reference_request(entry_request):
+            reference = execute_camera_fov_reference(
+                entry_request=entry_request,
+                project_root=entry_request["project_root"],
+                persistence_root=self.state_store.layout.root,
+                environment_snapshot=snapshot,
+                context=context,
+                executors=executors,
+                provider_arguments=provider_arguments,
+                broker=self.broker,
+                evidence_store=self.evidence_store,
+                approval_resolver=self.approval_resolver,
+                run_id=resolved_run_id,
+            )
+            evidence_refs.extend(str(item) for item in reference.get("evidence_refs") or [])
+            final_status = str(reference.get("status") or "blocked")
+            state_ref = self._save_execution_state(
+                run_id=resolved_run_id,
+                step_id=node_id,
+                action_id=handoff["action_id"],
+                status=final_status,
+                evidence_refs=evidence_refs,
+            )
+            workflow_state_ref = self._save_workflow_state(
+                run_id=resolved_run_id,
+                route_id=str(entry_request["route_id"]),
+                node_id=node_id,
+                evidence_refs=evidence_refs,
+            )
+            if loop_id:
+                loop_state_ref = self._save_loop_state(
+                    run_id=resolved_run_id,
+                    loop_id=loop_id,
+                    attempt=1,
+                    decision="exit" if final_status == "completed" else "blocked",
+                    progress_marker=node_id,
+                )
+            return {
+                "schema_version": "1.0",
+                "status": final_status,
+                "run_id": resolved_run_id,
+                "entry_point": entry_request["entry_point"],
+                "layer_trace": ["entry", "control_plane", "reference_contract", "runtime_gate", "provider_layer", "evidence_state"],
+                "handoff": handoff,
+                "results": [reference],
+                "evidence_refs": evidence_refs,
+                "state_ref": state_ref,
+                "workflow_state_ref": workflow_state_ref,
+                "loop_state_ref": loop_state_ref,
+            }
+
         results: list[dict[str, Any]] = []
         for index, request in enumerate(entry_request["capability_requests"]):
             capability_step_id = f"{node_id}-{index + 1}"

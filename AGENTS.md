@@ -48,3 +48,4 @@ Policy追加の前にKnowledge / Retrieval / Tool / Harness / Eval / Architectur
 - Goal達成、変更差分、実施した検証、残る制約を報告する。実行不能な必須Gateを成功扱いしない。
 - UI / CodexはProviderへ直接到達しない。必ずEntry → UnityAgent Control Plane → Capability / Policy / Resolver → Provider → Evidenceを通る。
 - Setupは `unity-agent doctor → setup plan → approval → setup apply` の順序で行い、InstallReceiptとEvidenceを残す。
+- Host Control PlaneはGitHubのremote bootstrapから直接導入できる。UPM PackageとCodex Pluginは同じGitHubリポジトリの別Entryとして扱い、bootstrapがProviderを直接実行しない。
