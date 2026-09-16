@@ -56,7 +56,12 @@ def read_json(path: Path) -> dict[str, Any]:
 
 def atomic_write_json(path: Path, value: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    fd, temp_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=str(path.parent))
+    # Keep the temporary basename deliberately short.  Windows legacy path
+    # handling reports ERROR_PATH_NOT_FOUND when the temporary name pushes a
+    # long-but-valid workspace path over MAX_PATH, even when the final record
+    # name itself still fits.  The directory is already bound to this target,
+    # so the target basename does not need to be repeated in the temp name.
+    fd, temp_name = tempfile.mkstemp(prefix=".p-", dir=str(path.parent))
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="") as stream:
             json.dump(value, stream, ensure_ascii=False, indent=2, sort_keys=True)

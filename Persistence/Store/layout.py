@@ -47,6 +47,15 @@ class PersistenceLayout:
     def evidence_events(self) -> Path:
         return self.root / "evidence" / "events.jsonl"
 
+    def approval_decision(self, approval_decision_id: str) -> Path:
+        return self.root / "approvals" / "decisions" / f"{safe_id(approval_decision_id, 'approval_decision_id')}.json"
+
+    def reference_reservations(self, run_id: str) -> Path:
+        return self.run_root(run_id) / "current" / "reference-reservations.json"
+
+    def reference_idempotency(self, run_id: str) -> Path:
+        return self.run_root(run_id) / "current" / "reference-idempotency.json"
+
     def install_receipt(self, receipt_id: str) -> Path:
         return self.root / "install" / "receipts" / f"{safe_id(receipt_id, 'receipt_id')}.json"
 
