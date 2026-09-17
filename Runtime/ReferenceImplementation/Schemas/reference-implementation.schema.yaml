@@ -1,7 +1,7 @@
 $schema: https://json-schema.org/draft/2020-12/schema
 $id: urn:unityagent:reference-implementation:v1.1
-title: UnityAgent UnityArtist Reference Implementation v1.1
-description: Strict contract vocabulary for the Windows Camera FOV Golden Task.
+title: UnityAgent generic SubAgent Reference Implementation v1.1
+description: Generic wire envelope; concrete capability, scope and evidence rules are supplied by a SubAgent profile.
 type: object
 additionalProperties: false
 required: [contract_type, value]
@@ -47,10 +47,10 @@ $defs:
     additionalProperties: false
     required: [target_guids, component_type, property_paths, mutation_channels]
     properties:
-      target_guids: {type: array, minItems: 1, maxItems: 1, items: {type: string, minLength: 1}}
-      component_type: {const: UnityEngine.Camera}
-      property_paths: {const: [Camera.fieldOfView]}
-      mutation_channels: {const: [serialized_property]}
+      target_guids: {type: array, minItems: 1, uniqueItems: true, items: {type: string, minLength: 1}}
+      component_type: {type: string, minLength: 1}
+      property_paths: {type: array, minItems: 1, uniqueItems: true, items: {type: string, minLength: 1}}
+      mutation_channels: {type: array, minItems: 1, uniqueItems: true, items: {type: string, minLength: 1}}
   budgets:
     type: object
     additionalProperties: false
@@ -72,9 +72,9 @@ $defs:
       max_provider_retries: {type: integer, minimum: 0}
   evidence_union:
     type: array
-    minItems: 3
+    minItems: 1
     uniqueItems: true
-    items: {enum: [mutation_diff, editor_observation, visual_capture]}
+    items: {type: string, minLength: 1}
   task_contract:
     type: object
     additionalProperties: false
@@ -83,7 +83,7 @@ $defs:
       schema_version: {const: '1.1'}
       task_id: {type: string, minLength: 1}
       run_id: {type: string, minLength: 1}
-      goal_type: {const: artist.camera.refine}
+      goal_type: {type: string, minLength: 1}
       project: {$ref: '#/$defs/project'}
       project_fingerprint: {$ref: '#/$defs/digest'}
       scope: {$ref: '#/$defs/scope'}
@@ -103,15 +103,15 @@ $defs:
       project: {$ref: '#/$defs/project'}
       project_fingerprint: {$ref: '#/$defs/digest'}
       contract_digest: {$ref: '#/$defs/digest'}
-      capability: {const: artist.camera.refine}
+      capability: {type: string, minLength: 1}
       scope: {$ref: '#/$defs/scope'}
       parameter_envelope:
         type: object
         additionalProperties: false
         required: [min, max]
         properties:
-          min: {type: number, exclusiveMinimum: 0, maximum: 179}
-          max: {type: number, exclusiveMinimum: 0, maximum: 179}
+          min: {type: number}
+          max: {type: number}
       required_evidence: {$ref: '#/$defs/evidence_union'}
       status: {enum: [active, revoked, expired]}
       expires_at: {$ref: '#/$defs/timestamp'}
@@ -125,7 +125,7 @@ $defs:
     properties:
       schema_version: {const: '1.1'}
       grant_id: {type: string, minLength: 1}
-      audience: {const: unity_artist}
+      audience: {type: string, minLength: 1}
       subagent_instance_id: {type: string, minLength: 1}
       task_id: {type: string, minLength: 1}
       run_id: {type: string, minLength: 1}
@@ -138,7 +138,7 @@ $defs:
         type: array
         minItems: 1
         uniqueItems: true
-        items: {enum: [artist.camera.inspect, artist.camera.refine, visual.capture]}
+        items: {type: string, minLength: 1}
       issued_at: {$ref: '#/$defs/timestamp'}
       expires_at: {$ref: '#/$defs/timestamp'}
       revocation_epoch: {type: integer, minimum: 0}
@@ -160,21 +160,21 @@ $defs:
       grant_digest: {$ref: '#/$defs/digest'}
       project: {$ref: '#/$defs/project'}
       project_fingerprint: {$ref: '#/$defs/digest'}
-      capability: {const: artist.camera.refine}
+      capability: {type: string, minLength: 1}
       target:
         type: object
         additionalProperties: false
         required: [guid, component_type]
         properties:
           guid: {type: string, minLength: 1}
-          component_type: {const: UnityEngine.Camera}
-      property_path: {const: Camera.fieldOfView}
-      mutation_channel: {const: serialized_property}
-      value: {type: number, minimum: 0, maximum: 179}
-      value_type: {const: float}
-      unit: {const: degree}
+          component_type: {type: string, minLength: 1}
+      property_path: {type: string, minLength: 1}
+      mutation_channel: {type: string, minLength: 1}
+      value: {type: number}
+      value_type: {type: string, minLength: 1}
+      unit: {type: string, minLength: 1}
       expected_revision: {type: string, minLength: 1}
-      additional_required_evidence: {type: array, uniqueItems: true, items: {enum: [mutation_diff, editor_observation, visual_capture]}}
+      additional_required_evidence: {type: array, uniqueItems: true, items: {type: string, minLength: 1}}
       action_digest: {$ref: '#/$defs/digest'}
   provider_result:
     type: object
@@ -183,11 +183,11 @@ $defs:
     properties:
       schema_version: {const: '1.1'}
       status: {enum: [passed, failed]}
-      provider_ref: {const: unity_artist_cli}
+      provider_ref: {type: string, minLength: 1}
       action_id: {type: string, minLength: 1}
       project: {$ref: '#/$defs/project'}
-      target: {type: object, additionalProperties: false, required: [guid, component_type], properties: {guid: {type: string, minLength: 1}, component_type: {const: UnityEngine.Camera}}}
-      property_path: {const: Camera.fieldOfView}
+      target: {type: object, additionalProperties: false, required: [guid, component_type], properties: {guid: {type: string, minLength: 1}, component_type: {type: string, minLength: 1}}}
+      property_path: {type: string, minLength: 1}
       before_value: {type: number}
       after_value: {type: number}
       observed_revision: {type: string, minLength: 1}
@@ -207,7 +207,7 @@ $defs:
       task_id: {type: string, minLength: 1}
       run_id: {type: string, minLength: 1}
       action_id: {type: string, minLength: 1}
-      evidence_type: {enum: [mutation_diff, editor_observation, visual_capture]}
+      evidence_type: {type: string, minLength: 1}
       payload: {type: object, minProperties: 1}
       durability: {const: durable}
       observation_state: {const: observed}

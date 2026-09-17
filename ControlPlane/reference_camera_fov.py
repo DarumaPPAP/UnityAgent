@@ -5,9 +5,11 @@ from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
+import time
 from typing import Any, Mapping
 
 from Persistence.Evidence.evidence_store import EvidenceStore
+from Persistence.Reference.reference_gate_store import ReferenceGateStore
 from Runtime.ReferenceImplementation.authority import (
     RuntimeBudgetLedger,
     SubAgentTaskPlanner,
@@ -31,8 +33,11 @@ from Runtime.ReferenceImplementation.runtime import (
     EvidenceCompletionGate,
     RuntimeDispatchGate,
     append_reference_evidence,
+    validate_reference_environment_snapshot,
 )
+from Runtime.ReferenceImplementation.profiles import default_profile
 from Runtime.Tooling.capability_resolver import ResolutionContext
+from Runtime.Tooling.Environment.project_identity import canonical_scene_path
 
 
 DEFAULT_BUDGETS = {
@@ -167,10 +172,21 @@ def execute_camera_fov_reference(
     approval_resolver: Any,
     run_id: str,
 ) -> dict[str, Any]:
+    profile = default_profile()
     projection = dict(entry_request["task_contract_runtime_projection"])
     capability_request = dict(entry_request["capability_requests"][0])
     project_name = str(projection.get("project_name") or Path(project_root).name or "UnityProject")
     project = {"root": str(Path(project_root).resolve()), "name": project_name}
+    mutation_scope = entry_request.get("mutation_scope")
+    allowed_paths = mutation_scope.get("allowed_paths") if isinstance(mutation_scope, Mapping) else None
+    if not isinstance(allowed_paths, list) or len(allowed_paths) != 1 or not isinstance(allowed_paths[0], str):
+        raise ContractValidationError("camera_fov_reference requires exactly one scene mutation path")
+    scene_path = canonical_scene_path(project["root"], allowed_paths[0], require_exists=True)
+    validate_reference_environment_snapshot(
+        environment_snapshot,
+        project_root=project["root"],
+        scene_path=scene_path,
+    )
     computed_project_fingerprint = sha256_jcs({"project": project, "version": "reference-v1.1"})
     supplied_project_fingerprint = projection.get("project_fingerprint")
     if supplied_project_fingerprint is not None and str(supplied_project_fingerprint) != computed_project_fingerprint:
@@ -198,6 +214,7 @@ def execute_camera_fov_reference(
         budgets=budgets,
         scope=scope,
         issued_at=str(projection.get("issued_at") or iso_now()),
+        profile=profile,
     )
     approval_ref = str(capability_request.get("approval_ref") or "")
     if not approval_ref:
@@ -209,25 +226,34 @@ def execute_camera_fov_reference(
         task=task,
         approval=approval,
         subagent_instance_id=str(projection.get("subagent_instance_id") or f"artist-{run_id}"),
+        profile=profile,
     )
     ledger = RuntimeBudgetLedger(task.budgets)
-    plan = SubAgentTaskPlanner().plan(task, ledger)
+    plan = SubAgentTaskPlanner().plan(task, ledger, profile=profile)
     context_payload = {
         "proposed_value": float(projection.get("proposed_value", 43.0)),
         "expected_revision": expected_revision,
         "approval": approval.to_dict(),
         "reference_kind": "camera_fov_v1_1",
     }
-    session_events = SubAgentSessionManager().run(task=task, grant=grant, context=context_payload, approval_resolver=approval_resolver)
+    session_started = time.perf_counter()
+    try:
+        session_events = SubAgentSessionManager().run(task=task, grant=grant, context=context_payload, approval_resolver=approval_resolver, profile=profile)
+    finally:
+        ledger.record_child_observation(
+            elapsed_ms=(time.perf_counter() - session_started) * 1000,
+            context_bytes=len(json.dumps(context_payload, ensure_ascii=False).encode("utf-8")),
+            schema_bytes=len(task.to_envelope().__repr__().encode("utf-8")),
+        )
     action_envelope = next((item.get("payload", {}).get("action_envelope") for item in session_events if item.get("message_type") == "propose_action"), None)
     if not isinstance(action_envelope, Mapping):
         raise ContractValidationError("specialist did not propose a TypedAction")
-    action = TypedAction.from_envelope(action_envelope)
+    action = TypedAction.from_envelope(action_envelope, profile=profile)
     if action.target["guid"] != target_guid or action.expected_revision != expected_revision:
         raise ContractValidationError("specialist TypedAction is not bound to the inspected camera revision")
     if not 35.0 <= action.value <= 50.0:
         raise ContractValidationError("camera_fov_reference value is outside the canonical 35..50 range")
-    ledger.consume("tool_calls", 1)
+    ledger.record_tool_call()
 
     metadata: dict[str, Any] = {}
     dispatch_outcome: dict[str, Any] = {}
@@ -307,14 +333,73 @@ def execute_camera_fov_reference(
         ]
         ids: list[str] = []
         for record in records:
-            append_reference_evidence(store=evidence_store, task=task, action=bound_action, result=result, evidence=record, evidence_type=record.evidence_type)
+            append_reference_evidence(
+                store=evidence_store,
+                task=task,
+                action=bound_action,
+                result=result,
+                evidence=record,
+                evidence_type=record.evidence_type,
+                profile=profile,
+                approval=approval,
+                grant=grant,
+                scene_path=scene_path,
+                environment_snapshot=environment_snapshot,
+            )
             ids.append(record.evidence_id)
         return ids
 
-    runtime_gate = RuntimeDispatchGate(approval_resolver=approval_resolver, persistence_root=persistence_root)
-    dispatch = runtime_gate.dispatch(task=task, approval=approval, grant=grant, action=action, dispatch_provider=canonical_dispatch, evidence_writer=write_evidence)
+    runtime_gate = RuntimeDispatchGate(
+        approval_resolver=approval_resolver,
+        persistence_root=persistence_root,
+        evidence_store=evidence_store,
+        profile=profile,
+    )
+    dispatch = runtime_gate.dispatch(
+        task=task,
+        approval=approval,
+        grant=grant,
+        action=action,
+        dispatch_provider=canonical_dispatch,
+        evidence_writer=write_evidence,
+        ledger=ledger,
+        scene_path=scene_path,
+        environment_snapshot=environment_snapshot,
+    )
     provider_result = dispatch["provider_result"]
-    completion_proof = EvidenceCompletionGate(evidence_store, approval_resolver).evaluate(
+    ReferenceGateStore(persistence_root).save_manifest(
+        run_id,
+        {
+            "schema_version": "1.2",
+            "run_id": run_id,
+            "task_contract": task.to_dict(),
+            "approval_decision": approval.to_dict(),
+            "surface_grant": grant.to_dict(),
+            "typed_action": action.to_dict(),
+            "profile_id": profile.profile_id,
+            "profile_digest": sha256_jcs({
+                "profile_id": profile.profile_id,
+                "provider_id": profile.provider_id,
+                "audience": profile.audience,
+                "goal_type": profile.goal_type,
+                "capabilities": list(profile.capabilities),
+                "primary_capability": profile.primary_capability,
+                "required_evidence": list(profile.required_evidence),
+                "scope": profile.scope,
+                "value": profile.value,
+                "approval": profile.approval,
+                "evidence": profile.evidence,
+            }),
+            "environment_snapshot": deepcopy(dict(environment_snapshot)),
+            "environment_snapshot_digest": sha256_jcs(dict(environment_snapshot)),
+            "project_root": project["root"],
+            "project_fingerprint": project_fingerprint,
+            "scene_path": scene_path,
+            "provider_result": provider_result.to_dict(),
+            "evidence_ids": list(dispatch.get("evidence_ids") or []),
+        },
+    )
+    completion_proof = EvidenceCompletionGate(evidence_store, approval_resolver, profile=profile).evaluate(
         task=task,
         approval=approval,
         grant=grant,
@@ -324,6 +409,9 @@ def execute_camera_fov_reference(
         evidence_ids=list(dispatch.get("evidence_ids") or []),
         final_revision=provider_result.observed_revision,
         ledger=ledger,
+        profile=profile,
+        scene_path=scene_path,
+        environment_snapshot=environment_snapshot,
     )
     final = CompletionCoordinator().present(completion_proof, ledger=ledger)
     return {
@@ -331,6 +419,11 @@ def execute_camera_fov_reference(
         "task_contract": task.to_dict(),
         "approval_decision": approval.to_dict(),
         "surface_grant": grant.to_dict(),
+        # The Orchestration handoff action identifies the runtime node.  The
+        # persisted execution state must bind to the TypedAction that actually
+        # reserved and committed the mutation; the canonical replay gate
+        # verifies this distinction.
+        "typed_action": action.to_dict(),
         "plan": plan,
         "specialist_events": session_events,
         "dispatch": dispatch_outcome,
@@ -347,6 +440,7 @@ def execute_camera_fov_reference(
             "completion_without_required_evidence": 0 if final["status"] == "completed" else 1,
             "parent_per_tool_mediation": plan["parent_per_tool_mediation"],
             "runtime_validation_llm_calls": 0,
+            "measurements": ledger.measurement_snapshot(),
             **ledger.snapshot(),
         },
     }

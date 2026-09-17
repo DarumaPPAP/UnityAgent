@@ -94,6 +94,39 @@ def provider_result(action: TypedAction, *, before: float = 40.0, after: float =
     return ProviderResult.from_dict(value)
 
 
+def durable_evidence_writer(store: EvidenceStore, task, approval, grant):
+    def write(bound_action: TypedAction, bound_result: ProviderResult) -> list[str]:
+        payloads = {
+            "mutation_diff": {"exact_diff": bound_result.exact_diff, "before": bound_result.before_value, "after": bound_result.after_value},
+            "editor_observation": {"target_guid": bound_action.target["guid"], "property": bound_action.property_path, "value": bound_result.after_value, "revision": bound_result.observed_revision},
+            "visual_capture": {"capture_id": f"capture-{bound_action.action_id}", "captured": True},
+        }
+        ids: list[str] = []
+        for evidence_type, payload in payloads.items():
+            evidence_id = f"{bound_action.run_id}-{evidence_type}"
+            record = EvidenceRecord.observed(
+                evidence_id=evidence_id,
+                task_id=task.task_id,
+                run_id=task.run_id,
+                action_id=bound_action.action_id,
+                evidence_type=evidence_type,
+                payload=payload,
+            )
+            append_reference_evidence(
+                store=store,
+                task=task,
+                action=bound_action,
+                result=bound_result,
+                evidence=record,
+                evidence_type=evidence_type,
+                approval=approval,
+                grant=grant,
+            )
+            ids.append(evidence_id)
+        return ids
+    return write
+
+
 class ReferenceContractTests(unittest.TestCase):
     def test_jcs_is_stable_and_rejects_nan(self):
         self.assertEqual(canonicalize({"b": 1, "a": "x"}), '{"a":"x","b":1}')
@@ -163,10 +196,12 @@ class MutationRuntimeTests(unittest.TestCase):
         task, approval, grant, action = contract_fixture()
         result = provider_result(action)
         with _PersistenceDirectory() as directory:
-            first_gate = RuntimeDispatchGate(persistence_root=directory)
+            evidence_store = EvidenceStore(directory)
+            write_evidence = durable_evidence_writer(evidence_store, task, approval, grant)
+            first_gate = RuntimeDispatchGate(persistence_root=directory, evidence_store=evidence_store)
             first = first_gate.dispatch(
                 task=task, approval=approval, grant=grant, action=action,
-                dispatch_provider=lambda _: result, evidence_writer=lambda *_: ["evidence-1"],
+                dispatch_provider=lambda _: result, evidence_writer=write_evidence,
             )
             self.assertEqual(first["status"], "applied")
             calls = 0
@@ -176,17 +211,19 @@ class MutationRuntimeTests(unittest.TestCase):
                 calls += 1
                 return result
 
-            second = RuntimeDispatchGate(persistence_root=directory).dispatch(
+            second = RuntimeDispatchGate(persistence_root=directory, evidence_store=evidence_store).dispatch(
                 task=task, approval=approval, grant=grant, action=action, dispatch_provider=should_not_apply,
+                evidence_writer=write_evidence,
             )
             self.assertEqual(second["status"], "idempotent")
-            self.assertEqual(second["evidence_ids"], ["evidence-1"])
+            self.assertEqual(second["evidence_ids"], ["run-test-mutation_diff", "run-test-editor_observation", "run-test-visual_capture"])
             self.assertEqual(calls, 0)
 
     def test_evidence_failure_is_in_doubt_and_recovery_does_not_reapply(self):
         task, approval, grant, action = contract_fixture()
         result = provider_result(action)
         with _PersistenceDirectory() as directory:
+            evidence_store = EvidenceStore(directory)
             calls = 0
 
             def apply_once(_: TypedAction):
@@ -194,7 +231,7 @@ class MutationRuntimeTests(unittest.TestCase):
                 calls += 1
                 return result
 
-            gate = RuntimeDispatchGate(persistence_root=directory)
+            gate = RuntimeDispatchGate(persistence_root=directory, evidence_store=evidence_store)
             with self.assertRaises(RuntimeError):
                 gate.dispatch(
                     task=task, approval=approval, grant=grant, action=action,
@@ -202,18 +239,33 @@ class MutationRuntimeTests(unittest.TestCase):
                     evidence_writer=lambda *_: (_ for _ in ()).throw(RuntimeError("evidence unavailable")),
                 )
             self.assertEqual(gate.reservations.get(action).state, ReservationState.IN_DOUBT)
-            recovered = RuntimeDispatchGate(persistence_root=directory).recover(
+            recovered = RuntimeDispatchGate(persistence_root=directory, evidence_store=evidence_store).recover(
                 task=task, approval=approval, grant=grant, action=action,
-                evidence_writer=lambda *_: ["evidence-replayed"],
-                observe=lambda _: {"value": 43.0, "revision": "revision-after"},
+                evidence_writer=durable_evidence_writer(evidence_store, task, approval, grant),
+                observe=lambda _: {
+                    "value": 43.0,
+                    "revision": "revision-after",
+                    "mutation_causality": {
+                        "run_id": action.run_id,
+                        "action_id": action.action_id,
+                        "action_digest": action.action_digest,
+                        "provider_result_digest": result.provider_result_digest,
+                        "before_revision": action.expected_revision,
+                        "after_revision": result.observed_revision,
+                        "before_value": result.before_value,
+                        "after_value": result.after_value,
+                        "changed": True,
+                    },
+                },
             )
             self.assertEqual(recovered["status"], "recovered")
             self.assertEqual(calls, 1)
-            replay = RuntimeDispatchGate(persistence_root=directory).dispatch(
+            replay = RuntimeDispatchGate(persistence_root=directory, evidence_store=evidence_store).dispatch(
                 task=task, approval=approval, grant=grant, action=action, dispatch_provider=apply_once,
+                evidence_writer=durable_evidence_writer(evidence_store, task, approval, grant),
             )
             self.assertEqual(replay["status"], "idempotent")
-            self.assertEqual(replay["evidence_ids"], ["evidence-replayed"])
+            self.assertEqual(replay["evidence_ids"], ["run-test-mutation_diff", "run-test-editor_observation", "run-test-visual_capture"])
             self.assertEqual(calls, 1)
     def test_idempotent_replay_and_key_reuse(self):
         task, approval, grant, action = contract_fixture()
@@ -225,15 +277,18 @@ class MutationRuntimeTests(unittest.TestCase):
             calls += 1
             return result
 
-        gate = RuntimeDispatchGate()
-        first = gate.dispatch(task=task, approval=approval, grant=grant, action=action, dispatch_provider=dispatch)
-        second = gate.dispatch(task=task, approval=approval, grant=grant, action=action, dispatch_provider=dispatch)
-        self.assertEqual(first["status"], "applied")
-        self.assertEqual(second["status"], "idempotent")
-        self.assertEqual(calls, 1)
-        different = TypedAction.propose(action_id="action-other", idempotency_key=action.idempotency_key, task=task, approval=approval, grant=grant, value=44.0, expected_revision=action.expected_revision)
-        with self.assertRaises((ContractValidationError, RuntimeError)):
-            gate.dispatch(task=task, approval=approval, grant=grant, action=different, dispatch_provider=dispatch)
+        with _PersistenceDirectory() as directory:
+            evidence_store = EvidenceStore(directory)
+            write_evidence = durable_evidence_writer(evidence_store, task, approval, grant)
+            gate = RuntimeDispatchGate(evidence_store=evidence_store)
+            first = gate.dispatch(task=task, approval=approval, grant=grant, action=action, dispatch_provider=dispatch, evidence_writer=write_evidence)
+            second = gate.dispatch(task=task, approval=approval, grant=grant, action=action, dispatch_provider=dispatch, evidence_writer=write_evidence)
+            self.assertEqual(first["status"], "applied")
+            self.assertEqual(second["status"], "idempotent")
+            self.assertEqual(calls, 1)
+            different = TypedAction.propose(action_id="action-other", idempotency_key=action.idempotency_key, task=task, approval=approval, grant=grant, value=44.0, expected_revision=action.expected_revision)
+            with self.assertRaises((ContractValidationError, RuntimeError)):
+                gate.dispatch(task=task, approval=approval, grant=grant, action=different, dispatch_provider=dispatch, evidence_writer=write_evidence)
 
     def test_concurrent_same_action_has_one_apply(self):
         task, approval, grant, action = contract_fixture()
@@ -248,33 +303,56 @@ class MutationRuntimeTests(unittest.TestCase):
             time.sleep(0.03)
             return result
 
-        gate = RuntimeDispatchGate()
-        outcomes: list[str] = []
-        errors: list[Exception] = []
+        with _PersistenceDirectory() as directory:
+            evidence_store = EvidenceStore(directory)
+            write_evidence = durable_evidence_writer(evidence_store, task, approval, grant)
+            gate = RuntimeDispatchGate(evidence_store=evidence_store)
+            outcomes: list[str] = []
+            errors: list[Exception] = []
 
-        def run() -> None:
-            try:
-                outcomes.append(gate.dispatch(task=task, approval=approval, grant=grant, action=action, dispatch_provider=dispatch)["status"])
-            except Exception as exc:  # one concurrent claimant is expected to lose the reservation
-                errors.append(exc)
+            def run() -> None:
+                try:
+                    outcomes.append(gate.dispatch(task=task, approval=approval, grant=grant, action=action, dispatch_provider=dispatch, evidence_writer=write_evidence)["status"])
+                except Exception as exc:  # one concurrent claimant is expected to lose the reservation
+                    errors.append(exc)
 
-        threads = [threading.Thread(target=run) for _ in range(5)]
-        for thread in threads: thread.start()
-        for thread in threads: thread.join()
-        self.assertEqual(calls, 1)
-        self.assertEqual(outcomes.count("applied"), 1)
-        self.assertEqual(len(outcomes) + len(errors), 5)
+            threads = [threading.Thread(target=run) for _ in range(5)]
+            for thread in threads: thread.start()
+            for thread in threads: thread.join()
+            self.assertEqual(calls, 1)
+            self.assertEqual(outcomes.count("applied"), 1)
+            self.assertEqual(len(outcomes) + len(errors), 5)
 
     def test_crash_recovery_reobserves_before_commit(self):
         task, approval, grant, action = contract_fixture()
         store = ActionReservationStore()
         store.reserve(action)
+        result = provider_result(action)
+        store.mark_applied(action, result)
         store.mark_in_doubt(action)
-        self.assertEqual(store.recover(action, observe=lambda: {"revision": "revision-after", "value": 43.0}), ReservationState.COMMITTED)
+        proof = {
+            "run_id": action.run_id,
+            "action_id": action.action_id,
+            "action_digest": action.action_digest,
+            "provider_result_digest": result.provider_result_digest,
+            "before_revision": action.expected_revision,
+            "after_revision": result.observed_revision,
+            "before_value": result.before_value,
+            "after_value": result.after_value,
+            "changed": True,
+        }
+        self.assertEqual(
+            store.recover(
+                action,
+                observe=lambda: {"revision": "revision-after", "value": 43.0, "mutation_causality": proof},
+            ),
+            ReservationState.APPLIED,
+        )
 
         action_two = TypedAction.propose(action_id="action-test-two", idempotency_key="idempotency-test-two", task=task, approval=approval, grant=grant, value=44.0, expected_revision="revision-before")
         store_two = ActionReservationStore()
         store_two.reserve(action_two)
+        store_two.mark_applied(action_two, provider_result(action_two, after=44.0))
         store_two.mark_in_doubt(action_two)
         self.assertEqual(store_two.recover(action_two, observe=lambda: {"revision": "revision-before", "value": 40.0}), ReservationState.ABORTED)
 
@@ -296,13 +374,13 @@ class CompletionAndIsolationTests(unittest.TestCase):
         result = provider_result(action)
         root = ROOT / "Artifacts" / "reference-implementation" / f"test-{uuid.uuid4().hex}"
         store = EvidenceStore(root)
-        gate = RuntimeDispatchGate()
+        gate = RuntimeDispatchGate(evidence_store=store)
 
         def write_all(bound_action: TypedAction, bound_result: ProviderResult) -> list[str]:
             ids: list[str] = []
             for evidence_type, payload in (("mutation_diff", {"diff": bound_result.exact_diff}), ("editor_observation", {"revision": bound_result.observed_revision}), ("visual_capture", {"captured": True})):
                 record = EvidenceRecord.observed(evidence_id=f"{bound_action.run_id}-{evidence_type}", task_id=task.task_id, run_id=task.run_id, action_id=bound_action.action_id, evidence_type=evidence_type, payload=payload)
-                append_reference_evidence(store=store, task=task, action=bound_action, result=bound_result, evidence=record, evidence_type=evidence_type)
+                append_reference_evidence(store=store, task=task, action=bound_action, result=bound_result, evidence=record, evidence_type=evidence_type, approval=approval, grant=grant)
                 ids.append(record.evidence_id)
             return ids
 

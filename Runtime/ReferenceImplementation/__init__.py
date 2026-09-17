@@ -1,4 +1,4 @@
-"""UnityAgent -> UnityArtist Reference Implementation v1.1."""
+"""UnityAgent generic SubAgent Reference Implementation (v1.1 wire compatibility)."""
 
 from .authority import (
     ApprovalDecisionResolver,
@@ -28,6 +28,13 @@ from .runtime import (
     ProviderPostConditionVerifier,
     RuntimeDispatchGate,
 )
+from .profiles import (
+    CATALOG,
+    SubAgentDefinition,
+    SubAgentProfile,
+    SubAgentProfileCatalog,
+    default_profile,
+)
 
 __all__ = [
     "ActionReservationStore", "ApprovalDecision", "ApprovalDecisionResolver", "BudgetEnforcer",
@@ -35,5 +42,5 @@ __all__ = [
     "EvidenceRecord", "GoldenTaskRunner", "IdempotencyLedger", "ProviderPostConditionVerifier",
     "ProviderResult", "RuntimeBudgetLedger", "RuntimeDispatchGate", "SubAgentTaskPlanner",
     "SurfaceGrant", "SurfaceGrantProjector", "TaskContract", "TaskContractIssuer", "TypedAction",
-    "run_golden_task",
+    "SubAgentDefinition", "SubAgentProfile", "SubAgentProfileCatalog", "CATALOG", "default_profile", "run_golden_task",
 ]

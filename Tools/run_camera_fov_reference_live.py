@@ -1,9 +1,10 @@
-"""Run the v1.1 Camera FOV reference route against a real Unity Editor.
+"""Run the Camera FOV reference route against a real Unity Editor.
 
 This runner is deliberately a gate/orchestration harness. The mutation itself is
 still owned by the canonical ControlPlane -> ToolBroker -> Provider -> Evidence
-chain; this module never edits Unity assets and never invokes a Provider's
-subprocess transport directly.
+chain; this module never edits Unity YAML and never invokes a Provider's
+subprocess transport directly. Fixture bootstrap is opt-in; a real project can
+provide an existing scene through ``--scene-path``.
 """
 from __future__ import annotations
 
@@ -26,6 +27,7 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ARTIST_ROOT = ROOT.parent / "MyUnityMCP"
 DEFAULT_PROJECT = DEFAULT_ARTIST_ROOT / "TestProjects" / "UnityArtistVerification"
+DEFAULT_SCENE_PATH = "Assets/ReferenceCameraFovGolden.unity"
 UNITY_VERSION = "6000.6.0f1"
 DEFAULT_EDITOR = Path("C:/Program Files/Unity/Hub/Editor/6000.6.0f1/Editor/Unity.exe")
 
@@ -40,9 +42,12 @@ from Runtime.ReferenceImplementation.authority import (
 )
 from Runtime.ReferenceImplementation.canonicalization import sha256_jcs
 from Runtime.ReferenceImplementation.contracts import ApprovalDecision, ContractValidationError
-from Runtime.ReferenceImplementation.runtime import reference_definition_fingerprint
+from Runtime.ReferenceImplementation.runtime import EvidenceCompletionGate, reference_definition_fingerprint
+from Runtime.ReferenceImplementation.runtime import validate_reference_environment_snapshot
 from Runtime.Tooling.Providers.UnityArtistCli.unity_artist_cli_provider import UnityArtistCliProvider
 from Runtime.Tooling.capability_resolver import ResolutionContext
+from Runtime.Tooling.Environment.discovery import discover_environment
+from Runtime.Tooling.Environment.project_identity import canonical_scene_path
 
 
 class LiveFailure(RuntimeError):
@@ -235,6 +240,16 @@ def _publish_or_resolve_artist_cli(artist_root: Path) -> Path:
             "DOTNET_SKIP_FIRST_TIME_EXPERIENCE": "1",
         }
     )
+    restored = _run(
+        ["dotnet", "restore", str(project)],
+        cwd=artist_root,
+        timeout=300,
+        env=env,
+    )
+    if restored.returncode != 0:
+        raise LiveFailure(
+            "UnityArtistCLI dotnet restore failed in the clean validation environment"
+        )
     completed = _run(
         ["dotnet", "publish", str(project), "--no-restore", "--runtime", "win-x64", "--self-contained", "false", "-o", str(output)],
         cwd=artist_root,
@@ -320,7 +335,14 @@ def _successful_command(result: Mapping[str, Any], command: str) -> dict[str, An
     return payload
 
 
-def _inspect_when_ready(artist_cli: Path, project: Path, artist_root: Path, *, timeout_seconds: int = 120) -> dict[str, Any]:
+def _inspect_when_ready(
+    artist_cli: Path,
+    project: Path,
+    artist_root: Path,
+    *,
+    expected_fov: float | None = 40.0,
+    timeout_seconds: int = 120,
+) -> dict[str, Any]:
     """Wait for the official Pipeline handshake after `unity open`."""
     deadline = time.monotonic() + timeout_seconds
     last_result: dict[str, Any] | None = None
@@ -332,13 +354,14 @@ def _inspect_when_ready(artist_cli: Path, project: Path, artist_root: Path, *, t
             try:
                 # The official CLI can briefly answer through the previous
                 # fixed-port Pipeline session while `unity open` is handing
-                # the project to the fresh Editor.  Accept the handshake only
-                # after the authoritative fixture camera is observed at its
-                # bootstrap value; otherwise a stale 43-degree session could
-                # be mistaken for the initial golden state.
-                _find_camera(payload, expected_fov=40.0)
+                # the project to the fresh Editor. Accept the handshake only
+                # after the selected camera is observed at its caller-supplied
+                # baseline; otherwise a stale post-mutation session could be
+                # mistaken for the initial golden state.
+                _find_camera(payload, expected_fov=expected_fov)
             except LiveFailure as exc:
-                if "required 40 degree target" not in str(exc):
+                expected_text = "any" if expected_fov is None else f"{expected_fov:g}"
+                if f"required {expected_text} degree target" not in str(exc):
                     raise
                 time.sleep(2.0)
                 continue
@@ -439,56 +462,32 @@ def _png_proof(path: Path) -> dict[str, Any]:
     return {"path": str(path.resolve()), "bytes": len(data), "resolution": f"{width}x{height}", "sha256": hashlib.sha256(data).hexdigest()}
 
 
-def _environment_snapshot(project: Path, editor: Path, unity_cli: Path, artist_cli: Path, *, instance_id: str) -> dict[str, Any]:
-    return {
-        "schema_version": "1.0",
-        "project": {
-            "root": str(project),
-            "exists": True,
-            "identity_status": "bound",
-            "unity_version": UNITY_VERSION,
-            "required_paths": {"assets": True, "packages": True, "project_settings": True},
-        },
-        "filesystem": {"readable": True, "writable": True, "writable_in_mutation_scope": True},
-        "git": {"available": True, "repository_bound": True},
-        "unity_editor": {
-            "installed": True,
-            "version": UNITY_VERSION,
-            "executable_path": str(editor),
-            "project_version_match": True,
-            "running": True,
-            "safe_mode": False,
-            "project_bound": True,
-            "binding_status": "bound",
-            "bound_instance_id": instance_id,
-        },
-        "unity_cli": {"available": True, "version": "observed", "executable_path": str(unity_cli), "failure_class": None},
-        "unity_artist_cli": {
-            "available": True,
-            "version": "0.0.1-beta",
-            "executable_path": str(artist_cli),
-            "project_bound": True,
-            "package_installed": True,
-            "package_version": "0.0.1-beta",
-            "pipeline_reachable": True,
-            "unity_version": UNITY_VERSION,
-            "render_pipeline": "builtin",
-            "support_tier": "primary",
-            "compatibility_backend": "builtin_editor_api",
-            "capabilities": ["visual_art.refine", "visual_art.capture"],
-            "failure_class": None,
-            "binding_status": "bound",
-            "bound_instance_id": instance_id,
-        },
-        "pipeline": {"installed": True, "reachable": True},
-        "myunitymcp": {"reachable": False, "available": False, "project_bound": False, "binding_status": "unbound", "bound_instance_id": None},
-        "coplay_mcp": {"reachable": False, "available": False, "project_bound": False, "binding_status": "unbound", "bound_instance_id": None},
-        "test_framework": {"available": True},
-        "build": {"requested_target": None, "requested_target_module_available": "unknown"},
-        "player_runtime": {"reachable": False, "instance_id": None},
-        "profile_hint": "FULL",
-        "binding_fingerprint": hashlib.sha256(f"{project}|{UNITY_VERSION}|{instance_id}".encode("utf-8")).hexdigest(),
-    }
+def _environment_snapshot(
+    project: Path,
+    editor: Path,
+    unity_cli: Path,
+    artist_cli: Path,
+    *,
+    instance_id: str,
+    scene_path: str,
+    render_pipeline: str = "builtin",
+    compatibility_backend: str = "builtin_editor_api",
+) -> dict[str, Any]:
+    del editor, instance_id, render_pipeline, compatibility_backend
+    canonical_scene = canonical_scene_path(project, scene_path, require_exists=True)
+    observed = discover_environment(
+        str(project),
+        mutation_allowed_paths=[canonical_scene],
+        # The official inspect handshake above is an actual observation of the
+        # selected project's Pipeline, so this is a measured input rather than
+        # a default/trusted boolean.
+        pipeline_reachable=True,
+        explicit_unity_cli=str(unity_cli),
+        explicit_unity_artist_cli=str(artist_cli),
+    )
+    snapshot = observed.to_dict()
+    validate_reference_environment_snapshot(snapshot, project_root=project, scene_path=canonical_scene)
+    return snapshot
 
 
 def _stop_fixture_editor(project: Path) -> list[int]:
@@ -620,28 +619,73 @@ def _open_editor(unity_cli: Path, project: Path, artist_root: Path) -> dict[str,
     }
 
 
-def run_live(*, artist_root: Path, project: Path) -> dict[str, Any]:
+def _open_scene(unity_cli: Path, project: Path, artist_root: Path, scene_path: str) -> dict[str, Any]:
+    """Open an existing scene through the official Pipeline command."""
+    scene_path = canonical_scene_path(project, scene_path, require_exists=True)
+    command = [
+        str(unity_cli),
+        "command",
+        "open_scene",
+        "--project-path",
+        str(project),
+        "--path",
+        scene_path,
+        "--timeout",
+        "60",
+        "--format",
+        "json",
+        "--non-interactive",
+        "--no-banner",
+    ]
+    completed = _run(command, cwd=artist_root, timeout=90)
+    payload = _json_output(completed, label="official Unity CLI open_scene")
+    data = payload.get("data")
+    result = data.get("result") if isinstance(data, Mapping) else None
+    if completed.returncode != 0 or payload.get("success") is not True or not isinstance(data, Mapping) or data.get("success") is not True or not isinstance(result, Mapping):
+        raise ExternalBlocker(
+            "official Unity CLI could not open the requested live scene",
+            evidence={"command": command, "exit_code": completed.returncode, "payload": payload},
+        )
+    return {"command": command, "exit_code": completed.returncode, "payload": payload}
+
+
+def run_live(
+    *,
+    artist_root: Path,
+    project: Path,
+    scene_path: str | None = None,
+    expected_before_fov: float = 40.0,
+) -> dict[str, Any]:
     artist_root = artist_root.resolve()
     project = project.resolve()
+    selected_scene_path = str(scene_path or "").strip().replace("\\", "/") or None
     run_id = f"run-live-camera-fov-{uuid.uuid4().hex[:12]}"
     run_root = ROOT / "Artifacts" / "reference-implementation" / "live" / run_id
     run_root.mkdir(parents=True, exist_ok=True)
 
     if not project.is_dir():
-        raise LiveFailure(f"Unity fixture project does not exist: {project}")
+        raise LiveFailure(f"Unity live project does not exist: {project}")
+    if selected_scene_path is not None:
+        selected_scene_path = canonical_scene_path(project, selected_scene_path, require_exists=True)
     editor = _editor_path()
     unity_cli = _find_executable("unity", "UNITY_CLI_PATH")
     artist_cli = _publish_or_resolve_artist_cli(artist_root)
-    stopped_editor_pids = _stop_fixture_editor(project)
-    fixture = _prepare_fixture(project, editor, artist_root, run_root)
-    fixture["stopped_editor_pids"] = stopped_editor_pids
+    stopped_editor_pids: list[int] = []
+    if selected_scene_path is None:
+        stopped_editor_pids = _stop_fixture_editor(project)
+        setup = _prepare_fixture(project, editor, artist_root, run_root)
+        setup["stopped_editor_pids"] = stopped_editor_pids
+    else:
+        setup = {"mode": "existing_project", "scene_path": selected_scene_path, "bootstrap": "not_run"}
     opened = _open_editor(unity_cli, project, artist_root)
+    if selected_scene_path is not None:
+        setup["scene_open"] = _open_scene(unity_cli, project, artist_root, selected_scene_path)
 
-    inspect = _inspect_when_ready(artist_cli, project, artist_root)
+    inspect = _inspect_when_ready(artist_cli, project, artist_root, expected_fov=expected_before_fov)
     support = inspect.get("support")
     if not isinstance(support, Mapping) or support.get("transport") != "official_unity_cli_pipeline" or support.get("unityVersion") != UNITY_VERSION:
         raise LiveFailure(f"live UnityArtist support proof is not Unity 6000.6.0f1 official pipeline: {inspect}")
-    camera = _find_camera(inspect, expected_fov=40.0)
+    camera = _find_camera(inspect, expected_fov=expected_before_fov)
     target_guid = str(camera["globalObjectId"])
     inspect_revision = str(inspect.get("revision") or "")
     if not inspect_revision:
@@ -728,7 +772,7 @@ def run_live(*, artist_root: Path, project: Path) -> dict[str, Any]:
         "scope": scope,
         "budgets": budgets,
     }
-    mutation_scope = {"allowed_paths": ["Assets/ReferenceCameraFovGolden.unity"], "prohibited_paths": ["ProjectSettings"]}
+    mutation_scope = {"allowed_paths": [selected_scene_path or DEFAULT_SCENE_PATH], "prohibited_paths": ["ProjectSettings"]}
     required_evidence = ["domain_result", "mutation_evidence", "exact_diff", "expected_revision", "camera_binding", "undo_registration", "save_not_performed", "visual_capture"]
     capability_request = {
         "schema_version": "1.0",
@@ -749,7 +793,6 @@ def run_live(*, artist_root: Path, project: Path) -> dict[str, Any]:
         "intent": {"kind": "camera_fov_reference", "target": "Main Camera", "value": 43.0},
         "route_id": "camera_fov_reference",
         "node_id": "camera-fov-reference",
-        "loop_id": "camera-fov-reference-loop",
         "execution_profile": "camera_fov_reference",
         "context_id": f"context-{run_id}",
         "context_fingerprint": sha256_jcs({"run_id": run_id, "target_guid": target_guid, "revision": inspect_revision}),
@@ -758,7 +801,16 @@ def run_live(*, artist_root: Path, project: Path) -> dict[str, Any]:
         "validation_requirements": ["domain_result", "mutation_evidence", "exact_diff", "expected_revision", "camera_binding", "undo_registration", "save_not_performed", "visual_capture"],
         "capability_requests": [capability_request],
     }
-    snapshot = _environment_snapshot(project, editor, unity_cli, artist_cli, instance_id=f"unity-{run_id}")
+    snapshot = _environment_snapshot(
+        project,
+        editor,
+        unity_cli,
+        artist_cli,
+        instance_id=f"unity-{run_id}",
+        scene_path=selected_scene_path or DEFAULT_SCENE_PATH,
+        render_pipeline=str(support.get("renderPipeline") or "unknown"),
+        compatibility_backend=str(support.get("compatibilityBackend") or "unknown"),
+    )
     provider = UnityArtistCliProvider(project, snapshot)
     # Keep the canonical Persistence root at the shared live-artifact level;
     # PersistenceLayout adds the run_id exactly once under runs/<run_id>.
@@ -777,14 +829,27 @@ def run_live(*, artist_root: Path, project: Path) -> dict[str, Any]:
     )
     if result.get("status") != "completed":
         raise LiveFailure(f"canonical ControlPlane route did not complete: {result}")
+    canonical_run_scene = canonical_scene_path(
+        project,
+        selected_scene_path or DEFAULT_SCENE_PATH,
+        require_exists=True,
+    )
+    persisted_proof = EvidenceCompletionGate.verify_persisted_run(
+        run_id=run_id,
+        persistence_root=run_root.parent,
+        project_root=project,
+        scene_path=canonical_run_scene,
+        expected_before_fov=expected_before_fov,
+        expected_after_fov=43.0,
+    )
     reference = (result.get("results") or [None])[0]
     if not isinstance(reference, Mapping):
         raise LiveFailure("ControlPlane did not return the Camera FOV reference result")
     provider_result = reference.get("provider_result")
     if not isinstance(provider_result, Mapping):
         raise LiveFailure("ControlPlane result did not contain a ProviderResult")
-    if float(provider_result.get("before_value", -1.0)) != 40.0 or float(provider_result.get("after_value", -1.0)) != 43.0:
-        raise LiveFailure(f"ProviderResult before/after is not 40 -> 43: {provider_result}")
+    if float(provider_result.get("before_value", -1.0)) != expected_before_fov or float(provider_result.get("after_value", -1.0)) != 43.0:
+        raise LiveFailure(f"ProviderResult before/after is not {expected_before_fov:g} -> 43: {provider_result}")
     exact_diff = provider_result.get("exact_diff")
     if not isinstance(exact_diff, Mapping) or exact_diff.get("target") != target_guid or exact_diff.get("property") != "Camera.fieldOfView":
         raise LiveFailure(f"ProviderResult exact diff is not bound to the inspected camera: {provider_result}")
@@ -813,11 +878,16 @@ def run_live(*, artist_root: Path, project: Path) -> dict[str, Any]:
     final_camera = _find_camera(final_inspect, expected_fov=43.0)
     if final_camera.get("globalObjectId") != target_guid or float(final_camera.get("fieldOfView", -1.0)) != 43.0:
         raise LiveFailure(f"post-apply inspect did not observe the real camera at FOV 43: {final_camera}")
+    final_revision = str(final_inspect.get("revision") or final_camera.get("revision") or "")
+    if not final_revision or final_revision != str(provider_result.get("observed_revision") or ""):
+        raise LiveFailure(
+            "post-apply inspect revision does not bind to the ProviderResult mutation revision"
+        )
 
     return {
         "status": "passed",
         "run_id": run_id,
-        "fixture": fixture,
+        "project_setup": setup,
         "official_unity_open": opened,
         "before": {"inspect": inspect, "camera": camera, "revision": inspect_revision, "plan": plan, "preview": preview, "no_approval_apply": no_approval},
         "control_plane": result,
@@ -834,6 +904,7 @@ def run_live(*, artist_root: Path, project: Path) -> dict[str, Any]:
             "evidence_refs": evidence_refs,
             "save_performed": False,
             "undo_available": True,
+            "canonical_persisted_gate": persisted_proof,
         },
     }
 
@@ -842,11 +913,18 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--unityartist-root", type=Path, default=DEFAULT_ARTIST_ROOT)
     parser.add_argument("--project-path", type=Path, default=DEFAULT_PROJECT)
+    parser.add_argument("--scene-path", help="Existing Assets-relative scene path; omit to bootstrap the disposable reference fixture.")
+    parser.add_argument("--expected-before-fov", type=float, default=40.0)
     args = parser.parse_args()
     output: dict[str, Any]
     exit_code = 1
     try:
-        report = run_live(artist_root=args.unityartist_root, project=args.project_path)
+        report = run_live(
+            artist_root=args.unityartist_root,
+            project=args.project_path,
+            scene_path=args.scene_path,
+            expected_before_fov=args.expected_before_fov,
+        )
         output = report
         exit_code = 0
     except ExternalBlocker as exc:
@@ -857,9 +935,10 @@ def main() -> int:
         exit_code = 1
     finally:
         try:
-            stopped_after_run = _stop_fixture_editor(args.project_path)
-            if exit_code == 0 and isinstance(output.get("fixture"), dict):
-                output["fixture"]["stopped_editor_pids_after_run"] = stopped_after_run
+            if not args.scene_path:
+                stopped_after_run = _stop_fixture_editor(args.project_path)
+                if exit_code == 0 and isinstance(output.get("project_setup"), dict):
+                    output["project_setup"]["stopped_editor_pids_after_run"] = stopped_after_run
         except ExternalBlocker as cleanup_error:
             if exit_code == 0:
                 output = {"status": "blocked_external", "error": str(cleanup_error), "evidence": cleanup_error.evidence}

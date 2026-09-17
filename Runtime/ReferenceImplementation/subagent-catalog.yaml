@@ -1,0 +1,41 @@
+schema_version: "1.0"
+default_profile: unity_artist_cli
+profiles:
+  unity_artist_cli:
+    profile_id: unity_artist_cli
+    display_name: UnityArtistCLI
+    provider_id: unity_artist_cli
+    audience: unity_artist
+    goal_type: artist.camera.refine
+    capabilities:
+      - artist.camera.inspect
+      - artist.camera.refine
+      - visual.capture
+    primary_capability: artist.camera.refine
+    required_evidence:
+      - mutation_diff
+      - editor_observation
+      - visual_capture
+    scope:
+      default_target_guid: camera-guid-001
+      component_type: UnityEngine.Camera
+      property_paths:
+        - Camera.fieldOfView
+      mutation_channels:
+        - serialized_property
+      max_targets: 1
+    value:
+      type: float
+      unit: degree
+      minimum: 0
+      maximum: 180
+      maximum_exclusive: true
+    approval:
+      default_minimum: 35
+      default_maximum: 50
+      minimum_exclusive: true
+      maximum_exclusive: true
+    evidence:
+      source_type: unity_artist_reference
+      producer: UnityAgent.ReferenceImplementation.v1.1
+      provenance_token: unity_artist_cli

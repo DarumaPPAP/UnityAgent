@@ -44,8 +44,13 @@ class PersistenceLayout:
     def evidence(self, evidence_id: str) -> Path:
         return self.root / "evidence" / "records" / f"{safe_id(evidence_id, 'evidence_id')}.json"
 
-    def evidence_events(self) -> Path:
-        return self.root / "evidence" / "events.jsonl"
+    def evidence_events(self, run_id: str | None = None) -> Path:
+        if run_id is None:
+            return self.root / "evidence" / "events.jsonl"
+        return self.run_root(run_id) / "current" / "evidence-events.jsonl"
+
+    def evidence_lock(self, run_id: str) -> Path:
+        return self.run_root(run_id) / "current" / "evidence-events.lock"
 
     def approval_decision(self, approval_decision_id: str) -> Path:
         return self.root / "approvals" / "decisions" / f"{safe_id(approval_decision_id, 'approval_decision_id')}.json"
@@ -55,6 +60,12 @@ class PersistenceLayout:
 
     def reference_idempotency(self, run_id: str) -> Path:
         return self.run_root(run_id) / "current" / "reference-idempotency.json"
+
+    def reference_manifest(self, run_id: str) -> Path:
+        return self.run_root(run_id) / "current" / "reference-manifest.json"
+
+    def reference_lock(self, run_id: str) -> Path:
+        return self.run_root(run_id) / "current" / "reference-gate.lock"
 
     def install_receipt(self, receipt_id: str) -> Path:
         return self.root / "install" / "receipts" / f"{safe_id(receipt_id, 'receipt_id')}.json"

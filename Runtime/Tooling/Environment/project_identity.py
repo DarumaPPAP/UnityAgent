@@ -65,6 +65,57 @@ def same_project_root(
     )
 
 
+def canonical_scene_path(
+    project_root: str | os.PathLike[str],
+    scene_path: str | os.PathLike[str],
+    *,
+    require_exists: bool = True,
+) -> str:
+    """Return a canonical, project-relative scene path under ``Project/Assets``.
+
+    Scene paths are an authorization boundary, not just CLI arguments.  Reject
+    absolute paths and lexical traversal before resolving the path, then resolve
+    symlinks/junctions and check the physical path again so a link cannot escape
+    the project's ``Assets`` directory.  The returned value is the canonical
+    project-relative path with forward slashes.
+    """
+    raw = os.fspath(scene_path).strip()
+    if not raw:
+        raise ValueError("scene_path must not be blank")
+    normalized = raw.replace("\\", "/")
+    if ntpath.isabs(raw) or Path(raw).is_absolute() or ntpath.splitdrive(raw)[0]:
+        raise ValueError("scene_path must be project-relative")
+
+    parts = [part for part in normalized.split("/") if part not in {"", "."}]
+    if not parts or parts[0].casefold() != "assets":
+        raise ValueError("scene_path must be under Project/Assets")
+    if any(part == ".." for part in parts):
+        raise ValueError("scene_path traversal is not allowed")
+    if any("\x00" in part or ":" in part for part in parts):
+        raise ValueError("scene_path contains an invalid path component")
+
+    root = Path(project_root).expanduser().resolve(strict=False)
+    assets = (root / "Assets").resolve(strict=False)
+    if not assets.is_dir():
+        raise ValueError("Project/Assets is not an existing directory")
+
+    candidate = (root.joinpath(*parts)).resolve(strict=False)
+    try:
+        candidate.relative_to(assets)
+    except ValueError as exc:
+        raise ValueError("scene_path resolves outside Project/Assets") from exc
+    if candidate == assets:
+        raise ValueError("scene_path must identify a scene below Project/Assets")
+    if require_exists and not candidate.is_file():
+        raise ValueError("scene_path does not identify an existing file")
+
+    try:
+        relative = candidate.relative_to(root)
+    except ValueError as exc:
+        raise ValueError("scene_path resolves outside the Unity project") from exc
+    return relative.as_posix()
+
+
 def read_project_version(project_root: str | os.PathLike[str]) -> str | None:
     version_path = Path(project_root).expanduser() / PROJECT_VERSION_FILE
     try:
