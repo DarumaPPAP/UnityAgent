@@ -10,6 +10,8 @@ import json
 import os
 import re
 import tempfile
+import time
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -40,6 +42,49 @@ def sha256_json(value: Any) -> str:
 
 def sha256_bytes(value: bytes) -> str:
     return "sha256:" + hashlib.sha256(value).hexdigest()
+
+
+@contextmanager
+def exclusive_file_lock(path: Path, *, timeout_seconds: float = 30.0):
+    """Hold a small cross-process advisory lock for a Persistence operation.
+
+    The lock file is intentionally retained.  Its contents are not authority;
+    the OS byte-range lock is the authority, so a crashed process does not
+    leave a stale lock marker behind that can block future runs.
+    """
+    lock_path = Path(path)
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with lock_path.open("a+b") as stream:
+        stream.seek(0, os.SEEK_END)
+        if stream.tell() == 0:
+            stream.write(b"0")
+            stream.flush()
+            os.fsync(stream.fileno())
+        stream.seek(0)
+        if os.name == "nt":
+            import msvcrt
+
+            deadline = time.monotonic() + timeout_seconds
+            while True:
+                try:
+                    msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
+                    break
+                except OSError as exc:
+                    if time.monotonic() >= deadline:
+                        raise PersistenceError("lock_timeout", f"timed out acquiring Persistence lock: {lock_path}") from exc
+                    time.sleep(0.01)
+        else:
+            import fcntl
+
+            fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            stream.seek(0)
+            if os.name == "nt":
+                msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
 
 
 def read_json(path: Path) -> dict[str, Any]:

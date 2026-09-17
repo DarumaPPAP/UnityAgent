@@ -6,6 +6,7 @@ continues to own Policy, approval, semantic intent, fallback, and Evidence.
 from __future__ import annotations
 
 import json
+import hashlib
 import threading
 from pathlib import Path
 from typing import Any, Callable, Mapping
@@ -291,6 +292,18 @@ class UnityArtistCliProvider:
             "colorPath": color_path,
             "evidence": list(capture_evidence) if isinstance(capture_evidence, list) else [],
         }
+        if color_path:
+            capture_path = Path(color_path).expanduser()
+            if not capture_path.is_absolute():
+                capture_path = self.project_root / capture_path
+            capture_path = capture_path.resolve(strict=False)
+            try:
+                capture_bytes = capture_path.read_bytes()
+            except OSError:
+                capture_bytes = None
+            if capture_bytes is not None:
+                capture_summary["bytes"] = len(capture_bytes)
+                capture_summary["sha256"] = hashlib.sha256(capture_bytes).hexdigest()
         apply_payload = apply_result.get("payload")
         apply_diff = self._nested_value(apply_payload, ("exactDiff", "exact_diff")) or {}
         before_value = self._nested_value(apply_diff, ("before",))

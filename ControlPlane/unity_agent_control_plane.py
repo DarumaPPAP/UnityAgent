@@ -18,7 +18,8 @@ import yaml
 from jsonschema import Draft202012Validator
 
 from Orchestration.Orchestrator.orchestrator import runtime_handoff
-from Orchestration.Graph.state_mapping import loop_control_state_patch, workflow_state_patch
+from Orchestration.Graph.state_mapping import workflow_state_patch
+from Orchestration.Loop.state_mapping import loop_control_state_patch
 from Persistence.Approval.approval_store import ApprovalDecisionStore
 from Persistence.Evidence.evidence_store import EvidenceStore
 from Persistence.Evidence.runtime_adapter import append_runtime_execution_evidence
@@ -225,12 +226,18 @@ class UnityAgentControlPlane:
                 approval_resolver=self.approval_resolver,
                 run_id=resolved_run_id,
             )
+            typed_action = reference.get("typed_action")
+            reference_action_id = (
+                str(typed_action.get("action_id"))
+                if isinstance(typed_action, Mapping) and typed_action.get("action_id")
+                else handoff["action_id"]
+            )
             evidence_refs.extend(str(item) for item in reference.get("evidence_refs") or [])
             final_status = str(reference.get("status") or "blocked")
             state_ref = self._save_execution_state(
                 run_id=resolved_run_id,
                 step_id=node_id,
-                action_id=handoff["action_id"],
+                action_id=reference_action_id,
                 status=final_status,
                 evidence_refs=evidence_refs,
             )
@@ -256,6 +263,7 @@ class UnityAgentControlPlane:
                 "layer_trace": ["entry", "control_plane", "reference_contract", "runtime_gate", "provider_layer", "evidence_state"],
                 "handoff": handoff,
                 "results": [reference],
+                "reference_action_id": reference_action_id,
                 "evidence_refs": evidence_refs,
                 "state_ref": state_ref,
                 "workflow_state_ref": workflow_state_ref,

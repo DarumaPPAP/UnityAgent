@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
 import sys
+import time
 from typing import Any, Mapping
 
 from Persistence.Evidence.evidence_store import EvidenceStore
@@ -25,6 +26,7 @@ from .contracts import (
     TypedAction,
 )
 from .isolation import IsolationError, SubAgentSessionManager
+from .profiles import default_profile
 from .runtime import (
     CompletionCoordinator,
     EvidenceCompletionGate,
@@ -112,6 +114,7 @@ class GoldenTaskRunner:
         self.persistence_root = Path(persistence_root or (ROOT / "Artifacts" / "reference-implementation" / "golden-task")).resolve()
 
     def run(self) -> dict[str, Any]:
+        profile = default_profile()
         run_id = "run-001"
         project = {"root": str(self.project_root), "name": "WindowsCameraFovGoldenProject"}
         project_fingerprint = sha256_jcs({"project": project["name"], "version": "reference-v1.1"})
@@ -122,40 +125,49 @@ class GoldenTaskRunner:
             "max_parent_output_tokens": 10000, "max_process_restarts": 1, "max_provider_retries": 1,
         }
         issuer = TaskContractIssuer()
-        task = issuer.issue(task_id="artist-camera-fov-001", run_id=run_id, project=project, project_fingerprint=project_fingerprint, budgets=budgets, issued_at=iso_now())
+        task = issuer.issue(task_id="artist-camera-fov-001", run_id=run_id, project=project, project_fingerprint=project_fingerprint, budgets=budgets, issued_at=iso_now(), profile=profile)
         approval = ApprovalDecision.approve(
             approval_decision_id="approval-001", task=task,
             expires_at=(datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat(),
+            profile=profile,
         )
         resolver = ApprovalDecisionResolver()
         resolver.register(approval)
         trusted_approval = resolver.resolve(approval.approval_decision_id, task=task)
-        grant = SurfaceGrantProjector().derive(task=task, approval=trusted_approval, subagent_instance_id="artist-reference-001")
+        grant = SurfaceGrantProjector().derive(task=task, approval=trusted_approval, subagent_instance_id="artist-reference-001", profile=profile)
         ledger = RuntimeBudgetLedger(task.budgets)
-        plan = SubAgentTaskPlanner().plan(task, ledger)
+        plan = SubAgentTaskPlanner().plan(task, ledger, profile=profile)
         camera = GoldenCameraState()
         session_events: list[dict[str, Any]] = []
         isolation_status = "available"
+        session_started = time.perf_counter()
         try:
             session_events = SubAgentSessionManager().run(
                 task=task,
                 grant=grant,
                 context={"proposed_value": 43.0, "expected_revision": camera.revision(), "approval": trusted_approval.to_dict()},
+                profile=profile,
             )
         except IsolationError as exc:
             isolation_status = "unavailable"
             return self._blocked(task, ledger, plan, str(exc), isolation_status)
+        finally:
+            ledger.record_child_observation(
+                elapsed_ms=(time.perf_counter() - session_started) * 1000,
+                context_bytes=len(json.dumps({"proposed_value": 43.0, "expected_revision": camera.revision()}).encode("utf-8")),
+                schema_bytes=len(task.to_envelope().__repr__().encode("utf-8")),
+            )
         action_message = next((item["payload"] for item in session_events if item["message_type"] == "propose_action"), None)
         if not isinstance(action_message, Mapping):
             return self._blocked(task, ledger, plan, "specialist did not propose a TypedAction", isolation_status)
         action_envelope = action_message.get("action_envelope")
         if isinstance(action_envelope, Mapping):
-            action = TypedAction.from_envelope(action_envelope)
+            action = TypedAction.from_envelope(action_envelope, profile=profile)
         else:
             # Compatibility for historical fixture transcripts; production IPC
             # is envelope-only and the child no longer emits this branch.
-            action = TypedAction.from_dict(action_message.get("action"))
-        ledger.consume("tool_calls", 1)
+            action = TypedAction.from_dict(action_message.get("action"), profile=profile)
+        ledger.record_tool_call()
         state_before = camera.value
         state_revision_before = camera.revision()
         transport = GoldenArtistTransport(camera)
@@ -178,20 +190,20 @@ class GoldenTaskRunner:
                 request,
                 _snapshot(self.project_root),
                 context=ResolutionContext(policy_allowed=True, approval_complete=True),
-                executors={"unity_artist_cli": provider.execute},
-                provider_arguments={"unity_artist_cli": {"command": "refine", "workflow": "lookdev_refine", "expected_revision": action.expected_revision}},
+                executors={profile.provider_id: provider.execute},
+                provider_arguments={profile.provider_id: {"command": "refine", "workflow": "lookdev_refine", "expected_revision": action.expected_revision}},
                 maximum_retry_attempts=0,
             )
             raw = dispatch_outcome.get("provider_result")
             if dispatch_outcome.get("status") != "completed" or not isinstance(raw, Mapping) or raw.get("status") != "passed":
                 raise RuntimeError(f"canonical ToolBroker dispatch failed: {dispatch_outcome}")
             result_dict = {
-                "schema_version": "1.1", "status": "passed", "provider_ref": "unity_artist_cli", "action_id": action.action_id,
+                "schema_version": "1.1", "status": "passed", "provider_ref": profile.provider_id, "action_id": action.action_id,
                 "project": dict(task.project), "target": dict(action.target), "property_path": action.property_path,
                 "before_value": float(transport.before_value if transport.before_value is not None else state_before),
                 "after_value": camera.value, "observed_revision": str(transport.observed_revision or camera.revision()),
                 "exact_diff": {"target": action.target["guid"], "property": action.property_path, "before": state_before, "after": camera.value},
-                "evidence": ["mutation_diff", "editor_observation", "visual_capture"], "mutation_count": 1,
+                "evidence": list(profile.required_evidence), "mutation_count": 1,
                 "boundary_violations": [], "failure_class": None, "provider_result_digest": "",
             }
             result_dict["provider_result_digest"] = sha256_jcs({key: value for key, value in result_dict.items() if key != "provider_result_digest"})
@@ -208,20 +220,31 @@ class GoldenTaskRunner:
             ]
             ids: list[str] = []
             for record in records:
-                append_reference_evidence(store=evidence_store, task=task, action=bound_action, result=result, evidence=record, evidence_type=record.evidence_type)
+                append_reference_evidence(
+                    store=evidence_store,
+                    task=task,
+                    action=bound_action,
+                    result=result,
+                    evidence=record,
+                    evidence_type=record.evidence_type,
+                    profile=profile,
+                    approval=trusted_approval,
+                    grant=grant,
+                )
                 ids.append(record.evidence_id)
             return ids
 
-        gate = RuntimeDispatchGate()
+        gate = RuntimeDispatchGate(persistence_root=self.persistence_root, evidence_store=evidence_store, profile=profile)
         try:
-            dispatch = gate.dispatch(task=task, approval=trusted_approval, grant=grant, action=action, dispatch_provider=canonical_dispatch, evidence_writer=write_evidence)
+            dispatch = gate.dispatch(task=task, approval=trusted_approval, grant=grant, action=action, dispatch_provider=canonical_dispatch, evidence_writer=write_evidence, ledger=ledger)
         except Exception as exc:
             return self._blocked(task, ledger, plan, str(exc), isolation_status)
         provider_result = provider_results[0]
-        completion = EvidenceCompletionGate(evidence_store).evaluate(
+        completion = EvidenceCompletionGate(evidence_store, profile=profile).evaluate(
             task=task, approval=trusted_approval, grant=grant, actions=[action], provider_results=[provider_result],
             reservations=gate.reservations, evidence_ids=list(dispatch["evidence_ids"]), final_revision=provider_result.observed_revision,
             ledger=ledger,
+            profile=profile,
         )
         final = CompletionCoordinator().present(completion, ledger=ledger)
         metrics = {
@@ -232,6 +255,7 @@ class GoldenTaskRunner:
             "normal_parent_total_calls": ledger.snapshot()["parent_total_calls"], "parent_reentries": ledger.snapshot()["parent_reentries"],
             "tool_calls": ledger.snapshot()["tool_calls"], "child_llm_calls": ledger.snapshot()["child_llm_calls"],
             "process_restarts": ledger.snapshot()["process_restarts"], "provider_retries": ledger.snapshot()["provider_retries"],
+            "measurements": ledger.measurement_snapshot(),
         }
         return {
             "terminal": "GOAL_COMPLETE" if final["status"] == "completed" else "GOAL_NOT_COMPLETE",

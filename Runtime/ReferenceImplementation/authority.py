@@ -3,7 +3,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+import math
 import threading
+import time
 import uuid
 from typing import Any, Mapping
 
@@ -11,12 +13,12 @@ from Persistence.Store.atomic_store import PersistenceError
 
 from .canonicalization import digest_for
 from .contracts import (
-    ALLOWED_CAPABILITIES,
     ApprovalDecision,
     ContractValidationError,
     SurfaceGrant,
     TaskContract,
 )
+from .profiles import ProfileValidationError, SubAgentProfile, profile_for_task_object
 
 
 def utc_now() -> datetime:
@@ -38,6 +40,7 @@ class RuntimeBudgetLedger:
     limits: dict[str, int]
     _counts: dict[str, int] = field(default_factory=dict)
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+    _measured_token_dimensions: set[str] = field(default_factory=set, init=False, repr=False)
 
     COUNTERS = (
         "parent_total_calls", "parent_reentries", "global_replans", "escalations", "child_llm_calls",
@@ -56,6 +59,10 @@ class RuntimeBudgetLedger:
 
     def __post_init__(self) -> None:
         self._counts = {name: int(self._counts.get(name, 0)) for name in self.COUNTERS}
+        self._measured_token_dimensions = {
+            name for name in ("parent_input_tokens", "parent_output_tokens", "child_input_tokens", "child_output_tokens")
+            if name in self._counts and self._counts[name] != 0
+        }
 
     def consume(self, counter: str, amount: int = 1) -> dict[str, int]:
         if counter not in self.COUNTERS:
@@ -76,6 +83,142 @@ class RuntimeBudgetLedger:
         with self._lock:
             self._counts[counter] += amount
             return dict(self._counts)
+
+    def record_parent_call(
+        self,
+        *,
+        input_tokens: int | None = None,
+        output_tokens: int | None = None,
+        elapsed_ms: float = 0.0,
+        context_bytes: int = 0,
+        schema_bytes: int = 0,
+    ) -> dict[str, int]:
+        """Record one observed parent turn through the authoritative ledger."""
+        self.consume("parent_total_calls", 1)
+        self._record_tokens("parent_input_tokens", input_tokens)
+        self._record_tokens("parent_output_tokens", output_tokens)
+        return self.record_observation(
+            elapsed_ms=elapsed_ms,
+            context_bytes=context_bytes,
+            schema_bytes=schema_bytes,
+        )
+
+    def record_child_llm_call(
+        self,
+        *,
+        input_tokens: int | None = None,
+        output_tokens: int | None = None,
+        elapsed_ms: float = 0.0,
+        context_bytes: int = 0,
+        schema_bytes: int = 0,
+    ) -> dict[str, int]:
+        """Record a specialist model call; the Runtime still owns the budget."""
+        self.consume("child_llm_calls", 1)
+        self._record_tokens("child_input_tokens", input_tokens)
+        self._record_tokens("child_output_tokens", output_tokens)
+        return self.record_observation(
+            elapsed_ms=elapsed_ms,
+            child_elapsed_ms=elapsed_ms,
+            context_bytes=context_bytes,
+            schema_bytes=schema_bytes,
+        )
+
+    def record_child_observation(
+        self,
+        *,
+        elapsed_ms: float,
+        context_bytes: int = 0,
+        schema_bytes: int = 0,
+    ) -> dict[str, int]:
+        """Record measured bounded child/provider time without inventing tokens."""
+        return self.record_observation(
+            elapsed_ms=elapsed_ms,
+            child_elapsed_ms=elapsed_ms,
+            context_bytes=context_bytes,
+            schema_bytes=schema_bytes,
+        )
+
+    def record_tool_call(self, *, elapsed_ms: float = 0.0) -> dict[str, int]:
+        self.consume("tool_calls", 1)
+        return self.record_observation(elapsed_ms=elapsed_ms)
+
+    def _record_tokens(self, counter: str, amount: int | None) -> None:
+        if amount is None:
+            return
+        if isinstance(amount, bool) or not isinstance(amount, int) or amount < 0:
+            raise ContractValidationError(f"{counter} must be a non-negative integer or None")
+        self.consume(counter, amount)
+        with self._lock:
+            self._measured_token_dimensions.add(counter)
+
+    def record_observation(
+        self,
+        *,
+        elapsed_ms: float = 0.0,
+        child_elapsed_ms: float = 0.0,
+        context_bytes: int = 0,
+        schema_bytes: int = 0,
+    ) -> dict[str, int]:
+        values = {
+            "elapsed_ms": elapsed_ms,
+            "child_elapsed_ms": child_elapsed_ms,
+            "context_bytes": context_bytes,
+            "schema_bytes": schema_bytes,
+        }
+        for name, raw in values.items():
+            if isinstance(raw, bool) or not isinstance(raw, (int, float)) or not math.isfinite(float(raw)) or float(raw) < 0:
+                raise ContractValidationError(f"{name} must be a non-negative finite number")
+        wall = max(0, int(math.ceil(float(elapsed_ms))))
+        child_wall = max(0, int(math.ceil(float(child_elapsed_ms))))
+        # Measurement counters are deliberately committed through the same
+        # hard budget checks as every other Runtime counter.
+        if wall:
+            self.consume("wall_clock_ms", wall)
+        if child_wall:
+            self.consume("child_wall_clock_ms", child_wall)
+        if context_bytes:
+            self.consume("context_bytes", int(context_bytes))
+        if schema_bytes:
+            self.consume("schema_bytes", int(schema_bytes))
+        return self.snapshot()
+
+    def measurement_snapshot(self) -> dict[str, Any]:
+        values = self.snapshot()
+        token_dimensions = (
+            "parent_input_tokens", "parent_output_tokens", "child_input_tokens", "child_output_tokens"
+        )
+        measured_dimensions = {
+            name: name in self._measured_token_dimensions for name in token_dimensions
+        }
+        if all(measured_dimensions.values()):
+            token_status = "measured"
+        elif any(measured_dimensions.values()):
+            token_status = "partial"
+        else:
+            token_status = "unmeasured"
+
+        def token_value(name: str) -> int | None:
+            return values[name] if measured_dimensions[name] else None
+
+        return {
+            "measured": token_status == "measured",
+            "token_measurement": {"status": token_status, "dimensions": measured_dimensions},
+            "parent": {
+                "calls": values["parent_total_calls"],
+                "input_tokens": token_value("parent_input_tokens"),
+                "output_tokens": token_value("parent_output_tokens"),
+            },
+            "child": {
+                "llm_calls": values["child_llm_calls"],
+                "input_tokens": token_value("child_input_tokens"),
+                "output_tokens": token_value("child_output_tokens"),
+                "wall_clock_ms": values["child_wall_clock_ms"],
+            },
+            "wall_clock_ms": values["wall_clock_ms"],
+            "context_bytes": values["context_bytes"],
+            "schema_bytes": values["schema_bytes"],
+            "parent_per_tool_mediation": 0,
+        }
 
     def snapshot(self) -> dict[str, int]:
         with self._lock:
@@ -120,6 +263,7 @@ class TaskContractIssuer:
         budgets: dict[str, int],
         scope: dict[str, Any] | None = None,
         issued_at: str | None = None,
+        profile: SubAgentProfile | None = None,
     ) -> TaskContract:
         return TaskContract.issue(
             task_id=task_id,
@@ -129,20 +273,25 @@ class TaskContractIssuer:
             issued_at=issued_at or iso_now(),
             budgets=budgets,
             scope=scope,
+            profile=profile,
         )
 
 
 class SubAgentTaskPlanner:
     """Creates one bounded specialist plan and never performs Provider work."""
 
-    def plan(self, task: TaskContract, ledger: RuntimeBudgetLedger) -> dict[str, Any]:
-        ledger.consume("parent_total_calls", 1)
+    def plan(self, task: TaskContract, ledger: RuntimeBudgetLedger, *, profile: SubAgentProfile | None = None) -> dict[str, Any]:
+        selected = profile or profile_for_task_object(task)
+        started = time.perf_counter()
+        ledger.record_parent_call(elapsed_ms=(time.perf_counter() - started) * 1000)
         return {
             "schema_version": "1.1",
             "task_id": task.task_id,
             "run_id": task.run_id,
             "goal_type": task.goal_type,
-            "specialist": "UnityArtistCLI",
+            "specialist": selected.display_name,
+            "subagent_profile_id": selected.profile_id,
+            "provider_id": selected.provider_id,
             "steps": ["inspect", "propose_typed_action", "await_runtime_result", "evaluate"],
             "provider_resolution_owner": "Runtime.ToolBroker",
             "parent_per_tool_mediation": 0,
@@ -152,8 +301,9 @@ class SubAgentTaskPlanner:
 class ApprovalDecisionResolver:
     """Trusted lookup boundary for persisted approval decisions."""
 
-    def __init__(self, store: Any | None = None) -> None:
+    def __init__(self, store: Any | None = None, profile: SubAgentProfile | None = None) -> None:
         self.store = store
+        self.profile = profile
         self._decisions: dict[str, ApprovalDecision] = {}
         self._revocation_epochs: dict[str, int] = {}
         self._lock = threading.RLock()
@@ -185,7 +335,7 @@ class ApprovalDecisionResolver:
                     raise ContractValidationError(
                         f"approval decision could not be resolved from trusted storage: {exc.code}"
                     ) from exc
-                decision = ApprovalDecision.from_dict(record["decision"])
+                decision = ApprovalDecision.from_dict(record["decision"], profile=self.profile)
                 current_epoch = int(record.get("current_revocation_epoch", decision.revocation_epoch))
             else:
                 decision = self._decisions.get(approval_decision_id)
@@ -206,7 +356,7 @@ class ApprovalDecisionResolver:
 
 
 class SurfaceGrantProjector:
-    """Projects approval into the smallest authenticated Artist capability surface."""
+    """Projects approval into the smallest authenticated profile surface."""
 
     def derive(
         self,
@@ -216,20 +366,22 @@ class SurfaceGrantProjector:
         subagent_instance_id: str,
         requested_capabilities: list[str] | None = None,
         now: datetime | None = None,
+        profile: SubAgentProfile | None = None,
     ) -> SurfaceGrant:
+        selected = profile or profile_for_task_object(task)
         current = now or utc_now()
         if approval.task_id != task.task_id or approval.contract_digest != task.contract_digest:
             raise ContractValidationError("cannot grant an approval for another TaskContract")
         if _as_datetime(approval.expires_at) <= current:
             raise ContractValidationError("cannot grant an expired approval")
-        requested = requested_capabilities or ["artist.camera.inspect", "artist.camera.refine", "visual.capture"]
-        if not requested or any(item not in ALLOWED_CAPABILITIES for item in requested):
-            raise ContractValidationError("requested Artist capability is outside the v1 allowlist")
-        if "artist.camera.refine" not in requested:
-            raise ContractValidationError("Camera FOV specialist grant must include artist.camera.refine")
+        requested = requested_capabilities or list(selected.capabilities)
+        try:
+            selected.validate_capabilities(requested)
+        except ProfileValidationError as exc:
+            raise ContractValidationError(f"requested capability is outside the SubAgent profile: {exc}") from exc
         issued = current.isoformat()
         value = {
-            "schema_version": "1.1", "grant_id": f"grant-{uuid.uuid4().hex}", "audience": "unity_artist",
+            "schema_version": "1.1", "grant_id": f"grant-{uuid.uuid4().hex}", "audience": selected.audience,
             "subagent_instance_id": subagent_instance_id, "task_id": task.task_id, "run_id": task.run_id,
             "project": dict(task.project), "project_fingerprint": task.project_fingerprint,
             "contract_digest": task.contract_digest, "approval_decision_id": approval.approval_decision_id,
@@ -237,7 +389,7 @@ class SurfaceGrantProjector:
             "issued_at": issued, "expires_at": approval.expires_at, "revocation_epoch": approval.revocation_epoch,
         }
         value["grant_digest"] = digest_for(value, "grant_digest")
-        return SurfaceGrant.from_dict(value)
+        return SurfaceGrant.from_dict(value, profile=selected)
 
 
 class ParentCompletionGuard:
@@ -247,7 +399,7 @@ class ParentCompletionGuard:
         self.ledger = ledger
 
     def record_completion_call(self) -> None:
-        self.ledger.consume("parent_total_calls", 1)
+        self.ledger.record_parent_call()
 
     def assert_no_per_tool_mediation(self, plan: Mapping[str, Any]) -> None:
         if plan.get("parent_per_tool_mediation") != 0:

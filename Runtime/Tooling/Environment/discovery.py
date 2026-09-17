@@ -279,6 +279,7 @@ def probe_unity_artist_cli(
     render_pipeline: str | None = None
     support_tier: str | None = None
     compatibility_backend: str | None = None
+    support_observed = False
     capability_ok, capability_value, capability_failure = _dispatch_json(
         executable,
         [
@@ -296,6 +297,7 @@ def probe_unity_artist_cli(
             capabilities = [str(item) for item in raw_capabilities if str(item).strip()]
         support = capability_data.get("support")
         if isinstance(support, dict):
+            support_observed = True
             unity_version = str(support.get("unityVersion")) if support.get("unityVersion") else None
             render_pipeline = str(support.get("renderPipeline")) if support.get("renderPipeline") else None
             support_tier = str(support.get("supportTier")) if support.get("supportTier") else None
@@ -305,6 +307,10 @@ def probe_unity_artist_cli(
             )
 
     failure_class = None if capability_ok else (capability_failure or "unknown")
+    artist_pipeline_reachable: TriState = (
+        True if capability_ok and support_observed and project_bound is True else
+        (False if capability_failure in {"unavailable", "unhealthy", "timeout"} else "unknown")
+    )
     return UnityArtistCliSnapshot(
         True,
         version,
@@ -312,7 +318,7 @@ def probe_unity_artist_cli(
         project_bound,
         package_installed,
         package_version,
-        "unknown",
+        artist_pipeline_reachable,
         unity_version,
         render_pipeline,
         support_tier,

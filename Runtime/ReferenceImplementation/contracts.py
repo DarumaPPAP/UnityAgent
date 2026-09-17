@@ -1,8 +1,9 @@
-"""Strict cross-process contracts for UnityAgent -> UnityArtist v1.1.
+"""Strict cross-process contracts for the canonical UnityAgent Runtime.
 
-These models are deliberately narrower than the general UnityAgent contracts.
-They describe the one supported Windows Camera FOV workflow and fail closed on
-unknown fields, unsupported versions, and mismatched bindings.
+The v1.1 wire shape is retained for compatibility, while identity, capability,
+scope, value and evidence rules are supplied by a :class:`SubAgentProfile`.
+Concrete product values live in the profile catalog rather than in this generic
+contract module.
 """
 from __future__ import annotations
 
@@ -17,6 +18,15 @@ import yaml
 from jsonschema import Draft202012Validator, ValidationError
 
 from .canonicalization import digest_for
+from .profiles import (
+    CATALOG,
+    ProfileValidationError,
+    SubAgentProfile,
+    default_profile,
+    profile_for_capability,
+    profile_for_grant,
+    profile_for_task,
+)
 
 
 class ContractValidationError(ValueError):
@@ -82,8 +92,10 @@ def _digest_match(payload: dict[str, Any], *, field: str, name: str) -> None:
         raise ContractValidationError(f"{name} digest mismatch")
 
 
-ALLOWED_EVIDENCE = frozenset({"mutation_diff", "editor_observation", "visual_capture"})
-ALLOWED_CAPABILITIES = frozenset({"artist.camera.inspect", "artist.camera.refine", "visual.capture"})
+_DEFAULT_PROFILE = default_profile()
+ALLOWED_EVIDENCE = frozenset(_DEFAULT_PROFILE.required_evidence)
+ALLOWED_CAPABILITIES = frozenset(_DEFAULT_PROFILE.capabilities)
+KNOWN_EVIDENCE = CATALOG.evidence_types()
 FORBIDDEN_CAPABILITY_TOKENS = ("install", "installer", "shell", "filesystem", "project.write", "package")
 
 _SCHEMA_PATH = Path(__file__).with_name("Schemas") / "reference-implementation.schema.yaml"
@@ -115,24 +127,17 @@ def validate_contract_envelope(value: Mapping[str, Any], expected_type: str | No
     return dict(value["value"])
 
 
-def _scope(value: Any, *, name: str = "scope") -> dict[str, Any]:
+def _scope(value: Any, *, name: str = "scope", profile: SubAgentProfile | None = None) -> dict[str, Any]:
     scope = _object(
         value,
         name=name,
         required={"target_guids", "component_type", "property_paths", "mutation_channels"},
     )
-    targets = _list(scope["target_guids"], name=f"{name}.target_guids", min_items=1)
-    paths = _list(scope["property_paths"], name=f"{name}.property_paths", min_items=1)
-    channels = _list(scope["mutation_channels"], name=f"{name}.mutation_channels", min_items=1)
-    if len(targets) != 1 or any(not isinstance(item, str) or not item for item in targets):
-        raise ContractValidationError(f"{name}.target_guids must contain exactly one GUID")
-    if paths != ["Camera.fieldOfView"]:
-        raise ContractValidationError(f"{name}.property_paths must be exactly Camera.fieldOfView")
-    if scope["component_type"] != "UnityEngine.Camera":
-        raise ContractValidationError(f"{name}.component_type must be UnityEngine.Camera")
-    if channels != ["serialized_property"]:
-        raise ContractValidationError(f"{name}.mutation_channels must be exactly serialized_property")
-    return scope
+    selected = profile or _DEFAULT_PROFILE
+    try:
+        return selected.validate_scope(scope)
+    except ProfileValidationError as exc:
+        raise ContractValidationError(f"{name} is outside the SubAgent profile: {exc}") from exc
 
 
 def _budgets(value: Any, *, name: str = "budgets") -> dict[str, int]:
@@ -172,19 +177,23 @@ class TaskContract:
     }
 
     @classmethod
-    def from_dict(cls, value: Mapping[str, Any]) -> "TaskContract":
+    def from_dict(cls, value: Mapping[str, Any], *, profile: SubAgentProfile | None = None) -> "TaskContract":
         data = _object(value, name="TaskContract", required=cls._required)
         _version(data["schema_version"])
         task_id, run_id, goal_type = (_text(data[key], name=key) for key in ("task_id", "run_id", "goal_type"))
-        if goal_type != "artist.camera.refine":
-            raise ContractValidationError("TaskContract goal_type is unsupported")
+        try:
+            selected = profile or profile_for_task(data)
+        except ProfileValidationError as exc:
+            raise ContractValidationError(str(exc)) from exc
+        if goal_type != selected.goal_type:
+            raise ContractValidationError("TaskContract goal_type is unsupported by the selected SubAgent profile")
         project = _object(data["project"], name="TaskContract.project", required={"root", "name"})
         project = {"root": _text(project["root"], name="project.root"), "name": _text(project["name"], name="project.name")}
         fingerprint = _digest(data["project_fingerprint"], name="project_fingerprint")
-        scope = _scope(data["scope"])
-        required_evidence = [_text(item, name="required_evidence item") for item in _list(data["required_evidence"], name="required_evidence", min_items=3)]
-        if set(required_evidence) != ALLOWED_EVIDENCE:
-            raise ContractValidationError("TaskContract required_evidence must be the complete Camera FOV evidence union")
+        scope = _scope(data["scope"], profile=selected)
+        required_evidence = [_text(item, name="required_evidence item") for item in _list(data["required_evidence"], name="required_evidence", min_items=1)]
+        if set(required_evidence) != set(selected.required_evidence):
+            raise ContractValidationError("TaskContract required_evidence must match the selected SubAgent profile")
         budgets = _budgets(data["budgets"])
         issued_at = _iso(data["issued_at"], name="issued_at")
         contract_digest = _digest(data["contract_digest"], name="contract_digest")
@@ -211,20 +220,32 @@ class TaskContract:
         return contract_envelope("TaskContract", self.to_dict())
 
     @classmethod
-    def from_envelope(cls, value: Mapping[str, Any]) -> "TaskContract":
-        return cls.from_dict(validate_contract_envelope(value, "TaskContract"))
+    def from_envelope(cls, value: Mapping[str, Any], *, profile: SubAgentProfile | None = None) -> "TaskContract":
+        return cls.from_dict(validate_contract_envelope(value, "TaskContract"), profile=profile)
 
     @classmethod
-    def issue(cls, *, task_id: str, run_id: str, project: dict[str, str], project_fingerprint: str, issued_at: str, budgets: dict[str, int], scope: dict[str, Any] | None = None) -> "TaskContract":
+    def issue(
+        cls,
+        *,
+        task_id: str,
+        run_id: str,
+        project: dict[str, str],
+        project_fingerprint: str,
+        issued_at: str,
+        budgets: dict[str, int],
+        scope: dict[str, Any] | None = None,
+        profile: SubAgentProfile | None = None,
+    ) -> "TaskContract":
+        selected = profile or _DEFAULT_PROFILE
         value = {
             "schema_version": "1.1", "task_id": task_id, "run_id": run_id,
-            "goal_type": "artist.camera.refine", "project": project,
+            "goal_type": selected.goal_type, "project": project,
             "project_fingerprint": project_fingerprint,
-            "scope": scope or {"target_guids": ["camera-guid-001"], "component_type": "UnityEngine.Camera", "property_paths": ["Camera.fieldOfView"], "mutation_channels": ["serialized_property"]},
-            "required_evidence": sorted(ALLOWED_EVIDENCE), "budgets": budgets, "issued_at": issued_at,
+            "scope": scope or selected.default_scope,
+            "required_evidence": sorted(selected.required_evidence), "budgets": budgets, "issued_at": issued_at,
         }
         value["contract_digest"] = digest_for(value, "contract_digest")
-        return cls.from_dict(value)
+        return cls.from_dict(value, profile=selected)
 
 
 @dataclass(frozen=True)
@@ -253,21 +274,27 @@ class ApprovalDecision:
     }
 
     @classmethod
-    def from_dict(cls, value: Mapping[str, Any]) -> "ApprovalDecision":
+    def from_dict(cls, value: Mapping[str, Any], *, profile: SubAgentProfile | None = None) -> "ApprovalDecision":
         data = _object(value, name="ApprovalDecision", required=cls._required)
         _version(data["schema_version"])
         capability = _text(data["capability"], name="capability")
-        if capability != "artist.camera.refine":
-            raise ContractValidationError("ApprovalDecision capability is unsupported")
+        try:
+            selected = profile or profile_for_capability(data)
+        except ProfileValidationError as exc:
+            raise ContractValidationError(str(exc)) from exc
+        if capability != selected.primary_capability:
+            raise ContractValidationError("ApprovalDecision capability is unsupported by the selected SubAgent profile")
         project = _object(data["project"], name="ApprovalDecision.project", required={"root", "name"})
         project = {"root": _text(project["root"], name="project.root"), "name": _text(project["name"], name="project.name")}
         envelope = _object(data["parameter_envelope"], name="parameter_envelope", required={"min", "max"})
         lower, upper = (_number(envelope[key], name=f"parameter_envelope.{key}") for key in ("min", "max"))
-        if not 0 < lower <= upper < 180:
-            raise ContractValidationError("Camera FOV parameter envelope is invalid")
-        evidence = [_text(item, name="required_evidence item") for item in _list(data["required_evidence"], name="required_evidence", min_items=3)]
-        if set(evidence) != ALLOWED_EVIDENCE:
-            raise ContractValidationError("ApprovalDecision evidence floor is incomplete")
+        try:
+            selected.validate_parameter_envelope({"min": lower, "max": upper})
+        except ProfileValidationError as exc:
+            raise ContractValidationError(f"parameter envelope is invalid: {exc}") from exc
+        evidence = [_text(item, name="required_evidence item") for item in _list(data["required_evidence"], name="required_evidence", min_items=1)]
+        if set(evidence) != set(selected.required_evidence):
+            raise ContractValidationError("ApprovalDecision evidence floor does not match the selected SubAgent profile")
         status = _text(data["status"], name="status")
         if status not in {"active", "revoked", "expired"}:
             raise ContractValidationError("ApprovalDecision status is invalid")
@@ -280,7 +307,7 @@ class ApprovalDecision:
         result = cls(
             "1.1", _text(data["approval_decision_id"], name="approval_decision_id"), _text(data["task_id"], name="task_id"),
             _text(data["run_id"], name="run_id"), project, _digest(data["project_fingerprint"], name="project_fingerprint"),
-            _digest(data["contract_digest"], name="contract_digest"), capability, _scope(data["scope"], name="ApprovalDecision.scope"),
+            _digest(data["contract_digest"], name="contract_digest"), capability, _scope(data["scope"], name="ApprovalDecision.scope", profile=selected),
             {"min": lower, "max": upper}, evidence, status, _iso(data["expires_at"], name="expires_at"), epoch, human_review,
             _digest(data["decision_digest"], name="decision_digest"),
         )
@@ -301,20 +328,32 @@ class ApprovalDecision:
         return contract_envelope("ApprovalDecision", self.to_dict())
 
     @classmethod
-    def from_envelope(cls, value: Mapping[str, Any]) -> "ApprovalDecision":
-        return cls.from_dict(validate_contract_envelope(value, "ApprovalDecision"))
+    def from_envelope(cls, value: Mapping[str, Any], *, profile: SubAgentProfile | None = None) -> "ApprovalDecision":
+        return cls.from_dict(validate_contract_envelope(value, "ApprovalDecision"), profile=profile)
 
     @classmethod
-    def approve(cls, *, approval_decision_id: str, task: TaskContract, expires_at: str, lower: float = 35.0, upper: float = 50.0) -> "ApprovalDecision":
+    def approve(
+        cls,
+        *,
+        approval_decision_id: str,
+        task: TaskContract,
+        expires_at: str,
+        lower: float | None = None,
+        upper: float | None = None,
+        profile: SubAgentProfile | None = None,
+    ) -> "ApprovalDecision":
+        selected = profile or profile_for_task(task.to_dict())
+        lower_value = selected.approval["default_minimum"] if lower is None else lower
+        upper_value = selected.approval["default_maximum"] if upper is None else upper
         value = {
             "schema_version": "1.1", "approval_decision_id": approval_decision_id, "task_id": task.task_id,
             "run_id": task.run_id, "project": dict(task.project), "project_fingerprint": task.project_fingerprint,
-            "contract_digest": task.contract_digest, "capability": "artist.camera.refine", "scope": dict(task.scope),
-            "parameter_envelope": {"min": lower, "max": upper}, "required_evidence": sorted(ALLOWED_EVIDENCE),
+            "contract_digest": task.contract_digest, "capability": selected.primary_capability, "scope": dict(task.scope),
+            "parameter_envelope": {"min": lower_value, "max": upper_value}, "required_evidence": sorted(selected.required_evidence),
             "status": "active", "expires_at": expires_at, "revocation_epoch": 0, "human_review": "approved",
         }
         value["decision_digest"] = digest_for(value, "decision_digest")
-        return cls.from_dict(value)
+        return cls.from_dict(value, profile=selected)
 
 
 @dataclass(frozen=True)
@@ -343,14 +382,19 @@ class SurfaceGrant:
     }
 
     @classmethod
-    def from_dict(cls, value: Mapping[str, Any]) -> "SurfaceGrant":
+    def from_dict(cls, value: Mapping[str, Any], *, profile: SubAgentProfile | None = None) -> "SurfaceGrant":
         data = _object(value, name="SurfaceGrant", required=cls._required)
         _version(data["schema_version"])
         capabilities = [_text(item, name="capability") for item in _list(data["capabilities"], name="capabilities", min_items=1)]
-        if any(item not in ALLOWED_CAPABILITIES or any(token in item.casefold() for token in FORBIDDEN_CAPABILITY_TOKENS) for item in capabilities):
-            raise ContractValidationError("SurfaceGrant contains a capability outside the Artist allowlist")
-        if "artist.camera.refine" not in capabilities:
-            raise ContractValidationError("SurfaceGrant must include artist.camera.refine")
+        try:
+            selected = profile or profile_for_grant(data)
+            selected.validate_capabilities(capabilities)
+        except ProfileValidationError as exc:
+            raise ContractValidationError(f"SurfaceGrant capability set is invalid: {exc}") from exc
+        if any(any(token in item.casefold() for token in FORBIDDEN_CAPABILITY_TOKENS) for item in capabilities):
+            raise ContractValidationError("SurfaceGrant contains a forbidden capability token")
+        if data["audience"] != selected.audience:
+            raise ContractValidationError("SurfaceGrant audience is unsupported by the selected SubAgent profile")
         project = _object(data["project"], name="SurfaceGrant.project", required={"root", "name"})
         project = {"root": _text(project["root"], name="project.root"), "name": _text(project["name"], name="project.name")}
         epoch = data["revocation_epoch"]
@@ -381,8 +425,8 @@ class SurfaceGrant:
         return contract_envelope("SurfaceGrant", self.to_dict())
 
     @classmethod
-    def from_envelope(cls, value: Mapping[str, Any]) -> "SurfaceGrant":
-        return cls.from_dict(validate_contract_envelope(value, "SurfaceGrant"))
+    def from_envelope(cls, value: Mapping[str, Any], *, profile: SubAgentProfile | None = None) -> "SurfaceGrant":
+        return cls.from_dict(validate_contract_envelope(value, "SurfaceGrant"), profile=profile)
 
 
 @dataclass(frozen=True)
@@ -418,20 +462,27 @@ class TypedAction:
     }
 
     @classmethod
-    def from_dict(cls, value: Mapping[str, Any]) -> "TypedAction":
+    def from_dict(cls, value: Mapping[str, Any], *, profile: SubAgentProfile | None = None) -> "TypedAction":
         data = _object(value, name="TypedAction", required=cls._required)
         _version(data["schema_version"])
         target = _object(data["target"], name="target", required={"guid", "component_type"})
         target = {"guid": _text(target["guid"], name="target.guid"), "component_type": _text(target["component_type"], name="target.component_type")}
-        if target["component_type"] != "UnityEngine.Camera":
-            raise ContractValidationError("TypedAction target component is unsupported")
-        if data["property_path"] != "Camera.fieldOfView" or data["mutation_channel"] != "serialized_property":
-            raise ContractValidationError("TypedAction property/channel is unsupported")
-        if data["capability"] != "artist.camera.refine":
-            raise ContractValidationError("TypedAction capability is unsupported")
-        if data["value_type"] != "float" or data["unit"] != "degree":
-            raise ContractValidationError("TypedAction value type/unit is unsupported")
+        try:
+            selected = profile or profile_for_capability(data)
+            selected.validate_value(_number(data["value"], name="value"))
+        except ProfileValidationError as exc:
+            raise ContractValidationError(f"TypedAction is outside the SubAgent profile: {exc}") from exc
+        if target["component_type"] != selected.scope["component_type"]:
+            raise ContractValidationError("TypedAction target component is unsupported by the selected SubAgent profile")
+        if data["property_path"] != selected.action_property_path or data["mutation_channel"] != selected.action_mutation_channel:
+            raise ContractValidationError("TypedAction property/channel is unsupported by the selected SubAgent profile")
+        if data["capability"] != selected.primary_capability:
+            raise ContractValidationError("TypedAction capability is unsupported by the selected SubAgent profile")
+        if data["value_type"] != selected.value["type"] or data["unit"] != selected.value["unit"]:
+            raise ContractValidationError("TypedAction value type/unit is unsupported by the selected SubAgent profile")
         extra = [_text(item, name="additional_required_evidence item") for item in _list(data["additional_required_evidence"], name="additional_required_evidence")]
+        if any(item not in selected.required_evidence for item in extra):
+            raise ContractValidationError("TypedAction requested evidence is outside the selected SubAgent profile")
         result = cls(
             "1.1", _text(data["action_id"], name="action_id"), _text(data["idempotency_key"], name="idempotency_key"),
             _text(data["task_id"], name="task_id"), _text(data["run_id"], name="run_id"), _digest(data["contract_digest"], name="contract_digest"),
@@ -439,7 +490,7 @@ class TypedAction:
             _text(data["grant_id"], name="grant_id"), _digest(data["grant_digest"], name="grant_digest"),
             {"root": _text(_object(data["project"], name="project", required={"root", "name"})["root"], name="project.root"), "name": _text(_object(data["project"], name="project", required={"root", "name"})["name"], name="project.name")},
             _digest(data["project_fingerprint"], name="project_fingerprint"), _text(data["capability"], name="capability"), target,
-            "Camera.fieldOfView", "serialized_property", _number(data["value"], name="value"), "float", "degree",
+            _text(data["property_path"], name="property_path"), _text(data["mutation_channel"], name="mutation_channel"), _number(data["value"], name="value"), _text(data["value_type"], name="value_type"), _text(data["unit"], name="unit"),
             _text(data["expected_revision"], name="expected_revision"), extra, _digest(data["action_digest"], name="action_digest"),
         )
         _digest_match(result.to_dict(), field="action_digest", name="TypedAction")
@@ -461,24 +512,36 @@ class TypedAction:
         return contract_envelope("TypedAction", self.to_dict())
 
     @classmethod
-    def from_envelope(cls, value: Mapping[str, Any]) -> "TypedAction":
-        return cls.from_dict(validate_contract_envelope(value, "TypedAction"))
+    def from_envelope(cls, value: Mapping[str, Any], *, profile: SubAgentProfile | None = None) -> "TypedAction":
+        return cls.from_dict(validate_contract_envelope(value, "TypedAction"), profile=profile)
 
     @classmethod
-    def propose(cls, *, action_id: str, idempotency_key: str, task: TaskContract, approval: ApprovalDecision, grant: SurfaceGrant, value: float, expected_revision: str) -> "TypedAction":
+    def propose(
+        cls,
+        *,
+        action_id: str,
+        idempotency_key: str,
+        task: TaskContract,
+        approval: ApprovalDecision,
+        grant: SurfaceGrant,
+        value: float,
+        expected_revision: str,
+        profile: SubAgentProfile | None = None,
+    ) -> "TypedAction":
+        selected = profile or profile_for_task(task.to_dict())
         value_dict = {
             "schema_version": "1.1", "action_id": action_id, "idempotency_key": idempotency_key,
             "task_id": task.task_id, "run_id": task.run_id, "contract_digest": task.contract_digest,
             "approval_decision_id": approval.approval_decision_id, "approval_digest": approval.decision_digest,
             "grant_id": grant.grant_id, "grant_digest": grant.grant_digest, "project": dict(task.project),
-            "project_fingerprint": task.project_fingerprint, "capability": "artist.camera.refine",
-            "target": {"guid": task.scope["target_guids"][0], "component_type": "UnityEngine.Camera"},
-            "property_path": "Camera.fieldOfView", "mutation_channel": "serialized_property", "value": value,
-            "value_type": "float", "unit": "degree", "expected_revision": expected_revision,
+            "project_fingerprint": task.project_fingerprint, "capability": selected.primary_capability,
+            "target": {"guid": task.scope["target_guids"][0], "component_type": selected.scope["component_type"]},
+            "property_path": selected.action_property_path, "mutation_channel": selected.action_mutation_channel, "value": value,
+            "value_type": selected.value["type"], "unit": selected.value["unit"], "expected_revision": expected_revision,
             "additional_required_evidence": [],
         }
         value_dict["action_digest"] = digest_for(value_dict, "action_digest")
-        return cls.from_dict(value_dict)
+        return cls.from_dict(value_dict, profile=selected)
 
 
 @dataclass(frozen=True)
@@ -568,11 +631,12 @@ class EvidenceRecord:
     }
 
     @classmethod
-    def from_dict(cls, value: Mapping[str, Any]) -> "EvidenceRecord":
+    def from_dict(cls, value: Mapping[str, Any], *, profile: SubAgentProfile | None = None) -> "EvidenceRecord":
         data = _object(value, name="EvidenceRecord", required=cls._required)
         _version(data["schema_version"])
         evidence_type = _text(data["evidence_type"], name="evidence_type")
-        if evidence_type not in ALLOWED_EVIDENCE:
+        allowed_evidence = set(profile.required_evidence) if profile is not None else set(KNOWN_EVIDENCE)
+        if evidence_type not in allowed_evidence:
             raise ContractValidationError("unsupported evidence_type")
         if not isinstance(data["payload"], Mapping) or not data["payload"]:
             raise ContractValidationError("EvidenceRecord payload must be an object")
@@ -594,14 +658,24 @@ class EvidenceRecord:
         return contract_envelope("EvidenceRecord", self.to_dict())
 
     @classmethod
-    def from_envelope(cls, value: Mapping[str, Any]) -> "EvidenceRecord":
-        return cls.from_dict(validate_contract_envelope(value, "EvidenceRecord"))
+    def from_envelope(cls, value: Mapping[str, Any], *, profile: SubAgentProfile | None = None) -> "EvidenceRecord":
+        return cls.from_dict(validate_contract_envelope(value, "EvidenceRecord"), profile=profile)
 
     @classmethod
-    def observed(cls, *, evidence_id: str, task_id: str, run_id: str, action_id: str, evidence_type: str, payload: dict[str, Any]) -> "EvidenceRecord":
+    def observed(
+        cls,
+        *,
+        evidence_id: str,
+        task_id: str,
+        run_id: str,
+        action_id: str,
+        evidence_type: str,
+        payload: dict[str, Any],
+        profile: SubAgentProfile | None = None,
+    ) -> "EvidenceRecord":
         value = {"schema_version": "1.1", "evidence_id": evidence_id, "task_id": task_id, "run_id": run_id, "action_id": action_id, "evidence_type": evidence_type, "payload": payload, "durability": "durable", "observation_state": "observed"}
         value["evidence_digest"] = digest_for(value, "evidence_digest")
-        return cls.from_dict(value)
+        return cls.from_dict(value, profile=profile)
 
 
 @dataclass(frozen=True)
