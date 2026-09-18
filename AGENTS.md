@@ -15,7 +15,7 @@ Repository内の優先順位は `Policy/User/user-policy.yaml#instruction_priori
 2. `Orchestration/Routing/task-routes.yaml` で意図と範囲からRouteを選び、`Context/Selection/context-catalog.yaml` で必要なContext / Skill / Task Contractだけ解決する。選択Routeの`required_policy_clauses`をPolicy provenanceとして記録する。
 3. `Context/Assembly/materialize_context.py` でcurrent-call Contextを構築する。Context / Retrieval Budgetと圧縮時の必須制約保持は `Context/Budget/context-budget.yaml` に従う。
 4. bounded TaskはFast Pathを使う。Graph、Local Loop、SubAgentは分解・修復・独立並列作業が必要な場合にだけ利用する。
-5. Orchestrationは必要Capabilityを要求し、Runtime Tool BrokerがProviderを解決・実行する。Provider直接呼出しでApproval / Scopeを迂回しない。
+5. Orchestrationは必要Capabilityを要求する。専門作業はSubAgent Definitionから適格なSubAgentを解決し、その後Runtime Tool Brokerが実行Backend Providerを解決・実行する。SubAgent / Providerの直接呼出しでApproval / Scopeを迂回しない。
 6. 変更リスクと必須Gateに応じて検証する。新しい変更・失敗・未解決リスクがなければ同じPASS検証を反復しない。
 7. 承認済み依頼に複数段階が含まれるなら全体のGoalまで継続する。依頼外の次Taskには進まない。LoopはGoal / Failureを基準とし、既存Retry Budgetを守る。
 
@@ -31,6 +31,8 @@ Policy追加の前にKnowledge / Retrieval / Tool / Harness / Eval / Architectur
 | Context / Retrieval / Compression | `Context/Selection/` / `Context/Budget/` / `Context/Manifest/` |
 | Task workflow / Unity knowledge | `.agents/skills/` / `SkillReferences/` |
 | Naming contract / Golden checks | `SkillReferences/TYPE_NAMING_STANDARDS.md` / `Eval/Golden/validate_naming_grader.py` |
+| SubAgent identity / activation | `Runtime/ReferenceImplementation/subagent-catalog.yaml` |
+| Execution backend Provider | `Runtime/Tooling/provider_registry.yaml` / `Runtime/Tooling/Providers/` |
 | Execution / Tools / Validation | `Runtime/Runner/` / `Runtime/Tooling/` / `Runtime/Harnesses/` |
 | State / Resume / Evidence | `Persistence/State/` / `Persistence/Resume/` / `Persistence/Evidence/` |
 | Operations | `Operations/` |
@@ -46,6 +48,8 @@ Policy追加の前にKnowledge / Retrieval / Tool / Harness / Eval / Architectur
 - Unknown Project Fact / Bindingを推測で補完しない。legacy path fallbackやGolden期待値のProduction Prompt注入を行わない。
 - Static / Compile / Editor / Player / 実機 / Visual / Performanceの検証状態を分け、未観測は`not_observed`、利用不可は`unavailable`として報告する。
 - Goal達成、変更差分、実施した検証、残る制約を報告する。実行不能な必須Gateを成功扱いしない。
-- UI / CodexはProviderへ直接到達しない。必ずEntry → UnityAgent Control Plane → Capability / Policy / Resolver → Provider → Evidenceを通る。
+- SubAgentの `profile_id` が専門Agentの正本IDであり、`provider_id` は実行BackendのIDに限定する。Artistの正本名は `artist_subagent` / `ArtistSubAgent`、`unity_artist_cli` はBackend互換IDである。
+- SubAgentはoptional installとし、未インストール・未Bind・非互換・必要Environment Fact未成立のSubAgentを候補から除外する。RuntimeはCapabilityを満たすためにSubAgentを自動インストールしない。
+- UI / CodexはSubAgentやProviderへ直接到達しない。必ずEntry → UnityAgent Control Plane → Capability / Policy → SubAgent Resolver（必要時）→ Backend Provider Resolver → Evidenceを通る。
 - Setupは `unity-agent doctor → setup plan → approval → setup apply` の順序で行い、InstallReceiptとEvidenceを残す。
 - Host Control PlaneはGitHubのremote bootstrapから直接導入できる。UPM PackageとCodex Pluginは同じGitHubリポジトリの別Entryとして扱い、bootstrapがProviderを直接実行しない。
