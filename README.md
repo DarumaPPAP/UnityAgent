@@ -106,11 +106,11 @@ UnityAgentのLocal Reference Navigatorは、取得済みのReference Snapshotを
 
 Unity Project Rootを明示してEnvironmentを確認し、まず変更を伴わないSetup Planを生成します。
 
-§§§powershell
+```powershell
 $Project = "D:\Projects\MyGame"
 unity-agent doctor --project-path "$Project" --format json --non-interactive
 unity-agent setup --operation plan --project-path "$Project" --format json --non-interactive
-§§§
+```
 
 Setup PlanのApplyは別操作です。承認済みPlanとApproval Referenceを指定し、Planで示されたScopeだけを適用します。
 
