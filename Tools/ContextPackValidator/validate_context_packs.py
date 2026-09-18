@@ -241,14 +241,19 @@ def validate(root: Path) -> list[str]:
         if not isinstance(route, dict):
             errors.append(f"route {route_id} must be a mapping")
             continue
-        for field, prefix in (
-            ("context_pack", "Context/Packs/"),
-            ("primary_skill", ".agents/skills/"),
-            ("task_contract", "Orchestration/Contracts/TaskContracts/"),
-        ):
+        route_path_roots = {
+            "context_pack": ("Context/Packs/",),
+            "primary_skill": (
+                ".agents/skills/",
+                ".agents/plugins/unity-agent/skills/",
+            ),
+            "task_contract": ("Orchestration/Contracts/TaskContracts/",),
+        }
+        for field, prefixes in route_path_roots.items():
             value = str(route.get(field) or "")
-            if not value.startswith(prefix):
-                errors.append(f"route {route_id} {field} must use canonical {prefix} root")
+            if not value.startswith(prefixes):
+                allowed_roots = " or ".join(prefixes)
+                errors.append(f"route {route_id} {field} must use canonical {allowed_roots} root")
                 continue
             try:
                 canonical_local_path(root, value)
