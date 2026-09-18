@@ -1,6 +1,6 @@
 schema_version: "3.0"
 id: artist-lookdev
-primary_skill: .agents/plugins/unity-agent/skills/artist-subagent-routing/SKILL.md
+primary_skill: .agents/skills/artist-subagent-routing/SKILL.md
 
 metadata:
   type: context
@@ -57,13 +57,13 @@ required:
   - type: binding
     name: reference_or_visual_definition
   - type: repository_reference
-    path: .agents/plugins/unity-agent/skills/artist-subagent-routing/SKILL.md
+    path: .agents/skills/artist-subagent-routing/SKILL.md
   - type: repository_reference
     path: Runtime/Contracts/capability-request.schema.yaml
   - type: repository_reference
     path: Runtime/Tooling/provider_registry.yaml
   - type: repository_reference
-    path: Context/Retrieval/Knowledge/visual/artist-subagent-cli.yaml
+    path: Context/Retrieval/Knowledge/visual/unity-artist-cli.yaml
   - type: external_reference
     repository: DarumaPPAP/UnityArtistCLI
     path: Specs/UnityArtistCLI/spec.md
