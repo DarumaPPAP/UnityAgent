@@ -102,6 +102,18 @@ Pluginを追加した後は、新しいCodex Threadで開始してください�
 
 UnityAgentのLocal Reference Navigatorは、取得済みのReference Snapshotをローカル検索する仕組みです。通常の質問で外部Driveや検索サービスへ常時接続したり、ベクトルDBへ同期したりする機能ではありません。詳細は[Local Reference Navigator](docs/architecture/local-reference-navigator.md)を参照してください。
 
+## Quickstart
+
+Unity Project Rootを明示してEnvironmentを確認し、まず変更を伴わないSetup Planを生成します。
+
+§§§powershell
+$Project = "D:\Projects\MyGame"
+unity-agent doctor --project-path "$Project" --format json --non-interactive
+unity-agent setup --operation plan --project-path "$Project" --format json --non-interactive
+§§§
+
+Setup PlanのApplyは別操作です。承認済みPlanとApproval Referenceを指定し、Planで示されたScopeだけを適用します。
+
 ## Validation
 
 Repositoryの基本検証:
@@ -131,4 +143,4 @@ Local Regression Gateの一部は、ローカルCodex CLIや認証済み環境�
 
 ## Status and license
 
-UnityAgentはBetaです。Release Workflowは`main/VERSION`からcanonical tagを生成し、UPM Package、Codex Plugin、Python Distributionを公開します。UnityAgentは[MIT License](LICENSE)で提供されます。
+UnityAgentはBetaです。Release Workflowは`main/VERSION`からcanonical tagを生成し、UPM Package、Codex Plugin、Python wheel / source distribution、`SHA256SUMS.txt`を公開します。手動入力したTagをRelease Source of Truthにはしません。UnityAgentは[MIT License](LICENSE)で提供されます。
