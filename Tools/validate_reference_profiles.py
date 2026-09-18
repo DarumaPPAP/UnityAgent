@@ -21,6 +21,11 @@ def main() -> int:
         provider_ids = [definition.profile.provider_id for definition in definitions]
         if len(provider_ids) != len(set(provider_ids)):
             raise ProfileValidationError("provider_id values must be unique")
+        for definition in definitions:
+            if definition.profile.activation["auto_install"] is not False:
+                raise ProfileValidationError("SubAgent profiles must not auto-install")
+            if definition.profile.activation["install_mode"] != "optional":
+                raise ProfileValidationError("SubAgent profiles must remain optional")
         goal_types = [definition.profile.goal_type for definition in definitions]
         if len(goal_types) != len(set(goal_types)):
             raise ProfileValidationError("goal_type values must be unique")
