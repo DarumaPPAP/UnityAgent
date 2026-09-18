@@ -1,6 +1,6 @@
 schema_version: "3.0"
 id: artist-lookdev
-primary_skill: .agents/skills/artist-subagent-routing/SKILL.md
+primary_skill: .agents/plugins/unity-agent/skills/artist-subagent-routing/SKILL.md
 
 metadata:
   type: context
@@ -57,7 +57,7 @@ required:
   - type: binding
     name: reference_or_visual_definition
   - type: repository_reference
-    path: .agents/skills/artist-subagent-routing/SKILL.md
+    path: .agents/plugins/unity-agent/skills/artist-subagent-routing/SKILL.md
   - type: repository_reference
     path: Runtime/Contracts/capability-request.schema.yaml
   - type: repository_reference
