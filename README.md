@@ -34,7 +34,10 @@ User / Codex / Unity UI
  Capability / Policy / Approval
           │
           ▼
-       Providers
+ Optional SubAgent Resolver
+          │
+          ▼
+   Backend Providers
    ├─ Official Unity CLI
    ├─ UnityArtistCLI
    └─ Future Providers
@@ -47,7 +50,8 @@ User / Codex / Unity UI
 - **Capability-first** — Provider名ではなく「何を実現したいか」を正本にする。
 - **Approval-gated mutation** — 変更系処理はPlan / Scope / Approvalを通す。
 - **Evidence-first** — 観測できていない結果をPASSとして扱わない。
-- **Provider isolation** — UnityAgent Coreへ専門機能を詰め込まずProviderへ分離する。
+- **SubAgent isolation** — 専門判断はoptional SubAgentへ分離し、実行Backend Providerと同一視しない。未導入SubAgentは候補から除外する。
+- **Provider isolation** — UnityAgent Coreへ専門実装を詰め込まずBackend Providerへ分離する。
 
 詳細は [UnityAgent Architecture](docs/architecture/architecture.md) を参照してください。
 
