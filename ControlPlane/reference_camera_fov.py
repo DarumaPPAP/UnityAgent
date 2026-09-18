@@ -35,7 +35,7 @@ from Runtime.ReferenceImplementation.runtime import (
     append_reference_evidence,
     validate_reference_environment_snapshot,
 )
-from Runtime.ReferenceImplementation.profiles import default_profile
+from Runtime.ReferenceImplementation.profiles import ProfileValidationError, default_profile
 from Runtime.Tooling.capability_resolver import ResolutionContext
 from Runtime.Tooling.Environment.project_identity import canonical_scene_path
 
@@ -187,6 +187,10 @@ def execute_camera_fov_reference(
         project_root=project["root"],
         scene_path=scene_path,
     )
+    try:
+        profile.require_eligible(environment_snapshot)
+    except ProfileValidationError as exc:
+        raise ContractValidationError(f"ArtistSubAgent is unavailable: {exc}") from exc
     computed_project_fingerprint = sha256_jcs({"project": project, "version": "reference-v1.1"})
     supplied_project_fingerprint = projection.get("project_fingerprint")
     if supplied_project_fingerprint is not None and str(supplied_project_fingerprint) != computed_project_fingerprint:
