@@ -21,7 +21,7 @@ from Runtime.ReferenceImplementation.contracts import (
     ProviderResult,
     TypedAction,
 )
-from Runtime.ReferenceImplementation.profiles import SubAgentProfile
+from Runtime.ReferenceImplementation.profiles import ProfileValidationError, SubAgentProfile, default_profile
 from Runtime.ReferenceImplementation.runtime import (
     append_reference_evidence,
     EvidenceCompletionGate,
@@ -41,6 +41,7 @@ def _profile() -> SubAgentProfile:
         capabilities=("example.asset.inspect", "example.asset.review"),
         primary_capability="example.asset.review",
         required_evidence=("state_observation", "review_capture"),
+        activation={"install_mode": "optional", "auto_install": False, "required_environment": ["example_review.available"]},
         scope={
             "default_target_guid": "asset-guid-001",
             "component_type": "Example.Component",
@@ -172,6 +173,58 @@ def _durable_writer(store: EvidenceStore, task, approval, grant, profile: SubAge
 
 
 class GenericSubAgentContractTests(unittest.TestCase):
+    def test_default_profile_restores_artist_subagent_identity(self) -> None:
+        profile = default_profile()
+        self.assertEqual(profile.profile_id, "artist_subagent")
+        self.assertEqual(profile.display_name, "ArtistSubAgent")
+        self.assertEqual(profile.provider_id, "unity_artist_cli")
+        self.assertFalse(profile.activation["auto_install"])
+
+    def test_uninstalled_artist_subagent_is_excluded(self) -> None:
+        profile = default_profile()
+        unavailable = {
+            "unity_artist_cli": {
+                "available": False,
+                "project_bound": False,
+                "package_installed": False,
+                "pipeline_reachable": False,
+            }
+        }
+        self.assertEqual(profile.eligibility_failure(unavailable)[0], "unavailable")
+        with self.assertRaises(ProfileValidationError):
+            profile.require_eligible(unavailable)
+
+        available = {
+            "unity_artist_cli": {
+                "available": True,
+                "compatible": True,
+                "project_bound": True,
+                "package_installed": True,
+                "pipeline_reachable": True,
+            }
+        }
+        self.assertIsNone(profile.eligibility_failure(available))
+        profile.require_eligible(available)
+
+    def test_false_or_unknown_compatibility_excludes_artist_subagent(self) -> None:
+        profile = default_profile()
+        for compatible, expected_status in ((False, "unavailable"), ("unknown", "unknown")):
+            with self.subTest(compatible=compatible):
+                snapshot = {
+                    "unity_artist_cli": {
+                        "available": True,
+                        "compatible": compatible,
+                        "project_bound": True,
+                        "package_installed": True,
+                        "pipeline_reachable": True,
+                    }
+                }
+                failure = profile.eligibility_failure(snapshot)
+                self.assertIsNotNone(failure)
+                self.assertEqual(failure[0], expected_status)
+                with self.assertRaises(ProfileValidationError):
+                    profile.require_eligible(snapshot)
+
     def test_profile_drives_all_canonical_contracts_and_planning(self) -> None:
         profile, task, approval, grant, action = _fixture()
         self.assertEqual(task.goal_type, profile.goal_type)

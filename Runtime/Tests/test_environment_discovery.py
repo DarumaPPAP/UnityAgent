@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 import tempfile
 import unittest
@@ -15,9 +16,14 @@ from Runtime.Tooling.Environment.discovery import (
     ProviderInstanceObservation,
     bind_provider_instances,
     discover_environment,
+    probe_unity_artist_cli,
     probe_unity_cli,
 )
-from Runtime.Tooling.Environment.environment_snapshot import UnityCliSnapshot, validate_environment_snapshot_schema
+from Runtime.Tooling.Environment.environment_snapshot import (
+    UnityCliSnapshot,
+    validate_environment_snapshot,
+    validate_environment_snapshot_schema,
+)
 from Runtime.Tooling.Environment.native_editor_discovery import EditorCandidate, EditorProcessObservation, bind_editor_processes
 from Runtime.Tooling.Environment.project_identity import canonicalize_project_root, same_project_root
 
@@ -288,6 +294,71 @@ class EnvironmentDiscoveryTests(unittest.TestCase):
             )
             self.assertEqual(health["status"], "healthy")
             self.assertFalse(health["details"]["provider_availability"]["unity_cli"])
+
+    def test_artist_cli_compatibility_is_derived_fail_closed(self):
+        def observe(support):
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                project = self.make_project(root)
+                executable = root / "unity-artist"
+                executable.write_text("fixture", encoding="utf-8")
+                responses = iter([
+                    {"version": "0.0.1-beta"},
+                    {"capabilities": ["artist.camera.inspect"], "support": support},
+                ])
+
+                def dispatch(_request):
+                    return {"status": "passed", "payload": json.dumps(next(responses))}
+
+                snapshot = probe_unity_artist_cli(
+                    project_root=str(project),
+                    cwd=project,
+                    explicit_executable=str(executable),
+                    dispatch_fn=dispatch,
+                )
+                return snapshot.compatible
+
+        supported = {
+            "unityVersion": "6000.6.0f1",
+            "renderPipeline": "builtin",
+            "supportTier": "primary",
+            "compatibilityBackend": "builtin_editor_api",
+        }
+        unsupported = {
+            "unityVersion": "2022.3.42f1",
+            "renderPipeline": "urp",
+            "supportTier": "unsupported",
+            "compatibilityBackend": "urp_native_api",
+        }
+        unobserved = {
+            "unityVersion": "6000.6.0f1",
+            "renderPipeline": "builtin",
+        }
+        unknown_value = {
+            **supported,
+            "unityVersion": "unknown",
+        }
+        malformed = {
+            **supported,
+            "compatibilityBackend": 7,
+        }
+        mismatched_pipeline = {
+            **supported,
+            "renderPipeline": "urp",
+        }
+        self.assertIs(observe(supported), True)
+        self.assertIs(observe(unsupported), False)
+        self.assertIs(observe(mismatched_pipeline), False)
+        self.assertEqual(observe(unobserved), "unknown")
+        self.assertEqual(observe(unknown_value), "unknown")
+        self.assertEqual(observe(malformed), "unknown")
+
+    def test_environment_snapshot_serializes_compatibility_tristate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            snapshot = self.discover_fixture(self.make_project(Path(tmp)), "NO_EDITOR").to_dict()
+            self.assertIn("compatible", snapshot["unity_artist_cli"])
+            snapshot["unity_artist_cli"]["compatible"] = "unknown"
+            validate_environment_snapshot(snapshot)
 
     def test_schema_is_valid(self):
         validate_environment_snapshot_schema()

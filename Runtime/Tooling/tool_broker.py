@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
+from Runtime.Contracts.capability_contract import validate_capability_resolution
 from Runtime.Tooling.capability_resolver import ResolutionContext, resolve_capability
 from Runtime.Tooling.provider_contract import ProviderRegistry
 from Runtime.Tooling.provider_registry import RuntimeProviderRegistry
@@ -25,6 +26,65 @@ class ToolBroker:
     def registry(self) -> RuntimeProviderRegistry:
         return self._registry
 
+    @staticmethod
+    def _subagent_provider_gates(
+        environment_snapshot,
+    ) -> tuple[dict[str, tuple[str, str]], dict[str, str]]:
+        # Import lazily: the ReferenceImplementation package exports GoldenTaskRunner,
+        # which imports ToolBroker during package initialization.
+        from Runtime.ReferenceImplementation.profiles import CATALOG, ProfileValidationError
+
+        profiles_by_provider: dict[str, list[Any]] = {}
+        for definition in CATALOG.definitions():
+            profile = definition.profile
+            profiles_by_provider.setdefault(profile.provider_id, []).append(profile)
+
+        excluded: dict[str, tuple[str, str]] = {}
+        eligible: dict[str, str] = {}
+        for provider_id, profiles in profiles_by_provider.items():
+            if len(profiles) != 1:
+                excluded[provider_id] = (
+                    "unavailable",
+                    f"{provider_id} maps to multiple SubAgent profiles",
+                )
+                continue
+            profile = profiles[0]
+            try:
+                failure = profile.eligibility_failure(environment_snapshot)
+            except (ProfileValidationError, TypeError, ValueError, AttributeError) as exc:
+                failure = (
+                    "unknown",
+                    f"{profile.profile_id}: activation facts could not be evaluated ({exc})",
+                )
+            if failure is None:
+                eligible[provider_id] = profile.profile_id
+            else:
+                excluded[provider_id] = failure
+        return excluded, eligible
+
+    def _resolve_with_subagent_gates(
+        self,
+        request: dict,
+        environment_snapshot,
+        *,
+        context: ResolutionContext,
+        fallback_from_provider_id: str | None = None,
+    ) -> dict:
+        excluded, eligible_profiles = self._subagent_provider_gates(environment_snapshot)
+        resolution = resolve_capability(
+            request,
+            environment_snapshot,
+            context=context,
+            registry=self._registry,
+            fallback_from_provider_id=fallback_from_provider_id,
+            excluded_provider_failures=excluded,
+        )
+        profile_id = eligible_profiles.get(str(resolution.get("provider_ref") or ""))
+        if resolution.get("status") == "resolved" and profile_id is not None:
+            resolution["subagent_profile_id"] = profile_id
+            validate_capability_resolution(resolution)
+        return resolution
+
     def resolve(
         self,
         request: dict,
@@ -32,11 +92,10 @@ class ToolBroker:
         *,
         context: ResolutionContext,
     ) -> dict:
-        return resolve_capability(
+        return self._resolve_with_subagent_gates(
             request,
             environment_snapshot,
             context=context,
-            registry=self._registry,
         )
 
     def resolve_fallback(
@@ -48,11 +107,10 @@ class ToolBroker:
         previous_provider_id: str,
     ) -> dict:
         """Resolve an infrastructure fallback without weakening safety/evidence floors."""
-        return resolve_capability(
+        return self._resolve_with_subagent_gates(
             request,
             environment_snapshot,
             context=context,
-            registry=self._registry,
             fallback_from_provider_id=previous_provider_id,
         )
 

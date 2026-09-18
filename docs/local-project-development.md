@@ -1,6 +1,6 @@
 # ローカルUnity Project開発ガイド
 
-この文書は、UnityAgentをローカルUnity Projectへ接続して調査・実装・検証するときの**現在の標準運用**を説明します。UnityArtistCLI cutoverの責務境界は [UnityArtistCLI cutover](architecture/unity-artist-cli-cutover.md) を正本とします。
+この文書は、UnityAgentをローカルUnity Projectへ接続して調査・実装・検証するときの**現在の標準運用**を説明します。Artist系専門処理の責務境界は [ArtistSubAgent boundary](architecture/artist-subagent-boundary.md) を正本とします。
 
 対象:
 

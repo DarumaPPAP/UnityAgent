@@ -56,7 +56,7 @@ flowchart TD
     D -->|file| PF[File Provider]
     D -->|native_unity_editor| PN[Native Unity Editor Provider]
     D -->|unity_cli| PC[Unity CLI Provider]
-    D -->|unity_artist_cli| PA[UnityArtistCLI Provider]
+    D -->|unity_artist_cli| PA[ArtistSubAgent Backend Provider]
     D -->|player_runtime| PP[Player Runtime Provider]
 
     PF --> X[Structured ProviderResult]
@@ -214,7 +214,7 @@ Production adapterが現在実行する中心Capability:
 
 CLIのversion / command surfaceは変化し得るため、固定想定ではなくRuntime discoveryで確認します。
 
-### UnityArtistCLI Provider
+### ArtistSubAgent Backend Provider
 
 Visual art / cinematicのsemantic workflow専用Providerです。LookDev、Lighting、Environment、Camera、Capture、Evaluation、Refine、Cinematic、Timelineを扱います。generic Unity操作はUnity CLIまたは既存の適切なProviderへ委譲します。
 

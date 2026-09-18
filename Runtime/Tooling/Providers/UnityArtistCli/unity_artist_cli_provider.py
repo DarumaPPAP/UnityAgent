@@ -62,7 +62,8 @@ class UnityArtistCliProvider:
         facts = self.environment_snapshot.get(ARTIST_PROVIDER)
         if not isinstance(facts, Mapping):
             return frozenset()
-        if all(facts.get(key) is True for key in ("available", "project_bound", "package_installed", "pipeline_reachable")):
+        required = ("available", "compatible", "project_bound", "package_installed", "pipeline_reachable")
+        if all(facts.get(key) is True for key in required):
             return SUPPORTED_CAPABILITIES
         return frozenset()
 
@@ -87,6 +88,10 @@ class UnityArtistCliProvider:
         facts = self.environment_snapshot.get(ARTIST_PROVIDER)
         if not isinstance(facts, Mapping):
             return _failure("unavailable", "Environment Snapshot does not contain UnityArtistCLI facts")
+        compatible = facts.get("compatible", "unknown")
+        if compatible is not True:
+            failure_class = "unknown" if compatible == "unknown" else "unavailable"
+            return _failure(failure_class, f"UnityArtistCLI compatibility is {compatible!r}")
         required = ("available", "project_bound", "package_installed", "pipeline_reachable")
         if any(facts.get(key) is not True for key in required):
             return _failure("unavailable", "Environment Snapshot does not prove UnityArtistCLI/Pipeline project binding")

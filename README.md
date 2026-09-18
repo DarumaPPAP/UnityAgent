@@ -16,7 +16,7 @@
 |---|---|
 | Entry | Unity UI / Codex Pluginから要求を受け付ける |
 | Control Plane | Task、Policy、Approval、環境、Project Binding、実行状態を管理する |
-| Capability & Orchestration | 要求をCapabilityへ対応付け、必要な処理順序を決める |
+| Capability & Orchestration | 要求をCapabilityへ対応付け、必要な処理順序を決める。専門作業ではoptional SubAgentを適格性条件で解決してから、Backend Providerを解決する |
 | Provider | 許可された具体的な操作を実行する |
 | Evidence & State | 観測結果、実行状態、履歴を保存する |
 
@@ -33,9 +33,9 @@ Entryや専門Backendが独自にPolicyやControl Planeを持つ構成にはし�
 
 ### 現在のHub連携状態
 
-2026-09-18時点で、HubのCIはManifestからSnapshot Artifactを生成しますが、UnityAgentはそのArtifactを自動取得・読込していません。UnityAgent ReferenceImplementationは、Repository内の`Runtime/ReferenceImplementation/subagent-catalog.yaml`を`SubAgentProfileCatalog`で読み込みます。Hub Snapshotには`activation`フィールドが含まれますが、現在のProfile Loaderはそのフィールドを受け付けないため、Snapshotはそのまま読み込めません。
+2026-09-18時点で、HubのCIはManifestからSnapshot Artifactを生成しますが、UnityAgentはそのArtifactを自動取得・読込していません。UnityAgent ReferenceImplementationは、Repository内の`Runtime/ReferenceImplementation/subagent-catalog.yaml`を`SubAgentProfileCatalog`で読み込みます。このLoaderが読むのはUnityAgent独自のProfile形式です。HubのSnapshot形式を直接読み込むAdapterやImport処理はまだありません。
 
-また、UnityAgentにある現在のcompatibility profileは`unity_artist_cli`をProfile IDとして使っており、Hubの専門Agent ID `artist_subagent`とは移行途中の差があります。Manifestの`unity_artist_cli.compatible` gateを満たす環境事実も現在のReferenceImplementationからは出力されません。したがって、README上で「Hubに登録すればUnityAgentがArtistSubAgentをすぐ実行する」とは扱いません。実行時取込には、データ形式のAdapterと環境Factの接続が必要です。
+ローカルProfileの専門Agent IDは`artist_subagent`、実行Backend IDは`unity_artist_cli`です。Activationでは`available`、`compatible`、`project_bound`、`package_installed`、`pipeline_reachable`の各環境事実がすべてtrueであることを要求します。`compatible`はArtist CLIのsupport metadataから観測し、primary tierとrender pipelineに対応するknown backendの組み合わせが確認できた場合だけtrue、明示的な非対応はfalse、情報不足はunknownとして扱います。falseまたはunknownのProfileはResolution前に除外します。Hubへの登録だけでUnityAgentが実行を開始することはありません。
 
 ## Provider model
 

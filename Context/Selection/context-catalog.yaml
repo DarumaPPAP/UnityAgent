@@ -73,14 +73,14 @@ routes:
     knowledge_selection: optional
   artist-lookdev:
     context_pack: Context/Packs/artist-lookdev.yaml
-    primary_skill: .agents/skills/unity-artist-cli-routing/SKILL.md
+    primary_skill: .agents/plugins/unity-agent/skills/artist-subagent-routing/SKILL.md
     task_contract: Orchestration/Contracts/TaskContracts/artist-lookdev.yaml
     knowledge_selection: optional
     reference_selection: local_snapshot_when_relevant
     capability_selection: required
   artist-cinematic:
     context_pack: Context/Packs/artist-cinematic.yaml
-    primary_skill: .agents/skills/unity-artist-cli-routing/SKILL.md
+    primary_skill: .agents/plugins/unity-agent/skills/artist-subagent-routing/SKILL.md
     task_contract: Orchestration/Contracts/TaskContracts/artist-cinematic.yaml
     knowledge_selection: optional
     reference_selection: local_snapshot_when_relevant

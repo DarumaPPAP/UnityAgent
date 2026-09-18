@@ -54,7 +54,7 @@ class SkillDocument:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Validate .agents/skills/*/SKILL.md files."
+        description="Validate repository and plugin Skill files."
     )
     parser.add_argument(
         "root",
@@ -78,9 +78,11 @@ def parse_args() -> argparse.Namespace:
 
 def discover_skill_files(root: Path) -> list[Path]:
     skills_root = root / ".agents" / "skills"
-    if not skills_root.is_dir():
-        return []
-    return sorted(skills_root.glob("*/SKILL.md"))
+    plugin_root = root / ".agents" / "plugins"
+    skill_files = list(skills_root.glob("*/SKILL.md")) if skills_root.is_dir() else []
+    if plugin_root.is_dir():
+        skill_files.extend(plugin_root.glob("*/skills/*/SKILL.md"))
+    return sorted(set(skill_files))
 
 
 def parse_frontmatter(lines: list[str]) -> tuple[dict[str, str], tuple[str, ...], int] | None:
@@ -356,7 +358,7 @@ def main() -> int:
                 "error",
                 "SKILL000",
                 str(root),
-                "No .agents/skills/*/SKILL.md files were found.",
+                "No repository or plugin Skill files were found.",
             )
         )
 
