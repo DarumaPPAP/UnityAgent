@@ -28,8 +28,8 @@ Artist要求は `domain.workflow` / `visual.capture` とsemantic qualifierで表
 
 ## Completion
 
-- UnityArtistCLIのCLI envelope、host transport、Artist package、compatibility bucket、support matrix、safe mutation lifecycleが実装されている
-- UnityAgentのsemantic routing、`unity_artist_cli` Provider、Environment facts、legacy cutover、Evidence mappingが既存Runtimeへ接続されている
-- UnityAgent / UnityArtistCLIのskill-only PluginとUnityAgent Marketplace manifestが検証可能である
+- ArtistSubAgentのoptional activation、specialist identity、backend compatibility surface、safe mutation lifecycleが実装されている
+- UnityAgentのsemantic routing、`artist_subagent` SubAgent profile、`unity_artist_cli` backend Provider、Environment facts、Evidence mappingが既存Runtimeへ接続されている
+- UnityAgentを唯一のCodex Plugin入口とし、ArtistSubAgentのrepo-scoped SkillとMarketplace manifestが検証可能である
 - Static、host CLI、package contract、resolver、plugin、release matrix、E2E EvidenceをPASS / FAIL / BLOCKEDで監査する
 - Unity Editor / License / Pipeline reachabilityなど未観測の条件は成功扱いせず、`blocked_by_environment` として記録する
