@@ -10,9 +10,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "Tools/ContextExplorer"))
+sys.path.insert(0, str(ROOT / "Tools/ContextPackValidator"))
 from architecture_projection import build_human_architecture  # noqa: E402
 from build import write_bundle  # noqa: E402
 from context_map import CANONICAL_CONTEXT_PACKS, load_context_map, validate_context_map  # noqa: E402
+from validate_context_packs import validate as validate_context_packs  # noqa: E402
 
 
 class ContextExplorerMapTests(unittest.TestCase):
@@ -24,6 +26,10 @@ class ContextExplorerMapTests(unittest.TestCase):
         self.assertEqual(first["metadata"]["kind"], "unityagent-context-map")
         self.assertTrue(first["metadata"]["read_only"])
         self.assertEqual(validate_context_map(first), [])
+
+    def test_context_pack_catalog_accepts_plugin_owned_primary_skills(self) -> None:
+        errors = validate_context_packs(ROOT)
+        self.assertEqual(errors, [], "\\n".join(errors))
 
     def test_context_nodes_have_canonical_source_hash_and_provenance(self) -> None:
         for node in load_context_map(ROOT).to_dict()["nodes"]:
