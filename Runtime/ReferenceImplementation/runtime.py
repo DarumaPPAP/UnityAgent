@@ -908,6 +908,7 @@ def _profile_binding_digest(profile: SubAgentProfile) -> str:
             "capabilities": list(profile.capabilities),
             "primary_capability": profile.primary_capability,
             "required_evidence": list(profile.required_evidence),
+            "activation": profile.activation,
             "scope": profile.scope,
             "value": profile.value,
             "approval": profile.approval,
