@@ -3,7 +3,7 @@
 The catalog is the only place where a concrete specialist's identity, scope and
 evidence vocabulary is declared.  Contract and Runtime code consumes a profile
 without importing a product-specific provider or assuming a Unity component.
-The first profile is UnityArtistCLI for compatibility with the v1.1 wire format.
+The first profile is ArtistSubAgent. Its provider_id identifies only the execution backend; the SubAgent identity is profile_id.
 """
 from __future__ import annotations
 
@@ -39,6 +39,21 @@ def _mapping(value: Any, name: str) -> dict[str, Any]:
     return dict(value)
 
 
+def _snapshot_mapping(value: Any) -> dict[str, Any]:
+    if hasattr(value, "to_dict"):
+        value = value.to_dict()
+    return _mapping(value, "environment_snapshot")
+
+
+def _fact(snapshot: Mapping[str, Any], dotted_path: str) -> Any:
+    current: Any = snapshot
+    for segment in dotted_path.split("."):
+        if not isinstance(current, Mapping) or segment not in current:
+            return "unknown"
+        current = current[segment]
+    return current
+
+
 @dataclass(frozen=True)
 class SubAgentProfile:
     """Declarative contract capabilities for one concrete SubAgent.
@@ -55,6 +70,7 @@ class SubAgentProfile:
     capabilities: tuple[str, ...]
     primary_capability: str
     required_evidence: tuple[str, ...]
+    activation: dict[str, Any]
     scope: dict[str, Any]
     value: dict[str, Any]
     approval: dict[str, Any]
@@ -65,7 +81,7 @@ class SubAgentProfile:
         data = _mapping(value, "SubAgentProfile")
         required = {
             "profile_id", "display_name", "provider_id", "audience", "goal_type",
-            "capabilities", "primary_capability", "required_evidence", "scope",
+            "capabilities", "primary_capability", "required_evidence", "activation", "scope",
             "value", "approval", "evidence",
         }
         unknown = set(data) - required
@@ -79,6 +95,18 @@ class SubAgentProfile:
         primary = _text(data["primary_capability"], "primary_capability")
         if primary not in capabilities:
             raise ProfileValidationError("primary_capability must be included in capabilities")
+        activation = _mapping(data["activation"], "activation")
+        if set(activation) != {"install_mode", "auto_install", "required_environment"}:
+            raise ProfileValidationError("profile activation fields are not exact")
+        if activation["install_mode"] != "optional":
+            raise ProfileValidationError("SubAgent install_mode must be optional")
+        if activation["auto_install"] is not False:
+            raise ProfileValidationError("SubAgent auto_install must remain false")
+        activation = {
+            "install_mode": "optional",
+            "auto_install": False,
+            "required_environment": list(_unique_texts(activation["required_environment"], "activation.required_environment")),
+        }
         scope = _mapping(data["scope"], "scope")
         scope_required = {"default_target_guid", "component_type", "property_paths", "mutation_channels", "max_targets"}
         if set(scope) != scope_required:
@@ -135,6 +163,7 @@ class SubAgentProfile:
             capabilities=capabilities,
             primary_capability=primary,
             required_evidence=evidence_types,
+            activation=activation,
             scope=scope,
             value=value_spec,
             approval=approval_spec,
@@ -161,6 +190,20 @@ class SubAgentProfile:
         if len(self.scope["mutation_channels"]) != 1:
             raise ProfileValidationError("TypedAction requires a profile with one canonical mutation channel")
         return str(self.scope["mutation_channels"][0])
+
+    def eligibility_failure(self, environment_snapshot: Any) -> tuple[str, str] | None:
+        snapshot = _snapshot_mapping(environment_snapshot)
+        for path in self.activation["required_environment"]:
+            observed = _fact(snapshot, path)
+            if observed is not True:
+                status = "unknown" if observed == "unknown" else "unavailable"
+                return status, f"{self.profile_id}: environment fact {path}={observed!r}; expected True"
+        return None
+
+    def require_eligible(self, environment_snapshot: Any) -> None:
+        failure = self.eligibility_failure(environment_snapshot)
+        if failure is not None:
+            raise ProfileValidationError(f"SubAgent is not eligible ({failure[0]}): {failure[1]}")
 
     def validate_scope(self, value: Mapping[str, Any]) -> dict[str, Any]:
         data = _mapping(value, "scope")
@@ -271,6 +314,25 @@ class SubAgentProfileCatalog:
         ]
         if len(matches) != 1:
             raise ProfileValidationError("SurfaceGrant does not resolve to exactly one SubAgent profile")
+        return matches[0]
+
+    def available_definitions(self, environment_snapshot: Any) -> tuple[SubAgentDefinition, ...]:
+        return tuple(
+            definition
+            for definition in self._definitions.values()
+            if definition.profile.eligibility_failure(environment_snapshot) is None
+        )
+
+    def resolve_available_capability(self, capability: str, environment_snapshot: Any) -> SubAgentProfile:
+        matches = [
+            definition.profile
+            for definition in self.available_definitions(environment_snapshot)
+            if capability in definition.profile.capabilities
+        ]
+        if len(matches) != 1:
+            raise ProfileValidationError(
+                f"capability does not resolve to exactly one installed/eligible SubAgent profile: {capability}"
+            )
         return matches[0]
 
     def evidence_types(self) -> frozenset[str]:
