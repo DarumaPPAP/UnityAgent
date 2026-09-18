@@ -1,7 +1,7 @@
-# EmptyFeature 挙動評価Fixture
+# EmptyFeature Mutation Fixture
 
-MUTATION系Evalが本番Repositoryを変更せずに「新規C#を作成する」経路を観測するための空Fixtureです。
+MUTATION Evalで「新規C#を作成する」経路を、本番Repositoryを変更せずに検証する空Fixtureです。
 
-- 恒久的なC#ファイルは配置しません。
-- Runtimeが `CameraDebugger.cs` を生成します。
-- Working Treeの差分はFixture内の生成物だけを観測します。
+- Fixtureに恒久C#ファイルは置きません。
+- Runtimeが`CameraDebugger.cs`を生成し、評価対象はFixture内の生成物です。
+- 実Projectへの変更、Unity EditorでのCompile、SubAgentのeligibilityを示すFixtureではありません。

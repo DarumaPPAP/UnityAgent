@@ -1,9 +1,17 @@
-# Context Explorer Tests
+# Context Explorer Test Suite
 
-Issue #32のContextExplorer migrationと、Issue #131のGraph Visualization最終境界を固定する回帰テストです。
+このSuiteは、Context ExplorerがCanonical Context Contractを決定的に表示することを検証します。Production Routing、SubAgent Resolution、ExecutionのAuthorityをテストするSuiteではありません。
 
-- `test_context_map.py` — `Context/Packs/*.yaml` からの決定的Map生成、Provenance、Schema、7 Human Concepts、Static Bundleへの`ContextMap` injection
-- `test_security.py` — Static / Offline / Read-only Frontend、Context Map vocabulary、explicit one-hop relation projection、Repository Path境界
-- `test_migration.py` — 旧GraphObservatory層の不在、generic graph engine非復活、`__CONTEXT_GRAPH__`非復活、`Orchestration/Graph`とのAuthority分離、`validate_all.py`統合
+## Coverage
 
-このSuiteは `Tools/validate_all.py` の標準Gateから実行します。
+- `test_context_map.py`: `Context/Packs/*.yaml`からの決定的Map、Provenance、Schema、Human Concept、Static Bundleへの注入
+- `test_security.py`: Static / Offline / Read-only Frontend、Context Map用語、One-hop Relation、Repository Path境界
+- `test_migration.py`: 旧GraphObservatory層やgeneric graph engineの再導入禁止、Authority境界、`validate_all.py`統合
+
+基本Gate:
+
+```bash
+python Tools/validate_all.py
+```
+
+Context Explorerの実装と表示制約は`../../Tools/ContextExplorer/README.md`を参照してください。

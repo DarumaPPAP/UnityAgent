@@ -1,6 +1,6 @@
 ---
 name: artist-subagent-routing
-description: Route visual-art and cinematic specialist work through the optional ArtistSubAgent without confusing SubAgent identity with its backend provider.
+description: Use when a Unity visual-art, lookdev, lighting, environment, camera, capture, evaluation, refinement, Timeline, or cinematic task needs specialist planning through the optional ArtistSubAgent.
 ---
 
 # ArtistSubAgent routing
@@ -31,3 +31,28 @@ For ArtistSubAgent the current backend compatibility id is `unity_artist_cli`. G
 - Runtime never auto-installs ArtistSubAgent to satisfy a request.
 - There is no separately installed Artist Codex plugin; the UnityAgent plugin owns the entry workflow.
 - UI / Codex never bypasses UnityAgent to invoke the backend directly.
+
+## Output Contract
+
+- State the semantic Capability and qualifiers used for SubAgent resolution.
+- Report `profile_id=artist_subagent`; report backend `provider_id=unity_artist_cli` only after eligibility succeeds.
+- Include the observed activation facts and their evidence.
+- For mutations, report the UnityAgent approval, scope and revision requirements, result, and Evidence references.
+- If unavailable, identify the false or unknown activation fact and do not claim execution.
+
+## Checklist
+
+- [ ] The request matches the ArtistSubAgent profile's declared scope.
+- [ ] Every activation fact is checked against the observed environment and project binding.
+- [ ] Missing, unbound, incompatible, or unobservable specialists are excluded without installation.
+- [ ] Backend Provider resolution happens only after SubAgent eligibility; UnityAgent retains control and approval.
+- [ ] A Provider result is not presented as proof of Editor, Player, or human visual acceptance.
+
+## Common Mistakes
+
+- Using `unity_artist_cli` as the specialist identity instead of the backend ID.
+- Treating a catalog entry as proof that ArtistSubAgent is installed, compatible, bound, or reachable.
+- Treating an unknown activation fact as true or installing a missing SubAgent to satisfy a request.
+- Calling the backend directly from Unity UI, Codex, or a task graph.
+- Routing generic project, hierarchy, compile, test, build, UI, Audio, or Addressables work to ArtistSubAgent.
+- Claiming Editor, Player, or visual acceptance from a successful CLI envelope alone.

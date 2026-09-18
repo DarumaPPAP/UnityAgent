@@ -2,402 +2,56 @@
 
 [![Unity](https://img.shields.io/badge/Unity-2022.3%2B-000000?logo=unity&logoColor=white)](https://unity.com/)
 [![Codex](https://img.shields.io/badge/Codex-Plugin-111827?logo=openai&logoColor=white)](https://github.com/openai/codex)
-[![Release](https://img.shields.io/badge/Release-v0.0.7--beta-orange)](https://github.com/DarumaPPAP/UnityAgent/releases)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![UnityAgent CI](https://github.com/DarumaPPAP/UnityAgent/actions/workflows/validate-agent-contracts.yml/badge.svg)](https://github.com/DarumaPPAP/UnityAgent/actions/workflows/validate-agent-contracts.yml)
 
-**AIにUnity開発を任せるためのControl Plane。**  
-Unityの設計・実装・検証を、Policy / Capability / Provider / Evidenceに分離して安全に回します。
+**UnityAgent は、Unity 開発の要求を方針・承認・Capability・Provider・Evidenceに沿って実行する Control Plane です。** Unity Editor、Codex Plugin、CLIを別々の実行主体にせず、入口をUnityAgentへ集約します。
 
-> **Current source version:** `v0.0.7-beta`  
-> Betaでは破壊的変更が入る可能性があります。
+[Architecture](docs/architecture/architecture.md) · [Production Tool Runtime](docs/architecture/production-tool-runtime.md) · [Context Explorer](https://darumappap.github.io/UnityAgent/) · [Releases](https://github.com/DarumaPPAP/UnityAgent/releases)
 
-[Context Explorer](https://darumappap.github.io/UnityAgent/) · [Releases](https://github.com/DarumaPPAP/UnityAgent/releases) · [Architecture](docs/architecture/architecture.md) · [MIT License](LICENSE)
+## 責務
 
----
+ユーザー、Codex Plugin、Unity UIはUnityAgentへ要求を渡します。UnityAgentがTaskの分解、Policy、Approval、環境とProjectの確認、Capability解決、Provider実行、結果のEvidence化を管理します。
 
-## What is UnityAgent?
+| 層 | 主な責務 |
+|---|---|
+| Entry | Unity UI / Codex Pluginから要求を受け付ける |
+| Control Plane | Task、Policy、Approval、環境、Project Binding、実行状態を管理する |
+| Capability & Orchestration | 要求をCapabilityへ対応付け、必要な処理順序を決める。専門作業ではoptional SubAgentを適格性条件で解決してから、Backend Providerを解決する |
+| Provider | 許可された具体的な操作を実行する |
+| Evidence & State | 観測結果、実行状態、履歴を保存する |
 
-UnityAgentは単なるUnity操作CLIではありません。
+Entryや専門Backendが独自にPolicyやControl Planeを持つ構成にはしません。Unity UI / Codex PluginからProviderを直接呼び出しません。
 
-ユーザーやCodexから受けた要求に対して、**何をするか / どこまで変更してよいか / どのProviderへ実行させるか / 何をEvidenceとして残すか**を管理するUnity開発Control Planeです。
+## UnitySubAgentHub との境界
 
-```text
-User / Codex / Unity UI
-          │
-          ▼
-      UnityAgent
- Architect / Commander
-     Loop Owner
-          │
-          ▼
- Capability / Policy / Approval
-          │
-          ▼
- Optional SubAgent Resolver
-          │
-          ▼
-   Backend Providers
-   ├─ Official Unity CLI
-   ├─ UnityArtistCLI
-   └─ Future Providers
-          │
-          ▼
-   Evidence / Run State
-```
+[UnitySubAgentHub](https://github.com/DarumaPPAP/UnitySubAgentHub) は、Optionalな専門SubAgentのRegistry、Manifest、Schema、Validationを管理する別Repositoryです。要求の解釈、適格性判定、Resolution、実行、Install、Retry/Fallback、Evidence正規化はUnityAgentの責務です。
 
-- **One Control Plane** — Unity EditorとCodexで別の実行基盤を持たない。
-- **Capability-first** — Provider名ではなく「何を実現したいか」を正本にする。
-- **Approval-gated mutation** — 変更系処理はPlan / Scope / Approvalを通す。
-- **Evidence-first** — 観測できていない結果をPASSとして扱わない。
-- **SubAgent isolation** — 専門判断はoptional SubAgentへ分離し、実行Backend Providerと同一視しない。未導入SubAgentは候補から除外する。
-- **Provider isolation** — UnityAgent Coreへ専門実装を詰め込まずBackend Providerへ分離する。
+- 専門AgentのIDは **`artist_subagent`**。
+- その実装BackendのIDは **`unity_artist_cli`**。
+- Registryへの登録だけでは、導入済み・互換・ProjectへBinding済み・実行可能とは判断しません。
+- SubAgentの自動Installは行いません。falseまたはunknownのeligibility gateは候補から除外します。
 
-詳細は [UnityAgent Architecture](docs/architecture/architecture.md) を参照してください。
+### 現在のHub連携状態
 
-製品境界は、Entry Layer、Control Plane、Capability & Orchestration、Provider
-Layer、Evidence & Stateの5層です。依存方向と禁止依存は
-[`Specs/unityagent-layer-contract.yaml`](Specs/unityagent-layer-contract.yaml) に固定し、
-`Tools/validate_all.py` から自動検証します。Unity UI / Codex PluginはProviderを
-直接呼ばず、UnityAgent Control PlaneのSetup／Execution入口だけを呼びます。
+2026-09-18時点で、HubのCIはManifestからSnapshot Artifactを生成しますが、UnityAgentはそのArtifactを自動取得・読込していません。UnityAgent ReferenceImplementationは、Repository内の`Runtime/ReferenceImplementation/subagent-catalog.yaml`を`SubAgentProfileCatalog`で読み込みます。Hub Snapshotには`activation`フィールドが含まれますが、現在のProfile Loaderはそのフィールドを受け付けないため、Snapshotはそのまま読み込めません。
 
-### Control Planeのローカル導入
+また、UnityAgentにある現在のcompatibility profileは`unity_artist_cli`をProfile IDとして使っており、Hubの専門Agent ID `artist_subagent`とは移行途中の差があります。Manifestの`unity_artist_cli.compatible` gateを満たす環境事実も現在のReferenceImplementationからは出力されません。したがって、README上で「Hubに登録すればUnityAgentがArtistSubAgentをすぐ実行する」とは扱いません。実行時取込には、データ形式のAdapterと環境Factの接続が必要です。
 
-リポジトリをcloneせずにWindows PowerShellから導入する場合は、GitHubのremote bootstrapを
-実行できます。
+## Provider model
 
-```powershell
-irm https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/migration/unity-artist-cli-v2/scripts/install-remote.ps1 | iex
-```
+`Capability`は実現したいこと、`Provider`は操作を実行する実体です。Provider名だけで機能を選ばず、現在のProject・環境・Policy・Evidence条件を満たす候補をUnityAgentが解決します。
 
-このスクリプトはUnityAgent Control PlaneをGitHubの指定refから現在ユーザーのPython環境へ導入し、
-`unity-agent` をUser PATHへ追加します。Python 3.10以上とpipが必要です。既定でRelease tag
-`v0.0.1-beta` を使用するため、mainの状態に依存せず再現できます。現在のRelease tagには
-bootstrap自身がまだ含まれていないため、bootstrapのraw URLだけは移行ブランチを参照します。
-別のControl Plane refを試す場合だけ `$env:UNITY_AGENT_REF` を設定してください。ローカルcheckoutを
-使う場合は `python -m pip install -e .` でも導入できます。
+代表的なProviderにはFile、Native Unity Editor、Official Unity CLI、`unity_artist_cli` Backend、Installer、Player Runtimeがあります。これはProvider種別の一覧であり、すべてのProjectやReleaseで常に利用可能という意味ではありません。Artist Backendが扱える広いCLI surfaceと、Resolverに登録されたCapabilityも区別します。
 
-Unity UPM PackageはUnityのPackage Managerへ、Codex PluginはMarketplace／GitHub plugin入口へ
-同じリポジトリから追加します。remote bootstrapはホストControl Planeを担当し、これらを勝手に
-コピーしたり、Providerを直接実行したりしません。
+## 安全性と完了判定
 
-Setupは次の順序で実行します。
+変更系処理は原則として次の順序で進めます。
 
 ```text
-unity-agent doctor --project-path <project> --format json --non-interactive
-unity-agent setup --operation plan --project-path <project> --format json --non-interactive
-外部承認
-unity-agent setup --operation apply --project-path <project> --expected-plan-id <plan_id> --approval-ref <approval_ref> --approved-plan <approved_plan.json> --format json --non-interactive
+Inspect → Plan / Exact Scope → Approval → Apply → Evidence
 ```
 
-CLIはInstaller Providerを直接選択せず、既存Runtime Provider RegistryとToolBrokerの
-management operationを通します。Unity UIの `UnityAgent/Setup` も同じControl Plane
-コマンドを呼び出します。
-
-### MyResourceCenter参照はLocal-first
-
-個人運用では、MyResourceCenterやGoogle Driveへ通常の依頼ごとに接続しません。必要時に一度だけSourceを確認して生成した `myresourcecenter-reference-snapshot` を、`Context/Retrieval/Reference/reference_navigator.py` でローカル検索します。通常の質問は上位3〜5件だけをContextへ入れ、不具合は一度の候補検索から仮説と読み取り専用の検証計画を作成し、以後はUnity Projectの観測を優先します。
-
-外部検索サーバー、埋め込みAPI、ベクトルDB、常時同期は現行の個人運用に含めません。Snapshotに候補がない、古い、原文確認が必要、またはSource間に矛盾がある場合だけ明示的な再確認へ切り替えます。詳細は [Local Reference Navigator](docs/architecture/local-reference-navigator.md) を参照してください。
-
----
-
-# Installation
-
-## Requirements
-
-- Windows PowerShell 5.1+
-- Python 3.10+
-- Unity 2022.3+
-- Codex Pluginを利用する場合はCodex CLI
-
-## Recommended: Unity-first setup
-
-### 1. Add the UnityAgent UPM package
-
-Unity Editor:
-
-1. `Window > Package Manager`
-2. `+`
-3. `Add package from git URL...`
-4. 次を入力
-
-```text
-https://github.com/DarumaPPAP/UnityAgent.git?path=/Packages/com.darumappap.unity-agent#v0.0.7-beta
-```
-
-> `v0.0.2-beta` のUPM artifactにはUnity `.meta` 不足があるため使用しないでください。`v0.0.7-beta` ではBootstrap/UIを含む現在のSetup導線を使用できます。
-
-### 2. Open UnityAgent Setup
-
-```text
-UnityAgent > Setup
-```
-
-`v0.0.7-beta` ではSetup Windowを、依存関係と次の操作が一目で分かるカード型UIへ再設計しています。
-
-```text
-UnityAgent Setup                                  v0.0.7-beta
-
-Setup Readiness                                  1/2 READY
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-1. UnityAgent Control Plane              ACTION REQUIRED
-Resolved Path: Not Found
-[ Install Control Plane ]
-[ 再検出 ] [ 参照... ]
-
-2. Codex CLI                                      READY
-Resolved Path: C:\...\codex.exe
-[ 再検出 ] [ 参照... ]
-
-3. Codex Integration                      READY TO CHECK
-[ 状態を確認 ] [ Codex Pluginをインストール / 修復 ]
-
-Current Status
-Diagnostics / Raw response
-Advanced
-```
-
-### 3. Install the Control Plane from Unity
-
-Control Planeがまだ無い場合は、Setup WindowのPrimary actionを使用します。
-
-```text
-Install Control Plane
-```
-
-Bootstrapは**Control Plane自身だけ**を導入します。
-
-```text
-UnityAgent UPM
-  ↓ bootstrap-only path
-Package-local PowerShell installer
-  ↓
-GitHub Release wheel + SHA256SUMS.txt
-  ↓ SHA-256 verify
-%LOCALAPPDATA%\UnityAgent\ControlPlane\v0.0.7-beta\venv
-  ↓ isolated install
-%LOCALAPPDATA%\UnityAgent\bin\unity-agent.cmd
-  ↓ stable discovery hint
-UNITY_AGENT_CONTROL_PLANE
-```
-
-旧 `pip --user` 形式はmigration-requiredとして検出しますが、自動選択も自動削除もしません。`Install Control Plane` を実行すると専用LocalAppData runtimeへ移行します。
-
-BootstrapからCodex PluginやUnityArtistCLI等のProviderを直接変更することは禁止しています。Control Plane導入後の通常処理は従来どおりです。
-
-```text
-Unity Window
-  ↓
-UnityAgent Control Plane
-  ↓
-Setup Plan / Approval
-  ↓
-Installer Provider
-  ↓
-Provider / Codex CLI
-  ↓
-InstallReceipt / Evidence
-```
-
-### 4. Detect Codex CLI and install the Codex Plugin
-
-Control PlaneがReadyになったら、Codex CLIを確認します。
-
-Codex CLIは概ね次の順で解決します。
-
-```text
-Manual Override
-  ↓
-UNITY_AGENT_CODEX_CLI / CODEX_CLI
-  ↓
-Windows npm / common locations
-  ↓
-NVM / user-local locations
-  ↓
-PATH / where.exe / which
-  ↓
-Installer Providerで codex --version を実行確認
-```
-
-その後、
-
-```text
-Codex Pluginをインストール / 修復
-```
-
-を実行します。Plugin導入後はCodexで**新しいThread**を開始してください。
-
----
-
-## Alternative: PowerShell / Headless install
-
-Unity Editorを使わずControl Planeを入れる場合、またはRepair用途では従来のBootstrapも利用できます。
-
-```powershell
-irm https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/main/scripts/install.ps1 | iex
-```
-
-既定では最新の公開UnityAgent Prereleaseを解決し、Release wheelを `SHA256SUMS.txt` で検証してからインストールします。
-
-特定Releaseを固定する場合:
-
-```powershell
-$env:UNITY_AGENT_TAG = "v0.0.7-beta"
-irm https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/main/scripts/install.ps1 | iex
-```
-
-Installerは専用LocalAppData runtimeへControl Planeを導入し、stable shimを生成したうえで、解決用の絶対PathをUser環境変数 `UNITY_AGENT_CONTROL_PLANE` に保存します。
-
----
-
-# Manual Codex installation
-
-Unity Editorを使わず手動で導入する場合:
-
-```powershell
-codex plugin marketplace add DarumaPPAP/UnityAgent --ref v0.0.7-beta --json
-codex plugin add unity-agent@unity-agent --json
-codex plugin list --json
-```
-
-```text
-Marketplace : unity-agent
-Plugin      : unity-agent@unity-agent
-```
-
-旧Betaで使用していた汎用的な `personal` Marketplace名には依存しません。
-
----
-
-# Troubleshooting
-
-## Control Planeが見つからない
-
-Setup WindowのControl Planeカードから順に確認してください。
-
-```text
-Install Control Plane
-→ 再検出
-→ 参照...
-→ Override解除
-→ Diagnostics
-```
-
-Control Plane Resolverは概ね次の順で探索します。
-
-```text
-Manual Override
-  ↓
-UNITY_AGENT_CONTROL_PLANE (process / user)
-  ↓
-%LOCALAPPDATA%\UnityAgent\bin
-  ↓
-%LOCALAPPDATA%\UnityAgent\ControlPlane\<release-tag>\venv\Scripts
-  ↓
-Process PATH / User PATH
-```
-
-旧Python User Scriptsの `pip --user` インストールはmigration候補としてのみ検出され、通常のControl Planeとしては選択しません。
-
-## Codex CLIが見つからない
-
-```text
-再検出
-→ 参照...
-→ Override解除
-→ Diagnostics
-```
-
-Windowsでは `codex.exe / codex.cmd / codex.bat / codex.ps1` を考慮します。
-
----
-
-# Quickstart
-
-Unity Project Rootは `Assets / Packages / ProjectSettings` を含むディレクトリです。
-
-```powershell
-$Project = "D:\Projects\MyGame"
-```
-
-Environment確認:
-
-```powershell
-unity-agent doctor `
-  --project-path "$Project" `
-  --format json `
-  --non-interactive
-```
-
-Setup Plan:
-
-```powershell
-unity-agent setup `
-  --operation plan `
-  --project-path "$Project" `
-  --format json `
-  --non-interactive
-```
-
-Codex CLIを明示する場合:
-
-```powershell
-unity-agent setup `
-  --operation doctor `
-  --project-path "$Project" `
-  --product codex_cli `
-  --codex-path "C:\Path\To\codex.exe" `
-  --format json `
-  --non-interactive
-```
-
-`unavailable` は必ずしもUnityAgent自体の異常ではありません。未観測・利用不可の結果を勝手にPASSへ変換しません。
-
----
-
-# What UnityAgent does
-
-| Area | UnityAgentの役割 |
-| --- | --- |
-| Architecture | Taskの責務・境界・依存方向を決める |
-| Routing | IntentをCapabilityへ変換する |
-| Policy | Mutation Scope / Approval / Safetyを適用する |
-| Runtime | Provider Registry / Resolver / Dispatcherを統括する |
-| Unity operations | Official Unity CLI等へ実行を委譲する |
-| Visual / Cinematic | UnityArtistCLIへ専門処理を委譲する |
-| Toolchain Setup | Installer ProviderでCodex Plugin等を観測・導入する |
-| Evidence | ProviderResultを正規化し、実行結果を永続化する |
-| Regression | Frozen BaselineとのBehavior比較を行う |
-
----
-
-# Provider model
-
-```text
-Skill      = どう作業するか
-Capability = 何を実現したいか
-Provider   = 誰が実行するか
-Evidence   = 実際に何を観測したか
-```
-
-代表Provider:
-
-- File Provider
-- Native Unity Editor Provider
-- Official Unity CLI Provider
-- UnityArtistCLI Provider
-- Player Runtime Provider
-- Installer Provider
-
-UnityArtistCLIはLookDev / Lighting / Camera / Cinematic等を担当するspecialist Providerです。第二のAgent Frameworkにはしません。
-
-`v0.0.7-beta` のUnityAgentはUnityArtistCLI `v0.0.1-beta` をimmutable dependencyとしてpinしています。UnityAgentのRelease channelとProvider製品versionは別契約です。
-
----
-
-# Safety & Evidence
+Approvalは対象、Scope、Revisionに結び付けます。未観測の結果を成功として扱いません。
 
 ```text
 Compile PASS
@@ -408,69 +62,61 @@ Compile PASS
 != Visual PASS
 ```
 
-```text
-Provider unavailable
-!= Approvalを省略してよい
-!= Mutation Scopeを広げてよい
-!= Evidenceを推測してよい
-```
+Providerが使えないときは、制約を弱めたり別Backendへ無条件に切り替えたりせず、`unavailable`または環境阻害として報告します。
 
-通常Mutationは原則として次の経路を維持します。
+## Install
 
-```text
-Inspect
-  ↓
-Prepare / Plan
-  ↓
-Exact Diff / Scope
-  ↓
-Expected Revision
-  ↓
-Approval
-  ↓
-Apply
-  ↓
-Evidence
-```
+### Requirements
 
-Control Plane未導入時の**Control Plane自身のBootstrapだけ**が、この通常経路の前段にある限定例外です。
+- Windows PowerShell 5.1以上（Windows Bootstrapを使う場合）
+- Python 3.10以上（Control Planeのローカル導入に使用）
+- Unity 2022.3以上（Unity Packageを利用する場合）
+- Codex CLI（Codex Pluginを利用する場合）
 
----
-
-# Architecture
+Unity EditorでPackage Managerを開き、Git URLからUnityAgent UPM Packageを追加します。
 
 ```text
-① Entry Layer
-   Unity UI / Codex Plugin
-
-② Control Plane
-   UnityAgent
-
-③ Capability & Orchestration Layer
-   Graph / Loop / Runtime Guard / Policy / Approval
-   Provider Registry / Resolver / Dispatcher
-
-④ Provider Layer
-   Official Unity CLI / UnityArtistCLI / Installer / Future Providers
-
-⑤ Evidence & State Layer
-   ProviderResult / Run History / Capture / InstallReceipt / Evaluation
+https://github.com/DarumaPPAP/UnityAgent.git?path=/Packages/com.darumappap.unity-agent#v0.0.7-beta
 ```
 
-> **Unity UI / Codex PluginからProviderへ直接接続しない。**
+追加後、`UnityAgent > Setup`を開いてControl PlaneとCodex CLIの状態を確認します。Setup画面からControl Planeの導入、検出、Codex Pluginの導入・修復を行えます。
 
-詳細:
+PowerShellからControl Planeだけを導入する場合:
 
-- [Architecture](docs/architecture/architecture.md)
-- [Production Tool Runtime](docs/architecture/production-tool-runtime.md)
-- [Unity Environment Adaptation](docs/unity-environment-adaptation.md)
-- [Local Unity Project Development](docs/local-project-development.md)
-- [Layer Contract](Specs/unityagent-layer-contract.yaml)
-- [Context Explorer](https://darumappap.github.io/UnityAgent/)
+```powershell
+irm https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/main/scripts/install.ps1 | iex
+```
 
----
+このBootstrapはRelease artifactをSHA-256検証してControl Planeを導入します。詳細なSetup Plan、Approval、Repair手順は[Setup Guide](.agents/plugins/unity-agent/skills/unity-agent-setup/SKILL.md)を参照してください。
 
-# Development & Validation
+Codex Pluginを手動で追加する場合:
+
+```powershell
+codex plugin marketplace add DarumaPPAP/UnityAgent --ref v0.0.7-beta --json
+codex plugin add unity-agent@unity-agent --json
+```
+
+Pluginを追加した後は、新しいCodex Threadで開始してください。Unity UIとCodex Pluginは同じUnityAgent Control Planeを入口として使用します。
+
+## Local reference data
+
+UnityAgentのLocal Reference Navigatorは、取得済みのReference Snapshotをローカル検索する仕組みです。通常の質問で外部Driveや検索サービスへ常時接続したり、ベクトルDBへ同期したりする機能ではありません。詳細は[Local Reference Navigator](docs/architecture/local-reference-navigator.md)を参照してください。
+
+## Quickstart
+
+Unity Project Rootを明示してEnvironmentを確認し、まず変更を伴わないSetup Planを生成します。
+
+```powershell
+$Project = "D:\Projects\MyGame"
+unity-agent doctor --project-path "$Project" --format json --non-interactive
+unity-agent setup --operation plan --project-path "$Project" --format json --non-interactive
+```
+
+Setup PlanのApplyは別操作です。承認済みPlanとApproval Referenceを指定し、Planで示されたScopeだけを適用します。
+
+## Validation
+
+Repositoryの基本検証:
 
 ```powershell
 python .\Tools\validate_all.py
@@ -479,51 +125,22 @@ python .\Tools\ProductionToolRuntime\validate_production_tool_runtime.py
 python .\Tools\run_regression_gate.py
 ```
 
-Local Regression GateはローカルのCodex CLI / 認証済み環境を前提とし、GitHub-hosted Release Workflowの必須Gateとは分離されています。
+Local Regression Gateの一部は、ローカルCodex CLIや認証済み環境を必要とします。GitHub-hosted Release Workflowの検証結果と混同しないでください。
 
----
+## Canonical sources
 
-# Release
+| 内容 | Source |
+|---|---|
+| Layer境界 | `Specs/unityagent-layer-contract.yaml` |
+| PolicyとApproval | `Policy/` |
+| RoutingとOrchestration | `Orchestration/` |
+| Runtime / Provider Registry / Resolution | `Runtime/` |
+| Durable Evidence | `Persistence/` |
+| Regression / Eval | `Eval/` |
+| Optional SubAgent metadata | [UnitySubAgentHub](https://github.com/DarumaPPAP/UnitySubAgentHub) |
 
-Canonical version:
+詳細は[Architecture](docs/architecture/architecture.md)と[Production Tool Runtime](docs/architecture/production-tool-runtime.md)を参照してください。
 
-```text
-0.0.7-beta
-```
+## Status and license
 
-Release Workflowは**tag文字列を手入力しません**。`main/VERSION`からcanonical tag `v0.0.7-beta` を自動生成します。
-
-Actionsでは:
-
-```text
-UnityAgent Release
-→ Run workflow from main
-→ confirm_release = true
-```
-
-だけを指定します。旧versionのコピペや先頭`v`忘れでReleaseが落ちる経路を排除しています。
-
-Release Workflowは同一tagから以下を生成します。
-
-- UnityAgent UPM package
-- Codex `unity-agent` plugin archive
-- Python Control Plane wheel / source distribution
-- `SHA256SUMS.txt`
-
-UPM artifactはRelease前に、Editor assetsの`.meta`とpackage-local Bootstrap scriptがpack後の`.tgz`へ含まれていることを検証します。
-
----
-
-# License
-
-UnityAgent is released under the [MIT License](LICENSE).
-
----
-
-# Project status
-
-UnityAgentは現在Betaです。
-
-目標は、Unity Editor、Codex、Official Unity CLI、UnityArtistCLIなどの入口や実行手段が増えても、**UnityAgentのControl Plane / Graph / Loop / Evidence契約を作り直さず拡張できる構成**を維持することです。
-
-Bug / Proposal / Beta feedbackはGitHub Issuesへお願いします。
+UnityAgentはBetaです。Release Workflowは`main/VERSION`からcanonical tagを生成し、UPM Package、Codex Plugin、Python wheel / source distribution、`SHA256SUMS.txt`を公開します。手動入力したTagをRelease Source of Truthにはしません。UnityAgentは[MIT License](LICENSE)で提供されます。
