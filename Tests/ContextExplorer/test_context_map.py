@@ -29,7 +29,7 @@ class ContextExplorerMapTests(unittest.TestCase):
 
     def test_context_pack_catalog_accepts_plugin_owned_primary_skills(self) -> None:
         errors = validate_context_packs(ROOT)
-        self.assertEqual(errors, [], "\\n".join(errors))
+        self.assertEqual(errors, [], "\n".join(errors))
 
     def test_context_nodes_have_canonical_source_hash_and_provenance(self) -> None:
         for node in load_context_map(ROOT).to_dict()["nodes"]:
