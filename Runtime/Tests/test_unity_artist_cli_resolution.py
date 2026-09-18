@@ -11,6 +11,7 @@ if str(ROOT) not in sys.path:
 
 from Runtime.Tooling.Providers.UnityArtistCli.result_mapper import normalize_artist_result
 from Runtime.Tooling.capability_resolver import ResolutionContext, resolve_capability
+from Runtime.Tooling.tool_broker import ToolBroker
 
 
 class UnityArtistCliResolutionTests(unittest.TestCase):
@@ -120,6 +121,63 @@ class UnityArtistCliResolutionTests(unittest.TestCase):
 
         self.assertEqual(result["status"], "resolved")
         self.assertEqual(result["provider_ref"], "unity_artist_cli")
+
+    def test_tool_broker_returns_artist_subagent_identity_before_backend(self) -> None:
+        snapshot = dict(self.snapshot)
+        snapshot["unity_artist_cli"] = dict(self.snapshot["unity_artist_cli"])
+        snapshot["unity_artist_cli"]["compatible"] = True
+        request = {
+            "schema_version": "1.0",
+            "capability": "domain.workflow",
+            "project_root": self.project_root,
+            "operation_kind": "editor_mutation",
+            "required_evidence": ["domain_result", "mutation_evidence"],
+            "mutation_scope": {
+                "allowed_paths": ["Assets/Scenes"],
+                "prohibited_paths": ["ProjectSettings"],
+            },
+            "approval_ref": "approval-1",
+            "preferred_surface": "editor",
+            "qualifiers": {"domain": "visual_art", "workflow": "lighting"},
+        }
+
+        result = ToolBroker().resolve(
+            request,
+            snapshot,
+            context=ResolutionContext(policy_allowed=True, approval_complete=True),
+        )
+
+        self.assertEqual(result["status"], "resolved")
+        self.assertEqual(result["provider_ref"], "unity_artist_cli")
+        self.assertEqual(result["subagent_profile_id"], "artist_subagent")
+
+    def test_tool_broker_excludes_unknown_compatibility_from_artist_subagent(self) -> None:
+        snapshot = dict(self.snapshot)
+        snapshot["unity_artist_cli"] = dict(self.snapshot["unity_artist_cli"])
+        snapshot["unity_artist_cli"]["compatible"] = "unknown"
+        request = {
+            "schema_version": "1.0",
+            "capability": "domain.workflow",
+            "project_root": self.project_root,
+            "operation_kind": "editor_mutation",
+            "required_evidence": ["domain_result", "mutation_evidence"],
+            "mutation_scope": {
+                "allowed_paths": ["Assets/Scenes"],
+                "prohibited_paths": ["ProjectSettings"],
+            },
+            "approval_ref": "approval-1",
+            "preferred_surface": "editor",
+            "qualifiers": {"domain": "visual_art", "workflow": "lighting"},
+        }
+
+        result = ToolBroker().resolve(
+            request,
+            snapshot,
+            context=ResolutionContext(policy_allowed=True, approval_complete=True),
+        )
+
+        self.assertNotEqual(result["provider_ref"], "unity_artist_cli")
+        self.assertNotEqual(result.get("subagent_profile_id"), "artist_subagent")
 
     def test_legacy_myunitymcp_is_not_selected_for_unqualified_scene_work(self) -> None:
         request = {

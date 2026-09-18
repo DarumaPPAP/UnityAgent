@@ -197,6 +197,7 @@ class GenericSubAgentContractTests(unittest.TestCase):
         available = {
             "unity_artist_cli": {
                 "available": True,
+                "compatible": True,
                 "project_bound": True,
                 "package_installed": True,
                 "pipeline_reachable": True,
@@ -204,6 +205,25 @@ class GenericSubAgentContractTests(unittest.TestCase):
         }
         self.assertIsNone(profile.eligibility_failure(available))
         profile.require_eligible(available)
+
+    def test_false_or_unknown_compatibility_excludes_artist_subagent(self) -> None:
+        profile = default_profile()
+        for compatible, expected_status in ((False, "unavailable"), ("unknown", "unknown")):
+            with self.subTest(compatible=compatible):
+                snapshot = {
+                    "unity_artist_cli": {
+                        "available": True,
+                        "compatible": compatible,
+                        "project_bound": True,
+                        "package_installed": True,
+                        "pipeline_reachable": True,
+                    }
+                }
+                failure = profile.eligibility_failure(snapshot)
+                self.assertIsNotNone(failure)
+                self.assertEqual(failure[0], expected_status)
+                with self.assertRaises(ProfileValidationError):
+                    profile.require_eligible(snapshot)
 
     def test_profile_drives_all_canonical_contracts_and_planning(self) -> None:
         profile, task, approval, grant, action = _fixture()

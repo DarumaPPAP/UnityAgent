@@ -122,5 +122,18 @@ class UnityArtistCliProviderTests(unittest.TestCase):
         self.assertEqual(fake.requests, [])
 
 
+    def test_unknown_compatibility_blocks_advertising_and_execution(self):
+        snapshot = dict(self.snapshot)
+        artist_facts = dict(snapshot["unity_artist_cli"])
+        artist_facts["compatible"] = "unknown"
+        snapshot["unity_artist_cli"] = artist_facts
+        fake = FakeArtistDispatch({"Status": "passed", "Data": {"planId": "plan-1"}})
+        provider = UnityArtistCliProvider(self.project_root, snapshot, dispatch_fn=fake)
+
+        self.assertEqual(provider.available_capabilities(), frozenset())
+        result = provider.execute(self.request, arguments={"command": "plan"})
+        self.assertEqual(result["failure_class"], "unknown")
+        self.assertEqual(fake.requests, [])
+
 if __name__ == "__main__":
     unittest.main()
