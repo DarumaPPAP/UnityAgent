@@ -1,6 +1,6 @@
 schema_version: "3.0"
 id: artist-cinematic
-primary_skill: .agents/skills/unity-artist-cli-routing/SKILL.md
+primary_skill: .agents/plugins/unity-agent/skills/artist-subagent-routing/SKILL.md
 
 metadata:
   type: context
@@ -41,7 +41,7 @@ metadata:
       reason: Rendering constraints can add technical evidence requirements.
       source_ref: Context/Packs/artist-cinematic.yaml#rules
   priority: critical
-  tags: [unity-artist, cinematic, timeline, cinemachine, bindings, visual-review]
+  tags: [artist-subagent, cinematic, timeline, cinemachine, bindings, visual-review]
 
 use_when:
   - explicit cinematic intent requires Timeline, Cinemachine Shot, Track, Clip, Binding, Marker, Signal, Activation, Control, or Animation work
@@ -57,13 +57,13 @@ required:
   - type: binding
     name: shot_and_binding_definition
   - type: repository_reference
-    path: .agents/skills/unity-artist-cli-routing/SKILL.md
+    path: .agents/plugins/unity-agent/skills/artist-subagent-routing/SKILL.md
   - type: repository_reference
     path: Runtime/Contracts/capability-request.schema.yaml
   - type: repository_reference
     path: Runtime/Tooling/provider_registry.yaml
   - type: repository_reference
-    path: Context/Retrieval/Knowledge/visual/unity-artist-cli.yaml
+    path: Context/Retrieval/Knowledge/visual/artist-subagent-cli.yaml
   - type: external_reference
     repository: DarumaPPAP/UnityArtistCLI
     path: Specs/UnityArtistCLI/spec.md
