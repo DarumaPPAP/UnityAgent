@@ -1,6 +1,6 @@
 # Unity環境に応じたProduction Runtime適応
 
-UnityAgentはUnity CLIやUnityArtistCLIを必須依存にしません。UnityAgentはArchitect / Commander / Loop Ownerとして既存Runtimeを運用し、UnityArtistCLIはArtist / Cinematicのspecialist Provider（概念上のPlayer）です。現行境界は [UnityArtistCLI cutover](architecture/unity-artist-cli-cutover.md) にあります。
+UnityAgentはUnity CLIやArtist系Backendを必須依存にしません。UnityAgentはArchitect / Commander / Loop Ownerとして既存Runtimeを運用し、ArtistSubAgentはoptional specialistです。`unity_artist_cli` はArtistSubAgentが利用する現在のBackend Provider互換IDに限定します。現行境界は [ArtistSubAgent boundary](architecture/artist-subagent-boundary.md) にあります。
 
 **必要なCapabilityを先に決め、現在のEnvironment Snapshotから実行可能なProviderをRuntimeが解決します。**
 
