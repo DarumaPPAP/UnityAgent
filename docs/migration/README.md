@@ -1,139 +1,29 @@
-# Migration History
+# UnityAgent Migration History
 
-このDirectoryは、UnityAgentの**過去のArchitecture移行・Cutover・Baseline更新・Compatibility削除判断を監査できるように残すHistorical Record**です。
+`docs/migration/`は、過去のArchitecture移行、Cutover、Baseline更新、Compatibility削除を監査するHistorical Recordです。ここに残る旧Path、旧Contract、旧Phase名は当時の状態を示し、現在の仕様ではありません。
 
-> **ここに置かれた文書は現在のProduction Authorityではありません。**
->
-> 旧Path、削除済みContract、旧Phase名が本文に残っている場合、それは「当時そうだった」というEvidenceです。現在も有効という意味ではありません。
+## Current authority
 
----
-
-## Current Productionを知りたい場合
-
-次を優先してください。
+現在のUnityAgent behaviorは次を優先してください。
 
 1. `AGENTS.md`
-2. `Policy / Orchestration / Context / Runtime / Persistence / Operations / Eval` のcanonical source
-3. `docs/architecture/architecture.md`
-4. `docs/architecture/production-tool-runtime.md`
-5. `docs/unity-environment-adaptation.md`
-6. Supporting `Specs/`
+2. `Policy/`、`Orchestration/`、`Context/`、`Runtime/`、`Persistence/`、`Operations/`、`Eval/`のCanonical Source
+3. [Architecture](../architecture/architecture.md)
+4. [Production Tool Runtime](../architecture/production-tool-runtime.md)
+5. 関連する`Specs/`
 
-```mermaid
-flowchart LR
-    C[Current behavior] --> A[Canonical Source]
-    C --> D[docs/architecture]
-    H[過去の経緯] --> M[docs/migration]
-    M -. historical only .-> A
-```
+このDirectoryはRouting、Context Materialization、Runtime Execution、Policy判断にCurrent Stateとして使いません。UnitySubAgentHubは別RepositoryにあるSubAgent metadata contractの所有者です。現在のHub SnapshotはUnityAgent Runtimeへ自動取込されないため、Migration Recordをその代替として使わないでください。
 
----
+## 残す理由
 
-## 現在のCanonical Authority
+- Authorityをどこへ移したか、何を削除したかを追跡する
+- Historical Replay / Baselineの出所を監査する
+- Current Contractに至った移行判断を読みやすく保つ
 
-- Policy: `Policy/`
-- Context: `Context/`
-- Orchestration: `Orchestration/`
-- Runtime: `Runtime/`
-- Persistence: `Persistence/`
-- Operations: `Operations/`
-- Eval: `Eval/`
+主な記録は`canonical-contracts.md`、`policy-context.md`、`runtime-harness.md`、`orchestration.md`、`persistence.md`、`eval-consolidation.md`、`operations.md`、`cutover.md`、`production-rebaseline.md`、`baseline-comparator.md`、`production-tool-runtime-cutover.md`です。
 
-通常のUnityAgent実行、Routing、Context Materialization、Runtime Execution、Policy判断では、このDirectoryをCurrent Stateとして解決しません。
+## Historical Pathと名前
 
----
+過去のBranch、Run ID、Artifact、Baseline、旧Path、旧Contract名は、Historical Evidenceとの対応を保つため原文のまま残せます。`.ai/**`、`Context/Selection/mcp-selection.yaml`、`compatibility://...`などを現在のAuthorityとして復活させません。
 
-## このDirectoryを残す理由
-
-- 過去にどのAuthorityをどこへ移したか確認する
-- Cutover時に何を削除したか確認する
-- Historical Replay / Baselineの由来を追跡する
-- 現在のContractがどのMigration判断から生まれたか監査する
-- 過去の判断をGit履歴だけに依存せず、人間が読みやすい形で保持する
-
----
-
-## 主なMigration Record
-
-- `canonical-contracts.md`
-- `policy-context.md`
-- `runtime-harness.md`
-- `orchestration.md`
-- `persistence.md`
-- `eval-consolidation.md`
-- `operations.md`
-- `cutover.md`
-- `production-rebaseline.md`
-- `baseline-comparator.md`
-- `production-tool-runtime-cutover.md`
-
----
-
-## 削除済みPathの例
-
-Historical文書には、当時実在した次のようなPathが出ることがあります。
-
-```text
-.ai/**
-Context/Selection/mcp-selection.yaml
-Context/Compatibility/**
-compatibility://...
-```
-
-これらをcurrent authorityとして復活させません。
-
-特にProduction Tool Runtime Cutoverでは、ContextがProviderを選ぶ旧`mcp-selection.yaml`はcurrent pathから削除され、Capability descriptionは `Context/Selection/tool-capability-catalog.yaml`、Provider resolutionは `Runtime/Tooling/`へ分離されています。
-
----
-
-## 命名規約
-
-Migration文書のファイル名は、開発段階番号ではなく、その文書が表す意味・責務で命名します。
-
-推奨:
-
-- `canonical-contracts.md`
-- `runtime-harness.md`
-- `orchestration.md`
-- `cutover.md`
-- `production-rebaseline.md`
-- `baseline-comparator.md`
-- `production-tool-runtime-cutover.md`
-
-禁止:
-
-- `phase1-...`
-- `phase8-...`
-- `phase10-...`
-
-Historical Identifierとして本文中にPhase番号や過去Branch名を残すことは許可します。
-
----
-
-## Historical Literalの扱い
-
-過去に実際に存在した:
-
-- Branch名
-- Run ID
-- Artifact名
-- Baseline ID
-- old path
-- old contract name
-
-は監査証跡として残せます。
-
-改名してしまうと過去Evidenceとの対応が壊れるためです。
-
----
-
-## 利用時の注意
-
-Migration文書を使うのは主に次です。
-
-1. 過去のArchitecture判断理由を確認したい
-2. 削除済みCompatibilityの由来を確認したい
-3. Replay / Baseline / Cutoverの監査証跡を確認したい
-4. 現在のContractへ至った経緯を追跡したい
-
-Migration文書とCurrent Canonical Sourceが競合する場合は、**Current Canonical Sourceを優先**します。
+ファイル名はPhase番号より責務を表す名前にします。Migration文書とCurrent Canonical Sourceが競合した場合は、Current Canonical Sourceを優先します。
