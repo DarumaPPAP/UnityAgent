@@ -21,6 +21,7 @@ profiles:
       auto_install: false
       required_environment:
         - unity_artist_cli.available
+        - unity_artist_cli.compatible
         - unity_artist_cli.project_bound
         - unity_artist_cli.package_installed
         - unity_artist_cli.pipeline_reachable

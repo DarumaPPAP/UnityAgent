@@ -229,6 +229,7 @@ providers:
         environment_requirements:
           project.exists: true
           unity_artist_cli.available: true
+          unity_artist_cli.compatible: true
           unity_artist_cli.project_bound: true
           unity_artist_cli.package_installed: true
           unity_artist_cli.pipeline_reachable: true
@@ -240,6 +241,7 @@ providers:
         environment_requirements:
           project.exists: true
           unity_artist_cli.available: true
+          unity_artist_cli.compatible: true
           unity_artist_cli.project_bound: true
           unity_artist_cli.package_installed: true
           unity_artist_cli.pipeline_reachable: true

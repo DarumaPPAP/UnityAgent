@@ -77,6 +77,7 @@ class UnityArtistCliSnapshot:
     failure_class: Literal["unavailable", "unhealthy", "timeout", "unknown"] | None
     binding_status: BindingStatus
     bound_instance_id: str | None
+    compatible: TriState = "unknown"
 
 
 @dataclass(frozen=True)

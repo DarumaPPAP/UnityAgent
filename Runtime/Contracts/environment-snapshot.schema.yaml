@@ -124,6 +124,7 @@ properties:
       render_pipeline: { type: [string, "null"], minLength: 1 }
       support_tier: { type: [string, "null"], minLength: 1 }
       compatibility_backend: { type: [string, "null"], minLength: 1 }
+      compatible: { $ref: "#/$defs/tri_state" }
       capabilities:
         type: array
         uniqueItems: true

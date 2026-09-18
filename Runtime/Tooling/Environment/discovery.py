@@ -44,6 +44,11 @@ from Runtime.Tooling.Environment.project_identity import (
 
 CLI_TIMEOUT_SECONDS = 5.0
 ARTIST_CLI_TIMEOUT_SECONDS = 8.0
+_ARTIST_COMPATIBILITY_BACKENDS = {
+    "builtin_editor_api": "builtin",
+    "urp_native_api": "urp",
+    "hdrp_native_api": "hdrp",
+}
 PIPELINE_PACKAGE = "com.unity.pipeline"
 TEST_FRAMEWORK_PACKAGE = "com.unity.test-framework"
 
@@ -229,6 +234,35 @@ def _manifest_package_version(project_root: str, package_name: str) -> str | Non
     return str(version) if isinstance(version, str) else None
 
 
+def _support_text(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip()
+    return normalized or None
+
+
+def _artist_compatibility(
+    *,
+    unity_version: str | None,
+    render_pipeline: str | None,
+    support_tier: str | None,
+    compatibility_backend: str | None,
+) -> TriState:
+    observed = (unity_version, render_pipeline, support_tier, compatibility_backend)
+    if any(
+        not isinstance(value, str)
+        or not value.strip()
+        or value.strip().casefold() in {"unknown", "not_observed", "unobserved"}
+        for value in observed
+    ):
+        return "unknown"
+    return (
+        support_tier.casefold() == "primary"
+        and _ARTIST_COMPATIBILITY_BACKENDS.get(compatibility_backend.casefold())
+        == render_pipeline.casefold()
+    )
+
+
 def probe_unity_artist_cli(
     *,
     project_root: str,
@@ -298,13 +332,10 @@ def probe_unity_artist_cli(
         support = capability_data.get("support")
         if isinstance(support, dict):
             support_observed = True
-            unity_version = str(support.get("unityVersion")) if support.get("unityVersion") else None
-            render_pipeline = str(support.get("renderPipeline")) if support.get("renderPipeline") else None
-            support_tier = str(support.get("supportTier")) if support.get("supportTier") else None
-            compatibility_backend = (
-                str(support.get("compatibilityBackend"))
-                if support.get("compatibilityBackend") else None
-            )
+            unity_version = _support_text(support.get("unityVersion"))
+            render_pipeline = _support_text(support.get("renderPipeline"))
+            support_tier = _support_text(support.get("supportTier"))
+            compatibility_backend = _support_text(support.get("compatibilityBackend"))
 
     failure_class = None if capability_ok else (capability_failure or "unknown")
     artist_pipeline_reachable: TriState = (
@@ -327,6 +358,12 @@ def probe_unity_artist_cli(
         failure_class,
         binding_status,
         f"unity-artist:{project}" if project_bound is True else None,
+        compatible=_artist_compatibility(
+            unity_version=unity_version,
+            render_pipeline=render_pipeline,
+            support_tier=support_tier,
+            compatibility_backend=compatibility_backend,
+        ),
     )
 
 

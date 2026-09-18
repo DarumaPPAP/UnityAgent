@@ -51,3 +51,21 @@ The underlying Official Unity CLI, UnityArtistCLI, Codex CLI and Installer Provi
 ## Failure handling
 
 Report the structured status and error code. `unsupported`, `unavailable`, `stale_revision`, `blocked_by_dependency`, `blocked_by_approval`, and execution failures are different outcomes; do not convert them to success.
+
+## Output Contract
+
+Report the Control Plane status and the explicit project path. For Apply operations, include the approved plan ID, approval reference, InstallReceipt, and Evidence references. If setup is blocked, state the structured failure status and the unmet precondition.
+
+## Checklist
+
+- [ ] Confirm the project path and current Control Plane state.
+- [ ] Present the exact setup plan before requesting approval.
+- [ ] Apply only the approved plan with its original plan ID and approval reference.
+- [ ] Verify the resulting installation through the same Control Plane and retain its receipt.
+
+## Common Mistakes
+
+- Running Unity, Codex, or installer Provider commands directly from the Entry skill.
+- Applying a reconstructed or stale plan after approval.
+- Treating unknown facts, missing receipts, or failed post-install checks as success.
+- Replacing an existing marketplace or project binding without explicit approval.

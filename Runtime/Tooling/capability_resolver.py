@@ -259,6 +259,7 @@ def resolve_capability(
     context: ResolutionContext,
     registry: ProviderRegistry | RuntimeProviderRegistry | None = None,
     fallback_from_provider_id: str | None = None,
+    excluded_provider_failures: Mapping[str, tuple[str, str]] | None = None,
 ) -> dict[str, Any]:
     """Resolve one CapabilityRequest to one safe Provider, or a typed failure."""
     validate_capability_request(request)
@@ -308,6 +309,12 @@ def resolve_capability(
 
     for provider in runtime_registry.candidates(capability):
         if provider.provider_id == fallback_from_provider_id:
+            continue
+        excluded_failure = (excluded_provider_failures or {}).get(provider.provider_id)
+        if excluded_failure is not None:
+            failure_status, failure_reason = excluded_failure
+            rejected_classes.append(failure_status)
+            rejected_reasons.append(failure_reason)
             continue
         if not provider.production_enabled:
             rejected_classes.append("unavailable")

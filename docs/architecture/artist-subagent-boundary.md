@@ -40,7 +40,7 @@ ProviderResult -> Evidence
 
 ArtistSubAgent is optional. Registration in a catalog does not make it available.
 
-Before ArtistSubAgent can participate, every activation requirement in `Runtime/ReferenceImplementation/subagent-catalog.yaml` must be observed true. The current profile requires backend availability, project binding, the Artist package and Pipeline reachability.
+Before ArtistSubAgent can participate, every activation requirement in `Runtime/ReferenceImplementation/subagent-catalog.yaml` must be observed true. The current profile requires backend availability, an observed compatible support tier/backend, project binding, the Artist package and Pipeline reachability.
 
 False or unknown requirements exclude ArtistSubAgent before execution. UnityAgent must not auto-install a missing SubAgent just to satisfy a CapabilityRequest.
 

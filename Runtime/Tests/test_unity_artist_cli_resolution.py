@@ -63,6 +63,7 @@ class UnityArtistCliResolutionTests(unittest.TestCase):
                 "package_installed": True,
                 "package_version": "2.0.0",
                 "pipeline_reachable": True,
+                "compatible": True,
                 "unity_version": "6000.6.0f1",
                 "render_pipeline": "builtin",
                 "support_tier": "primary",
@@ -151,10 +152,15 @@ class UnityArtistCliResolutionTests(unittest.TestCase):
         self.assertEqual(result["provider_ref"], "unity_artist_cli")
         self.assertEqual(result["subagent_profile_id"], "artist_subagent")
 
-    def test_tool_broker_excludes_unknown_compatibility_from_artist_subagent(self) -> None:
-        snapshot = dict(self.snapshot)
-        snapshot["unity_artist_cli"] = dict(self.snapshot["unity_artist_cli"])
-        snapshot["unity_artist_cli"]["compatible"] = "unknown"
+    def test_tool_broker_excludes_false_or_unknown_compatibility_from_artist_subagent(self) -> None:
+        for compatible in (False, "unknown"):
+            with self.subTest(compatible=compatible):
+                snapshot = dict(self.snapshot)
+                snapshot["unity_artist_cli"] = dict(self.snapshot["unity_artist_cli"])
+                snapshot["unity_artist_cli"]["compatible"] = compatible
+                self._assert_tool_broker_excludes_artist(snapshot)
+
+    def _assert_tool_broker_excludes_artist(self, snapshot) -> None:
         request = {
             "schema_version": "1.0",
             "capability": "domain.workflow",

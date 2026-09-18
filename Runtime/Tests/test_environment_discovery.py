@@ -334,9 +334,24 @@ class EnvironmentDiscoveryTests(unittest.TestCase):
             "unityVersion": "6000.6.0f1",
             "renderPipeline": "builtin",
         }
+        unknown_value = {
+            **supported,
+            "unityVersion": "unknown",
+        }
+        malformed = {
+            **supported,
+            "compatibilityBackend": 7,
+        }
+        mismatched_pipeline = {
+            **supported,
+            "renderPipeline": "urp",
+        }
         self.assertIs(observe(supported), True)
         self.assertIs(observe(unsupported), False)
+        self.assertIs(observe(mismatched_pipeline), False)
         self.assertEqual(observe(unobserved), "unknown")
+        self.assertEqual(observe(unknown_value), "unknown")
+        self.assertEqual(observe(malformed), "unknown")
 
     def test_environment_snapshot_serializes_compatibility_tristate(self):
         with tempfile.TemporaryDirectory() as tmp:

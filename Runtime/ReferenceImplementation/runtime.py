@@ -110,6 +110,7 @@ def validate_reference_environment_snapshot(
         "unity_editor.binding_status": editor.get("binding_status") == "bound",
         "unity_cli.available": cli.get("available"),
         "unity_artist_cli.available": artist.get("available"),
+        "unity_artist_cli.compatible": artist.get("compatible"),
         "unity_artist_cli.project_bound": artist.get("project_bound"),
         "unity_artist_cli.package_installed": artist.get("package_installed"),
         "unity_artist_cli.pipeline_reachable": artist.get("pipeline_reachable"),

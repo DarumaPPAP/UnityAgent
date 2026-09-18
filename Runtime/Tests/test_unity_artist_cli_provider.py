@@ -55,6 +55,7 @@ class UnityArtistCliProviderTests(unittest.TestCase):
                 "package_installed": True,
                 "package_version": "2.0.0",
                 "pipeline_reachable": True,
+                "compatible": True,
                 "unity_version": "6000.6.0f1",
                 "render_pipeline": "builtin",
                 "support_tier": "primary",
@@ -122,18 +123,20 @@ class UnityArtistCliProviderTests(unittest.TestCase):
         self.assertEqual(fake.requests, [])
 
 
-    def test_unknown_compatibility_blocks_advertising_and_execution(self):
-        snapshot = dict(self.snapshot)
-        artist_facts = dict(snapshot["unity_artist_cli"])
-        artist_facts["compatible"] = "unknown"
-        snapshot["unity_artist_cli"] = artist_facts
-        fake = FakeArtistDispatch({"Status": "passed", "Data": {"planId": "plan-1"}})
-        provider = UnityArtistCliProvider(self.project_root, snapshot, dispatch_fn=fake)
+    def test_false_or_unknown_compatibility_blocks_advertising_and_execution(self):
+        for compatible, expected_failure in ((False, "unavailable"), ("unknown", "unknown")):
+            with self.subTest(compatible=compatible):
+                snapshot = dict(self.snapshot)
+                artist_facts = dict(snapshot["unity_artist_cli"])
+                artist_facts["compatible"] = compatible
+                snapshot["unity_artist_cli"] = artist_facts
+                fake = FakeArtistDispatch({"Status": "passed", "Data": {"planId": "plan-1"}})
+                provider = UnityArtistCliProvider(self.project_root, snapshot, dispatch_fn=fake)
 
-        self.assertEqual(provider.available_capabilities(), frozenset())
-        result = provider.execute(self.request, arguments={"command": "plan"})
-        self.assertEqual(result["failure_class"], "unknown")
-        self.assertEqual(fake.requests, [])
+                self.assertEqual(provider.available_capabilities(), frozenset())
+                result = provider.execute(self.request, arguments={"command": "plan"})
+                self.assertEqual(result["failure_class"], expected_failure)
+                self.assertEqual(fake.requests, [])
 
 if __name__ == "__main__":
     unittest.main()

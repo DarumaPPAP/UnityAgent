@@ -9,6 +9,7 @@ See [ArtistSubAgent boundary](artist-subagent-boundary.md) for the current contr
 - `ArtistSubAgent` / `artist_subagent` = specialist identity.
 - `unity_artist_cli` = current backend Provider compatibility id.
 - ArtistSubAgent is optional and is excluded when its activation requirements are not observed true.
+- `unity_artist_cli.compatible` is derived from support metadata; missing support facts remain unknown and block resolution.
 - UnityAgent does not auto-install a missing SubAgent to satisfy a CapabilityRequest.
 - UnityAgent remains the single Codex plugin entry and orchestration authority.
 

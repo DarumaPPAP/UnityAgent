@@ -492,6 +492,7 @@ class Issue136HardeningTests(unittest.TestCase):
                     "package_installed": True,
                     "package_version": "1.0.0",
                     "pipeline_reachable": True,
+                    "compatible": True,
                     "unity_version": "6000.6.0f1",
                     "render_pipeline": "builtin",
                     "support_tier": "primary",

@@ -53,6 +53,9 @@ properties:
   provider_ref:
     type: [string, "null"]
     minLength: 1
+  subagent_profile_id:
+    type: string
+    minLength: 1
   observed_surface:
     type: [string, "null"]
     enum: [project, host, editor, live_editor, player, null]
