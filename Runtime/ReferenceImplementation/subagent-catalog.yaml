@@ -1,11 +1,11 @@
 schema_version: "1.0"
-default_profile: unity_artist_cli
+default_profile: artist_subagent
 profiles:
-  unity_artist_cli:
-    profile_id: unity_artist_cli
-    display_name: UnityArtistCLI
+  artist_subagent:
+    profile_id: artist_subagent
+    display_name: ArtistSubAgent
     provider_id: unity_artist_cli
-    audience: unity_artist
+    audience: artist_subagent
     goal_type: artist.camera.refine
     capabilities:
       - artist.camera.inspect
@@ -16,6 +16,14 @@ profiles:
       - mutation_diff
       - editor_observation
       - visual_capture
+    activation:
+      install_mode: optional
+      auto_install: false
+      required_environment:
+        - unity_artist_cli.available
+        - unity_artist_cli.project_bound
+        - unity_artist_cli.package_installed
+        - unity_artist_cli.pipeline_reachable
     scope:
       default_target_guid: camera-guid-001
       component_type: UnityEngine.Camera
@@ -36,6 +44,6 @@ profiles:
       minimum_exclusive: true
       maximum_exclusive: true
     evidence:
-      source_type: unity_artist_reference
+      source_type: artist_subagent_reference
       producer: UnityAgent.ReferenceImplementation.v1.1
-      provenance_token: unity_artist_cli
+      provenance_token: artist_subagent
