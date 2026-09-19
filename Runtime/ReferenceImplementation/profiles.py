@@ -8,6 +8,8 @@ The first profile is ArtistSubAgent. Its provider_id identifies only the executi
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
+import math
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -16,6 +18,27 @@ import yaml
 
 class ProfileValidationError(ValueError):
     """A SubAgent profile is incomplete, ambiguous or unsafe."""
+
+
+def runtime_profile_revision(root: str | Path | None = None) -> str:
+    """Provider RegistryとSubAgent Catalogを既存Fingerprintの一つのRevisionへ束ねる。"""
+    project_root = Path(root).resolve() if root is not None else Path(__file__).resolve().parents[2]
+    relative_paths = (
+        "Runtime/Tooling/provider_registry.yaml",
+        "Runtime/ReferenceImplementation/subagent-catalog.yaml",
+    )
+    digest = hashlib.sha256()
+    for relative in relative_paths:
+        path = project_root / relative
+        try:
+            content = path.read_bytes()
+        except OSError:
+            return f"missing:{relative}"
+        digest.update(relative.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(content)
+        digest.update(b"\0")
+    return "sha256:" + digest.hexdigest()[:16]
 
 
 def _text(value: Any, name: str) -> str:
@@ -37,6 +60,19 @@ def _mapping(value: Any, name: str) -> dict[str, Any]:
     if not isinstance(value, Mapping):
         raise ProfileValidationError(f"{name} must be an object")
     return dict(value)
+
+
+def _finite_number(value: Any, name: str) -> float:
+    """Accept only finite JSON/YAML numbers at the profile boundary."""
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        raise ProfileValidationError(f"{name} must be numeric")
+    try:
+        number = float(value)
+    except (OverflowError, ValueError) as exc:
+        raise ProfileValidationError(f"{name} must be a finite number") from exc
+    if not math.isfinite(number):
+        raise ProfileValidationError(f"{name} must be a finite number")
+    return number
 
 
 def _snapshot_mapping(value: Any) -> dict[str, Any]:
@@ -79,6 +115,8 @@ class SubAgentProfile:
     @classmethod
     def from_mapping(cls, value: Mapping[str, Any]) -> "SubAgentProfile":
         data = _mapping(value, "SubAgentProfile")
+        if any(not isinstance(key, str) for key in data):
+            raise ProfileValidationError("SubAgentProfile field names must be strings")
         required = {
             "profile_id", "display_name", "provider_id", "audience", "goal_type",
             "capabilities", "primary_capability", "required_evidence", "activation", "scope",
@@ -123,30 +161,32 @@ class SubAgentProfile:
         value_spec = _mapping(data["value"], "value")
         if set(value_spec) != {"type", "unit", "minimum", "maximum", "maximum_exclusive"}:
             raise ProfileValidationError("profile value fields are not exact")
-        if not isinstance(value_spec["minimum"], (int, float)) or isinstance(value_spec["minimum"], bool):
-            raise ProfileValidationError("value.minimum must be numeric")
-        if not isinstance(value_spec["maximum"], (int, float)) or isinstance(value_spec["maximum"], bool):
-            raise ProfileValidationError("value.maximum must be numeric")
-        if float(value_spec["minimum"]) >= float(value_spec["maximum"]):
+        minimum = _finite_number(value_spec["minimum"], "value.minimum")
+        maximum = _finite_number(value_spec["maximum"], "value.maximum")
+        if minimum >= maximum:
             raise ProfileValidationError("value minimum must be below maximum")
+        if not isinstance(value_spec["maximum_exclusive"], bool):
+            raise ProfileValidationError("value.maximum_exclusive must be boolean")
         value_spec = {
             "type": _text(value_spec["type"], "value.type"),
             "unit": _text(value_spec["unit"], "value.unit"),
-            "minimum": float(value_spec["minimum"]),
-            "maximum": float(value_spec["maximum"]),
+            "minimum": minimum,
+            "maximum": maximum,
             "maximum_exclusive": bool(value_spec["maximum_exclusive"]),
         }
         approval_spec = _mapping(data["approval"], "approval")
         if set(approval_spec) != {"default_minimum", "default_maximum", "minimum_exclusive", "maximum_exclusive"}:
             raise ProfileValidationError("profile approval fields are not exact")
-        for key in ("default_minimum", "default_maximum"):
-            if not isinstance(approval_spec[key], (int, float)) or isinstance(approval_spec[key], bool):
-                raise ProfileValidationError(f"approval.{key} must be numeric")
-        if float(approval_spec["default_minimum"]) > float(approval_spec["default_maximum"]):
+        approval_minimum = _finite_number(approval_spec["default_minimum"], "approval.default_minimum")
+        approval_maximum = _finite_number(approval_spec["default_maximum"], "approval.default_maximum")
+        for key in ("minimum_exclusive", "maximum_exclusive"):
+            if not isinstance(approval_spec[key], bool):
+                raise ProfileValidationError(f"approval.{key} must be boolean")
+        if approval_minimum > approval_maximum:
             raise ProfileValidationError("approval default minimum must not exceed maximum")
         approval_spec = {
-            "default_minimum": float(approval_spec["default_minimum"]),
-            "default_maximum": float(approval_spec["default_maximum"]),
+            "default_minimum": approval_minimum,
+            "default_maximum": approval_maximum,
             "minimum_exclusive": bool(approval_spec["minimum_exclusive"]),
             "maximum_exclusive": bool(approval_spec["maximum_exclusive"]),
         }
@@ -169,6 +209,28 @@ class SubAgentProfile:
             approval=approval_spec,
             evidence=evidence,
         )
+
+    def to_mapping(self) -> dict[str, Any]:
+        """既存UnityAgent ProfileCatalogのwire形式へ正規化して返す。"""
+        return {
+            "profile_id": self.profile_id,
+            "display_name": self.display_name,
+            "provider_id": self.provider_id,
+            "audience": self.audience,
+            "goal_type": self.goal_type,
+            "capabilities": list(self.capabilities),
+            "primary_capability": self.primary_capability,
+            "required_evidence": list(self.required_evidence),
+            "activation": {
+                "install_mode": self.activation["install_mode"],
+                "auto_install": self.activation["auto_install"],
+                "required_environment": list(self.activation["required_environment"]),
+            },
+            "scope": dict(self.scope),
+            "value": dict(self.value),
+            "approval": dict(self.approval),
+            "evidence": dict(self.evidence),
+        }
 
     @property
     def default_scope(self) -> dict[str, Any]:
@@ -232,7 +294,7 @@ class SubAgentProfile:
         return result
 
     def validate_value(self, value: float) -> float:
-        number = float(value)
+        number = _finite_number(value, "value")
         lower = float(self.value["minimum"])
         upper = float(self.value["maximum"])
         if number < lower or (self.value["maximum_exclusive"] and number >= upper) or (not self.value["maximum_exclusive"] and number > upper):
@@ -243,7 +305,8 @@ class SubAgentProfile:
         data = _mapping(value, "parameter_envelope")
         if set(data) != {"min", "max"}:
             raise ProfileValidationError("parameter_envelope fields are not exact")
-        lower, upper = float(data["min"]), float(data["max"])
+        lower = _finite_number(data["min"], "parameter_envelope.min")
+        upper = _finite_number(data["max"], "parameter_envelope.max")
         minimum = float(self.value["minimum"])
         maximum = float(self.value["maximum"])
         if lower > upper or lower < minimum or upper > maximum or (self.approval["minimum_exclusive"] and lower <= minimum) or (self.approval["maximum_exclusive"] and upper >= maximum):
@@ -274,10 +337,18 @@ class SubAgentProfileCatalog:
     @classmethod
     def from_file(cls, path: str | Path) -> "SubAgentProfileCatalog":
         raw = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
-        data = _mapping(raw, "SubAgentProfileCatalog")
+        return cls.from_mapping(raw)
+
+    @classmethod
+    def from_mapping(cls, value: Mapping[str, Any]) -> "SubAgentProfileCatalog":
+        data = _mapping(value, "SubAgentProfileCatalog")
+        if set(data) != {"schema_version", "default_profile", "profiles"}:
+            raise ProfileValidationError("SubAgentProfileCatalog fields are not exact")
         if data.get("schema_version") != "1.0":
             raise ProfileValidationError("profile catalog schema_version must be 1.0")
         profiles = _mapping(data.get("profiles"), "profiles")
+        if any(not isinstance(key, str) or not key.strip() for key in profiles):
+            raise ProfileValidationError("profile catalog profile keys must be non-empty strings")
         definitions = {key: SubAgentDefinition(SubAgentProfile.from_mapping(value)) for key, value in profiles.items()}
         if any(key != definition.profile.profile_id for key, definition in definitions.items()):
             raise ProfileValidationError("profile catalog key must equal profile_id")
@@ -340,6 +411,17 @@ class SubAgentProfileCatalog:
 
     def definitions(self) -> tuple[SubAgentDefinition, ...]:
         return tuple(self._definitions.values())
+
+    def to_mapping(self) -> dict[str, Any]:
+        """現在のCatalogを既存Snapshot形式へ正規化して返す。"""
+        return {
+            "schema_version": "1.0",
+            "default_profile": self.default_profile_id,
+            "profiles": {
+                definition.profile.profile_id: definition.profile.to_mapping()
+                for definition in self._definitions.values()
+            },
+        }
 
 
 CATALOG = SubAgentProfileCatalog.from_file(Path(__file__).with_name("subagent-catalog.yaml"))

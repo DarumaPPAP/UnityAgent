@@ -107,6 +107,8 @@ UnityAgentのReferenceImplementationは、現在もRepository内の `Runtime/Ref
 
 そのため、**HubでSnapshotが公開されたことと、UnityAgent Runtimeへ同期済みであることは別です。**
 
+Offline Snapshotを反映候補として確認するときは、`python Tools/import_subagent_catalog.py` へSnapshotの取得元と完全なSHA-256を渡します。Import Planは `Added` / `Removed` / `Changed` / `No-op`、protected Field、Riskを出力しますが、Catalogへ書き込みません。RuntimeのEligibilityは反映後も現在のEnvironment Factで再判定され、Catalog更新は通常のGit Pull Requestとしてレビューします。
+
 </details>
 
 ### Provider model

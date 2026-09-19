@@ -27,7 +27,13 @@ from .contracts import (
     TaskContract,
     TypedAction,
 )
-from .profiles import ProfileValidationError, SubAgentProfile, default_profile, profile_for_task_object
+from .profiles import (
+    ProfileValidationError,
+    SubAgentProfile,
+    default_profile,
+    profile_for_task_object,
+    runtime_profile_revision,
+)
 from Runtime.Tooling.Environment.project_identity import canonical_scene_path, same_project_root
 
 
@@ -893,7 +899,7 @@ def reference_definition_fingerprint() -> dict[str, str]:
     return {
         "schema_version": "1.0", "architecture_version": "reference-v1.1", "policy_revision": "reference-v1.1",
         "prompt_revision": "reference-v1.1", "context_revision": "reference-v1.1", "graph_revision": "reference-v1.1",
-        "runtime_profile_revision": "reference-v1.1", "tool_schema_revision": "reference-v1.1",
+        "runtime_profile_revision": runtime_profile_revision(), "tool_schema_revision": "reference-v1.1",
         "checkpoint_schema_revision": "reference-v1.1", "evidence_schema_revision": "reference-v1.1",
         "eval_contract_revision": "reference-v1.1",
     }

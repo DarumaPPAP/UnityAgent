@@ -15,6 +15,7 @@ if str(ROOT) not in sys.path:
 
 from ControlPlane.unity_agent_control_plane import UnityAgentControlPlane
 from Runtime.Tooling.Providers.Installer.installer_provider import InstallerProvider
+from Runtime.ReferenceImplementation.profiles import runtime_profile_revision
 
 PRODUCTS = (
     "official_unity_cli",
@@ -40,7 +41,7 @@ def _fingerprint() -> dict[str, str]:
         "prompt_revision": digest("Prompt/01_optimize_from_audit.md"),
         "context_revision": digest("Context/Selection/context-catalog.yaml"),
         "graph_revision": digest("Orchestration/Definitions/development-parent-graph.yaml"),
-        "runtime_profile_revision": digest("Runtime/Tooling/provider_registry.yaml"),
+        "runtime_profile_revision": runtime_profile_revision(root=ROOT),
         "tool_schema_revision": digest("Runtime/Contracts/toolchain-setup-request.schema.yaml"),
         "checkpoint_schema_revision": digest("Persistence/Contracts/run-checkpoint.schema.yaml"),
         "evidence_schema_revision": digest("Persistence/Contracts/evidence-record.schema.yaml"),
