@@ -27,6 +27,7 @@ VALIDATORS = (
     Path("Context/Validators/validate_stale_paths.py"),
     Path("Orchestration/Loop/validate.py"),
     Path("Runtime/Contracts/capability_contract.py"),
+    Path("Tools/validate_catalog_import_gate.py"),
     Path("Tools/ProductionToolRuntime/validate_production_tool_runtime.py"),
     Path("Tools/LayerBoundaryValidator/validate_layer_boundaries.py"),
     Path("Tools/DocumentationValidator/validate_documentation.py"),

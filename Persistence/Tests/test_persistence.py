@@ -216,6 +216,16 @@ class Phase5PersistenceTests(unittest.TestCase):
         self.assertFalse(decision["allowed"])
         self.assertIn("external_action_may_be_in_flight", decision["blockers"])
 
+    def test_runtime_profile_change_with_inflight_action_blocks_resume(self):
+        self.states.save_execution_state(execution_state(active_tool_invocation_ref="runtime-profile-call-1"))
+        self._checkpoint()
+        decision = evaluate_resume(
+            store_root=self.root, run_id="run-1", checkpoint_id="resume-cp",
+            current_definition_fingerprint=fingerprint(runtime_profile_revision="runtime-b"),
+        )
+        self.assertFalse(decision["allowed"])
+        self.assertIn("external_action_may_be_in_flight", decision["blockers"])
+
     def test_v1_checkpoint_migration_creates_copy_and_preserves_original(self):
         refs, _ = self.states.snapshot_run("run-1", [])
         source = {
