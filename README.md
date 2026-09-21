@@ -20,6 +20,7 @@
   <a href="#install">Install</a> ·
   <a href="#validation">Validation</a> ·
   <a href="docs/architecture/architecture.md">Architecture Docs</a> ·
+  <a href="docs/references/unity-cli-reference.md">Unity CLI Reference</a> ·
   <a href="https://darumappap.github.io/UnityAgent/">Context Explorer</a> ·
   <a href="https://github.com/DarumaPPAP/UnityAgent/releases">Releases</a>
 </p>

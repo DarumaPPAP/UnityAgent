@@ -95,6 +95,8 @@ def classify_cli_failure(
         return "unsupported", "Unity CLI command is unavailable for the observed CLI version"
     if exit_code in {3, 4}:
         return "precondition_failed", f"Unity CLI precondition/authentication failed with exit code {exit_code}"
+    if exit_code == 7:
+        return "unavailable", "Unity service was unavailable; retrying the Unity CLI operation is safe"
     if exit_code in {130, 143}:
         return "cancelled", f"Unity CLI was interrupted with exit code {exit_code}"
     if exit_code is None:
@@ -159,6 +161,16 @@ def normalize_test_execution(*, exit_code: int, stdout: str, test_results_path: 
         return {"status": "failed", "failure_class": "execution_failed", "reason": str(exc), "evidence": []}
     envelope = terminal_envelope(values)
     test_result = read_test_results(test_results_path)
+
+    if exit_code == 8:
+        return {
+            "status": "failed",
+            "failure_class": "observed_test_failure",
+            "reason": "Unity CLI reported failed tests with exit code 8",
+            "test_result": test_result,
+            "cli_result": envelope_data(envelope),
+            "evidence": ["test_execution"],
+        }
 
     if test_result is not None:
         result_name = str(test_result.get("result") or "").casefold()
@@ -265,6 +277,40 @@ def extract_command_catalog(stdout: str) -> tuple[dict[str, Any], ...]:
             }
         )
     return tuple(commands)
+
+
+def extract_command_names(stdout: str) -> frozenset[str]:
+    values = parse_json_sequence(stdout)
+    envelope = terminal_envelope(values)
+    if envelope is None or envelope.get("success") is not True:
+        return frozenset()
+    data = envelope_data(envelope)
+    candidates: Any = data
+    if isinstance(data, dict):
+        for key in ("commands", "items", "manifest"):
+            if isinstance(data.get(key), list):
+                candidates = data[key]
+                break
+    if not isinstance(candidates, list):
+        return frozenset()
+
+    names: set[str] = set()
+    for item in candidates:
+        if isinstance(item, str):
+            raw_name = item
+        elif isinstance(item, dict):
+            raw_name = item.get("name") or item.get("command") or item.get("path")
+            if isinstance(raw_name, list):
+                raw_name = raw_name[0] if raw_name else None
+        else:
+            raw_name = None
+        if not isinstance(raw_name, str) or not raw_name.strip():
+            continue
+        name = raw_name.strip()
+        if name.startswith("unity "):
+            name = name[6:]
+        names.add(name.split()[0])
+    return frozenset(names)
 
 
 def normalize_pipeline_command(*, exit_code: int, stdout: str, evidence: list[str]) -> dict[str, Any]:

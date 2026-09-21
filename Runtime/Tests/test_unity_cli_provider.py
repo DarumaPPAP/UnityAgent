@@ -12,12 +12,14 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from Runtime.Tooling.Providers.UnityCli.command_builder import (
+    build_commands_manifest_command,
     build_pipeline_command,
     build_project_build_command,
+    build_version_command,
     validate_safe_argv,
 )
 from Runtime.Tooling.Providers.UnityCli.discovery import discover_unity_cli_surface
-from Runtime.Tooling.Providers.UnityCli.result_mapper import parse_json_sequence
+from Runtime.Tooling.Providers.UnityCli.result_mapper import classify_cli_failure, parse_json_sequence
 from Runtime.Tooling.Providers.UnityCli.session import UnityCliNdjsonSession
 from Runtime.Tooling.Providers.UnityCli.unity_cli_provider import UnityCliProvider
 
@@ -46,6 +48,7 @@ class FakeUnityCliDispatch:
         permission_denied=False,
         failure_class: str | None = None,
         runtime_catalog=None,
+        commands_manifest=None,
     ) -> None:
         self.supported = set(supported or {"projects", "run", "test", "build", "status", "pipeline", "command", "shell"})
         self.malformed_project = malformed_project
@@ -55,6 +58,16 @@ class FakeUnityCliDispatch:
         self.permission_denied = permission_denied
         self.failure_class = failure_class
         self.calls = []
+        self.commands_manifest = commands_manifest or [
+            {"name": "projects"},
+            {"name": "run"},
+            {"name": "test"},
+            {"name": "build"},
+            {"name": "status"},
+            {"name": "pipeline"},
+            {"name": "command"},
+            {"name": "shell"},
+        ]
         self.runtime_catalog = runtime_catalog or [
             {"name": "runtime_status", "runtimeOnly": True},
             {"name": "eval", "runtimeOnly": True},
@@ -77,6 +90,26 @@ class FakeUnityCliDispatch:
             raise PermissionError("no execute")
         if command[-1:] == ["--version"]:
             return self._outcome(0, "1.0.0-beta.3\n")
+
+        if len(command) > 1 and command[1] == "version":
+            if "version" not in self.supported:
+                return self._outcome(2, "")
+            return self._outcome(
+                0,
+                envelope(
+                    "version",
+                    {
+                        "version": "1.0.0-beta.10",
+                        "channel": "beta",
+                        "commit": "abc123",
+                    },
+                ),
+            )
+
+        if len(command) > 1 and command[1] == "commands":
+            if "commands" not in self.supported:
+                return self._outcome(2, "")
+            return self._outcome(0, envelope("commands", self.commands_manifest))
 
         if command[-1:] == ["--help"]:
             name = command[-2]
@@ -251,6 +284,35 @@ class UnityCliProviderTests(unittest.TestCase):
         self.assertIsInstance(discovery.editor_status, list)
         self.assertEqual(discovery.editor_status[0]["state"], "ready")
 
+    def test_current_cli_uses_structured_version_and_command_manifest(self) -> None:
+        supported = {"projects", "run", "test", "build", "status", "pipeline", "command", "shell", "version", "commands"}
+        fake = FakeUnityCliDispatch(
+            supported=supported,
+            commands_manifest={
+                "commands": [
+                    {"name": "projects list"},
+                    {"path": ["run", "--command"]},
+                    {"name": "test"},
+                    {"name": "build"},
+                    {"name": "pipeline"},
+                    {"name": "commands"},
+                ]
+            },
+        )
+        discovery = discover_unity_cli_surface(self.project, self.snapshot(), dispatch_fn=fake)
+
+        self.assertEqual(discovery.version, "1.0.0-beta.10")
+        self.assertTrue({"projects", "run", "test", "build", "pipeline", "commands", "version"}.issubset(discovery.supported_commands))
+        self.assertTrue(any(command[1] == "version" for command in fake.calls))
+        self.assertTrue(any(command[1] == "commands" for command in fake.calls))
+
+    def test_cli_surface_builders_use_machine_readable_commands(self) -> None:
+        version = build_version_command(self.cli)
+        commands = build_commands_manifest_command(self.cli)
+
+        self.assertEqual(version.argv, (str(self.cli), "version", "--format", "json", "--non-interactive", "--no-banner"))
+        self.assertEqual(commands.argv, (str(self.cli), "commands", "--format", "json", "--non-interactive", "--no-banner"))
+
     def test_malformed_json_does_not_become_project_fact(self) -> None:
         provider = self.provider(FakeUnityCliDispatch(malformed_project=True))
         self.assertNotIn("project.inspect", provider.available_capabilities())
@@ -305,6 +367,23 @@ class UnityCliProviderTests(unittest.TestCase):
         )
         self.assertEqual(result["failure_class"], "execution_failed")
         self.assertEqual(result["evidence"], [])
+
+    def test_test_exit_code_8_is_observed_test_failure_without_xml(self) -> None:
+        provider = self.provider(FakeUnityCliDispatch(test_xml=None, test_exit=8))
+        result = provider.run_tests(
+            self.request("project.test"),
+            run_id="test-failed-exit-8",
+            timeout_seconds=10,
+            policy_allowed=True,
+        )
+        self.assertEqual(result["failure_class"], "observed_test_failure")
+        self.assertEqual(result["evidence"], ["test_execution"])
+
+    def test_service_exit_code_7_is_unavailable(self) -> None:
+        failure_class, reason = classify_cli_failure(exit_code=7, envelope=None)
+
+        self.assertEqual(failure_class, "unavailable")
+        self.assertIn("retry", reason.casefold())
 
     def test_timeout_and_cancel_preserve_execution_control_taxonomy(self) -> None:
         timeout = self.provider(FakeUnityCliDispatch(failure_class="runtime_timeout")).run_compile(
