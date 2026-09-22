@@ -96,6 +96,14 @@ def build_status_command(executable: str | Path) -> UnityCliCommand:
     return _machine([_non_empty(executable, label="executable"), "status"], operation="editor.status")
 
 
+def build_version_command(executable: str | Path) -> UnityCliCommand:
+    return _machine([_non_empty(executable, label="executable"), "version"], operation="cli.version")
+
+
+def build_commands_manifest_command(executable: str | Path) -> UnityCliCommand:
+    return _machine([_non_empty(executable, label="executable"), "commands"], operation="cli.commands")
+
+
 def build_pipeline_list_command(executable: str | Path) -> UnityCliCommand:
     return _machine([_non_empty(executable, label="executable"), "pipeline", "list"], operation="pipeline.list")
 

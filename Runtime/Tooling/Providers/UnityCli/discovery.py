@@ -8,15 +8,18 @@ from typing import Any, Callable
 from Runtime.Dispatcher.subprocess_dispatcher import DispatchRequest, dispatch
 from Runtime.Tooling.Environment.project_identity import same_project_root
 from Runtime.Tooling.Providers.UnityCli.command_builder import (
+    build_commands_manifest_command,
     build_help_probe,
     build_pipeline_catalog_command,
     build_pipeline_list_command,
     build_project_info_command,
     build_status_command,
+    build_version_command,
 )
 from Runtime.Tooling.Providers.UnityCli.result_mapper import (
     envelope_data,
     extract_command_catalog,
+    extract_command_names,
     normalize_project_info,
     parse_json_sequence,
     terminal_envelope,
@@ -83,6 +86,20 @@ def _structured_success(outcome: dict[str, Any]) -> bool:
     return envelope is not None and envelope.get("success") is True
 
 
+def _structured_version(outcome: dict[str, Any]) -> str | None:
+    try:
+        envelope = terminal_envelope(parse_json_sequence(_stdout(outcome)))
+    except ValueError:
+        return None
+    if envelope is None or envelope.get("success") is not True:
+        return None
+    data = envelope_data(envelope)
+    if not isinstance(data, dict):
+        return None
+    value = data.get("version")
+    return value.strip() if isinstance(value, str) and value.strip() else None
+
+
 def _project_info_root(project_info: dict[str, Any]) -> str | None:
     for key in ("path", "projectPath", "project_path", "root"):
         value = project_info.get(key)
@@ -142,10 +159,20 @@ def discover_unity_cli_surface(
             reason="Unity CLI executable no longer exists",
         )
 
+    supported: set[str] = set()
+    structured_version_command = build_version_command(executable)
     version_outcome, dispatch_failure = _dispatch_safe(
-        DispatchRequest([str(executable), "--version"], root, timeout_seconds),
+        DispatchRequest(list(structured_version_command.argv), root, timeout_seconds),
         dispatch_fn=dispatch_fn,
     )
+    version = _structured_version(version_outcome) if version_outcome is not None and _returncode(version_outcome) == 0 else None
+    if version is not None:
+        supported.add("version")
+    else:
+        version_outcome, dispatch_failure = _dispatch_safe(
+            DispatchRequest([str(executable), "--version"], root, timeout_seconds),
+            dispatch_fn=dispatch_fn,
+        )
     if version_outcome is None:
         return UnityCliSurfaceDiscovery(
             status="unhealthy",
@@ -174,18 +201,33 @@ def discover_unity_cli_surface(
             failure_class=failure_class,
             reason="Unity CLI --version failed",
         )
-    version_text = _stdout(version_outcome).strip()
-    version = version_text.splitlines()[0].strip() if version_text else str(cli.get("version") or "") or None
+    if version is None:
+        version_text = _stdout(version_outcome).strip()
+        version = version_text.splitlines()[0].strip() if version_text else str(cli.get("version") or "") or None
 
-    supported: set[str] = set()
-    for command_name in DISCOVERY_COMMANDS:
-        command = build_help_probe(executable, command_name)
-        outcome, _ = _dispatch_safe(
-            DispatchRequest(list(command.argv), root, timeout_seconds),
-            dispatch_fn=dispatch_fn,
-        )
-        if outcome is not None and _returncode(outcome) == 0:
-            supported.add(command_name)
+    manifest_command = build_commands_manifest_command(executable)
+    manifest_outcome, _ = _dispatch_safe(
+        DispatchRequest(list(manifest_command.argv), root, timeout_seconds),
+        dispatch_fn=dispatch_fn,
+    )
+    manifest_names = frozenset()
+    if manifest_outcome is not None and _returncode(manifest_outcome) == 0:
+        try:
+            manifest_names = extract_command_names(_stdout(manifest_outcome))
+        except ValueError:
+            manifest_names = frozenset()
+    if manifest_names:
+        supported.update(manifest_names)
+        supported.add("commands")
+    else:
+        for command_name in DISCOVERY_COMMANDS:
+            command = build_help_probe(executable, command_name)
+            outcome, _ = _dispatch_safe(
+                DispatchRequest(list(command.argv), root, timeout_seconds),
+                dispatch_fn=dispatch_fn,
+            )
+            if outcome is not None and _returncode(outcome) == 0:
+                supported.add(command_name)
 
     project_info: dict[str, Any] | None = None
     if "projects" in supported:
