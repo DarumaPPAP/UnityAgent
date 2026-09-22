@@ -15,6 +15,17 @@ from Tools.LayerBoundaryValidator.validate_layer_boundaries import EXPECTED_EDGE
 
 
 class LayerBoundaryTests(unittest.TestCase):
+    def test_architecture_contract_changes_trigger_validation(self) -> None:
+        workflow = yaml.load(
+            (ROOT / ".github/workflows/validate-agent-contracts.yml").read_text(encoding="utf-8"),
+            Loader=yaml.BaseLoader,
+        )
+        triggers = workflow["on"]
+        self.assertIn("Specs/**", triggers["pull_request"]["paths"])
+        self.assertIn("Specs/**", triggers["push"]["paths"])
+        self.assertIn("Tests/Architecture/**", triggers["pull_request"]["paths"])
+        self.assertIn("Tests/Architecture/**", triggers["push"]["paths"])
+
     def test_canonical_five_layer_contract_is_valid(self) -> None:
         self.assertEqual(validate(ROOT), [])
 
