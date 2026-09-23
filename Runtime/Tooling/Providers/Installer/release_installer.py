@@ -15,7 +15,7 @@ import zipfile
 import posixpath
 import uuid
 
-REPOSITORY = "DarumaPPAP/UnityArtistCLI"
+REPOSITORY = "DarumaPPAP/UnitySubAgentHub"
 RELEASE_TAG = "v0.0.1-beta"
 CONTROL_PLANE_CHANNEL = "0.0.7-beta"
 ARCHIVE_NAME = "UnityArtistCLI-host-windows-x64.zip"

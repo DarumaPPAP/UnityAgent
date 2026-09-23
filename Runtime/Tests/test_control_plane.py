@@ -154,7 +154,7 @@ class ControlPlaneTests(unittest.TestCase):
             "status": "installed",
             "version": "0.0.1-beta",
             "location": "C:/Users/test/AppData/Local/UnityArtistCLI/Beta/unity-artist.exe",
-            "source": "github:DarumaPPAP/UnityArtistCLI@v0.0.1-beta",
+            "source": "github:DarumaPPAP/UnitySubAgentHub@v0.0.1-beta",
             "sha256": "sha256:" + "a" * 64,
         }
         installer = InstallerProvider(
