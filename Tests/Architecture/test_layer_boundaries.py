@@ -15,6 +15,16 @@ from Tools.LayerBoundaryValidator.validate_layer_boundaries import EXPECTED_EDGE
 
 
 class LayerBoundaryTests(unittest.TestCase):
+    def test_setup_skill_points_to_current_control_plane_bootstrap(self) -> None:
+        skill = (ROOT / ".agents/plugins/unity-agent/skills/unity-agent-setup/SKILL.md").read_text(encoding="utf-8")
+        installer = (ROOT / "scripts/install.ps1").read_text(encoding="utf-8")
+        url = "https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/main/scripts/install.ps1"
+        self.assertIn(url, skill)
+        self.assertIn(url, installer)
+        self.assertIn("UNITY_AGENT_TAG", skill)
+        self.assertNotIn("migration/unity-artist-cli-v2", skill)
+        self.assertNotIn("UNITY_AGENT_REF", skill)
+
     def test_architecture_contract_changes_trigger_validation(self) -> None:
         workflow = yaml.load(
             (ROOT / ".github/workflows/validate-agent-contracts.yml").read_text(encoding="utf-8"),

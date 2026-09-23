@@ -149,7 +149,8 @@ Assets/Shaders/GPUCulling/**
 flowchart LR
     A[UnityAgent] -->|Policy / Orchestration / Runtime Rule| W[開発Workflow]
     P[Target Unity Project] -->|Scene / Prefab / C# / Shader / Settings| PRODUCT[製品]
-    A[UnityArtistCLI] -->|Artist capability / schema| TOOL[外部Provider]
+    H[UnitySubAgentHub] -->|Manifest / capability contract| W
+    A[UnityArtistCLI] -->|Backend execution| TOOL[外部Provider]
     W --> PRODUCT
     TOOL --> W
 ```
@@ -176,11 +177,17 @@ flowchart LR
 - ProjectSettings
 - 製品固有Package
 
-### UnityArtistCLIが所有
+### UnitySubAgentHubが所有
+
+- ArtistSubAgent Manifest / Registry / Catalog Snapshot
+- Specialist capability / compatibility contract
+- Artist Backend Package / CLI（移行中、同Repositoryに配置）
+
+### UnityArtistCLI Backendが担当
 
 - Artist CLI command implementation
-- Artist capability schema
-- Package
+- Manifestで公開済みのArtist操作を実行するCLI
+- Editor Package
 - Visual / Cinematic Safety Contract
 
 旧 `myunitymcp` のSourceとMCP schemaは移行履歴とv1.1.1再現用に限り保持します。現行UnityAgent Registryではlegacy / production-disabledです。
