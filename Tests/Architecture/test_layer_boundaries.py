@@ -31,9 +31,10 @@ class LayerBoundaryTests(unittest.TestCase):
         spec = (ROOT / "docs/superpowers/specs/2026-09-19-catalog-import-gate.md").read_text(encoding="utf-8")
         self.assertIn(
             "ManifestとUnityAgent Runtime Catalogはともに現在のproducerを "
-            "`UnityAgent.ReferenceImplementation.v1.1`.",
+            "`UnityAgent.ReferenceImplementation.v1.1` としている。",
             spec,
         )
+        self.assertIn("producer差分は解消済み", spec)
 
     def test_canonical_five_layer_contract_is_valid(self) -> None:
         self.assertEqual(validate(ROOT), [])
