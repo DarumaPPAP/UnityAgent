@@ -160,6 +160,64 @@ class UnityArtistCliResolutionTests(unittest.TestCase):
                 snapshot["unity_artist_cli"]["compatible"] = compatible
                 self._assert_tool_broker_excludes_artist(snapshot)
 
+    def test_unavailable_artist_capability_does_not_block_project_inspection(self) -> None:
+        snapshot = dict(self.snapshot)
+        snapshot["unity_artist_cli"] = dict(self.snapshot["unity_artist_cli"])
+        snapshot["unity_artist_cli"].update({
+            "available": False,
+            "compatible": "unknown",
+            "project_bound": False,
+            "package_installed": False,
+            "pipeline_reachable": False,
+        })
+        request = {
+            "schema_version": "1.0",
+            "capability": "project.inspect",
+            "project_root": self.project_root,
+            "operation_kind": "read",
+            "required_evidence": ["project_fact"],
+            "mutation_scope": None,
+            "approval_ref": None,
+            "preferred_surface": "project",
+        }
+
+        result = ToolBroker().resolve(
+            request,
+            snapshot,
+            context=ResolutionContext(policy_allowed=True),
+        )
+
+        self.assertEqual(result["status"], "resolved")
+        self.assertEqual(result["provider_ref"], "file")
+
+    def test_unknown_artist_compatibility_excludes_only_the_artist_resolution(self) -> None:
+        snapshot = dict(self.snapshot)
+        snapshot["unity_artist_cli"] = dict(self.snapshot["unity_artist_cli"])
+        snapshot["unity_artist_cli"]["compatible"] = "unknown"
+        request = {
+            "schema_version": "1.0",
+            "capability": "domain.workflow",
+            "project_root": self.project_root,
+            "operation_kind": "editor_mutation",
+            "required_evidence": ["domain_result", "mutation_evidence"],
+            "mutation_scope": {
+                "allowed_paths": ["Assets/Scenes"],
+                "prohibited_paths": ["ProjectSettings"],
+            },
+            "approval_ref": "approval-1",
+            "preferred_surface": "editor",
+            "qualifiers": {"domain": "visual_art", "workflow": "lighting"},
+        }
+
+        result = ToolBroker().resolve(
+            request,
+            snapshot,
+            context=ResolutionContext(policy_allowed=True, approval_complete=True),
+        )
+
+        self.assertEqual(result["status"], "unknown")
+        self.assertIsNone(result["provider_ref"])
+
     def _assert_tool_broker_excludes_artist(self, snapshot) -> None:
         request = {
             "schema_version": "1.0",

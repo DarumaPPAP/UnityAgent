@@ -253,6 +253,169 @@ class InstallerProviderTests(unittest.TestCase):
         self.assertEqual(result["entries"][0]["reason"], "codex_cli_execution_failed")
         self.assertIn("broken shim", result["entries"][0]["message"])
 
+    def test_doctor_keeps_optional_artist_unavailable_without_blocking_other_products(self) -> None:
+        project_root = self.install_root / "Project"
+        project_root.mkdir(parents=True)
+        fake_codex = self.install_root / "codex.exe"
+        fake_codex.write_text("test executable", encoding="utf-8")
+
+        def runner(arguments):
+            if arguments[1:] == ["--version"]:
+                return CommandResult(0, "codex-cli 0.0-test\n", "")
+            if arguments[1:] == ["plugin", "list", "--json"]:
+                return CommandResult(
+                    0,
+                    json.dumps([{
+                        "pluginId": "unity-agent@unity-agent",
+                        "name": "unity-agent",
+                        "marketplaceName": "unity-agent",
+                        "version": "0.0.7-beta",
+                        "installed": True,
+                        "enabled": True,
+                        "installedPath": "C:/Users/test/.codex/plugins/unity-agent",
+                    }]),
+                    "",
+                )
+            raise AssertionError(f"unexpected command: {arguments}")
+
+        provider = InstallerProvider(
+            project_root,
+            which_fn=lambda name: "/tools/unity.exe" if name == "unity" else None,
+            command_runner=runner,
+            env={},
+        )
+        result = provider.doctor({
+            "products": [
+                "official_unity_cli",
+                "unity_artist_cli",
+                "codex_cli",
+                "unity_agent_codex_plugin",
+            ],
+            "codex_cli_path": str(fake_codex),
+        })
+
+        self.assertEqual(result["status"], "passed")
+        entries = {entry["product"]: entry for entry in result["entries"]}
+        self.assertEqual(entries["official_unity_cli"]["status"], "verified")
+        self.assertEqual(entries["unity_artist_cli"]["status"], "unavailable")
+        self.assertEqual(entries["unity_artist_cli"]["reason"], "unity_artist_cli_unavailable")
+        self.assertEqual(entries["codex_cli"]["status"], "verified")
+        self.assertEqual(entries["unity_agent_codex_plugin"]["status"], "verified")
+        self.assertTrue(any("unity-artist" in item for item in result["errors"]))
+
+    def test_doctor_keeps_product_execution_exception_distinct_from_unavailable(self) -> None:
+        project_root = self.install_root / "Project"
+        project_root.mkdir(parents=True)
+        fake_codex = self.install_root / "codex.exe"
+        fake_codex.write_text("test executable", encoding="utf-8")
+        provider = InstallerProvider(
+            project_root,
+            which_fn=lambda name: None,
+            command_runner=lambda arguments: (_ for _ in ()).throw(RuntimeError("simulated CLI failure")),
+            env={},
+        )
+
+        result = provider.doctor({
+            "products": ["codex_cli"],
+            "codex_cli_path": str(fake_codex),
+        })
+
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["entries"][0]["status"], "failed")
+        self.assertEqual(result["entries"][0]["failure_class"], "execution_failed")
+        self.assertIn("simulated CLI failure", result["entries"][0]["message"])
+
+    def test_missing_artist_plan_waits_for_approval_and_does_not_install(self) -> None:
+        project_root = self.install_root / "Project"
+        project_root.mkdir(parents=True)
+        install_calls = []
+        provider = InstallerProvider(
+            project_root,
+            which_fn=lambda name: None,
+            installer_fn=lambda plan: install_calls.append(plan) or {"status": "passed"},
+            env={},
+        )
+
+        plan = provider.plan({
+            "project_root": str(project_root),
+            "products": ["unity_artist_cli"],
+            "channel": "0.0.7-beta",
+            "install_root": str(self.install_root / "install"),
+        })
+
+        self.assertEqual(plan["status"], "passed")
+        self.assertEqual(plan["actions"][0]["action"], "install_then_verify")
+        self.assertTrue(plan["approval_required"])
+        self.assertEqual(install_calls, [])
+
+    def test_codex_plugin_plan_is_independent_of_missing_artist_backend(self) -> None:
+        project_root = self.install_root / "Project"
+        project_root.mkdir(parents=True)
+        fake_codex = self.install_root / "codex.exe"
+        fake_codex.write_text("test executable", encoding="utf-8")
+        install_calls = []
+        observed_commands = []
+        observed_lookups = []
+
+        def which(name):
+            observed_lookups.append(name)
+            return str(fake_codex) if name == "codex" else None
+
+        def runner(arguments):
+            observed_commands.append(list(arguments))
+            if arguments[1:] == ["--version"]:
+                return CommandResult(0, "codex-cli 0.0-test\n", "")
+            if arguments[1:] == ["plugin", "list", "--json"]:
+                return CommandResult(0, '[{"pluginId":"unity-agent@unity-agent","version":"0.0.7-beta","installed":true,"enabled":true}]', "")
+            raise AssertionError(f"unexpected command: {arguments}")
+
+        provider = InstallerProvider(
+            project_root,
+            which_fn=which,
+            command_runner=runner,
+            installer_fn=lambda plan: install_calls.append(plan) or {"status": "passed"},
+            env={},
+        )
+        artist_report = provider.doctor({"products": ["unity_artist_cli"]})
+        self.assertEqual(artist_report["entries"][0]["status"], "unavailable")
+        observed_lookups.clear()
+        observed_commands.clear()
+
+        plan = provider.plan({
+            "project_root": str(project_root),
+            "products": ["codex_cli", "unity_agent_codex_plugin"],
+            "channel": "0.0.7-beta",
+            "install_root": str(self.install_root / "install"),
+            "codex_cli_path": str(fake_codex),
+        })
+
+        self.assertEqual(plan["status"], "passed")
+        self.assertFalse(plan["approval_required"])
+        self.assertEqual([action["action"] for action in plan["actions"]], ["verify", "verify"])
+        self.assertNotIn("unity-artist", observed_lookups)
+        self.assertEqual(len(observed_commands), 2)
+        self.assertEqual(install_calls, [])
+
+    def test_apply_without_completed_approval_stops_before_install(self) -> None:
+        project_root = self.install_root / "Project"
+        project_root.mkdir(parents=True)
+        install_calls = []
+        provider = InstallerProvider(
+            project_root,
+            installer_fn=lambda plan: install_calls.append(plan) or {"status": "passed"},
+            env={},
+        )
+
+        result = provider.apply(
+            {"approval_ref": "approval-1", "expected_plan_id": "plan-1"},
+            approval_complete=False,
+            approved_plan={"plan_id": "plan-1", "status": "passed"},
+        )
+
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["failure_class"], "blocked_by_approval")
+        self.assertEqual(install_calls, [])
+
 
 if __name__ == "__main__":
     unittest.main()

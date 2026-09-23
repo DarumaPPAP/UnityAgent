@@ -229,18 +229,29 @@ class InstallerProvider:
     def _product_observation(self, product: str, request: Mapping[str, Any]) -> dict[str, Any]:
         if product == "official_unity_cli":
             executable = self.which_fn("unity") or self.which_fn("unity-cli")
+            available = bool(executable)
             return {
                 "product": product,
-                "status": "verified" if executable else "unavailable",
+                "status": "verified" if available else "unavailable",
                 "version": None,
                 "location": executable,
                 "source": "PATH",
                 "sha256": None,
+                "reason": None if available else "official_unity_cli_unavailable",
+                "message": None if available else "Official Unity CLI was not found on PATH.",
             }
         if product == "unity_artist_cli":
             executable = self.which_fn("unity-artist")
             package_id, package_version = _package_version(self.project_root)
             status = "verified" if executable and package_version else "unavailable"
+            reason = None
+            message = None
+            if not executable:
+                reason = "unity_artist_cli_unavailable"
+                message = "unity-artist CLI was not found on PATH."
+            elif not package_version:
+                reason = "unity_artist_package_not_installed"
+                message = "UnityArtist package was not found in Packages/manifest.json."
             return {
                 "product": product,
                 "status": status,
@@ -248,6 +259,8 @@ class InstallerProvider:
                 "location": executable,
                 "source": package_id or "project manifest",
                 "sha256": None,
+                "reason": reason,
+                "message": message,
             }
         if product == "codex_cli":
             return self._observe_codex_cli(request)
@@ -262,9 +275,25 @@ class InstallerProvider:
 
     def doctor(self, request: Mapping[str, Any]) -> dict[str, Any]:
         products = [str(item) for item in request["products"]]
-        entries = [self._product_observation(product, request) for product in products]
+        entries: list[dict[str, Any]] = []
+        for product in products:
+            try:
+                entries.append(self._product_observation(product, request))
+            except Exception as exc:
+                entries.append({
+                    "product": product,
+                    "status": "failed",
+                    "version": None,
+                    "location": None,
+                    "source": None,
+                    "sha256": None,
+                    "failure_class": "execution_failed",
+                    "reason": "product_observation_exception",
+                    "message": f"{type(exc).__name__}: {exc}",
+                })
         statuses = {str(entry["status"]) for entry in entries}
-        status = "passed" if statuses == {"verified"} else ("failed" if "failed" in statuses else "unavailable")
+        expected_statuses = {"verified", "installed", "unavailable"}
+        status = "passed" if statuses.issubset(expected_statuses) else "failed"
         errors = [
             str(entry.get("message") or entry.get("reason") or "toolchain product unavailable")
             for entry in entries
@@ -285,6 +314,8 @@ class InstallerProvider:
     def _action_for(entry: Mapping[str, Any]) -> str:
         status = str(entry.get("status") or "")
         product = str(entry.get("product") or "")
+        if status == "failed":
+            return "blocked_by_observation"
         if status == "verified":
             return "verify"
         if product == "codex_cli":
@@ -294,8 +325,6 @@ class InstallerProvider:
             "codex_cli_override_missing",
         }:
             return "blocked_by_dependency"
-        if product == "unity_agent_codex_plugin" and status == "failed":
-            return "blocked_by_observation"
         return "install_then_verify"
 
     def plan(self, request: Mapping[str, Any]) -> dict[str, Any]:
