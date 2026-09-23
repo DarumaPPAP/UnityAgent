@@ -1045,6 +1045,8 @@ namespace DarumaPPAP.UnityAgent.Editor
                     return "Available";
                 case "unavailable":
                     return "Unavailable";
+                case "stale":
+                    return "Incompatible";
                 case "failed":
                     return "Error";
                 default:
@@ -1113,7 +1115,8 @@ namespace DarumaPPAP.UnityAgent.Editor
                 return MessageType.Error;
             }
             var combined = (json ?? string.Empty) + "\n" + (processError ?? string.Empty);
-            return combined.IndexOf("unavailable", StringComparison.OrdinalIgnoreCase) >= 0
+            return combined.IndexOf("unavailable", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   combined.IndexOf("stale", StringComparison.OrdinalIgnoreCase) >= 0
                 ? MessageType.Warning
                 : MessageType.Info;
         }

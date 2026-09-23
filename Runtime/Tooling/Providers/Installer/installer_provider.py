@@ -292,7 +292,7 @@ class InstallerProvider:
                     "message": f"{type(exc).__name__}: {exc}",
                 })
         statuses = {str(entry["status"]) for entry in entries}
-        expected_statuses = {"verified", "installed", "unavailable"}
+        expected_statuses = {"verified", "installed", "unavailable", "stale"}
         status = "passed" if statuses.issubset(expected_statuses) else "failed"
         errors = [
             str(entry.get("message") or entry.get("reason") or "toolchain product unavailable")

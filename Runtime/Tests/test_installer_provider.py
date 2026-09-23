@@ -325,6 +325,40 @@ class InstallerProviderTests(unittest.TestCase):
         self.assertEqual(result["entries"][0]["failure_class"], "execution_failed")
         self.assertIn("simulated CLI failure", result["entries"][0]["message"])
 
+    def test_doctor_keeps_observed_plugin_version_mismatch_as_incompatible(self) -> None:
+        project_root = self.install_root / "Project"
+        project_root.mkdir(parents=True)
+        fake_codex = self.install_root / "codex.exe"
+        fake_codex.write_text("test executable", encoding="utf-8")
+
+        def runner(arguments):
+            if arguments[1:] == ["plugin", "list", "--json"]:
+                return CommandResult(
+                    0,
+                    json.dumps([{
+                        "pluginId": "unity-agent@unity-agent",
+                        "version": "0.0.6-beta",
+                        "installed": True,
+                        "enabled": True,
+                    }]),
+                    "",
+                )
+            raise AssertionError(f"unexpected command: {arguments}")
+
+        provider = InstallerProvider(
+            project_root,
+            command_runner=runner,
+            env={},
+        )
+        result = provider.doctor({
+            "products": ["unity_agent_codex_plugin"],
+            "codex_cli_path": str(fake_codex),
+        })
+
+        self.assertEqual(result["status"], "passed")
+        self.assertEqual(result["entries"][0]["status"], "stale")
+        self.assertEqual(result["entries"][0]["reason"], "plugin_version_mismatch")
+
     def test_missing_artist_plan_waits_for_approval_and_does_not_install(self) -> None:
         project_root = self.install_root / "Project"
         project_root.mkdir(parents=True)

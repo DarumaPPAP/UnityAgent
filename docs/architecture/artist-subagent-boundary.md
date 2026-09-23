@@ -56,6 +56,7 @@ UnityAgent is the Control Plane. SubAgents and their backends are optional capab
 | Installer Provider `status: failed` | An observation failed to execute or returned an invalid state. Failure details remain on the affected entry. |
 | Product entry `status: verified` / `installed` | That product was observed available. |
 | Product entry `status: unavailable` | That product was observed missing or unavailable; keep its `reason` and `message`. This must not be rewritten as `verified`. |
+| Product entry `status: stale` | The product was observed, but its version is incompatible; keep it distinct from both `unavailable` and execution failure. |
 | Control Plane `status: completed` | Resolution, provider operation, and evidence handling completed successfully. |
 | Control Plane `status: blocked` | The request could not complete because resolution or provider execution failed. |
 | CLI exit code | `0` means the Control Plane operation completed; nonzero means the operation failed or was blocked. It does not encode each product's availability. |
