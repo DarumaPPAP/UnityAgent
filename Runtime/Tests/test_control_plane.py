@@ -14,6 +14,7 @@ from ControlPlane.unity_agent_control_plane import UnityAgentControlPlane, valid
 from Runtime.Tooling.Environment.discovery import discover_environment
 from Runtime.Tooling.Environment.environment_snapshot import UnityCliSnapshot
 from Runtime.Tooling.capability_resolver import ResolutionContext
+from Runtime.Tooling.Providers.Installer.codex_plugin_installer import CommandResult
 from Runtime.Tooling.Providers.Installer.installer_provider import InstallerProvider
 
 
@@ -147,6 +148,68 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertEqual(result["operation"], "doctor")
         self.assertEqual(len(result["evidence_refs"]), 1)
         self.assertEqual(plane.evidence_store.get(result["evidence_refs"][0])["producer"], "installer_provider")
+
+    def test_optional_artist_unavailable_completes_doctor_and_persists_evidence(self) -> None:
+        install_calls = []
+        fake_codex = self.root / "codex.exe"
+        fake_codex.write_text("test executable", encoding="utf-8")
+
+        def command_runner(arguments):
+            if arguments[1:] == ["--version"]:
+                return CommandResult(0, "codex-cli 0.0-test\n", "")
+            if arguments[1:] == ["plugin", "list", "--json"]:
+                return CommandResult(0, '[{"pluginId":"unity-agent@unity-agent","version":"0.0.7-beta","installed":true,"enabled":true}]', "")
+            raise AssertionError(f"unexpected command: {arguments}")
+
+        installer = InstallerProvider(
+            self.project,
+            which_fn=lambda name: "/usr/bin/unity" if name == "unity" else (str(fake_codex) if name == "codex" else None),
+            command_runner=command_runner,
+            installer_fn=lambda plan: install_calls.append(plan) or {"status": "passed"},
+            env={},
+        )
+        plane = UnityAgentControlPlane(self.root / "optional-artist-state")
+        result = plane.setup(
+            "unity_ui",
+            {
+                "schema_version": "1.0",
+                "request_id": "doctor-optional-artist",
+                "operation": "doctor",
+                "project_root": str(self.project.resolve()),
+                "products": [
+                    "official_unity_cli",
+                    "unity_artist_cli",
+                    "codex_cli",
+                    "unity_agent_codex_plugin",
+                ],
+                "channel": "0.0.7-beta",
+                "non_interactive": True,
+                "codex_cli_path": str(fake_codex),
+            },
+            executors={"installer": installer.execute},
+            definition_fingerprint=fingerprint(),
+            run_id="run-doctor-optional-artist",
+        )
+
+        self.assertEqual(result["status"], "completed")
+        provider_result = result["outcome"]["provider_result"]
+        self.assertEqual(provider_result["status"], "passed")
+        entries_by_product = {entry["product"]: entry for entry in provider_result["entries"]}
+        self.assertEqual(entries_by_product["unity_artist_cli"]["status"], "unavailable")
+        self.assertEqual(
+            entries_by_product["unity_artist_cli"]["reason"],
+            "unity_artist_cli_unavailable",
+        )
+        product_statuses = {entry["product"]: entry["status"] for entry in provider_result["entries"]}
+        self.assertEqual(product_statuses, {
+            "official_unity_cli": "verified",
+            "unity_artist_cli": "unavailable",
+            "codex_cli": "verified",
+            "unity_agent_codex_plugin": "verified",
+        })
+        evidence = plane.evidence_store.get(result["evidence_refs"][0])
+        self.assertEqual(evidence["verification_status"], "passed")
+        self.assertEqual(install_calls, [])
 
     def test_approved_setup_persists_install_receipt_after_evidence_id_is_known(self) -> None:
         receipt_entry = {

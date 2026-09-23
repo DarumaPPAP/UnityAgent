@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Text;
 using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
@@ -924,9 +925,182 @@ namespace DarumaPPAP.UnityAgent.Editor
             Repaint();
         }
 
+        [Serializable]
+        private sealed class SetupResponse
+        {
+            public string status;
+            public string operation;
+            public SetupOutcome outcome;
+        }
+
+        [Serializable]
+        private sealed class SetupOutcome
+        {
+            public SetupProviderResult provider_result;
+            public SetupResolution resolution;
+        }
+
+        [Serializable]
+        private sealed class SetupResolution
+        {
+            public string status;
+            public string failure_class;
+            public string reason;
+        }
+
+        [Serializable]
+        private sealed class SetupProviderResult
+        {
+            public string operation;
+            public string status;
+            public string failure_class;
+            public string reason;
+            public SetupProductEntry[] entries;
+        }
+
+        [Serializable]
+        private sealed class SetupProductEntry
+        {
+            public string product;
+            public string status;
+            public string reason;
+            public string message;
+        }
+
+        private static string BuildDoctorSummary(string json, string processError)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return string.Empty;
+            }
+
+            SetupResponse response;
+            try
+            {
+                response = JsonUtility.FromJson<SetupResponse>(json);
+            }
+            catch (ArgumentException)
+            {
+                return string.Empty;
+            }
+
+            var providerResult = response == null || response.outcome == null
+                ? null
+                : response.outcome.provider_result;
+            var resolution = response == null || response.outcome == null
+                ? null
+                : response.outcome.resolution;
+            if (response == null ||
+                (!string.Equals(response.operation, "doctor", StringComparison.OrdinalIgnoreCase) &&
+                 (providerResult == null || !string.Equals(providerResult.operation, "doctor", StringComparison.OrdinalIgnoreCase))))
+            {
+                return string.Empty;
+            }
+
+            var completed = string.Equals(response.status, "completed", StringComparison.OrdinalIgnoreCase) &&
+                            providerResult != null &&
+                            string.Equals(providerResult.status, "passed", StringComparison.OrdinalIgnoreCase);
+            var operationStatus = string.Equals(response.status, "blocked", StringComparison.OrdinalIgnoreCase)
+                ? "Blocked"
+                : "Error";
+            var summary = new StringBuilder();
+            summary.Append("UnityAgent: ").AppendLine(completed ? "Ready" : operationStatus);
+
+            if (resolution != null && !string.Equals(resolution.status, "resolved", StringComparison.OrdinalIgnoreCase))
+            {
+                summary.Append("Management provider resolution: ").AppendLine(string.IsNullOrWhiteSpace(resolution.status) ? "Unknown" : resolution.status);
+                if (!string.IsNullOrWhiteSpace(resolution.failure_class))
+                {
+                    summary.Append("  failure: ").AppendLine(resolution.failure_class);
+                }
+                if (!string.IsNullOrWhiteSpace(resolution.reason))
+                {
+                    summary.Append("  reason: ").AppendLine(resolution.reason);
+                }
+            }
+
+            if (providerResult != null && string.Equals(providerResult.status, "failed", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!string.IsNullOrWhiteSpace(providerResult.failure_class))
+                {
+                    summary.Append("Provider failure: ").AppendLine(providerResult.failure_class);
+                }
+                if (!string.IsNullOrWhiteSpace(providerResult.reason))
+                {
+                    summary.Append("Provider reason: ").AppendLine(providerResult.reason);
+                }
+            }
+
+            if (providerResult != null && providerResult.entries != null)
+            {
+                for (var index = 0; index < providerResult.entries.Length; index++)
+                {
+                    var entry = providerResult.entries[index];
+                    if (entry == null)
+                    {
+                        continue;
+                    }
+
+                    summary.Append(ProductDisplayName(entry.product))
+                        .Append(": ")
+                        .AppendLine(ProductDisplayStatus(entry.status));
+                    if (!string.IsNullOrWhiteSpace(entry.reason))
+                    {
+                        summary.Append("  reason: ").AppendLine(entry.reason);
+                    }
+                    if (!string.IsNullOrWhiteSpace(entry.message))
+                    {
+                        summary.Append("  ").AppendLine(entry.message);
+                    }
+                }
+            }
+
+            if (!completed && !string.IsNullOrWhiteSpace(processError))
+            {
+                summary.Append("Control Plane error: ").Append(processError.Trim());
+            }
+
+            return summary.ToString().TrimEnd();
+        }
+
+        private static string ProductDisplayName(string product)
+        {
+            switch (product ?? string.Empty)
+            {
+                case "official_unity_cli": return "Official Unity CLI";
+                case "unity_artist_cli": return "Artist CLI (backend)";
+                case "codex_cli": return "Codex CLI";
+                case "unity_agent_codex_plugin": return "UnityAgent Codex Plugin";
+                default: return string.IsNullOrWhiteSpace(product) ? "Unknown product" : product;
+            }
+        }
+
+        private static string ProductDisplayStatus(string status)
+        {
+            switch (status ?? string.Empty)
+            {
+                case "verified":
+                case "installed":
+                    return "Available";
+                case "unavailable":
+                    return "Unavailable";
+                case "stale":
+                    return "Incompatible";
+                case "failed":
+                    return "Error";
+                default:
+                    return string.IsNullOrWhiteSpace(status) ? "Unknown" : "Unknown (" + status + ")";
+            }
+        }
+
         private static string BuildReadableMessage(bool success, string json, string processError)
         {
             var combined = (json ?? string.Empty) + "\n" + (processError ?? string.Empty);
+            var doctorSummary = BuildDoctorSummary(json, processError);
+            if (!string.IsNullOrEmpty(doctorSummary))
+            {
+                return doctorSummary;
+            }
             if (combined.IndexOf("codex_cli_override_missing", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 return "指定したCodex CLI Pathが存在しません。Pathを選び直すかOverrideを解除してください。";
@@ -980,7 +1154,8 @@ namespace DarumaPPAP.UnityAgent.Editor
                 return MessageType.Error;
             }
             var combined = (json ?? string.Empty) + "\n" + (processError ?? string.Empty);
-            return combined.IndexOf("unavailable", StringComparison.OrdinalIgnoreCase) >= 0
+            return combined.IndexOf("unavailable", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   combined.IndexOf("stale", StringComparison.OrdinalIgnoreCase) >= 0
                 ? MessageType.Warning
                 : MessageType.Info;
         }
