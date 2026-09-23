@@ -21,10 +21,11 @@ class LayerBoundaryTests(unittest.TestCase):
             Loader=yaml.BaseLoader,
         )
         triggers = workflow["on"]
-        self.assertIn("Specs/unityagent-layer-contract.yaml", triggers["pull_request"]["paths"])
-        self.assertIn("Specs/unityagent-layer-contract.yaml", triggers["push"]["paths"])
-        self.assertIn("Tests/Architecture/**", triggers["pull_request"]["paths"])
-        self.assertIn("Tests/Architecture/**", triggers["push"]["paths"])
+        for event in ("pull_request", "push"):
+            paths = triggers[event]["paths"]
+            self.assertIn("Specs/unityagent-layer-contract.yaml", paths)
+            self.assertIn("Tests/Architecture/**", paths)
+            self.assertIn("docs/architecture/**", paths)
 
     def test_canonical_five_layer_contract_is_valid(self) -> None:
         self.assertEqual(validate(ROOT), [])
