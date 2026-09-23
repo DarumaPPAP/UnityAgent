@@ -36,9 +36,11 @@ Environment Factの値は入力に含めず、Provider availabilityやProject bi
 
 保護Fieldはidentity、routing（audience / goal / capabilities / primary）、activation、scope、value、approval、required evidence、evidence provenanceとする。保護Field変更・削除・default profile変更はPlanを `blocked` とし、変更を反映しない。その他の差分も `requires_pull_request` とし、Import Gateから直接Applyしない。
 
-## 現行producer差分
+## Producer contract alignment
 
-UnityAgentの現行Catalog、`Runtime.ReferenceImplementation.runtime` の durable Evidence生成、profile binding digest、関連のCompatibility/Resolution testsは `UnityAgent.ReferenceImplementation.v1.1` を示す。Hub manifestの `UnityAgent.ReferenceImplementation.v1` は自動補正せず、既存 `artist_subagent` の保護Field変更として拒否する。Hub側のproducer修正はこの実装PRとは別の契約変更PRで扱う。
+2026-09-23時点で、Hub ManifestとUnityAgent Runtime Catalogはともに現在のproducerを `UnityAgent.ReferenceImplementation.v1.1` としている。初期実装時に記録したHub Manifestとのproducer差分は解消済みであり、現行のSource of Truth競合ではない。
+
+Import Gateは、将来入力されたSnapshotのproducerがConsumer側契約と異なる場合も自動補正しない。既存 `artist_subagent` の保護Field変更として拒否し、契約変更は両Repositoryでレビューする。
 
 ## Revision / Resume / Evidence
 

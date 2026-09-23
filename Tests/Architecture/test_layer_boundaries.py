@@ -15,6 +15,27 @@ from Tools.LayerBoundaryValidator.validate_layer_boundaries import EXPECTED_EDGE
 
 
 class LayerBoundaryTests(unittest.TestCase):
+    def test_architecture_contract_changes_trigger_validation(self) -> None:
+        workflow = yaml.load(
+            (ROOT / ".github/workflows/validate-agent-contracts.yml").read_text(encoding="utf-8"),
+            Loader=yaml.BaseLoader,
+        )
+        triggers = workflow["on"]
+        for event in ("pull_request", "push"):
+            paths = triggers[event]["paths"]
+            self.assertIn("Specs/**", paths)
+            self.assertIn("Tests/Architecture/**", paths)
+            self.assertIn("docs/architecture/**", paths)
+
+    def test_catalog_import_gate_spec_reports_current_producer_contract(self) -> None:
+        spec = (ROOT / "docs/superpowers/specs/2026-09-19-catalog-import-gate.md").read_text(encoding="utf-8")
+        self.assertIn(
+            "ManifestとUnityAgent Runtime Catalogはともに現在のproducerを "
+            "`UnityAgent.ReferenceImplementation.v1.1` としている。",
+            spec,
+        )
+        self.assertIn("producer差分は解消済み", spec)
+
     def test_canonical_five_layer_contract_is_valid(self) -> None:
         self.assertEqual(validate(ROOT), [])
 
