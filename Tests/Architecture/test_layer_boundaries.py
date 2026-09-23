@@ -23,7 +23,7 @@ class LayerBoundaryTests(unittest.TestCase):
         triggers = workflow["on"]
         for event in ("pull_request", "push"):
             paths = triggers[event]["paths"]
-            self.assertIn("Specs/unityagent-layer-contract.yaml", paths)
+            self.assertIn("Specs/**", paths)
             self.assertIn("Tests/Architecture/**", paths)
             self.assertIn("docs/architecture/**", paths)
 
