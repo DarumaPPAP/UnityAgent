@@ -937,6 +937,15 @@ namespace DarumaPPAP.UnityAgent.Editor
         private sealed class SetupOutcome
         {
             public SetupProviderResult provider_result;
+            public SetupResolution resolution;
+        }
+
+        [Serializable]
+        private sealed class SetupResolution
+        {
+            public string status;
+            public string failure_class;
+            public string reason;
         }
 
         [Serializable]
@@ -944,6 +953,8 @@ namespace DarumaPPAP.UnityAgent.Editor
         {
             public string operation;
             public string status;
+            public string failure_class;
+            public string reason;
             public SetupProductEntry[] entries;
         }
 
@@ -976,6 +987,9 @@ namespace DarumaPPAP.UnityAgent.Editor
             var providerResult = response == null || response.outcome == null
                 ? null
                 : response.outcome.provider_result;
+            var resolution = response == null || response.outcome == null
+                ? null
+                : response.outcome.resolution;
             if (response == null ||
                 (!string.Equals(response.operation, "doctor", StringComparison.OrdinalIgnoreCase) &&
                  (providerResult == null || !string.Equals(providerResult.operation, "doctor", StringComparison.OrdinalIgnoreCase))))
@@ -991,6 +1005,31 @@ namespace DarumaPPAP.UnityAgent.Editor
                 : "Error";
             var summary = new StringBuilder();
             summary.Append("UnityAgent: ").AppendLine(completed ? "Ready" : operationStatus);
+
+            if (resolution != null && !string.Equals(resolution.status, "resolved", StringComparison.OrdinalIgnoreCase))
+            {
+                summary.Append("Management provider resolution: ").AppendLine(string.IsNullOrWhiteSpace(resolution.status) ? "Unknown" : resolution.status);
+                if (!string.IsNullOrWhiteSpace(resolution.failure_class))
+                {
+                    summary.Append("  failure: ").AppendLine(resolution.failure_class);
+                }
+                if (!string.IsNullOrWhiteSpace(resolution.reason))
+                {
+                    summary.Append("  reason: ").AppendLine(resolution.reason);
+                }
+            }
+
+            if (providerResult != null && string.Equals(providerResult.status, "failed", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!string.IsNullOrWhiteSpace(providerResult.failure_class))
+                {
+                    summary.Append("Provider failure: ").AppendLine(providerResult.failure_class);
+                }
+                if (!string.IsNullOrWhiteSpace(providerResult.reason))
+                {
+                    summary.Append("Provider reason: ").AppendLine(providerResult.reason);
+                }
+            }
 
             if (providerResult != null && providerResult.entries != null)
             {
@@ -1018,7 +1057,7 @@ namespace DarumaPPAP.UnityAgent.Editor
 
             if (!completed && !string.IsNullOrWhiteSpace(processError))
             {
-                summary.Append("Control Plane error: ").Append(FirstLine(processError));
+                summary.Append("Control Plane error: ").Append(processError.Trim());
             }
 
             return summary.ToString().TrimEnd();

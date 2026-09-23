@@ -61,7 +61,7 @@ UnityAgent is the Control Plane. SubAgents and their backends are optional capab
 | Control Plane `status: blocked` | The request could not complete because resolution or provider execution failed. |
 | CLI exit code | `0` means the Control Plane operation completed; nonzero means the operation failed or was blocked. It does not encode each product's availability. |
 
-The Unity Setup Window's doctor summary follows the structured Control Plane response and shows product entries independently. It may report `UnityAgent: Ready` alongside `Artist CLI (backend): Unavailable`; that does not claim ArtistSubAgent is available. Capability resolution remains authoritative for capability availability.
+The Unity Setup Window's doctor summary follows the structured Control Plane response, shows management-resolution/provider failure reasons, and shows product entries independently. It may report `UnityAgent: Ready` alongside `Artist CLI (backend): Unavailable`; that does not claim ArtistSubAgent is available. Capability resolution remains authoritative for capability availability.
 
 Doctor Evidence records the diagnostic operation status. The canonical hash covers the provider result, including each product status and its unavailable reason; Evidence must not rewrite an unavailable product as verified.
 
