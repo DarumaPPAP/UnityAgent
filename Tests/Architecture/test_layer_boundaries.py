@@ -30,7 +30,7 @@ class LayerBoundaryTests(unittest.TestCase):
     def test_catalog_import_gate_spec_reports_current_producer_contract(self) -> None:
         spec = (ROOT / "docs/superpowers/specs/2026-09-19-catalog-import-gate.md").read_text(encoding="utf-8")
         self.assertIn(
-            "Hub Manifest and UnityAgent Runtime Catalog both identify the current producer as "
+            "ManifestとUnityAgent Runtime Catalogはともに現在のproducerを "
             "`UnityAgent.ReferenceImplementation.v1.1`.",
             spec,
         )
