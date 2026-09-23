@@ -27,6 +27,14 @@ class LayerBoundaryTests(unittest.TestCase):
             self.assertIn("Tests/Architecture/**", paths)
             self.assertIn("docs/architecture/**", paths)
 
+    def test_catalog_import_gate_spec_reports_current_producer_contract(self) -> None:
+        spec = (ROOT / "docs/superpowers/specs/2026-09-19-catalog-import-gate.md").read_text(encoding="utf-8")
+        self.assertIn(
+            "Hub Manifest and UnityAgent Runtime Catalog both identify the current producer as "
+            "`UnityAgent.ReferenceImplementation.v1.1`.",
+            spec,
+        )
+
     def test_canonical_five_layer_contract_is_valid(self) -> None:
         self.assertEqual(validate(ROOT), [])
 
