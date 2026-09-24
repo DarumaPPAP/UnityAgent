@@ -42,3 +42,12 @@ def policy_for_capability(capability: str, *, root: Path = ROOT) -> dict[str, An
         "default_permission": str(operation_policy["default_permission"]),
         "minimum_required_evidence": [str(item) for item in required_evidence],
     }
+
+
+def policy_for_operation_kind(operation_kind: str, *, root: Path = ROOT) -> dict[str, Any]:
+    """Read the canonical permission contract for a separate operation such as save."""
+    policy = _load(root)
+    operation = (policy.get("operation_kinds") or {}).get(operation_kind)
+    if not isinstance(operation, dict):
+        raise ValueError(f"unknown operation kind: {operation_kind}")
+    return dict(operation)

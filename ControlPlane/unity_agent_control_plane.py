@@ -167,6 +167,7 @@ class UnityAgentControlPlane:
         definition_fingerprint: Mapping[str, Any],
         provider_arguments: Mapping[str, Mapping[str, Any]] | None = None,
         run_id: str | None = None,
+        maximum_retry_attempts: int = 1,
     ) -> dict[str, Any]:
         """Run Entry -> Orchestration -> ToolBroker -> Provider -> Evidence."""
         validate_entry_request(entry_request)
@@ -279,6 +280,7 @@ class UnityAgentControlPlane:
                 context=context,
                 executors=executors,
                 provider_arguments=provider_arguments,
+                maximum_retry_attempts=maximum_retry_attempts,
             )
             result = deepcopy(outcome)
             resolution = outcome.get("resolution")

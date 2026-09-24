@@ -1,0 +1,14 @@
+using UnityEngine;
+
+namespace DarumaPPAP.UnityAgent.E2E
+{
+    public sealed class FullE2EProbe : MonoBehaviour
+    {
+        public bool WasStarted { get; private set; }
+
+        private void Start()
+        {
+            WasStarted = true;
+        }
+    }
+}

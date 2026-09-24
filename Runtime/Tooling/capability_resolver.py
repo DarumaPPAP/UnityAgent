@@ -194,6 +194,9 @@ def _qualifier_failure(
     product name and they do not alter Policy, scope, or evidence floors.
     """
     requested = request.get("qualifiers")
+    required_keys = set(provider.required_qualifiers)
+    if required_keys and (not isinstance(requested, Mapping) or not required_keys.issubset(requested)):
+        return "unsupported", f"{provider.provider_id} requires qualifiers {sorted(required_keys)}"
     if requested is None:
         return None
     if not isinstance(requested, Mapping):
@@ -309,6 +312,13 @@ def resolve_capability(
 
     for provider in runtime_registry.candidates(capability):
         if provider.provider_id == fallback_from_provider_id:
+            continue
+        # 固定Workflow専用Providerは一般要求の候補から外し、失敗分類にも影響させない。
+        requested_qualifiers = request.get("qualifiers")
+        if provider.required_qualifiers and (
+            not isinstance(requested_qualifiers, Mapping)
+            or not set(provider.required_qualifiers).issubset(requested_qualifiers)
+        ):
             continue
         excluded_failure = (excluded_provider_failures or {}).get(provider.provider_id)
         if excluded_failure is not None:

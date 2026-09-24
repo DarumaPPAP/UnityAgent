@@ -14,6 +14,8 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from ControlPlane.unity_agent_control_plane import UnityAgentControlPlane
+from ControlPlane.full_e2e import apply_full_e2e, approve_full_e2e, approve_full_e2e_save, plan_full_e2e
+from Persistence.Store.atomic_store import PersistenceError
 from Runtime.Tooling.Providers.Installer.installer_provider import InstallerProvider
 from Runtime.ReferenceImplementation.profiles import runtime_profile_revision
 
@@ -60,6 +62,14 @@ def _default_state_root() -> Path:
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="UnityAgent Control Plane host")
     subparsers = parser.add_subparsers(dest="command", required=True)
+    e2e = subparsers.add_parser("e2e", help="固定のUnity Editor Full E2E検証")
+    e2e.add_argument("operation", choices=("plan", "approve", "approve-save", "apply"))
+    e2e.add_argument("--project-path", required=True)
+    e2e.add_argument("--state-root", type=Path, default=_default_state_root())
+    e2e.add_argument("--plan-id")
+    e2e.add_argument("--approval-ref")
+    e2e.add_argument("--save-approval-ref")
+    e2e.add_argument("--timeout-seconds", type=float, default=180.0)
     for command in ("doctor", "setup"):
         subparser = subparsers.add_parser(command)
         subparser.add_argument("--operation", choices=("doctor", "plan", "apply"), default=command if command == "doctor" else "plan")
@@ -80,6 +90,24 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = _parse_args()
+    if args.command == "e2e":
+        try:
+            if args.operation == "plan":
+                result = plan_full_e2e(args.project_path, args.state_root)
+            elif args.operation == "approve":
+                result = approve_full_e2e(args.project_path, args.state_root, args.plan_id or "")
+            elif args.operation == "approve-save":
+                result = approve_full_e2e_save(args.project_path, args.state_root, args.plan_id or "")
+            else:
+                if not 1 <= args.timeout_seconds <= 900:
+                    raise ValueError("E2E timeout must be between 1 and 900 seconds")
+                result = apply_full_e2e(args.project_path, args.state_root, args.plan_id or "", args.approval_ref or "",
+                                        args.save_approval_ref or "",
+                                        definition_fingerprint=_fingerprint(), timeout_seconds=args.timeout_seconds)
+        except (ValueError, OSError, PersistenceError) as exc:
+            result = {"status": "blocked", "reason": str(exc)}
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0 if result["status"] in {"planned", "approved", "completed"} else 1
     if args.channel != CHANNEL:
         raise SystemExit(f"only the {CHANNEL} setup channel is supported")
     project_root = Path(args.project_path).expanduser().resolve(strict=False)
