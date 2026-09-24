@@ -190,6 +190,8 @@ unity-agent setup --operation plan --project-path "$Project" --format json --non
 
 Setup PlanのApplyは別操作です。承認済みPlanとApproval Referenceを指定し、Planで示されたScopeだけを適用します。
 
+固定のScene / GameObject / Material / Script生成からCompile、Editor PlayMode、Evidence保存までの手順は [Full E2E Capability](docs/architecture/full-e2e-capability.md) を参照してください。
+
 ## Local Reference Navigator
 
 UnityAgentのLocal Reference Navigatorは、取得済みReference Snapshotをローカル検索する仕組みです。通常の質問で外部Driveや検索サービスへ常時接続したり、ベクトルDBへ同期したりする機能ではありません。

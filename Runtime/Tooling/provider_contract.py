@@ -68,6 +68,7 @@ class ProviderDescriptor:
     safety_strength: int
     evidence_strength: int
     qualifiers_supported: dict[str, tuple[str, ...]] | None = None
+    required_qualifiers: tuple[str, ...] = ()
     legacy: bool = False
     production_enabled: bool = True
     management_operations: tuple[str, ...] = ()
@@ -262,6 +263,10 @@ def parse_provider_registry(value: Any, *, root: Path = ROOT) -> ProviderRegistr
             raw.get("qualifiers_supported"),
             label=f"{provider_id}.qualifiers_supported",
         )
+        required_qualifiers = _optional_string_list(
+            raw.get("required_qualifiers"), label=f"{provider_id}.required_qualifiers",
+            allowed=set(qualifiers_supported),
+        )
         legacy = raw.get("legacy", False)
         production_enabled = raw.get("production_enabled", True)
         if not isinstance(legacy, bool):
@@ -305,6 +310,7 @@ def parse_provider_registry(value: Any, *, root: Path = ROOT) -> ProviderRegistr
             safety_strength=safety_strength,
             evidence_strength=evidence_strength,
             qualifiers_supported=qualifiers_supported,
+            required_qualifiers=required_qualifiers,
             legacy=legacy,
             production_enabled=production_enabled,
             management_operations=management_operations,

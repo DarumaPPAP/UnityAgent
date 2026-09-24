@@ -89,6 +89,30 @@ providers:
           git.repository_bound: true
         scope_preservation: true
 
+  unity_agent_editor:
+    id: unity_agent_editor
+    transport: filesystem
+    surfaces: [editor, live_editor]
+    health: environment_fact
+    project_binding: explicit_project_path
+    environment_key: unity_editor
+    safety_strength: 5
+    evidence_strength: 5
+    qualifiers_supported:
+      workflow: [full_e2e]
+    required_qualifiers: [workflow]
+    capabilities:
+      scene.mutate:
+        priority: 150
+        surfaces: [live_editor]
+        evidence_supported: [editor_observation, mutation_evidence, compile_observation, test_execution, exact_diff]
+        environment_requirements:
+          project.exists: true
+          unity_editor.running: true
+          unity_editor.project_bound: true
+          unity_editor.safe_mode: false
+        scope_preservation: true
+
   native_unity_editor:
     id: native_unity_editor
     transport: subprocess
