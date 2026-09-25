@@ -18,6 +18,32 @@ MUTATION_OPERATION_KINDS = {
 }
 
 
+def conditions_for_intent(intent: dict[str, Any], fingerprint: dict[str, str]) -> set[str]:
+    """Translate explicit outcomes into existing routing conditions, failing closed on contradictions."""
+    kind = intent.get("kind")
+    if (kind == "project_inspection" and fingerprint["artifact"] == "project"
+            and fingerprint["scope"] == "read_only" and fingerprint["mutation_target"] == "none"):
+        return {"project_fact_needed"}
+    if (kind == "visual_capture" and fingerprint["artifact"] == "visual"
+            and fingerprint["scope"] == "project_asset" and fingerprint["mutation_target"] == "none"):
+        return {"visual_evidence_needed"}
+    raise ValueError(f"no verified Capability conditions for intent kind: {kind}")
+
+
+def task_contract_projection(route_id: str, *, root: Path = ROOT) -> dict[str, Any]:
+    catalog = yaml.safe_load((root / "Context/Selection/context-catalog.yaml").read_text(encoding="utf-8"))
+    selected = (catalog.get("routes") or {}).get(route_id)
+    if not isinstance(selected, dict):
+        raise ValueError(f"no Task Contract for route: {route_id}")
+    ref = str(selected["task_contract"])
+    contract = yaml.safe_load((root / ref).read_text(encoding="utf-8"))
+    if contract.get("id") != route_id:
+        raise ValueError(f"Task Contract does not match selected route: {route_id}")
+    projection = {"task_contract_ref": ref, "id": route_id, "risk_level": contract["risk_level"],
+                  "required_quality_gates": list(contract.get("required_quality_gates") or [])}
+    return projection
+
+
 def _load(root: Path) -> dict[str, Any]:
     value = yaml.safe_load((root / ROUTING_PATH).read_text(encoding="utf-8")) or {}
     if not isinstance(value, dict):

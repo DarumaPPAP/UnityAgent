@@ -89,6 +89,27 @@ def _review_profile() -> dict:
 
 
 class CatalogImportGateTests(unittest.TestCase):
+    def test_generic_v2_snapshot_requires_explicit_reference_profile_migration(self) -> None:
+        generic = _raw_catalog()
+        generic["schema_version"] = "2.0"
+        profile = generic["profiles"]["artist_subagent"]
+        profile["goal_type"] = "visual.capture"
+        profile["primary_capability"] = "visual.capture"
+        for key in ("scope", "value", "approval"):
+            profile.pop(key)
+        parsed = SubAgentProfileCatalog.from_mapping(generic)
+        self.assertEqual(parsed.to_mapping(), generic)
+        with self.assertRaisesRegex(Exception, "no camera reference scope"):
+            _ = parsed.get("artist_subagent").default_scope
+        with self.assertRaisesRegex(Exception, "cannot authorize a mutation scope"):
+            parsed.get("artist_subagent").validate_scope({})
+        with self.assertRaisesRegex(Exception, "no reference value range"):
+            parsed.get("artist_subagent").validate_value(45)
+        plan = _plan(generic)
+        self.assertEqual(plan["status"], "blocked")
+        self.assertTrue(any("protected_field_changed" in reason for reason in plan["blocking_reasons"]))
+        self.assertEqual(CATALOG.schema_version, "1.0")
+
     def test_current_catalog_snapshot_is_a_read_only_noop(self) -> None:
         plan = _plan(_raw_catalog())
 

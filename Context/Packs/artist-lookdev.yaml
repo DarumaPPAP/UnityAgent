@@ -64,9 +64,8 @@ required:
     path: Runtime/Tooling/provider_registry.yaml
   - type: repository_reference
     path: Context/Retrieval/Knowledge/visual/unity-artist-cli.yaml
-  - type: external_reference
-    repository: DarumaPPAP/UnitySubAgentHub
-    path: Specs/ArtistSubAgent/spec.md
+  - type: repository_reference
+    path: Runtime/ReferenceImplementation/subagent-catalog.yaml
   - type: context_include
     context_id: visual-direction
 

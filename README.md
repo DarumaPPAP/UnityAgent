@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="VERSION"><img alt="Version" src="https://img.shields.io/badge/version-0.0.7--beta-blue"></a>
-  <a href="https://unity.com/"><img alt="Unity 2022.3+" src="https://img.shields.io/badge/Unity-2022.3%2B-000000?logo=unity&logoColor=white"></a>
+  <a href="https://unity.com/"><img alt="Unity 6.x+" src="https://img.shields.io/badge/Unity-6.x%2B-000000?logo=unity&logoColor=white"></a>
   <a href="https://github.com/openai/codex"><img alt="Codex Plugin" src="https://img.shields.io/badge/Codex-Plugin-111827?logo=openai&logoColor=white"></a>
   <a href="https://github.com/DarumaPPAP/UnityAgent/actions/workflows/validate-agent-contracts.yml"><img alt="Contracts CI" src="https://github.com/DarumaPPAP/UnityAgent/actions/workflows/validate-agent-contracts.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-green.svg"></a>
@@ -78,7 +78,7 @@ Evidence & State
 
 EntryからProviderを直接呼び出したり、ProviderがPolicyやdurable stateを所有したりする構成にはしません。
 
-詳細: [UnityAgent Architecture](docs/architecture/architecture.md) · [Production Tool Runtime](docs/architecture/production-tool-runtime.md)
+詳細: [UnityAgent Architecture](docs/architecture/architecture.md) · [Specialist Context Assembly](docs/architecture/specialist-context-assembly.md) · [Production Tool Runtime](docs/architecture/production-tool-runtime.md)
 
 ## Responsibility Boundaries
 
@@ -145,7 +145,7 @@ Providerが利用できない場合は制約を弱めたり別Backendへ無条�
 
 - Windows PowerShell 5.1以上（Windows Bootstrapを使う場合）
 - Python 3.10以上（Control Planeのローカル導入に使用）
-- Unity 2022.3以上（Unity Packageを利用する場合）
+- Unity 6.x+（現行Production Baseline。Unity CLIはcommand / automation surface、Unity Pipelineは接続済みEditor command用のlocal HTTP bridge）
 - Codex CLI（Codex Pluginを利用する場合）
 
 ### Unity Package Manager

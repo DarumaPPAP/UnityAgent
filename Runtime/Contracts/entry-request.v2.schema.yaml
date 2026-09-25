@@ -1,0 +1,41 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:runtime:entry-request-v2
+title: UnityAgentEntryRequestV2
+type: object
+additionalProperties: false
+required:
+- schema_version
+- request_id
+- entry_point
+- project_root
+- intent
+properties:
+  schema_version:
+    const: '2.0'
+  request_id:
+    type: string
+    minLength: 1
+    pattern: ^[A-Za-z0-9._-]+$
+  entry_point:
+    enum:
+    - unity_ui
+    - codex_plugin
+  project_root:
+    type: string
+    minLength: 1
+  intent:
+    oneOf:
+    - type: object
+      additionalProperties: false
+      required: [kind]
+      properties:
+        kind: {const: project_inspection}
+    - type: object
+      additionalProperties: false
+      required: [kind, visual_intent, exact_scene_or_asset_scope, reference_or_visual_definition]
+      properties:
+        kind: {const: visual_capture}
+        visual_intent: {type: string, minLength: 1, pattern: '\S'}
+        exact_scene_or_asset_scope: {type: string, minLength: 1, pattern: '\S'}
+        reference_or_visual_definition: {type: string, minLength: 1, pattern: '\S'}
+  approval_ref: {type: [string, 'null'], minLength: 1}

@@ -17,6 +17,17 @@ def load_graph(path: Path) -> dict[str, Any]:
     return graph
 
 
+def runtime_node_for_requests(requests: list[dict[str, Any]], *, graph_path: Path) -> str:
+    """Choose an existing ParentGraph Runtime node from Orchestration output."""
+    graph = load_graph(graph_path)
+    mutating = any(request.get("operation_kind") in {"source_mutation", "editor_mutation", "save", "bake", "player_mutate", "arbitrary_code"} for request in requests)
+    node_id = "execute_change" if mutating else "inspect_sources"
+    nodes = _node_index(graph)
+    if node_id not in nodes or nodes[node_id][1].get("kind") != "runtime_action":
+        raise ValueError(f"ParentGraph has no runtime action node: {node_id}")
+    return node_id
+
+
 def _node_index(graph: dict[str, Any]) -> dict[str, tuple[str, dict[str, Any]]]:
     output: dict[str, tuple[str, dict[str, Any]]] = {}
     for subgraph in graph.get("subgraphs") or []:

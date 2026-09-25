@@ -17,8 +17,8 @@ principles:
   - UnityAgent owns Policy, Approval, Mutation Scope, routing, loop control, fallback, and Evidence persistence.
   - UnityArtistCLI is a specialist Provider; Player is a conceptual alias, not a second framework.
   - Requests use semantic `domain.workflow` or `visual.capture` qualifiers, never a hard-coded Provider identity.
-  - The official Unity CLI plus Unity Pipeline is the first transport for all four formal release rows.
-  - Unity 2022.3 Built-in is tested first through the official path; version alone never selects a fallback.
+  - Unity CLI is the automation surface; Unity Pipeline bridges commands to a running Editor for the three Unity 6+ release rows.
+  - Unity 2022.3 is not currently supported; historical bounded batch evidence is not an active fallback.
   - Unsupported version/pipeline and unknown Pipeline reachability fail before mutation.
   - Capture is technical Evidence, not human visual acceptance.
 
@@ -35,7 +35,6 @@ workflow:
   - refine
 
 formal_release_matrix:
-  - { unity_version: "2022.3 LTS", render_pipeline: builtin, support_tier: primary }
   - { unity_version: "Unity 6.x+", render_pipeline: builtin, support_tier: primary }
   - { unity_version: "Unity 6.x+", render_pipeline: urp, support_tier: primary }
   - { unity_version: "Unity 6.x+", render_pipeline: hdrp, support_tier: primary }

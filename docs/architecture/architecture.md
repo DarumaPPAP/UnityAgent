@@ -59,7 +59,8 @@ Provider Layer → Evidence & State
 
 ### Cross-layer contract
 
-- Entry → Control Plane: `Runtime/Contracts/entry-request.schema.yaml`
+- Entry → Control Plane: `Runtime/Contracts/entry-request.v2.schema.yaml` (production execution)
+- Legacy v1: `Runtime/Contracts/entry-request.schema.yaml` remains unchanged for validation; its caller supplied Context identity is rejected by `UnityAgentControlPlane.execute`. Migrate callers to v2 by removing Entry-owned Context / Route / Capability / Handoff values and supplying a typed `project_inspection` or `visual_capture` intent. Orchestration projects the Pilot Task Fingerprint deterministically. Orchestration selects the Route, generates provider-independent CapabilityRequests from the canonical routing catalog, and hands the Context Assembly-generated identity to Runtime. The Project access dimension comes from observed binding and Policy, never from Entry.
 - CapabilityRequest / Resolution: 既存のRuntime契約
 - ProviderResult: 既存Dispatcher契約とProvider adapter
 - Toolchain setup: `Runtime/Contracts/toolchain-setup-request.schema.yaml`

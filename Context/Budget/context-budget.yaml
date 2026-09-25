@@ -52,8 +52,13 @@ retrieval_observation:
     - user_policy
     - context_pack
     - primary_skill
+    - specialist_skill
     - task_contract
     - project_fact
+    - project_decision
+    - platform_fact
+    - platform_decision
+    - task_fact
     - target_source
     - direct_dependency
     - required_context
@@ -77,8 +82,13 @@ compression_policy:
     - user_policy
     - context_pack
     - primary_skill
+    - specialist_skill
     - task_contract
     - project_fact
+    - project_decision
+    - platform_fact
+    - platform_decision
+    - task_fact
   lossless_excerpt_allowed_roles:
     - target_source
     - direct_dependency

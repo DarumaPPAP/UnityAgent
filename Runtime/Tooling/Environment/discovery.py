@@ -257,6 +257,8 @@ def _artist_compatibility(
     ):
         return "unknown"
     return (
+        (unity_version.startswith("6000.") or unity_version.startswith("Unity 6"))
+        and
         support_tier.casefold() == "primary"
         and _ARTIST_COMPATIBILITY_BACKENDS.get(compatibility_backend.casefold())
         == render_pipeline.casefold()

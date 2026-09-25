@@ -3,9 +3,34 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 import yaml
+from Runtime.Tooling.Environment.project_identity import same_project_root
 
 REQUIRED_DIMENSIONS = ("intent", "artifact", "scope", "failure_mode", "architecture_state", "mutation_target", "evidence_state", "project_access")
 DESIGN_REVIEW_REQUIREMENTS = {"required", "conditional", "not_required"}
+
+
+def task_fingerprint_from_intent(intent: dict[str, Any], environment_snapshot: dict[str, Any], *, project_root: str, policy_allowed: bool) -> dict[str, str]:
+    """Project the two read-only Pilot intents; only observed binding and Policy grant access."""
+    kind = intent.get("kind")
+    if kind == "project_inspection" and set(intent) == {"kind"}:
+        fingerprint = {"intent": "review", "artifact": "project", "scope": "read_only",
+            "failure_mode": "none", "architecture_state": "not_applicable",
+            "mutation_target": "none", "evidence_state": "unknown"}
+    elif kind == "visual_capture" and set(intent) == {
+            "kind", "visual_intent", "exact_scene_or_asset_scope", "reference_or_visual_definition"} and all(
+            isinstance(intent[key], str) and intent[key].strip() for key in (
+                "visual_intent", "exact_scene_or_asset_scope", "reference_or_visual_definition")):
+        fingerprint = {"intent": "review", "artifact": "visual", "scope": "project_asset",
+            "failure_mode": "none", "architecture_state": "not_applicable",
+            "mutation_target": "none", "evidence_state": "not_applicable"}
+    else:
+        raise ValueError("unsupported or incomplete read-only Typed Intent")
+    project = environment_snapshot.get("project") or {}
+    if (not policy_allowed or project.get("identity_status") != "bound"
+            or not project.get("root") or not same_project_root(project_root, str(project["root"]))):
+        raise ValueError("project access is not authorized by bound EnvironmentSnapshot and Policy")
+    fingerprint["project_access"] = "authorized"
+    return fingerprint
 
 
 def load_routes(path: Path) -> dict[str, Any]:
@@ -72,3 +97,26 @@ def _profile(fingerprint: dict[str, str], forced: str | None) -> str:
     if access == "restricted" and fingerprint.get("scope") == "safe_import":
         return "team_safe_import"
     return "generic_planning"
+
+
+def resolve_specialist(route_id: str, capability: str, environment_snapshot: Any, *, root: Path | None = None) -> dict[str, Any]:
+    """Resolve semantic specialist identity; leave execution Provider resolution to Runtime."""
+    from Runtime.ReferenceImplementation.profiles import CATALOG, ProfileValidationError
+
+    repository = root or Path(__file__).resolve().parents[2]
+    route = load_routes(repository / "Orchestration/Routing/task-routes.yaml").get("routes", {}).get(route_id)
+    if route is None:
+        raise ValueError(f"unknown route: {route_id}")
+    profile_id = route.get("specialist_profile")
+    if profile_id is None:
+        return {"status": "not_required", "profile_id": None, "capability": capability}
+    try:
+        profile = CATALOG.resolve_capability(capability)
+    except ProfileValidationError:
+        return {"status": "unsupported", "profile_id": None, "capability": capability}
+    if profile.profile_id != profile_id:
+        return {"status": "unsupported", "profile_id": None, "capability": capability}
+    if profile.eligibility_failure(environment_snapshot) is not None:
+        return {"status": "unavailable", "profile_id": None, "capability": capability}
+    return {"status": "selected", "profile_id": profile.profile_id, "capability": capability,
+            "required_evidence": list(profile.required_evidence)}

@@ -656,6 +656,10 @@ def run_live(
     scene_path: str | None = None,
     expected_before_fov: float = 40.0,
 ) -> dict[str, Any]:
+    # The reference workflow still constructs a v1 caller-owned Context and a
+    # dedicated runtime projection. Stop before its direct live preflight/apply
+    # until Orchestration can generate that projection under the v2 contract.
+    raise LiveFailure("camera_fov_reference requires v2 Orchestration projection migration before live execution")
     artist_root = artist_root.resolve()
     project = project.resolve()
     selected_scene_path = str(scene_path or "").strip().replace("\\", "/") or None

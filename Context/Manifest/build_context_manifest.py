@@ -50,6 +50,14 @@ def build(
     *,
     project_facts: list[dict[str, Any]] | None = None,
     previous_manifest_ref: str | None = None,
+    specialist_selection: dict[str, Any] | None = None,
+    specialist_items: list[dict[str, Any]] | None = None,
+    specialist_tags: set[str] | None = None,
+    required_specialist_keys: set[str] | None = None,
+    specialist_skill_ref: str | None = None,
+    bindings: dict[str, Any] | None = None,
+    capability_ids: list[str] | None = None,
+    active_conditions: set[str] | None = None,
 ) -> dict:
     facts = list(project_facts or [])
     validate_project_facts(facts, attempt)
@@ -58,7 +66,11 @@ def build(
     if attempt == 1 and previous_manifest_ref is not None:
         raise ValueError("attempt 1 must not declare previous_manifest_ref")
     materializer = _load_materializer()
-    view = materializer.materialize_context(run_id, route_id, prompt_spec_ref, root=ROOT)
+    view = materializer.materialize_context(run_id, route_id, prompt_spec_ref, root=ROOT,
+        bindings=bindings, capability_ids=capability_ids, active_conditions=active_conditions,
+        specialist_selection=specialist_selection, specialist_items=specialist_items,
+        specialist_tags=specialist_tags, required_specialist_keys=required_specialist_keys,
+        specialist_skill_ref=specialist_skill_ref, attempt=attempt)
     return {
         "schema_version": "1.0",
         "manifest_id": f"{view['context_id']}-a{attempt}",

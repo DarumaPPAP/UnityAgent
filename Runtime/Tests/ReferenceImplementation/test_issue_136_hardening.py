@@ -183,29 +183,11 @@ class Issue136HardeningTests(unittest.TestCase):
         from ControlPlane import unity_agent_control_plane as control_plane_module
 
         request = {
-            "schema_version": "1.0",
+            "schema_version": "2.0",
             "request_id": "reference-state-binding",
             "entry_point": "codex_plugin",
             "project_root": str(ROOT.resolve()),
-            "intent": {"kind": "camera_fov_reference"},
-            "route_id": "camera_fov_reference",
-            "node_id": "camera-fov-reference",
-            "execution_profile": "camera_fov_reference",
-            "context_id": "context-reference-state",
-            "context_fingerprint": "reference-state-fingerprint",
-            "task_contract_runtime_projection": {},
-            "mutation_scope": {},
-            "validation_requirements": ["project_fact"],
-            "capability_requests": [{
-                "schema_version": "1.0",
-                "capability": "project.inspect",
-                "project_root": str(ROOT.resolve()),
-                "operation_kind": "read",
-                "required_evidence": ["project_fact"],
-                "mutation_scope": None,
-                "approval_ref": None,
-                "preferred_surface": "project",
-            }],
+            "intent": {"kind": "project_inspection"},
         }
         fake_reference = {
             "status": "completed",
@@ -213,13 +195,26 @@ class Issue136HardeningTests(unittest.TestCase):
             "evidence_refs": [],
         }
         with tempfile.TemporaryDirectory() as directory:
-            with mock.patch.object(control_plane_module, "is_camera_fov_reference_request", return_value=True), mock.patch.object(
+            with mock.patch.object(control_plane_module, "task_fingerprint_from_intent", return_value={
+                "intent": "review", "artifact": "project", "scope": "read_only", "failure_mode": "none",
+                "architecture_state": "not_applicable", "mutation_target": "none",
+                "evidence_state": "unknown", "project_access": "authorized"}), mock.patch.object(
+                control_plane_module, "is_camera_fov_reference_request", return_value=True), mock.patch.object(
                 control_plane_module, "execute_camera_fov_reference", return_value=fake_reference
+            ), mock.patch.object(control_plane_module, "derive_context_inputs", return_value={
+                "project_facts": [], "bindings": {}, "specialist_items": [], "specialist_tags": set(),
+                "required_specialist_keys": set(),
+            }), mock.patch.object(control_plane_module, "build_context_manifest", return_value={
+                "budget_report": {"decision": "within_budget"},
+                "materialized_context": {"context_id": "ctx-generated", "context_fingerprint": {"value": "sha256:generated"},
+                    "definition_fingerprint": {"policy_revision": "policy", "context_revision": "context"},
+                    "unresolved_bindings": []},
+            }
             ):
                 result = control_plane_module.UnityAgentControlPlane(directory).execute(
                     request,
                     environment_snapshot={},
-                    context=type("Context", (), {})(),
+                    context=type("Context", (), {"policy_allowed": True})(),
                     executors={},
                     definition_fingerprint=reference_definition_fingerprint(),
                     run_id="reference-state-run",

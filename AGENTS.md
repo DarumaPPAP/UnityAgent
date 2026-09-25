@@ -49,6 +49,7 @@ Policy追加の前にKnowledge / Retrieval / Tool / Harness / Eval / Architectur
 - Static / Compile / Editor / Player / 実機 / Visual / Performanceの検証状態を分け、未観測は`not_observed`、利用不可は`unavailable`として報告する。
 - Goal達成、変更差分、実施した検証、残る制約を報告する。実行不能な必須Gateを成功扱いしない。
 - SubAgentの `profile_id` が専門Agentの正本IDであり、`provider_id` は実行BackendのIDに限定する。Artistの正本名は `artist_subagent` / `ArtistSubAgent`、`unity_artist_cli` はBackend互換IDである。
+- Specialist の選出は Orchestration、型付き Fact / 明示 Decision / Skill / Policy の選別と Budget 記録は既存 Context Assembly が行う。未観測の項目や Budget `unmeasured` を実行可能として扱わない。詳細は `docs/architecture/specialist-context-assembly.md`。
 - SubAgentはoptional installとし、未インストール・未Bind・非互換・必要Environment Fact未成立のSubAgentを候補から除外する。RuntimeはCapabilityを満たすためにSubAgentを自動インストールしない。
 - UI / CodexはSubAgentやProviderへ直接到達しない。必ずEntry → UnityAgent Control Plane → Capability / Policy → SubAgent Resolver（必要時）→ Backend Provider Resolver → Evidenceを通る。
 - Setupは `unity-agent doctor → setup plan → approval → setup apply` の順序で行い、InstallReceiptとEvidenceを残す。
