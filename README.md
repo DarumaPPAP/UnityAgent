@@ -78,7 +78,7 @@ Evidence & State
 
 EntryからProviderを直接呼び出したり、ProviderがPolicyやdurable stateを所有したりする構成にはしません。
 
-詳細: [UnityAgent Architecture](docs/architecture/architecture.md) · [Production Tool Runtime](docs/architecture/production-tool-runtime.md)
+詳細: [UnityAgent Architecture](docs/architecture/architecture.md) · [Specialist Context Assembly](docs/architecture/specialist-context-assembly.md) · [Production Tool Runtime](docs/architecture/production-tool-runtime.md)
 
 ## Responsibility Boundaries
 

@@ -25,6 +25,7 @@ budget = _load_module("context_budget_runtime", ROOT / "Context/Budget/budget_ru
 capability_selector = _load_module(
     "context_capability_selector", ROOT / "Context/Selection/capability_selector.py"
 )
+specialist_selector = _load_module("context_specialist_selector", ROOT / "Context/Selection/specialist_context.py")
 
 
 def _yaml(path: Path) -> dict[str, Any]:
@@ -160,6 +161,12 @@ def materialize_context(
     capability_ids: list[str] | None = None,
     tool_schema_refs: list[str] | None = None,
     root: Path = ROOT,
+    specialist_selection: dict[str, Any] | None = None,
+    specialist_items: list[dict[str, Any]] | None = None,
+    specialist_tags: set[str] | None = None,
+    required_specialist_keys: set[str] | None = None,
+    specialist_skill_ref: str | None = None,
+    attempt: int = 1,
 ) -> dict[str, Any]:
     root = root.resolve()
     bindings = dict(bindings or {})
@@ -249,6 +256,46 @@ def materialize_context(
         else:
             selected_tool_refs.append(path.relative_to(root).as_posix())
 
+    specialist_context = None
+    specialist_skill = None
+    specialist_policies: list[dict[str, Any]] = []
+    specialist_sizes: list[int] = []
+    if specialist_selection is None and (specialist_items or specialist_skill_ref or required_specialist_keys):
+        raise ValueError("specialist context requires an Orchestration selection")
+    if specialist_selection is not None:
+        status = specialist_selection.get("status")
+        if status not in {"selected", "unavailable", "unsupported", "not_required"}:
+            raise ValueError("invalid Orchestration specialist decision")
+        if status == "selected":
+            profile_id = str(specialist_selection.get("profile_id") or "")
+            capability = str(specialist_selection.get("capability") or "")
+            required_evidence = specialist_selection.get("required_evidence")
+            if not capability or not isinstance(required_evidence, list) or not required_evidence or any(not isinstance(x, str) or not x for x in required_evidence):
+                raise ValueError("specialist selection requires capability and evidence")
+            routing = _yaml(root / "Orchestration/Routing/task-routes.yaml")
+            route_definition = (routing.get("routes") or {}).get(route_id) or {}
+            if route_definition.get("specialist_profile") != profile_id:
+                raise ValueError("specialist selection does not match route")
+            for logical in route_definition.get("required_policy_clauses") or []:
+                if not isinstance(logical, str) or not logical.startswith("Policy/"):
+                    raise ValueError("specialist policy reference must be canonical")
+                specialist_policies.append(_selected_ref(logical, "required_context", root))
+            entries = specialist_selector.select_items(specialist_items or [], set(specialist_tags or set()),
+                                                       set(required_specialist_keys or set()), attempt)
+            if not entries:
+                raise ValueError("specialist selection requires relevant context")
+            if specialist_skill_ref:
+                if not specialist_skill_ref.startswith(".agents/skills/") or not specialist_skill_ref.endswith("/SKILL.md"):
+                    raise ValueError("specialist skill must reference an existing canonical Skill")
+                specialist_skill = _selected_ref(specialist_skill_ref, "specialist_skill", root)
+            specialist_context = {"profile_id": profile_id, "capability": capability,
+                                  "skill": specialist_skill, "policy": specialist_policies, "items": entries,
+                                  "required_evidence": list(required_evidence)}
+            # One selected bundle is one retrieval artifact; account for all of its payload bytes.
+            specialist_sizes = [len(yaml.safe_dump(entries, allow_unicode=True, sort_keys=True).encode("utf-8"))]
+        elif specialist_items or specialist_skill_ref or required_specialist_keys:
+            raise ValueError("unavailable specialist cannot consume context")
+
     local_refs: list[dict[str, Any]] = [
         *policy_refs,
         capability_catalog,
@@ -262,11 +309,14 @@ def materialize_context(
     ]
     if prompt_ref is not None:
         local_refs.append(prompt_ref)
+    if specialist_skill is not None:
+        local_refs.append(specialist_skill)
+    local_refs.extend(specialist_policies)
 
     expansion_hops = int((pack_document.get("limits") or {}).get("context_expansion_hops", 0) or 0)
     budget_report = budget.evaluate(
         route_id,
-        [int(item["selected_utf8_bytes"]) for item in local_refs],
+        [int(item["selected_utf8_bytes"]) for item in local_refs] + specialist_sizes,
         missing_observations=missing_observations,
         external_fetches=len(external_references),
         context_includes=len(context_includes),
@@ -277,6 +327,9 @@ def materialize_context(
         raise ValueError(f"Context budget blocked materialization for {route_id}")
 
     source_revisions = [{"ref": item["resolved_path"], "revision": item["revision"]} for item in local_refs]
+    if specialist_context is not None:
+        source_revisions.extend({"ref": f"specialist:{item['type']}:{item['key']}:{item['source']}",
+                                 "revision": item["revision"]} for item in specialist_context["items"])
     state_payload = {
         "route_id": route_id,
         "resolved_bindings": bindings,
@@ -286,6 +339,8 @@ def materialize_context(
         "memory_projection_refs": sorted(set(memory_projection_refs or [])),
         "capability_ids": sorted({str(item["capability"]) for item in capabilities}),
         "tool_schema_refs": sorted(set(selected_tool_refs)),
+        "specialist_context": specialist_context,
+        "specialist_status": specialist_selection.get("status") if specialist_selection else None,
     }
     hash_lines = [f'{x["ref"]}:{x["revision"]}' for x in sorted(source_revisions, key=lambda x: x["ref"])]
     hash_lines.append(yaml.safe_dump(state_payload, sort_keys=True, allow_unicode=True))
@@ -316,6 +371,7 @@ def materialize_context(
         "resolved_bindings": bindings,
         "unresolved_bindings": sorted(set(unresolved)),
         "active_conditions": sorted(conditions),
+        "specialist_context": specialist_context,
         "budget_report": budget_report,
         "context_fingerprint": {
             "schema_version": "1.0",

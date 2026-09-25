@@ -72,3 +72,26 @@ def _profile(fingerprint: dict[str, str], forced: str | None) -> str:
     if access == "restricted" and fingerprint.get("scope") == "safe_import":
         return "team_safe_import"
     return "generic_planning"
+
+
+def resolve_specialist(route_id: str, capability: str, environment_snapshot: Any, *, root: Path | None = None) -> dict[str, Any]:
+    """Resolve semantic specialist identity; leave execution Provider resolution to Runtime."""
+    from Runtime.ReferenceImplementation.profiles import CATALOG, ProfileValidationError
+
+    repository = root or Path(__file__).resolve().parents[2]
+    route = load_routes(repository / "Orchestration/Routing/task-routes.yaml").get("routes", {}).get(route_id)
+    if route is None:
+        raise ValueError(f"unknown route: {route_id}")
+    profile_id = route.get("specialist_profile")
+    if profile_id is None:
+        return {"status": "not_required", "profile_id": None, "capability": capability}
+    try:
+        profile = CATALOG.resolve_capability(capability)
+    except ProfileValidationError:
+        return {"status": "unsupported", "profile_id": None, "capability": capability}
+    if profile.profile_id != profile_id:
+        return {"status": "unsupported", "profile_id": None, "capability": capability}
+    if profile.eligibility_failure(environment_snapshot) is not None:
+        return {"status": "unavailable", "profile_id": None, "capability": capability}
+    return {"status": "selected", "profile_id": profile.profile_id, "capability": capability,
+            "required_evidence": list(profile.required_evidence)}

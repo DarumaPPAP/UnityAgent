@@ -13,6 +13,7 @@ required:
   - resolved_bindings
   - unresolved_bindings
   - active_conditions
+  - specialist_context
   - budget_report
   - context_fingerprint
   - definition_fingerprint
@@ -104,6 +105,47 @@ properties:
     type: array
     uniqueItems: true
     items: {type: string, minLength: 1}
+  specialist_context:
+    anyOf:
+      - {type: "null"}
+      - type: object
+        additionalProperties: false
+        required: [profile_id, capability, skill, policy, items, required_evidence]
+        properties:
+          profile_id: {type: string, minLength: 1}
+          capability: {type: string, minLength: 1}
+          skill:
+            anyOf:
+              - {$ref: "#/$defs/ref"}
+              - {type: "null"}
+          policy:
+            type: array
+            items: {$ref: "#/$defs/ref"}
+          items:
+            type: array
+            items:
+              type: object
+              additionalProperties: false
+              required: [type, key, value, source, revision, selected_reason, compression, freshness]
+              properties:
+                type: {enum: [project_fact, project_decision, platform_fact, platform_decision, task_fact]}
+                key: {type: string, minLength: 1}
+                value: {}
+                source: {type: string, minLength: 1}
+                revision: {type: string, pattern: "^sha256:[0-9a-f]{64}$"}
+                selected_reason: {type: string, minLength: 1}
+                compression: {const: none}
+                observed_at_attempt: {type: integer, minimum: 1}
+                freshness:
+                  type: object
+                  additionalProperties: false
+                  required: [status, checked_at_attempt]
+                  properties:
+                    status: {const: current}
+                    checked_at_attempt: {type: integer, minimum: 1}
+          required_evidence:
+            type: array
+            items: {type: string, minLength: 1}
   budget_report:
     type: object
     additionalProperties: false
