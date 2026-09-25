@@ -113,7 +113,7 @@ class SubAgentProfile:
     evidence: dict[str, str]
 
     @classmethod
-    def from_mapping(cls, value: Mapping[str, Any]) -> "SubAgentProfile":
+    def from_mapping(cls, value: Mapping[str, Any], *, catalog_version: str = "1.0") -> "SubAgentProfile":
         data = _mapping(value, "SubAgentProfile")
         if any(not isinstance(key, str) for key in data):
             raise ProfileValidationError("SubAgentProfile field names must be strings")
@@ -122,6 +122,8 @@ class SubAgentProfile:
             "capabilities", "primary_capability", "required_evidence", "activation", "scope",
             "value", "approval", "evidence",
         }
+        if catalog_version == "2.0":
+            required -= {"scope", "value", "approval"}
         unknown = set(data) - required
         missing = required - set(data)
         if missing or unknown:
@@ -145,6 +147,18 @@ class SubAgentProfile:
             "auto_install": False,
             "required_environment": list(_unique_texts(activation["required_environment"], "activation.required_environment")),
         }
+        if catalog_version == "2.0":
+            evidence = _mapping(data["evidence"], "evidence")
+            if set(evidence) != {"source_type", "producer", "provenance_token"}:
+                raise ProfileValidationError("profile evidence fields are not exact")
+            return cls(profile_id=_text(data["profile_id"], "profile_id"),
+                display_name=_text(data["display_name"], "display_name"),
+                provider_id=_text(data["provider_id"], "provider_id"),
+                audience=_text(data["audience"], "audience"),
+                goal_type=_text(data["goal_type"], "goal_type"),
+                capabilities=capabilities, primary_capability=primary, required_evidence=evidence_types,
+                activation=activation, scope={}, value={}, approval={},
+                evidence={key: _text(evidence[key], f"evidence.{key}") for key in evidence})
         scope = _mapping(data["scope"], "scope")
         scope_required = {"default_target_guid", "component_type", "property_paths", "mutation_channels", "max_targets"}
         if set(scope) != scope_required:
@@ -212,7 +226,7 @@ class SubAgentProfile:
 
     def to_mapping(self) -> dict[str, Any]:
         """既存UnityAgent ProfileCatalogのwire形式へ正規化して返す。"""
-        return {
+        result = {
             "profile_id": self.profile_id,
             "display_name": self.display_name,
             "provider_id": self.provider_id,
@@ -226,14 +240,16 @@ class SubAgentProfile:
                 "auto_install": self.activation["auto_install"],
                 "required_environment": list(self.activation["required_environment"]),
             },
-            "scope": dict(self.scope),
-            "value": dict(self.value),
-            "approval": dict(self.approval),
             "evidence": dict(self.evidence),
         }
+        if self.scope:
+            result.update(scope=dict(self.scope), value=dict(self.value), approval=dict(self.approval))
+        return result
 
     @property
     def default_scope(self) -> dict[str, Any]:
+        if not self.scope:
+            raise ProfileValidationError("generic Specialist profile has no camera reference scope")
         return {
             "target_guids": [self.scope["default_target_guid"]],
             "component_type": self.scope["component_type"],
@@ -328,11 +344,12 @@ class SubAgentDefinition:
 
 
 class SubAgentProfileCatalog:
-    def __init__(self, definitions: Mapping[str, SubAgentDefinition], *, default_profile_id: str) -> None:
+    def __init__(self, definitions: Mapping[str, SubAgentDefinition], *, default_profile_id: str, schema_version: str = "1.0") -> None:
         if not definitions or default_profile_id not in definitions:
             raise ProfileValidationError("profile catalog must contain its default profile")
         self._definitions = dict(definitions)
         self.default_profile_id = default_profile_id
+        self.schema_version = schema_version
 
     @classmethod
     def from_file(cls, path: str | Path) -> "SubAgentProfileCatalog":
@@ -344,15 +361,16 @@ class SubAgentProfileCatalog:
         data = _mapping(value, "SubAgentProfileCatalog")
         if set(data) != {"schema_version", "default_profile", "profiles"}:
             raise ProfileValidationError("SubAgentProfileCatalog fields are not exact")
-        if data.get("schema_version") != "1.0":
-            raise ProfileValidationError("profile catalog schema_version must be 1.0")
+        version = data.get("schema_version")
+        if version not in {"1.0", "2.0"}:
+            raise ProfileValidationError("profile catalog schema_version must be 1.0 or 2.0")
         profiles = _mapping(data.get("profiles"), "profiles")
         if any(not isinstance(key, str) or not key.strip() for key in profiles):
             raise ProfileValidationError("profile catalog profile keys must be non-empty strings")
-        definitions = {key: SubAgentDefinition(SubAgentProfile.from_mapping(value)) for key, value in profiles.items()}
+        definitions = {key: SubAgentDefinition(SubAgentProfile.from_mapping(value, catalog_version=version)) for key, value in profiles.items()}
         if any(key != definition.profile.profile_id for key, definition in definitions.items()):
             raise ProfileValidationError("profile catalog key must equal profile_id")
-        return cls(definitions, default_profile_id=_text(data.get("default_profile"), "default_profile"))
+        return cls(definitions, default_profile_id=_text(data.get("default_profile"), "default_profile"), schema_version=version)
 
     def get(self, profile_id: str) -> SubAgentProfile:
         try:
@@ -415,7 +433,7 @@ class SubAgentProfileCatalog:
     def to_mapping(self) -> dict[str, Any]:
         """現在のCatalogを既存Snapshot形式へ正規化して返す。"""
         return {
-            "schema_version": "1.0",
+            "schema_version": self.schema_version,
             "default_profile": self.default_profile_id,
             "profiles": {
                 definition.profile.profile_id: definition.profile.to_mapping()

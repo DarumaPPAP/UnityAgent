@@ -184,21 +184,22 @@ def _validate_semantics(catalog: SubAgentProfileCatalog, provider_registry: Prov
             )
         seen_goals[profile.goal_type] = profile.profile_id
 
-        value_minimum = float(profile.value["minimum"])
-        value_maximum = float(profile.value["maximum"])
-        approval_minimum = float(profile.approval["default_minimum"])
-        approval_maximum = float(profile.approval["default_maximum"])
-        if (
+        if profile.value and profile.approval:
+            value_minimum = float(profile.value["minimum"])
+            value_maximum = float(profile.value["maximum"])
+            approval_minimum = float(profile.approval["default_minimum"])
+            approval_maximum = float(profile.approval["default_maximum"])
+            if (
             approval_minimum < value_minimum
             or approval_maximum > value_maximum
             or (profile.approval["minimum_exclusive"] and approval_minimum <= value_minimum)
             or (profile.value["maximum_exclusive"] and approval_maximum >= value_maximum)
             or (profile.approval["maximum_exclusive"] and approval_maximum >= value_maximum)
-        ):
-            raise CatalogImportError(
-                "approval_outside_value",
-                f"{profile.profile_id}: approval defaults must remain inside the value range",
-            )
+            ):
+                raise CatalogImportError(
+                    "approval_outside_value",
+                    f"{profile.profile_id}: approval defaults must remain inside the value range",
+                )
 
         for capability in profile.capabilities:
             if CAPABILITY_PATTERN.fullmatch(capability) is None:

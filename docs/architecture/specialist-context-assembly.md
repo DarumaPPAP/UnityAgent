@@ -71,6 +71,8 @@ Candidate には Project Fact、Project Decision、Platform Fact、Platform Deci
 
 現行 Production の正式対象は Unity 6.x+（Built-in / URP / HDRP）。Unity CLI は automation / command surface、Unity Pipeline は実行中 Editor の local HTTP bridge であり、connected Editor commands に使う。Unity 2022.3 は現行 Support 対象外。Historical bounded batch Evidence は別途保存する。Skill は既存 `.agents/skills` / Context catalog の metadata から選別し、必要な SKILL.md と Reference のみ段階的にロードする。Hub の `skill_refs` 追加は現時点で必須ではない。
 
+Hub Generic Artist Manifest / Export Snapshot v2 は Camera FOV Reference 固有の scope、value、approval を含まない。UnityAgent の現行 ReferenceImplementation Catalog v1 は既存 Camera FOV の歴史的契約として保持する。Offline Import Gate は Hub v2 Snapshot を構文・意味検証した後、保護フィールド差分を `blocked` として明示的 migration を要求する。v1 Catalog を無言で v2 の汎用 Profile に置換しない。
+
 ## CI / Host 完了条件と未評価事項
 
 Host / CI では、read-only Pilot の Authority、生成 Context、Budget、Backend 受信 Identity、Artist unavailable 時の Core Capability、A/B/C fixture 比較を検証する。Unity Editor / CLI / Pipeline の live 接続と Specialist の判断品質は Required Gate ではなく `not_evaluated` と報告する。Texture Pilot は別 Work／別 PR とする。
