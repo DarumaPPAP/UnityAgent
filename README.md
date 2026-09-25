@@ -102,13 +102,13 @@ EntryからProviderを直接呼び出したり、ProviderがPolicyやdurable sta
 <details>
 <summary><strong>Current Hub snapshot integration</strong></summary>
 
-Hub CIはActive Manifestから `UnityAgent-SubAgent-Catalog-Snapshot` Artifactを生成します。現行Exporterは `artist_subagent` をProfile ID、`unity_artist_cli` をProvider IDとして出力し、Activation Gateも含めます。
+Hub CIは登録Manifestからconsumer-neutralな `Hub-SubAgent-Catalog-Snapshot` Artifactを生成します。Snapshotは静的Identity、Lifecycle、Capability、Activation、BackendとEvidenceの契約を含み、Runtime Profileの`goal_type`や既定Profileを含めません。
 
 UnityAgentのReferenceImplementationは、現在もRepository内の `Runtime/ReferenceImplementation/subagent-catalog.yaml` を `SubAgentProfileCatalog` で読み込みます。Hub CI Artifactを自動取得・同期する経路は現行コードにはありません。
 
 そのため、**HubでSnapshotが公開されたことと、UnityAgent Runtimeへ同期済みであることは別です。**
 
-Offline Snapshotを反映候補として確認するときは、`python Tools/import_subagent_catalog.py` へSnapshotの取得元と完全なSHA-256を渡します。Import Planは `Added` / `Removed` / `Changed` / `No-op`、protected Field、Riskを出力しますが、Catalogへ書き込みません。RuntimeのEligibilityは反映後も現在のEnvironment Factで再判定され、Catalog更新は通常のGit Pull Requestとしてレビューします。
+Offline Snapshotを反映候補として確認するときは、`python Tools/import_subagent_catalog.py` へSnapshotの取得元と完全なSHA-256を渡します。UnityAgent側Adapterがconsumer-owned Profile値を保持してImport Planを作ります。Planは `Added` / `Removed` / `Changed` / `No-op`、protected Field、Riskを出力しますが、Catalogへ書き込みません。RuntimeのEligibilityは反映後も現在のEnvironment Factで再判定され、Catalog更新は通常のGit Pull Requestとしてレビューします。
 
 </details>
 

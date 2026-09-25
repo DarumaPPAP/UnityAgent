@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 from pathlib import Path
@@ -18,10 +19,15 @@ from Tools.unity_agent_cli import _fingerprint
 ROOT = Path(__file__).resolve().parents[2]
 CATALOG_PATH = ROOT / "Runtime/ReferenceImplementation/subagent-catalog.yaml"
 HUB_FIXTURE_PATH = ROOT / "Runtime/Tests/Fixtures/hub-artist-subagent-catalog-v1.1.yaml"
+HUB_V3_FIXTURE_PATH = ROOT / "Runtime/Tests/Fixtures/hub-artist-subagent-catalog-v3.yaml"
 
 
 def _raw_catalog() -> dict:
     return yaml.safe_load(CATALOG_PATH.read_text(encoding="utf-8"))
+
+
+def _hub_snapshot() -> dict:
+    return yaml.safe_load(HUB_V3_FIXTURE_PATH.read_text(encoding="utf-8"))
 
 
 def _snapshot_bytes(value: dict) -> bytes:
@@ -89,6 +95,76 @@ def _review_profile() -> dict:
 
 
 class CatalogImportGateTests(unittest.TestCase):
+    def test_neutral_hub_snapshot_preserves_unityagent_profile_values(self) -> None:
+        snapshot = _hub_snapshot()
+        self.assertNotIn("default_profile", snapshot)
+        self.assertNotIn("runtime_profile", snapshot["specialists"][0]["manifest"])
+        self.assertNotIn("runtime_provenance", snapshot["specialists"][0]["manifest"]["evidence"])
+
+        plan = _plan(snapshot)
+
+        self.assertEqual(plan["status"], "no_op")
+        self.assertEqual(CATALOG.get("artist_subagent").goal_type, "artist.camera.refine")
+        self.assertEqual(CATALOG.get("artist_subagent").primary_capability, "artist.camera.refine")
+        self.assertEqual(CATALOG.get("artist_subagent").evidence["producer"], "UnityAgent.ReferenceImplementation.v1.1")
+
+    def test_neutral_snapshot_rejects_runtime_authority_fields(self) -> None:
+        snapshot = _hub_snapshot()
+        snapshot["specialists"][0]["manifest"]["runtime_profile"] = {"goal_type": "visual.capture"}
+
+        with self.assertRaises(CatalogImportError) as context:
+            _plan(snapshot)
+
+        self.assertEqual(context.exception.code, "hub_snapshot_schema")
+
+    def test_neutral_snapshot_malformed_fields_fail_as_contract_errors(self) -> None:
+        for mutate in (
+            lambda manifest: manifest.update(lifecycle=["active"]),
+            lambda manifest: manifest["backends"][0].update(id=["unity_artist_cli"]),
+            lambda manifest: manifest["capabilities"][0].update(operations=[None]),
+            lambda manifest: manifest["evidence"].update(runtime_types=[3]),
+        ):
+            with self.subTest(mutate=mutate):
+                snapshot = _hub_snapshot()
+                mutate(snapshot["specialists"][0]["manifest"])
+
+                with self.assertRaises(CatalogImportError) as context:
+                    _plan(snapshot)
+
+                self.assertEqual(context.exception.code, "hub_snapshot_schema")
+
+    def test_neutral_snapshot_requires_consumer_profile_for_new_specialist(self) -> None:
+        snapshot = _hub_snapshot()
+        review = copy.deepcopy(snapshot["specialists"][0])
+        review["manifest_ref"] = "SubAgents/review_subagent/manifest.yaml"
+        review["manifest"]["identity"]["id"] = "review_subagent"
+        snapshot["specialists"].append(review)
+
+        with self.assertRaises(CatalogImportError) as context:
+            _plan(snapshot)
+
+        self.assertEqual(context.exception.code, "consumer_profile_required")
+
+    def test_neutral_snapshot_overlapping_capability_is_consumer_error(self) -> None:
+        current = _raw_catalog()
+        current["profiles"]["review_subagent"] = _review_profile()
+        current_catalog = SubAgentProfileCatalog.from_mapping(current)
+        snapshot = _hub_snapshot()
+        review = copy.deepcopy(snapshot["specialists"][0])
+        review["manifest_ref"] = "SubAgents/review_subagent/manifest.yaml"
+        review["manifest"]["identity"]["id"] = "review_subagent"
+        review["manifest"]["identity"]["name"] = "ReviewSubAgent"
+        review["manifest"]["activation"]["required_before_resolution"] = ["unity_cli.available"]
+        review["manifest"]["dependencies"] = [{"id": "unity_cli", "kind": "backend", "required": True, "eligibility_gate": "unity_cli.available"}]
+        review["manifest"]["backends"][0]["id"] = "unity_cli"
+        review["manifest"]["capabilities"].append({"id": "example.asset", "operations": ["review"]})
+        snapshot["specialists"].append(review)
+
+        with self.assertRaises(CatalogImportError) as context:
+            _plan(snapshot, current_catalog=current_catalog)
+
+        self.assertEqual(context.exception.code, "duplicate_capability")
+
     def test_generic_v2_snapshot_requires_explicit_reference_profile_migration(self) -> None:
         generic = _raw_catalog()
         generic["schema_version"] = "2.0"
