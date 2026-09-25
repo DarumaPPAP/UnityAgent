@@ -183,16 +183,14 @@ class Issue136HardeningTests(unittest.TestCase):
         from ControlPlane import unity_agent_control_plane as control_plane_module
 
         request = {
-            "schema_version": "1.0",
+            "schema_version": "2.0",
             "request_id": "reference-state-binding",
             "entry_point": "codex_plugin",
             "project_root": str(ROOT.resolve()),
             "intent": {"kind": "camera_fov_reference"},
-            "route_id": "camera_fov_reference",
+            "route_id": "generic-planning",
             "node_id": "camera-fov-reference",
             "execution_profile": "camera_fov_reference",
-            "context_id": "context-reference-state",
-            "context_fingerprint": "reference-state-fingerprint",
             "task_contract_runtime_projection": {},
             "mutation_scope": {},
             "validation_requirements": ["project_fact"],
@@ -215,6 +213,15 @@ class Issue136HardeningTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             with mock.patch.object(control_plane_module, "is_camera_fov_reference_request", return_value=True), mock.patch.object(
                 control_plane_module, "execute_camera_fov_reference", return_value=fake_reference
+            ), mock.patch.object(control_plane_module, "derive_context_inputs", return_value={
+                "project_facts": [], "bindings": {}, "specialist_items": [], "specialist_tags": set(),
+                "required_specialist_keys": set(),
+            }), mock.patch.object(control_plane_module, "build_context_manifest", return_value={
+                "budget_report": {"decision": "within_budget"},
+                "materialized_context": {"context_id": "ctx-generated", "context_fingerprint": {"value": "sha256:generated"},
+                    "definition_fingerprint": {"policy_revision": "policy", "context_revision": "context"},
+                    "unresolved_bindings": []},
+            }
             ):
                 result = control_plane_module.UnityAgentControlPlane(directory).execute(
                     request,

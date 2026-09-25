@@ -114,6 +114,7 @@ def validate(root: Path = ROOT) -> list[str]:
 
     for relative in (
         "Runtime/Contracts/entry-request.schema.yaml",
+        "Runtime/Contracts/entry-request.v2.schema.yaml",
         "Runtime/Contracts/toolchain-setup-request.schema.yaml",
         "Runtime/Contracts/install-receipt.schema.yaml",
         "Packages/com.darumappap.unity-agent/package.json",

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import json
 import shutil
 import unittest
 import uuid
@@ -61,16 +62,14 @@ class ControlPlaneTests(unittest.TestCase):
 
     def entry_request(self) -> dict:
         return {
-            "schema_version": "1.0",
+            "schema_version": "2.0",
             "request_id": "inspect-1",
             "entry_point": "codex_plugin",
             "project_root": str(self.project.resolve()),
             "intent": {"kind": "project_inspection"},
-            "route_id": "inspect_project",
+            "route_id": "generic-planning",
             "node_id": "inspect-project",
             "execution_profile": "generic_planning",
-            "context_id": "context-1",
-            "context_fingerprint": "context-fingerprint-1",
             "task_contract_runtime_projection": {},
             "mutation_scope": {},
             "validation_requirements": ["project_fact"],
@@ -104,6 +103,8 @@ class ControlPlaneTests(unittest.TestCase):
             run_id="run-control-plane-1",
         )
         self.assertEqual(result["status"], "completed")
+        self.assertTrue(result["handoff"]["context_id"].startswith("ctx-"))
+        self.assertTrue(result["context_manifest_ref"])
         self.assertEqual(result["layer_trace"][0:2], ["entry", "control_plane"])
         self.assertEqual(len(result["evidence_refs"]), 1)
         state = plane.state_store.load_execution_state(result["run_id"])
@@ -112,6 +113,84 @@ class ControlPlaneTests(unittest.TestCase):
         evidence = plane.evidence_store.get(result["evidence_refs"][0])
         self.assertEqual(evidence["provider_ref"], "file")
         self.assertEqual(evidence["durability"], "durable")
+
+    def test_v1_identity_cannot_execute_and_v2_cannot_supply_identity(self) -> None:
+        plane = UnityAgentControlPlane(self.root / "identity-state")
+        old = self.entry_request()
+        old.update(schema_version="1.0", context_id="forged", context_fingerprint="forged")
+        with self.assertRaisesRegex(ValueError, "migration"):
+            plane.execute(old, environment_snapshot=self.snapshot, context=ResolutionContext(policy_allowed=True),
+                          executors={}, definition_fingerprint=fingerprint())
+        forged = self.entry_request()
+        forged["context_id"] = "forged"
+        with self.assertRaises(Exception):
+            validate_entry_request(forged)
+
+    def test_missing_required_context_blocks_before_provider(self) -> None:
+        plane = UnityAgentControlPlane(self.root / "blocked-state")
+        request = self.entry_request()
+        request["route_id"] = "artist-lookdev"
+        request["capability_requests"][0]["capability"] = "visual.capture"
+        request["capability_requests"][0]["required_evidence"] = ["visual_capture"]
+        called = []
+        result = plane.execute(request, environment_snapshot=self.snapshot,
+            context=ResolutionContext(policy_allowed=True), executors={"file": lambda *args: called.append(True)},
+            definition_fingerprint=fingerprint())
+        self.assertEqual(result["status"], "blocked")
+        self.assertEqual(called, [])
+
+    def test_artist_capture_uses_assembled_context_and_measured_budget(self) -> None:
+        artist = self.snapshot["unity_artist_cli"]
+        artist.update(available=True, compatible=True, project_bound=True, package_installed=True,
+            pipeline_reachable=True, version="1.0", executable_path="/bin/true", package_version="1.0",
+            unity_version="6000.3.15f1", render_pipeline="builtin", support_tier="supported",
+            compatibility_backend="official", capabilities=["visual.capture"], failure_class=None,
+            binding_status="bound", bound_instance_id="unity-test")
+        request = self.entry_request()
+        request["route_id"] = "artist-lookdev"
+        request["intent"] = {"kind": "visual_capture", "visual_intent": "capture camera",
+            "exact_scene_or_asset_scope": "Assets/Scenes/Main.unity",
+            "reference_or_visual_definition": "Main Camera image"}
+        request["capability_requests"][0].update(capability="visual.capture",
+            required_evidence=["visual_capture"], preferred_surface="live_editor")
+        plane = UnityAgentControlPlane(self.root / "artist-state")
+        result = plane.execute(request, environment_snapshot=self.snapshot,
+            context=ResolutionContext(policy_allowed=True),
+            executors={"unity_artist_cli": lambda *_: {"status": "passed", "provider_ref": "unity_artist_cli",
+                "evidence": ["visual_capture"]}}, definition_fingerprint=fingerprint())
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(result["results"][0]["resolution"]["subagent_profile_id"], "artist_subagent")
+        manifest_path = plane.state_store.layout.root / result["context_manifest_ref"]
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        self.assertEqual(manifest["budget_report"]["decision"], "within_budget")
+        self.assertEqual(manifest["budget_report"]["missing_observations"], [])
+        self.assertEqual(manifest["materialized_context"]["specialist_context"]["profile_id"], "artist_subagent")
+        self.assertEqual(result["handoff"]["context_id"], manifest["materialized_context"]["context_id"])
+        self.assertEqual(result["handoff"]["context_fingerprint"],
+                         manifest["materialized_context"]["context_fingerprint"]["value"])
+
+    def test_artist_unavailable_does_not_block_independent_core(self) -> None:
+        request = self.entry_request()
+        plane = UnityAgentControlPlane(self.root / "core-state")
+        result = plane.execute(request, environment_snapshot=self.snapshot,
+            context=ResolutionContext(policy_allowed=True),
+            executors={"file": lambda *_: {"status": "passed", "provider_ref": "file",
+                "evidence": ["project_fact"]}}, definition_fingerprint=fingerprint())
+        self.assertEqual(self.snapshot["unity_artist_cli"]["available"], False)
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(result["results"][0]["resolution"]["provider_ref"], "file")
+
+    def test_changed_project_fact_blocks_before_core_dispatch(self) -> None:
+        (self.project / "ProjectSettings/ProjectVersion.txt").write_text(
+            "m_EditorVersion: 2022.3.0f1\n", encoding="utf-8")
+        called = []
+        result = UnityAgentControlPlane(self.root / "stale-state").execute(
+            self.entry_request(), environment_snapshot=self.snapshot,
+            context=ResolutionContext(policy_allowed=True),
+            executors={"file": lambda *_: called.append(True)}, definition_fingerprint=fingerprint())
+        self.assertEqual(result["status"], "blocked")
+        self.assertIn("differs", result["reason"])
+        self.assertEqual(called, [])
 
     def test_runtime_entry_rejects_semantic_loop_identity(self) -> None:
         request = self.entry_request()

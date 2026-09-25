@@ -59,7 +59,8 @@ dependency_graph:
   - {from: provider_layer, to: evidence_state, mode: structured_result_capture}
 
 cross_layer_contracts:
-  entry_to_control_plane: Runtime/Contracts/entry-request.schema.yaml
+  entry_to_control_plane: Runtime/Contracts/entry-request.v2.schema.yaml
+  legacy_entry_validation_only: Runtime/Contracts/entry-request.schema.yaml
   unity_ui_entry_package: Packages/com.darumappap.unity-agent/package.json
   capability_request: Runtime/Contracts/capability-request.schema.yaml
   capability_resolution: Runtime/Contracts/capability-resolution.schema.yaml

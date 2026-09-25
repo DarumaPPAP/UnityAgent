@@ -59,7 +59,8 @@ Provider Layer → Evidence & State
 
 ### Cross-layer contract
 
-- Entry → Control Plane: `Runtime/Contracts/entry-request.schema.yaml`
+- Entry → Control Plane: `Runtime/Contracts/entry-request.v2.schema.yaml` (production execution)
+- Legacy v1: `Runtime/Contracts/entry-request.schema.yaml` remains unchanged for validation; its caller supplied Context identity is rejected by `UnityAgentControlPlane.execute`. Migrate callers to v2 by removing `context_id` and `context_fingerprint`, selecting a canonical route, and supplying the explicit task intent and scene/asset scope required by that route. The Control Plane assembles the Context Manifest, persists it, then passes its generated identity to Runtime. No Entry may override that identity.
 - CapabilityRequest / Resolution: 既存のRuntime契約
 - ProviderResult: 既存Dispatcher契約とProvider adapter
 - Toolchain setup: `Runtime/Contracts/toolchain-setup-request.schema.yaml`

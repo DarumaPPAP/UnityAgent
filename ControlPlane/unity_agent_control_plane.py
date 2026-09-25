@@ -18,6 +18,9 @@ import yaml
 from jsonschema import Draft202012Validator
 
 from Orchestration.Orchestrator.orchestrator import runtime_handoff
+from Orchestration.Routing.route_selector import load_routes, resolve_specialist
+from Context.Manifest.build_context_manifest import build as build_context_manifest
+from Context.Selection.project_context_inputs import derive_context_inputs
 from Orchestration.Graph.state_mapping import workflow_state_patch
 from Orchestration.Loop.state_mapping import loop_control_state_patch
 from Persistence.Approval.approval_store import ApprovalDecisionStore
@@ -25,6 +28,7 @@ from Persistence.Evidence.evidence_store import EvidenceStore
 from Persistence.Evidence.runtime_adapter import append_runtime_execution_evidence
 from Persistence.Install.receipt_store import InstallReceiptStore
 from Persistence.State.state_store import StateStore
+from Persistence.Store.atomic_store import relative_ref, sha256_json, write_immutable_json
 from Persistence.Contracts.definition_fingerprint import validate_definition_fingerprint
 from Runtime.Contracts.install_receipt_contract import validate_install_receipt
 from Runtime.EvidenceCapture.tool_runtime_evidence import normalize_provider_result
@@ -40,6 +44,7 @@ from ControlPlane.reference_camera_fov import execute_camera_fov_reference, is_c
 
 ROOT = Path(__file__).resolve().parents[1]
 ENTRY_SCHEMA_PATH = Path("Runtime/Contracts/entry-request.schema.yaml")
+ENTRY_V2_SCHEMA_PATH = Path("Runtime/Contracts/entry-request.v2.schema.yaml")
 PROVIDER_ID_KEYS = frozenset({"provider", "provider_ref", "provider_id"})
 
 
@@ -59,7 +64,8 @@ def _contains_provider_identity(value: Any) -> bool:
 
 def validate_entry_request(value: dict[str, Any], *, root: Path = ROOT) -> None:
     """Validate an Entry request and enforce the no-direct-Provider boundary."""
-    schema = yaml.safe_load((root / ENTRY_SCHEMA_PATH).read_text(encoding="utf-8"))
+    schema_path = ENTRY_V2_SCHEMA_PATH if value.get("schema_version") == "2.0" else ENTRY_SCHEMA_PATH
+    schema = yaml.safe_load((root / schema_path).read_text(encoding="utf-8"))
     Draft202012Validator(schema).validate(value)
     if _contains_provider_identity(value):
         raise ValueError("Entry request must not contain Provider identity")
@@ -170,17 +176,55 @@ class UnityAgentControlPlane:
     ) -> dict[str, Any]:
         """Run Entry -> Orchestration -> ToolBroker -> Provider -> Evidence."""
         validate_entry_request(entry_request)
+        if entry_request["schema_version"] == "1.0":
+            raise ValueError("Entry v1 migration required: use v2 without caller-supplied Context identity")
         validate_definition_fingerprint(dict(definition_fingerprint))
         snapshot = _snapshot_dict(environment_snapshot)
         resolved_run_id = run_id or _new_run_id(str(entry_request["request_id"]))
         node_id = str(entry_request.get("node_id") or "entry_runtime_action")
+        route_id = str(entry_request["route_id"])
+        if route_id not in load_routes(ROOT / "Orchestration/Routing/task-routes.yaml")["routes"]:
+            raise ValueError(f"Entry v2 requires a canonical Orchestration route: {route_id}")
+        capabilities = [str(request["capability"]) for request in entry_request["capability_requests"]]
+        # The existing Camera FOV reference workflow includes visual capture,
+        # though its outer capability is domain.workflow (v1.1 contract).
+        selected_capability = ("visual.capture" if "visual.capture" in capabilities
+                               or is_camera_fov_reference_request(entry_request) else capabilities[0])
+        specialist_selection = resolve_specialist(route_id, selected_capability, snapshot)
+        if specialist_selection["status"] in {"unavailable", "unsupported"}:
+            return {"schema_version": "2.0", "status": "blocked", "run_id": resolved_run_id,
+                    "reason": f"Specialist {specialist_selection['status']}: {selected_capability}", "results": [], "evidence_refs": []}
+        try:
+            inputs = derive_context_inputs(str(entry_request["project_root"]), snapshot, dict(entry_request["intent"]))
+            manifest = build_context_manifest(resolved_run_id, route_id, project_facts=inputs["project_facts"],
+                bindings=inputs["bindings"], capability_ids=capabilities,
+                specialist_selection=specialist_selection,
+                specialist_items=inputs["specialist_items"] if specialist_selection["status"] == "selected" else None,
+                specialist_tags=inputs["specialist_tags"] if specialist_selection["status"] == "selected" else None,
+                required_specialist_keys=inputs["required_specialist_keys"] if specialist_selection["status"] == "selected" else None)
+        except ValueError as exc:
+            return {"schema_version": "2.0", "status": "blocked", "run_id": resolved_run_id,
+                    "reason": str(exc), "results": [], "evidence_refs": []}
+        view = manifest["materialized_context"]
+        manifest_path = self.state_store.layout.snapshot(resolved_run_id, "context-manifest", sha256_json(manifest))
+        write_immutable_json(manifest_path, manifest)
+        manifest_ref = relative_ref(self.state_store.layout.root, manifest_path)
+        if manifest["budget_report"]["decision"] != "within_budget" or view["unresolved_bindings"]:
+            return {"schema_version": "2.0", "status": "blocked", "run_id": resolved_run_id,
+                    "reason": f"Context gate: {manifest['budget_report']['decision']}; unresolved={view['unresolved_bindings']}",
+                    "context_manifest_ref": manifest_ref, "results": [], "evidence_refs": []}
+        effective_request = {**entry_request, "context_id": view["context_id"],
+                             "context_fingerprint": view["context_fingerprint"]["value"]}
+        definition_fingerprint = {**definition_fingerprint,
+            "policy_revision": view["definition_fingerprint"]["policy_revision"],
+            "context_revision": view["definition_fingerprint"]["context_revision"]}
         handoff = runtime_handoff(
             run_id=resolved_run_id,
             node_id=node_id,
             route_id=str(entry_request["route_id"]),
             execution_profile=str(entry_request["execution_profile"]),
-            context_id=str(entry_request["context_id"]),
-            context_fingerprint=str(entry_request["context_fingerprint"]),
+            context_id=view["context_id"],
+            context_fingerprint=view["context_fingerprint"]["value"],
             task_contract_runtime_projection=dict(entry_request["task_contract_runtime_projection"]),
             mutation_scope=dict(entry_request["mutation_scope"]),
             validation_requirements=list(entry_request["validation_requirements"]),
@@ -212,9 +256,9 @@ class UnityAgentControlPlane:
                 progress_marker=node_id,
             )
 
-        if is_camera_fov_reference_request(entry_request):
+        if is_camera_fov_reference_request(effective_request):
             reference = execute_camera_fov_reference(
-                entry_request=entry_request,
+                entry_request=effective_request,
                 project_root=entry_request["project_root"],
                 persistence_root=self.state_store.layout.root,
                 environment_snapshot=snapshot,
@@ -262,6 +306,7 @@ class UnityAgentControlPlane:
                 "entry_point": entry_request["entry_point"],
                 "layer_trace": ["entry", "control_plane", "reference_contract", "runtime_gate", "provider_layer", "evidence_state"],
                 "handoff": handoff,
+                "context_manifest_ref": manifest_ref,
                 "results": [reference],
                 "reference_action_id": reference_action_id,
                 "evidence_refs": evidence_refs,
@@ -336,6 +381,7 @@ class UnityAgentControlPlane:
             "entry_point": entry_request["entry_point"],
             "layer_trace": ["entry", "control_plane", "capability_orchestration", "provider_layer", "evidence_state"],
             "handoff": handoff,
+            "context_manifest_ref": manifest_ref,
             "results": results,
             "evidence_refs": evidence_refs,
             "state_ref": state_ref,

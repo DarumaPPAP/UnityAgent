@@ -55,6 +55,8 @@ def build(
     specialist_tags: set[str] | None = None,
     required_specialist_keys: set[str] | None = None,
     specialist_skill_ref: str | None = None,
+    bindings: dict[str, Any] | None = None,
+    capability_ids: list[str] | None = None,
 ) -> dict:
     facts = list(project_facts or [])
     validate_project_facts(facts, attempt)
@@ -64,6 +66,7 @@ def build(
         raise ValueError("attempt 1 must not declare previous_manifest_ref")
     materializer = _load_materializer()
     view = materializer.materialize_context(run_id, route_id, prompt_spec_ref, root=ROOT,
+        bindings=bindings, capability_ids=capability_ids,
         specialist_selection=specialist_selection, specialist_items=specialist_items,
         specialist_tags=specialist_tags, required_specialist_keys=required_specialist_keys,
         specialist_skill_ref=specialist_skill_ref, attempt=attempt)

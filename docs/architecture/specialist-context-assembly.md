@@ -24,11 +24,13 @@ Specialist 項目の型は `project_fact`、`project_decision`、`platform_fact`
 
 `specialist_context` は既存 MaterializedContextView 内の optional section である。Context Fingerprint は Specialist 項目の revision と内容を反映する。Runtime Handoff は既存 `context_id` と `context_fingerprint` を受け取れる。第二の Context Engine、Control Plane、Provider Registry は作らない。実行時の承認、Scope、Evidence、Completion Gate は従来の経路が担当する。
 
-**接続上の未完了:** Production の `UnityAgentControlPlane.execute` は Entry が渡した `context_id` と `context_fingerprint` を使用しており、まだ `resolve_specialist` / `build_context_manifest.build` を呼び出さない。したがって本差分の選別は API / Host fixture で検証済みだが、Entry → Specialist Context → 実 Provider execution の自動接続は実装済みと主張しない。Entry が持つ Context と観測の責務を確定し、既存 Control Plane で照合する作業が必要である。
+Production の `UnityAgentControlPlane.execute` は v2 Entry を検証し、既存 EnvironmentSnapshot の Project binding と ProjectVersion.txt を照合し、`ProjectFactObservation` と Specialist 項目を組み立てる。既存 Orchestration の選出結果を同じ Context Manifest に渡し、保存した `within_budget` の Context ID / Fingerprint を Runtime Handoff に渡す。必須 binding や Budget が不足する場合は Provider dispatch より前に停止する。v1 Entry 契約は書き換えず、caller 指定の Context Identity を持つ v1 実行を明示的に migration required として拒否する。v2 は Context Identity を受け取らない。既存 Camera FOV live runner も v2 と Artist の canonical route に移行した。
+
+`artist-lookdev` が以前必須としていた Hub の外部 spec は、現在の Runtime が参照する同一 repository の canonical `subagent-catalog.yaml` に置き換えた。Hub を複製せず、外部取得の未観測値を恒久的に current 扱いしない。Local source は revision ごとに一度だけ Budget に算入し、複数の意味上の参照は `selected_refs` に保持する。
 
 ## Pilot / Baseline 比較
 
-Host fixture で同じ `artist-lookdev` Route を比較した値。`utf8-bytes-conservative-v1` の推定であり、モデル Token 数の実測ではない。
+下表は変更前の Host fixture の記録であり、現行 Production の比較結果ではない。`utf8-bytes-conservative-v1` の推定であり、モデル Token 数の実測ではない。
 
 | 項目 | Baseline | Candidate |
 | --- | ---: | ---: |
@@ -39,14 +41,14 @@ Host fixture で同じ `artist-lookdev` Route を比較した値。`utf8-bytes-c
 
 Candidate には Project Fact、Project Decision、Platform Fact、Platform Decision、Task Fact の５項目を投入。別 Project Decision／Platform Fact で Fingerprint が変わり、Audio 情報は Camera Task へ混入しない。Artist 不可時に Specialist のみ unavailable とし、既存 `project.inspect` は File Provider に解決される。`visual.capture` は既存 CapabilityRequest と ToolBroker を通して `artist_subagent` / `unity_artist_cli` に解決された。
 
-これらは **Host の決定的 fixture による経路・契約の確認**。Task success、first-pass success、Compile／Editor／Player 成功、視覚品質、Tool call／Retry 数、実行時間、実 Project での Context 圧縮率は未観測。必須 binding、外部 Hub reference、capability selection が未観測なので Budget は `within_budget` ではない。`unmeasured` の間は mutation を許可しない。
+現行の Production 経路を模擬 Provider と実際の一時 Unity Project 構成で実行した Artist capture fixture では、14 artifact、47,125 bytes、推定 15,709 tokens、`within_budget` となった。ただし Unity Editor は起動していない。この数字は実 Editor Task の成功証拠ではない。Task success、Editor／Pipeline 到達、実 Provider Evidence は未観測。`unmeasured` / `blocked` のまま mutation は許可しない。
+
+3-way 比較の記録器は `Eval/Regression/compare_specialist_three_way.py`。A: Specialist なし、B: 候補を選別しない Naive、C: Filtered の３つの実 run について Context Manifest、Runtime result、durable Evidence を入力し、選択 artifact／bytes／推定 tokens、不要な source、Task success、Evidence completeness、Tool calls／Retries を計算する。全 arm の実 run と関連 source 一覧が揃うまで比較合格とはしない。現環境に Unity Editor executable がないため比較の実測は未完了。
 
 ## 実運用へ進める条件
 
-1. 対象 Project の Fact を取得し、各 source revision と attempt freshness を記録する。Project の明示 Decision は Fact と分離する。
-2. 必須 binding、Hub 外部参照、Capability 選択を実測し、Context Budget を `within_budget` にする。
-3. Control Plane の Entry 経路から Orchestration decision と Context Manifest を結び、Fingerprint を照合する。Budget `unmeasured` / `blocked` では実行を停止する。
-4. 実 Unity Project で Before／After の Task success、初回成功、Evidence 完全性、誤った Project／Platform 推奨、選択 byte 数、Tool calls、Retries を比較する。
-5. Texture Pilot を実行する場合、まず Backend の対応、Approval／Evidence 契約、Resolver 公開範囲を別途設計・実装・検証する。現状では Texture の **計画** 以外に実行可能と宣言しない。
+1. Editor のある実 Unity Project で、v2 Entry から Unity CLI／Pipeline／Editor まで既存 `visual.capture` を実行し、durable Evidence を検証する。
+2. 同じ Task で A / B / C を記録し、C が B より小さい Context で同等以上の Task success / Evidence completeness を達成したことを判定する。
+3. Texture Pilot は別 Work／別 PR で Capability、Approval、Evidence、Backend surface を設計する。
 
 専門領域の品質低下には Evidence → Fact freshness → Context selection → Skill → Tool／Provider → Specialist instruction → Domain ownership の順に原因を確認する。Platform、Pipeline、Asset 種別だけを理由に SubAgent を増やさない。

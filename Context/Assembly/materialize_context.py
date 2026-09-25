@@ -5,6 +5,7 @@ import hashlib
 import importlib.util
 from pathlib import Path
 from typing import Any
+import re
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -170,6 +171,17 @@ def materialize_context(
 ) -> dict[str, Any]:
     root = root.resolve()
     bindings = dict(bindings or {})
+    for name, observation in bindings.items():
+        if not isinstance(observation, dict):
+            continue
+        freshness = observation.get("freshness") or {}
+        if (observation.get("source_kind") not in {"user_request", "environment_snapshot"}
+                or not isinstance(observation.get("value"), str) or not observation["value"]
+                or not isinstance(observation.get("revision"), str)
+                or not re.fullmatch(r"sha256:[0-9a-f]{64}", observation["revision"])
+                or not isinstance(freshness, dict) or freshness.get("status") != "current"
+                or freshness.get("checked_at_attempt") != attempt):
+            raise ValueError(f"verified binding is missing current provenance: {name}")
     conditions = set(active_conditions or set())
     catalog = _yaml(root / CATALOG)
     routes = catalog.get("routes") or {}
@@ -313,10 +325,15 @@ def materialize_context(
         local_refs.append(specialist_skill)
     local_refs.extend(specialist_policies)
 
+    # A source can satisfy several semantic roles. Budget and source identity
+    # count its bytes once, while selected_refs retain every role for review.
+    unique_local_refs = list({(item["resolved_path"], item["revision"]): item for item in local_refs}.values())
+
     expansion_hops = int((pack_document.get("limits") or {}).get("context_expansion_hops", 0) or 0)
     budget_report = budget.evaluate(
         route_id,
-        [int(item["selected_utf8_bytes"]) for item in local_refs] + specialist_sizes,
+        [int(item["selected_utf8_bytes"]) for item in unique_local_refs] + specialist_sizes
+        + ([len(yaml.safe_dump(bindings, sort_keys=True, allow_unicode=True).encode("utf-8"))] if bindings else []),
         missing_observations=missing_observations,
         external_fetches=len(external_references),
         context_includes=len(context_includes),
@@ -324,9 +341,9 @@ def materialize_context(
         root=root,
     )
     if budget_report["decision"] == "blocked":
-        raise ValueError(f"Context budget blocked materialization for {route_id}")
+        raise ValueError(f"Context budget blocked materialization for {route_id}: {budget_report}")
 
-    source_revisions = [{"ref": item["resolved_path"], "revision": item["revision"]} for item in local_refs]
+    source_revisions = [{"ref": item["resolved_path"], "revision": item["revision"]} for item in unique_local_refs]
     if specialist_context is not None:
         source_revisions.extend({"ref": f"specialist:{item['type']}:{item['key']}:{item['source']}",
                                  "revision": item["revision"]} for item in specialist_context["items"])
