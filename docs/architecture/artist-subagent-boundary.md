@@ -81,18 +81,18 @@ The `unity_artist_cli` id and existing `unity-artist` executable/package names r
 
 ## Offline Catalog Import Gate
 
-`UnitySubAgentHub` exports the existing `SubAgentProfileCatalog` wire shape as a data-only Snapshot. UnityAgent accepts that Snapshot only as an explicit Offline input:
+`UnitySubAgentHub` exports a consumer-neutral static Manifest Snapshot. UnityAgent accepts that Snapshot only as an explicit Offline input and maps it to its own `SubAgentProfileCatalog`:
 
 ```text
 Snapshot bytes + source_ref + expected SHA-256
         |
         v
-Strict schema / identity / capability / Provider / activation / scope / approval / Evidence checks
+Strict Snapshot / identity / capability / Provider / activation / evidence checks
         |
         v
 Added / Removed / Changed / No-op Import Plan
 ```
 
-`python Tools/import_subagent_catalog.py` is read-only. It does not download the Hub Artifact, observe the current Project, install a SubAgent, hot-reload the Runtime catalog, or write `Runtime/ReferenceImplementation/subagent-catalog.yaml`. A non-no-op update remains a reviewed Git change; protected Field changes, deletions, default-profile changes, and provenance changes are blocked in the plan.
+`python Tools/import_subagent_catalog.py` is read-only. It does not download the Hub Artifact, observe the current Project, install a SubAgent, hot-reload the Runtime catalog, or write `Runtime/ReferenceImplementation/subagent-catalog.yaml`. `audience`、`goal_type`、`primary_capability`、Reference scope / approval、Evidence producerと既定ProfileはUnityAgentの現行Catalogから保持します。新しいSpecialistにこれらのConsumer Profile値がなければ明示的なCatalog Migrationを要求します。A non-no-op update remains a reviewed Git change; protected Field changes and deletions are blocked in the plan.
 
-The checked-in UnityAgent catalog and ReferenceImplementation durable Evidence currently use `UnityAgent.ReferenceImplementation.v1.1`. A Snapshot carrying `UnityAgent.ReferenceImplementation.v1` is reported as an evidence-producer protected-field mismatch; the Gate never normalizes it. The existing `runtime_profile_revision` fingerprint now covers both `Runtime/Tooling/provider_registry.yaml` and the SubAgent catalog, so Resume continues to apply the existing in-flight-action block and Evidence keeps its existing profile binding digest.
+The checked-in UnityAgent catalog and ReferenceImplementation durable Evidence currently use `UnityAgent.ReferenceImplementation.v1.1`. The neutral Hub Snapshot does not carry an Evidence producer. Legacy Profile-wire snapshots remain an explicit compatibility input; a producer mismatch there remains a protected-field change. The existing `runtime_profile_revision` fingerprint covers both `Runtime/Tooling/provider_registry.yaml` and the SubAgent catalog, so Resume continues to apply the existing in-flight-action block and Evidence keeps its existing profile binding digest.

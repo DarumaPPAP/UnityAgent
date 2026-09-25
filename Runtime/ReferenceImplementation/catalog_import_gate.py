@@ -1,16 +1,18 @@
-"""既存SubAgent Profile Catalog向けのOffline検証とImport Plan生成。
+"""Hub SnapshotのOffline検証とUnityAgent Catalog Import Plan生成。
 
-このモジュールは読取専用であり、Hub SnapshotをUnityAgent所有の契約と照合して
+このモジュールは読取専用であり、静的Hub SnapshotをUnityAgent所有の契約へ適合させて
 レビュー可能なPlanを返す。Runtime Catalogの置換やProject Environmentの観測は行わない。
 """
 from __future__ import annotations
 
 from collections.abc import Mapping
 import hashlib
+import json
 from pathlib import Path
 import re
 from typing import Any
 
+from jsonschema import Draft202012Validator
 import yaml
 
 from Runtime.Tooling.provider_contract import ProviderRegistry, load_provider_registry
@@ -84,7 +86,125 @@ def _expected_digest(value: str) -> str:
     return "sha256:" + digest
 
 
-def _load_snapshot(snapshot_bytes: bytes) -> SubAgentProfileCatalog:
+HUB_MANIFEST_KEYS = frozenset({"schema_version", "kind", "identity", "lifecycle", "installation", "activation", "capabilities", "capability_contract_ref", "compatibility", "dependencies", "backends", "evidence"})
+HUB_MANIFEST_REF = re.compile(r"^SubAgents/([a-z][a-z0-9_]*_subagent)/manifest\.yaml$")
+HUB_SNAPSHOT_SCHEMA_PATH = ROOT / "Runtime/ReferenceImplementation/Schemas/hub-snapshot-v1.schema.json"
+HUB_MANIFEST_SCHEMA_PATH = ROOT / "Runtime/ReferenceImplementation/Schemas/hub-manifest-v3.schema.json"
+
+
+def _validate_hub_schema(snapshot: Mapping[str, Any]) -> None:
+    """Validate pinned Hub contracts before adapting their runtime-relevant fields."""
+    try:
+        snapshot_schema = json.loads(HUB_SNAPSHOT_SCHEMA_PATH.read_text(encoding="utf-8"))
+        manifest_schema = json.loads(HUB_MANIFEST_SCHEMA_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise CatalogImportError("hub_schema_unavailable", str(exc)) from exc
+    errors = list(Draft202012Validator(snapshot_schema).iter_errors(snapshot))
+    if errors:
+        raise CatalogImportError("hub_snapshot_schema", f"snapshot: {errors[0].message}")
+    for index, entry in enumerate(snapshot["specialists"]):
+        errors = list(Draft202012Validator(manifest_schema).iter_errors(entry["manifest"]))
+        if errors:
+            raise CatalogImportError("hub_snapshot_schema", f"specialists[{index}].manifest: {errors[0].message}")
+
+
+def _exact_mapping(value: Any, expected: frozenset[str], location: str) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping) or set(value) != expected:
+        raise CatalogImportError("hub_snapshot_schema", f"{location} must contain exactly {sorted(expected)}")
+    return value
+
+
+def _hub_profile_catalog(snapshot: Mapping[str, Any], consumer_catalog: SubAgentProfileCatalog) -> SubAgentProfileCatalog:
+    _exact_mapping(snapshot, frozenset({"schema_version", "kind", "specialists"}), "Hub snapshot")
+    if snapshot["schema_version"] != "1.0" or snapshot["kind"] != "subagent_catalog_snapshot":
+        raise CatalogImportError("hub_snapshot_schema", "unsupported Hub snapshot version or kind")
+    specialists = snapshot["specialists"]
+    if not isinstance(specialists, list) or not specialists:
+        raise CatalogImportError("hub_snapshot_schema", "specialists must be a non-empty list")
+
+    profiles: dict[str, dict[str, Any]] = {}
+    seen_ids: set[str] = set()
+    for index, entry in enumerate(specialists):
+        entry = _exact_mapping(entry, frozenset({"manifest_ref", "manifest"}), f"specialists[{index}]")
+        reference = entry["manifest_ref"]
+        match = HUB_MANIFEST_REF.fullmatch(reference) if isinstance(reference, str) else None
+        if match is None:
+            raise CatalogImportError("hub_snapshot_schema", f"specialists[{index}].manifest_ref is invalid")
+        manifest = _exact_mapping(entry["manifest"], HUB_MANIFEST_KEYS, f"specialists[{index}].manifest")
+        if manifest["schema_version"] != "3.0" or manifest["kind"] != "subagent_manifest":
+            raise CatalogImportError("hub_snapshot_schema", f"specialists[{index}] requires Manifest v3")
+        identity = _exact_mapping(manifest["identity"], frozenset({"id", "name", "version"}), f"specialists[{index}].identity")
+        profile_id = identity["id"]
+        if not isinstance(profile_id, str) or profile_id != match.group(1) or profile_id in seen_ids or not isinstance(identity["name"], str) or not identity["name"] or not isinstance(identity["version"], str) or not identity["version"]:
+            raise CatalogImportError("hub_snapshot_schema", f"specialists[{index}] has a mismatched or duplicate identity")
+        seen_ids.add(profile_id)
+        if not isinstance(manifest["lifecycle"], str) or manifest["lifecycle"] not in {"active", "deprecated", "retired", "revoked"}:
+            raise CatalogImportError("hub_snapshot_schema", f"{profile_id}: invalid lifecycle")
+        if not isinstance(manifest["capability_contract_ref"], str) or not manifest["capability_contract_ref"]:
+            raise CatalogImportError("hub_snapshot_schema", f"{profile_id}: invalid capability contract reference")
+        compatibility = _exact_mapping(manifest["compatibility"], frozenset({"supported_targets", "support_matrix_ref"}), f"{profile_id}.compatibility")
+        targets = compatibility["supported_targets"]
+        if not isinstance(targets, list) or not targets or not isinstance(compatibility["support_matrix_ref"], str) or not compatibility["support_matrix_ref"]:
+            raise CatalogImportError("hub_snapshot_schema", f"{profile_id}: invalid compatibility")
+        for target in targets:
+            target = _exact_mapping(target, frozenset({"unity_version", "render_pipeline"}), f"{profile_id}.supported_target")
+            if any(not isinstance(value, str) or not value for value in target.values()):
+                raise CatalogImportError("hub_snapshot_schema", f"{profile_id}: invalid supported target")
+        if manifest["lifecycle"] != "active":
+            continue
+
+        try:
+            current = consumer_catalog.get(profile_id)
+        except ProfileValidationError as exc:
+            raise CatalogImportError("consumer_profile_required", f"{profile_id}: UnityAgent must define consumer-owned Profile fields before import") from exc
+        installation = _exact_mapping(manifest["installation"], frozenset({"mode", "required", "auto_install"}), f"{profile_id}.installation")
+        activation = _exact_mapping(manifest["activation"], frozenset({"required_before_resolution", "false_behavior", "unknown_behavior"}), f"{profile_id}.activation")
+        if installation != {"mode": "optional", "required": False, "auto_install": False} or activation["false_behavior"] != "exclude_from_resolution" or activation["unknown_behavior"] != "exclude_from_resolution":
+            raise CatalogImportError("hub_snapshot_schema", f"{profile_id}: activation must remain optional and fail closed")
+        required_environment = activation["required_before_resolution"]
+        if not isinstance(required_environment, list) or not required_environment or any(not isinstance(item, str) or not item for item in required_environment) or len(set(required_environment)) != len(required_environment):
+            raise CatalogImportError("hub_snapshot_schema", f"{profile_id}: invalid activation facts")
+
+        backend_ids: set[str] = set()
+        backends = manifest["backends"]
+        if not isinstance(backends, list) or not backends:
+            raise CatalogImportError("hub_snapshot_schema", f"{profile_id}: backends must be non-empty")
+        for backend in backends:
+            if not isinstance(backend, Mapping) or not set(backend).issubset({"id", "kind", "executable", "package_id", "transport", "contract_ref"}) or not {"id", "kind", "contract_ref"}.issubset(backend):
+                raise CatalogImportError("hub_snapshot_schema", f"{profile_id}: invalid backend")
+            if not isinstance(backend["id"], str) or PROVIDER_ID_PATTERN.fullmatch(backend["id"]) is None or any(not isinstance(backend[key], str) or not backend[key] for key in backend):
+                raise CatalogImportError("hub_snapshot_schema", f"{profile_id}: invalid backend identity or reference")
+            backend_ids.add(backend["id"])
+        if len(backend_ids) != len(backends) or current.provider_id not in backend_ids:
+            raise CatalogImportError("provider_binding_required", f"{profile_id}: current UnityAgent provider is not declared by Hub backends")
+        dependencies = manifest["dependencies"]
+        if not isinstance(dependencies, list) or any(not isinstance(item, Mapping) or not set(item).issubset({"id", "kind", "required", "eligibility_gate"}) or not {"id", "kind", "required"}.issubset(item) or not isinstance(item["id"], str) or not isinstance(item["kind"], str) or not isinstance(item["required"], bool) for item in dependencies):
+            raise CatalogImportError("hub_snapshot_schema", f"{profile_id}: invalid dependencies")
+        if not any(item.get("id") == current.provider_id and item.get("kind") == "backend" and item.get("required") is True and item.get("eligibility_gate") in required_environment for item in dependencies):
+            raise CatalogImportError("provider_binding_required", f"{profile_id}: current provider has no required activation gate")
+
+        capabilities = manifest["capabilities"]
+        if not isinstance(capabilities, list) or not capabilities:
+            raise CatalogImportError("hub_snapshot_schema", f"{profile_id}: capabilities must be non-empty")
+        flattened: list[str] = []
+        for capability in capabilities:
+            capability = _exact_mapping(capability, frozenset({"id", "operations"}), f"{profile_id}.capability")
+            if not isinstance(capability["id"], str) or not isinstance(capability["operations"], list) or not capability["operations"] or any(not isinstance(operation, str) or not operation for operation in capability["operations"]):
+                raise CatalogImportError("hub_snapshot_schema", f"{profile_id}: invalid capability")
+            flattened.extend(f"{capability['id']}.{operation}" for operation in capability["operations"])
+        evidence = _exact_mapping(manifest["evidence"], frozenset({"required", "required_artifacts", "runtime_types", "terminal_states", "contract_ref"}), f"{profile_id}.evidence")
+        if evidence["required"] is not True or any(not isinstance(evidence[key], list) or not evidence[key] or any(not isinstance(item, str) or not item for item in evidence[key]) for key in ("required_artifacts", "runtime_types", "terminal_states")) or not isinstance(evidence["contract_ref"], str) or not evidence["contract_ref"]:
+            raise CatalogImportError("hub_snapshot_schema", f"{profile_id}: invalid evidence requirements")
+        profile = current.to_mapping()
+        profile.update(display_name=identity["name"], capabilities=flattened, required_evidence=evidence["runtime_types"], activation={"install_mode": installation["mode"], "auto_install": installation["auto_install"], "required_environment": required_environment})
+        profiles[profile_id] = profile
+
+    if not profiles:
+        raise CatalogImportError("hub_snapshot_schema", "Hub snapshot has no active specialists")
+    return SubAgentProfileCatalog.from_mapping({"schema_version": consumer_catalog.schema_version, "default_profile": consumer_catalog.default_profile_id, "profiles": profiles})
+
+
+def _load_snapshot(snapshot_bytes: bytes, *, consumer_catalog: SubAgentProfileCatalog | None = None) -> SubAgentProfileCatalog:
     try:
         text = snapshot_bytes.decode("utf-8")
     except (AttributeError, UnicodeDecodeError) as exc:
@@ -94,7 +214,14 @@ def _load_snapshot(snapshot_bytes: bytes) -> SubAgentProfileCatalog:
     except (TypeError, ValueError, yaml.YAMLError) as exc:
         raise CatalogImportError("snapshot_syntax", str(exc)) from exc
     try:
+        if isinstance(raw, Mapping) and raw.get("kind") == "subagent_catalog_snapshot":
+            if consumer_catalog is None:
+                raise CatalogImportError("consumer_catalog_required", "Hub snapshot import requires a UnityAgent-owned Catalog")
+            _validate_hub_schema(raw)
+            return _hub_profile_catalog(raw, consumer_catalog)
         return SubAgentProfileCatalog.from_mapping(raw)
+    except CatalogImportError:
+        raise
     except (OverflowError, ProfileValidationError, TypeError, ValueError) as exc:
         raise CatalogImportError("profile_validation", str(exc)) from exc
 
@@ -275,7 +402,6 @@ def build_import_plan(
             "snapshot_digest_mismatch",
             f"expected {expected}, observed {actual}",
         )
-    incoming_catalog = _load_snapshot(payload)
     if current_catalog_bytes is None:
         if current_catalog is not CATALOG:
             raise CatalogImportError(
@@ -305,6 +431,7 @@ def build_import_plan(
             "current catalog object does not match the exact current catalog bytes",
         )
     current_catalog = parsed_current_catalog
+    incoming_catalog = _load_snapshot(payload, consumer_catalog=current_catalog)
     try:
         registry = provider_registry or load_provider_registry()
     except (OSError, ValueError, yaml.YAMLError) as exc:
