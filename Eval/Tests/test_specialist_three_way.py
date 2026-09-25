@@ -15,10 +15,12 @@ def arm(name: str, *, bytes_count: int, specialist: bool, irrelevant: bool = Fal
     return {"task_id": "same-camera-capture", "manifest": {"run_id": run_id,
         "budget_report": {"selected_artifacts": 4 + len(items), "selected_utf8_bytes": bytes_count,
             "estimated_tokens": (bytes_count + 2) // 3, "decision": "within_budget"},
-        "materialized_context": {"context_id": context_id, "selected_refs": {"policy": []},
+        "materialized_context": {"context_id": context_id, "context_fingerprint": {"value": f"sha256:{name}"}, "selected_refs": {"policy": []},
             "resolved_bindings": {}, "specialist_context": {"items": items} if specialist else None}},
-        "result": {"run_id": run_id, "status": "completed", "handoff": {"context_id": context_id},
-            "evidence_refs": [f"{run_id}-evidence"], "results": [{"attempts": [{"status": "passed"}]}]},
+        "result": {"run_id": run_id, "status": "completed", "handoff": {"context_id": context_id, "context_fingerprint": f"sha256:{name}"},
+            "evidence_refs": [f"{run_id}-evidence"], "results": [{"attempts": [{"status": "passed"}],
+                "receipt_integrity": "verified" if specialist else None,
+                "provider_result": {"received_context_id": context_id, "received_context_fingerprint": f"sha256:{name}"} if specialist else {}}]},
         "evidence": [{"run_id": run_id, "evidence_id": f"{run_id}-evidence",
             "verification_status": "passed", "required_evidence": ["visual_capture"],
             "observed_evidence": ["visual_capture"]}]}
@@ -32,6 +34,9 @@ class SpecialistThreeWayTests(unittest.TestCase):
         relevant = {"specialist:project_fact:unity_version:ProjectVersion.txt"}
         self.assertTrue(compare(arms, relevant)["comparison_passed"])
         arms["C_filtered"]["evidence"][0]["observed_evidence"] = []
+        self.assertFalse(compare(arms, relevant)["comparison_passed"])
+        arms["C_filtered"]["evidence"][0]["observed_evidence"] = ["visual_capture"]
+        arms["C_filtered"]["result"]["results"][0]["provider_result"]["received_context_id"] = "forged"
         self.assertFalse(compare(arms, relevant)["comparison_passed"])
         arms["C_filtered"]["result"]["evidence_refs"] = []
         with self.assertRaisesRegex(ValueError, "durable Evidence"):

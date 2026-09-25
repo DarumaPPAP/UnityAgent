@@ -154,6 +154,8 @@ class UnityArtistCliProvider:
             return self.execute_camera_fov_reference(request, context=context, arguments=arguments, cancel_event=cancel_event)
         try:
             command, options = self._command_and_options(request, arguments)
+            if arguments.get("specialist_context_manifest_path") is not None:
+                options["--context-manifest-path"] = str(arguments["specialist_context_manifest_path"])
             facts = self.environment_snapshot[ARTIST_PROVIDER]
             executable = str(facts["executable_path"])
             timeout_seconds = float(arguments.get("timeout_seconds", 60.0))

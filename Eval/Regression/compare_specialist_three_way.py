@@ -30,6 +30,8 @@ def measure(arm: dict[str, Any], *, relevant_sources: set[str]) -> dict[str, Any
     budget = manifest["budget_report"]
     if result.get("handoff", {}).get("context_id") != view["context_id"]:
         raise ValueError("Runtime handoff must use the measured Context identity")
+    if result.get("handoff", {}).get("context_fingerprint") != view["context_fingerprint"]["value"]:
+        raise ValueError("Runtime handoff must use the measured Context fingerprint")
     selected = set(_sources(view["selected_refs"]))
     specialist = view.get("specialist_context") or {}
     selected.update(f"specialist:{item['type']}:{item['key']}:{item['source']}" for item in specialist.get("items") or [])
@@ -38,13 +40,20 @@ def measure(arm: dict[str, Any], *, relevant_sources: set[str]) -> dict[str, Any
         set(item.get("required_evidence") or []).issubset(set(item.get("observed_evidence") or []))
         for item in evidence)
     results = result.get("results") or []
+    receipt_required = bool(specialist)
+    receipt_valid = any(item.get("receipt_integrity") == "verified" and
+        item.get("provider_result", {}).get("received_context_id") == view["context_id"] and
+        item.get("provider_result", {}).get("received_context_fingerprint") == view["context_fingerprint"]["value"]
+        for item in results)
+    required_context_complete = bool(specialist.get("items")) if receipt_required else True
     calls = sum(len(item.get("attempts") or []) for item in results)
     return {"run_id": result["run_id"], "selected_artifacts": budget["selected_artifacts"],
         "selected_bytes": budget["selected_utf8_bytes"], "estimated_tokens": budget["estimated_tokens"],
         "irrelevant_context_inclusion": sorted(selected - relevant_sources),
         "task_success": result.get("status") == "completed", "evidence_completeness": complete,
         "tool_calls": calls, "retries": sum(max(0, len(item.get("attempts") or []) - 1) for item in results),
-        "budget_decision": budget["decision"]}
+        "budget_decision": budget["decision"], "required_context_complete": required_context_complete,
+        "receipt_integrity": receipt_valid if receipt_required else None}
 
 
 def compare(arms: dict[str, dict[str, Any]], relevant_sources: set[str]) -> dict[str, Any]:
@@ -60,6 +69,7 @@ def compare(arms: dict[str, dict[str, Any]], relevant_sources: set[str]) -> dict
     comparison_passed = (all(row["budget_decision"] == "within_budget" for row in (a, b, c))
         and c["selected_bytes"] < b["selected_bytes"]
         and len(c["irrelevant_context_inclusion"]) < len(b["irrelevant_context_inclusion"])
+        and c["required_context_complete"] and c["receipt_integrity"]
         and c["task_success"] and c["evidence_completeness"]
         and (not b["task_success"] or c["task_success"])
         and (not b["evidence_completeness"] or c["evidence_completeness"]))

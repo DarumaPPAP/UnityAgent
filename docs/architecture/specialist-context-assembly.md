@@ -60,12 +60,19 @@ Candidate には Project Fact、Project Decision、Platform Fact、Platform Deci
 
 現行の Production 経路を模擬 Provider と実際の一時 Unity Project 構成で実行した Artist capture fixture では、14 artifact、47,125 bytes、推定 15,709 tokens、`within_budget` となった。ただし Unity Editor は起動していない。この数字は実 Editor Task の成功証拠ではない。Task success、Editor／Pipeline 到達、実 Provider Evidence は未観測。`unmeasured` / `blocked` のまま mutation は許可しない。
 
-3-way 比較の記録器は `Eval/Regression/compare_specialist_three_way.py`。A: Specialist なし、B: 候補を選別しない Naive、C: Filtered の３つの実 run について Context Manifest、Runtime result、durable Evidence を入力し、選択 artifact／bytes／推定 tokens、不要な source、Task success、Evidence completeness、Tool calls／Retries を計算する。全 arm の実 run と関連 source 一覧が揃うまで比較合格とはしない。現環境に Unity Editor executable がないため比較の実測は未完了。
+3-way 比較器は `Eval/Regression/compare_specialist_three_way.py`。A: Specialist なし、B: 候補を選別しない Naive、C: Filtered の fixture で artifact／bytes／推定 tokens、不要 source、Contract Task success、Evidence completeness、Tool calls／Retries、必須 Context と受信 Identity 一致を判定する。Host fixture の合格は LLM reasoning 品質や実 Unity Editor 成功を証明しない。実 run の測定値を記録していない場合、実測結果としては報告しない。
 
-## 実運用へ進める条件
+## Context receipt の境界
 
-1. Editor のある実 Unity Project で、v2 Entry から Unity CLI／Pipeline／Editor まで既存 `visual.capture` を実行し、durable Evidence を検証する。
-2. 同じ Task で A / B / C を記録し、C が B より小さい Context で同等以上の Task success / Evidence completeness を達成したことを判定する。
-3. Texture Pilot は別 Work／別 PR で Capability、Approval、Evidence、Backend surface を設計する。
+- Generated: Context Assembly が immutable Manifest に `context_id` と `context_fingerprint` を生成する。
+- Transported: Runtime が Manifest path を選択済み `unity_artist_cli` に渡す。
+- Received: Backend CLI が Manifest を読み、structured result に `received_context_id` / `received_context_fingerprint` を返す。Control Plane は Manifest の Identity と照合し、欠落・不一致を fail-closed とする。
+- Applied: Specialist inference / decision input への実適用は今回未評価。受信 Echo を semantic consumption と呼ばない。
+
+現行 Production の正式対象は Unity 6.x+（Built-in / URP / HDRP）。Unity CLI は automation / command surface、Unity Pipeline は実行中 Editor の local HTTP bridge であり、connected Editor commands に使う。Unity 2022.3 は現行 Support 対象外。Historical bounded batch Evidence は別途保存する。Skill は既存 `.agents/skills` / Context catalog の metadata から選別し、必要な SKILL.md と Reference のみ段階的にロードする。Hub の `skill_refs` 追加は現時点で必須ではない。
+
+## CI / Host 完了条件と未評価事項
+
+Host / CI では、read-only Pilot の Authority、生成 Context、Budget、Backend 受信 Identity、Artist unavailable 時の Core Capability、A/B/C fixture 比較を検証する。Unity Editor / CLI / Pipeline の live 接続と Specialist の判断品質は Required Gate ではなく `not_evaluated` と報告する。Texture Pilot は別 Work／別 PR とする。
 
 専門領域の品質低下には Evidence → Fact freshness → Context selection → Skill → Tool／Provider → Specialist instruction → Domain ownership の順に原因を確認する。Platform、Pipeline、Asset 種別だけを理由に SubAgent を増やさない。

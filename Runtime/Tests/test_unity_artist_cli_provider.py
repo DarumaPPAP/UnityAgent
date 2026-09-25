@@ -138,5 +138,15 @@ class UnityArtistCliProviderTests(unittest.TestCase):
                 self.assertEqual(result["failure_class"], expected_failure)
                 self.assertEqual(fake.requests, [])
 
+    def test_received_context_receipt_is_backend_reported(self):
+        fake = FakeArtistDispatch({"Status": "passed", "Data": {"contextReceipt": {
+            "receivedContextId": "ctx-generated", "receivedContextFingerprint": "sha256:generated"}}})
+        provider = UnityArtistCliProvider(self.project_root, self.snapshot, dispatch_fn=fake)
+        result = provider.execute(self.request, arguments={"command": "capture",
+            "specialist_context_manifest_path": "/state/context-manifest.json"})
+        self.assertEqual(result["received_context_id"], "ctx-generated")
+        self.assertEqual(result["received_context_fingerprint"], "sha256:generated")
+        self.assertIn("--context-manifest-path", fake.requests[0].command)
+
 if __name__ == "__main__":
     unittest.main()

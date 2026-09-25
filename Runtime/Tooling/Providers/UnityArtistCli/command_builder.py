@@ -33,6 +33,7 @@ OPTIONAL_ARGUMENTS = frozenset(
         "--notes",
         "--workflow",
         "--operation",
+        "--context-manifest-path",
     }
 )
 

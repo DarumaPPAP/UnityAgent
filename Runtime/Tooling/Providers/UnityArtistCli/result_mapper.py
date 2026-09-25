@@ -137,6 +137,11 @@ def normalize_artist_result(
             "warnings": [str(item) for item in warnings or []],
             "command_id": f"artist.{command}",
         }
+        if isinstance(data, Mapping):
+            receipt = data.get("contextReceipt")
+            if isinstance(receipt, Mapping):
+                result["received_context_id"] = receipt.get("receivedContextId")
+                result["received_context_fingerprint"] = receipt.get("receivedContextFingerprint")
         if "mutation_evidence" in evidence:
             provenance = pipeline_result if pipeline_result is not None else data
             result["redacted_provenance"] = {

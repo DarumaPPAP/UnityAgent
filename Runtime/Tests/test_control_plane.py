@@ -233,8 +233,7 @@ class ControlPlaneTests(unittest.TestCase):
         with mock.patch("ControlPlane.unity_agent_control_plane.resolve_specialist", wraps=resolve_specialist) as selection:
             result = plane.execute(request, environment_snapshot=self.snapshot,
                 context=ResolutionContext(policy_allowed=True),
-                executors={"unity_artist_cli": lambda *_: {"status": "passed", "provider_ref": "unity_artist_cli",
-                    "evidence": ["visual_capture"]}, "file": lambda *_: {"status": "passed", "provider_ref": "file",
+                executors={"unity_artist_cli": self.artist_receipt_executor, "file": lambda *_: {"status": "passed", "provider_ref": "file",
                     "evidence": ["project_fact"]}}, definition_fingerprint=fingerprint())
         self.assertEqual(selection.call_args.args[:2], ("artist-lookdev", "visual.capture"))
         self.assertEqual(result["status"], "completed")
@@ -242,6 +241,7 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertEqual([request["capability"] for request in result["handoff"]["capability_requests"]],
                          ["project.inspect", "visual.capture"])
         self.assertEqual(result["results"][1]["resolution"]["subagent_profile_id"], "artist_subagent")
+        self.assertEqual(result["results"][1]["receipt_integrity"], "verified")
         manifest_path = plane.state_store.layout.root / result["context_manifest_ref"]
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         self.assertEqual(manifest["budget_report"]["decision"], "within_budget")
@@ -254,6 +254,37 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertEqual(proof["active_conditions"], ["visual_evidence_needed"])
         self.assertEqual(proof["context_manifest_ref"], result["context_manifest_ref"])
 
+    @staticmethod
+    def artist_receipt_executor(request, context, arguments):
+        manifest = json.loads(Path(arguments["specialist_context_manifest_path"]).read_text(encoding="utf-8"))
+        view = manifest["materialized_context"]
+        return {"status": "passed", "provider_ref": "unity_artist_cli", "evidence": ["visual_capture"],
+            "received_context_id": view["context_id"],
+            "received_context_fingerprint": view["context_fingerprint"]["value"]}
+
+    def test_specialist_receipt_missing_or_mismatched_fails_closed(self) -> None:
+        self.make_artist_available()
+        for forged in (None, "ctx-forged"):
+            with self.subTest(forged=forged):
+                calls = []
+                def artist(request, context, arguments):
+                    calls.append(arguments)
+                    result = self.artist_receipt_executor(request, context, arguments)
+                    if forged is None:
+                        del result["received_context_id"]
+                    else:
+                        result["received_context_id"] = forged
+                    return result
+                plane = UnityAgentControlPlane(self.root / f"receipt-{forged}")
+                result = plane.execute(self.capture_request(), environment_snapshot=self.snapshot,
+                    context=ResolutionContext(policy_allowed=True), executors={
+                        "unity_artist_cli": artist,
+                        "file": lambda *_: {"status": "passed", "provider_ref": "file", "evidence": ["project_fact"]}},
+                    definition_fingerprint=fingerprint())
+                self.assertEqual(result["status"], "blocked")
+                self.assertEqual(result["results"][-1]["receipt_integrity"], "failed")
+                self.assertEqual(len(calls), 1)
+
     def test_artist_unavailable_does_not_block_independent_core(self) -> None:
         request = self.entry_request()
         plane = UnityAgentControlPlane(self.root / "core-state")
@@ -264,6 +295,11 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertEqual(self.snapshot["unity_artist_cli"]["available"], False)
         self.assertEqual(result["status"], "completed")
         self.assertEqual(result["results"][0]["resolution"]["provider_ref"], "file")
+
+    def test_legacy_2022_artist_support_claim_is_ineligible(self) -> None:
+        from Runtime.Tooling.Environment.discovery import _artist_compatibility
+        self.assertFalse(_artist_compatibility(unity_version="2022.3.22f1", render_pipeline="builtin",
+            support_tier="primary", compatibility_backend="builtin_editor_api"))
 
     def test_changed_project_fact_blocks_before_core_dispatch(self) -> None:
         (self.project / "ProjectSettings/ProjectVersion.txt").write_text(

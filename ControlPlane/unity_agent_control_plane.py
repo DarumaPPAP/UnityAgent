@@ -360,6 +360,13 @@ class UnityAgentControlPlane:
             }
 
         results: list[dict[str, Any]] = []
+        runtime_provider_arguments = {name: dict(values) for name, values in (provider_arguments or {}).items()}
+        if specialist_selection["status"] == "selected":
+            # The immutable manifest is the only Specialist Context source for the backend.
+            runtime_provider_arguments["unity_artist_cli"] = {
+                **runtime_provider_arguments.get("unity_artist_cli", {}),
+                "specialist_context_manifest_path": str(manifest_path.resolve()),
+            }
         for index, request in enumerate(handoff["capability_requests"]):
             capability_step_id = f"{node_id}-{index + 1}"
             outcome = self.broker.dispatch(
@@ -367,11 +374,21 @@ class UnityAgentControlPlane:
                 snapshot,
                 context=context,
                 executors=executors,
-                provider_arguments=provider_arguments,
+                provider_arguments=runtime_provider_arguments,
             )
             result = deepcopy(outcome)
             resolution = outcome.get("resolution")
             provider_result = outcome.get("provider_result")
+            if specialist_selection["status"] == "selected" and isinstance(resolution, Mapping) and resolution.get("subagent_profile_id") == specialist_selection["profile_id"]:
+                received = (provider_result.get("received_context_id"), provider_result.get("received_context_fingerprint")) if isinstance(provider_result, Mapping) else (None, None)
+                generated = (view["context_id"], view["context_fingerprint"]["value"])
+                if received != generated:
+                    result["status"] = "blocked"
+                    result["receipt_integrity"] = "failed"
+                    result["reason"] = "Specialist Context received identity missing or mismatched"
+                    results.append(result)
+                    break
+                result["receipt_integrity"] = "verified"
             if isinstance(resolution, Mapping) and resolution.get("status") == "resolved" and isinstance(provider_result, Mapping):
                 evidence_id = f"{resolved_run_id}-evidence-{index + 1}"
                 evidence = normalize_provider_result(
