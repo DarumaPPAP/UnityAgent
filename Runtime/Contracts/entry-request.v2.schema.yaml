@@ -9,12 +9,6 @@ required:
 - entry_point
 - project_root
 - intent
-- route_id
-- execution_profile
-- task_contract_runtime_projection
-- mutation_scope
-- validation_requirements
-- capability_requests
 properties:
   schema_version:
     const: '2.0'
@@ -32,28 +26,19 @@ properties:
   intent:
     type: object
     additionalProperties: true
-    minProperties: 1
-  route_id:
-    type: string
-    minLength: 1
-  node_id:
-    type: string
-    minLength: 1
-  execution_profile:
-    type: string
-    minLength: 1
-  task_contract_runtime_projection:
-    type: object
-  mutation_scope:
-    type: object
-  validation_requirements:
-    type: array
-    items:
-      type: string
-      minLength: 1
-    uniqueItems: true
-  capability_requests:
-    type: array
-    minItems: 1
-    items:
-      type: object
+    required: [kind, task_fingerprint]
+    properties:
+      kind: {type: string, minLength: 1}
+      task_fingerprint:
+        type: object
+        additionalProperties: false
+        required: [intent, artifact, scope, failure_mode, architecture_state, mutation_target, evidence_state]
+        properties:
+          intent: {type: string, minLength: 1}
+          artifact: {type: string, minLength: 1}
+          scope: {type: string, minLength: 1}
+          failure_mode: {type: string, minLength: 1}
+          architecture_state: {type: string, minLength: 1}
+          mutation_target: {type: string, minLength: 1}
+          evidence_state: {type: string, minLength: 1}
+  approval_ref: {type: [string, 'null'], minLength: 1}

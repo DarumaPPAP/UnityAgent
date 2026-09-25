@@ -656,6 +656,10 @@ def run_live(
     scene_path: str | None = None,
     expected_before_fov: float = 40.0,
 ) -> dict[str, Any]:
+    # The reference workflow still constructs a v1 caller-owned Context and a
+    # dedicated runtime projection. Stop before its direct live preflight/apply
+    # until Orchestration can generate that projection under the v2 contract.
+    raise LiveFailure("camera_fov_reference requires v2 Orchestration projection migration before live execution")
     artist_root = artist_root.resolve()
     project = project.resolve()
     selected_scene_path = str(scene_path or "").strip().replace("\\", "/") or None
@@ -786,17 +790,16 @@ def run_live(
         "qualifiers": {"domain": "visual_art", "workflow": "camera_fov_reference"},
     }
     entry_request = {
-        "schema_version": "2.0",
+        "schema_version": "1.0",
         "request_id": f"camera-fov-live-{uuid.uuid4().hex[:10]}",
         "entry_point": "codex_plugin",
         "project_root": str(project),
-        "intent": {"kind": "camera_fov_reference", "target": "Main Camera", "value": 43.0,
-                   "visual_intent": "Set the inspected camera FOV to 43 degrees and capture visual evidence",
-                   "exact_scene_or_asset_scope": selected_scene_path or DEFAULT_SCENE_PATH,
-                   "reference_or_visual_definition": "inspected camera target GUID and 43 degree FOV"},
-        "route_id": "artist-lookdev",
+        "intent": {"kind": "camera_fov_reference", "target": "Main Camera", "value": 43.0},
+        "route_id": "camera_fov_reference",
         "node_id": "camera-fov-reference",
         "execution_profile": "camera_fov_reference",
+        "context_id": f"context-{run_id}",
+        "context_fingerprint": sha256_jcs({"run_id": run_id, "target_guid": target_guid, "revision": inspect_revision}),
         "task_contract_runtime_projection": projection,
         "mutation_scope": mutation_scope,
         "validation_requirements": ["domain_result", "mutation_evidence", "exact_diff", "expected_revision", "camera_binding", "undo_registration", "save_not_performed", "visual_capture"],

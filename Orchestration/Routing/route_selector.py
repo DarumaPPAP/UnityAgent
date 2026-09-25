@@ -3,9 +3,27 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 import yaml
+from Runtime.Tooling.Environment.project_identity import same_project_root
 
 REQUIRED_DIMENSIONS = ("intent", "artifact", "scope", "failure_mode", "architecture_state", "mutation_target", "evidence_state", "project_access")
 DESIGN_REVIEW_REQUIREMENTS = {"required", "conditional", "not_required"}
+
+
+def task_fingerprint_from_intent(intent: dict[str, Any], environment_snapshot: dict[str, Any], *, project_root: str, policy_allowed: bool) -> dict[str, str]:
+    """Use requested task semantics and observed project access; never accept a route from Entry."""
+    supplied = intent.get("task_fingerprint")
+    dimensions = set(REQUIRED_DIMENSIONS) - {"project_access"}
+    if not isinstance(supplied, dict) or set(supplied) != dimensions or any(
+        not isinstance(supplied[key], str) or not supplied[key].strip() for key in dimensions
+    ):
+        raise ValueError("intent requires all seven semantic Task Fingerprint dimensions")
+    project = environment_snapshot.get("project") or {}
+    if (not policy_allowed or project.get("identity_status") != "bound"
+            or not project.get("root") or not same_project_root(project_root, str(project["root"]))):
+        raise ValueError("project access is not authorized by bound EnvironmentSnapshot and Policy")
+    fingerprint = dict(supplied)
+    fingerprint["project_access"] = "authorized"
+    return fingerprint
 
 
 def load_routes(path: Path) -> dict[str, Any]:

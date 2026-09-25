@@ -17,8 +17,10 @@ from typing import Any, Mapping
 import yaml
 from jsonschema import Draft202012Validator
 
-from Orchestration.Orchestrator.orchestrator import runtime_handoff
-from Orchestration.Routing.route_selector import load_routes, resolve_specialist
+from Orchestration.Orchestrator.orchestrator import runtime_handoff, runtime_node_for_requests
+from Orchestration.Routing.route_selector import load_routes, resolve_specialist, select_route, task_fingerprint_from_intent
+from Orchestration.ToolRouting.capability_request_builder import (build_capability_requests, conditions_for_intent,
+    task_contract_projection)
 from Context.Manifest.build_context_manifest import build as build_context_manifest
 from Context.Selection.project_context_inputs import derive_context_inputs
 from Orchestration.Graph.state_mapping import workflow_state_patch
@@ -46,6 +48,8 @@ ROOT = Path(__file__).resolve().parents[1]
 ENTRY_SCHEMA_PATH = Path("Runtime/Contracts/entry-request.schema.yaml")
 ENTRY_V2_SCHEMA_PATH = Path("Runtime/Contracts/entry-request.v2.schema.yaml")
 PROVIDER_ID_KEYS = frozenset({"provider", "provider_ref", "provider_id"})
+ENTRY_AUTHORITY_KEYS = frozenset({"route_id", "capability_requests", "context_id", "context_fingerprint",
+    "node_id", "execution_profile", "task_contract_runtime_projection", "mutation_scope", "validation_requirements"})
 
 
 def _now() -> str:
@@ -69,10 +73,14 @@ def validate_entry_request(value: dict[str, Any], *, root: Path = ROOT) -> None:
     Draft202012Validator(schema).validate(value)
     if _contains_provider_identity(value):
         raise ValueError("Entry request must not contain Provider identity")
-    for request in value["capability_requests"]:
-        validate_capability_request(dict(request), root=root)
-        if str(request["project_root"]).casefold() != str(value["project_root"]).casefold():
-            raise ValueError("CapabilityRequest project_root must match Entry project_root")
+    if value["schema_version"] == "2.0":
+        if any(key in value["intent"] for key in ENTRY_AUTHORITY_KEYS):
+            raise ValueError("Entry intent must not contain Orchestration or Context authority fields")
+    else:
+        for request in value["capability_requests"]:
+            validate_capability_request(dict(request), root=root)
+            if str(request["project_root"]).casefold() != str(value["project_root"]).casefold():
+                raise ValueError("CapabilityRequest project_root must match Entry project_root")
 
 
 def _snapshot_dict(snapshot: EnvironmentSnapshot | Mapping[str, Any]) -> dict[str, Any]:
@@ -181,23 +189,45 @@ class UnityAgentControlPlane:
         validate_definition_fingerprint(dict(definition_fingerprint))
         snapshot = _snapshot_dict(environment_snapshot)
         resolved_run_id = run_id or _new_run_id(str(entry_request["request_id"]))
-        node_id = str(entry_request.get("node_id") or "entry_runtime_action")
-        route_id = str(entry_request["route_id"])
-        if route_id not in load_routes(ROOT / "Orchestration/Routing/task-routes.yaml")["routes"]:
-            raise ValueError(f"Entry v2 requires a canonical Orchestration route: {route_id}")
-        capabilities = [str(request["capability"]) for request in entry_request["capability_requests"]]
-        # The existing Camera FOV reference workflow includes visual capture,
-        # though its outer capability is domain.workflow (v1.1 contract).
-        selected_capability = ("visual.capture" if "visual.capture" in capabilities
-                               or is_camera_fov_reference_request(entry_request) else capabilities[0])
+        intent = dict(entry_request["intent"])
+        try:
+            task_fingerprint = task_fingerprint_from_intent(intent, snapshot,
+                project_root=str(entry_request["project_root"]), policy_allowed=context.policy_allowed)
+            route_decision = select_route(task_fingerprint, load_routes(ROOT / "Orchestration/Routing/task-routes.yaml"))
+            route_id = str(route_decision["route_id"])
+            conditions = conditions_for_intent(intent, task_fingerprint)
+            mutation_scope: dict[str, Any] = {}
+            capability_requests = build_capability_requests(route_id=route_id,
+                project_root=str(entry_request["project_root"]), active_conditions=conditions,
+                mutation_scope=mutation_scope, approval_ref=entry_request.get("approval_ref"))
+            if not capability_requests:
+                raise ValueError(f"Orchestration produced no runnable CapabilityRequest: {route_id}")
+            if any(request["operation_kind"] != "read" for request in capability_requests):
+                raise ValueError("v2 Entry has no approved mutation scope projection for this route")
+            required_capability = "visual.capture" if intent["kind"] == "visual_capture" else (
+                "project.inspect" if intent["kind"] == "project_inspection" else None)
+            if required_capability and required_capability not in {item["capability"] for item in capability_requests}:
+                raise ValueError(f"selected route does not support requested outcome: {required_capability}")
+            for request in capability_requests:
+                validate_capability_request(request)
+            projection = task_contract_projection(route_id)
+            requirements = list(dict.fromkeys(evidence for request in capability_requests
+                for evidence in request["required_evidence"]))
+            node_id = runtime_node_for_requests(capability_requests,
+                graph_path=ROOT / "Orchestration/Definitions/development-parent-graph.yaml")
+            capabilities = [str(request["capability"]) for request in capability_requests]
+        except ValueError as exc:
+            return {"schema_version": "2.0", "status": "blocked", "run_id": resolved_run_id,
+                    "reason": str(exc), "results": [], "evidence_refs": []}
+        selected_capability = "visual.capture" if "visual.capture" in capabilities else capabilities[0]
         specialist_selection = resolve_specialist(route_id, selected_capability, snapshot)
         if specialist_selection["status"] in {"unavailable", "unsupported"}:
             return {"schema_version": "2.0", "status": "blocked", "run_id": resolved_run_id,
                     "reason": f"Specialist {specialist_selection['status']}: {selected_capability}", "results": [], "evidence_refs": []}
         try:
-            inputs = derive_context_inputs(str(entry_request["project_root"]), snapshot, dict(entry_request["intent"]))
+            inputs = derive_context_inputs(str(entry_request["project_root"]), snapshot, intent)
             manifest = build_context_manifest(resolved_run_id, route_id, project_facts=inputs["project_facts"],
-                bindings=inputs["bindings"], capability_ids=capabilities,
+                bindings=inputs["bindings"], capability_ids=capabilities, active_conditions=conditions,
                 specialist_selection=specialist_selection,
                 specialist_items=inputs["specialist_items"] if specialist_selection["status"] == "selected" else None,
                 specialist_tags=inputs["specialist_tags"] if specialist_selection["status"] == "selected" else None,
@@ -213,23 +243,34 @@ class UnityAgentControlPlane:
             return {"schema_version": "2.0", "status": "blocked", "run_id": resolved_run_id,
                     "reason": f"Context gate: {manifest['budget_report']['decision']}; unresolved={view['unresolved_bindings']}",
                     "context_manifest_ref": manifest_ref, "results": [], "evidence_refs": []}
-        effective_request = {**entry_request, "context_id": view["context_id"],
-                             "context_fingerprint": view["context_fingerprint"]["value"]}
+        effective_request = {**entry_request, "route_id": route_id, "node_id": node_id,
+            "execution_profile": route_decision["profile"], "task_contract_runtime_projection": projection,
+            "mutation_scope": mutation_scope, "validation_requirements": requirements,
+            "capability_requests": capability_requests, "context_id": view["context_id"],
+            "context_fingerprint": view["context_fingerprint"]["value"]}
         definition_fingerprint = {**definition_fingerprint,
             "policy_revision": view["definition_fingerprint"]["policy_revision"],
             "context_revision": view["definition_fingerprint"]["context_revision"]}
         handoff = runtime_handoff(
             run_id=resolved_run_id,
             node_id=node_id,
-            route_id=str(entry_request["route_id"]),
-            execution_profile=str(entry_request["execution_profile"]),
+            route_id=route_id,
+            execution_profile=str(route_decision["profile"]),
             context_id=view["context_id"],
             context_fingerprint=view["context_fingerprint"]["value"],
-            task_contract_runtime_projection=dict(entry_request["task_contract_runtime_projection"]),
-            mutation_scope=dict(entry_request["mutation_scope"]),
-            validation_requirements=list(entry_request["validation_requirements"]),
-            capability_requests=list(entry_request["capability_requests"]),
+            task_contract_runtime_projection=projection,
+            mutation_scope=mutation_scope,
+            validation_requirements=requirements,
+            capability_requests=capability_requests,
         )
+        routing_proof = {"task_fingerprint": task_fingerprint, "route_decision": route_decision,
+            "active_conditions": sorted(conditions), "task_contract_projection": projection,
+            "capability_requests": handoff["capability_requests"], "node_id": node_id,
+            "execution_profile": handoff["execution_profile"], "mutation_scope": mutation_scope,
+            "validation_requirements": requirements, "context_manifest_ref": manifest_ref}
+        routing_path = self.state_store.layout.snapshot(resolved_run_id, "orchestration-decision", sha256_json(routing_proof))
+        write_immutable_json(routing_path, routing_proof)
+        routing_ref = relative_ref(self.state_store.layout.root, routing_path)
 
         evidence_refs: list[str] = []
         state_ref = self._save_execution_state(
@@ -241,7 +282,7 @@ class UnityAgentControlPlane:
         )
         workflow_state_ref = self._save_workflow_state(
             run_id=resolved_run_id,
-            route_id=str(entry_request["route_id"]),
+            route_id=route_id,
             node_id=node_id,
             evidence_refs=evidence_refs,
         )
@@ -287,7 +328,7 @@ class UnityAgentControlPlane:
             )
             workflow_state_ref = self._save_workflow_state(
                 run_id=resolved_run_id,
-                route_id=str(entry_request["route_id"]),
+                route_id=route_id,
                 node_id=node_id,
                 evidence_refs=evidence_refs,
             )
@@ -306,6 +347,7 @@ class UnityAgentControlPlane:
                 "entry_point": entry_request["entry_point"],
                 "layer_trace": ["entry", "control_plane", "reference_contract", "runtime_gate", "provider_layer", "evidence_state"],
                 "handoff": handoff,
+                "orchestration_decision_ref": routing_ref,
                 "context_manifest_ref": manifest_ref,
                 "results": [reference],
                 "reference_action_id": reference_action_id,
@@ -316,7 +358,7 @@ class UnityAgentControlPlane:
             }
 
         results: list[dict[str, Any]] = []
-        for index, request in enumerate(entry_request["capability_requests"]):
+        for index, request in enumerate(handoff["capability_requests"]):
             capability_step_id = f"{node_id}-{index + 1}"
             outcome = self.broker.dispatch(
                 dict(request),
@@ -355,7 +397,7 @@ class UnityAgentControlPlane:
             )
             workflow_state_ref = self._save_workflow_state(
                 run_id=resolved_run_id,
-                route_id=str(entry_request["route_id"]),
+                route_id=route_id,
                 node_id=capability_step_id,
                 evidence_refs=evidence_refs,
             )
@@ -370,7 +412,7 @@ class UnityAgentControlPlane:
         )
         workflow_state_ref = self._save_workflow_state(
             run_id=resolved_run_id,
-            route_id=str(entry_request["route_id"]),
+            route_id=route_id,
             node_id=node_id,
             evidence_refs=evidence_refs,
         )
@@ -381,6 +423,7 @@ class UnityAgentControlPlane:
             "entry_point": entry_request["entry_point"],
             "layer_trace": ["entry", "control_plane", "capability_orchestration", "provider_layer", "evidence_state"],
             "handoff": handoff,
+            "orchestration_decision_ref": routing_ref,
             "context_manifest_ref": manifest_ref,
             "results": results,
             "evidence_refs": evidence_refs,

@@ -24,7 +24,24 @@ Specialist 項目の型は `project_fact`、`project_decision`、`platform_fact`
 
 `specialist_context` は既存 MaterializedContextView 内の optional section である。Context Fingerprint は Specialist 項目の revision と内容を反映する。Runtime Handoff は既存 `context_id` と `context_fingerprint` を受け取れる。第二の Context Engine、Control Plane、Provider Registry は作らない。実行時の承認、Scope、Evidence、Completion Gate は従来の経路が担当する。
 
-Production の `UnityAgentControlPlane.execute` は v2 Entry を検証し、既存 EnvironmentSnapshot の Project binding と ProjectVersion.txt を照合し、`ProjectFactObservation` と Specialist 項目を組み立てる。既存 Orchestration の選出結果を同じ Context Manifest に渡し、保存した `within_budget` の Context ID / Fingerprint を Runtime Handoff に渡す。必須 binding や Budget が不足する場合は Provider dispatch より前に停止する。v1 Entry 契約は書き換えず、caller 指定の Context Identity を持つ v1 実行を明示的に migration required として拒否する。v2 は Context Identity を受け取らない。既存 Camera FOV live runner も v2 と Artist の canonical route に移行した。
+Production の `UnityAgentControlPlane.execute` は v2 Entry を検証し、既存 EnvironmentSnapshot の Project binding と ProjectVersion.txt を照合し、`ProjectFactObservation` と Specialist 項目を組み立てる。Orchestration の `select_route` が Task Fingerprint から Primary Route を選び、既存 `build_capability_requests` が provider-independent CapabilityRequest を生成する。Specialist はこの生成済み Capability から選出する。既存 Context Manifest に渡し、保存した `within_budget` の Context ID / Fingerprint を Runtime Handoff に渡す。必須 binding や Budget が不足する場合は Provider dispatch より前に停止する。v1 Entry 契約は書き換えず、caller 指定の Context Identity を持つ v1 実行を明示的に migration required として拒否する。v2 は Context Identity と Route / CapabilityRequest を受け取らない。
+
+Control Plane は既存 Persistence の immutable snapshot に Task Fingerprint、Route Decision、active conditions、Task Contract projection、生成 CapabilityRequest、Context Manifest ref を保存する。これにより Handoff の各値が Orchestration 由来であることを Host で照合できる。
+
+### Entry → Orchestration Authority
+
+| 値 | 正本と生成元 |
+| --- | --- |
+| Project / Task 意図、承認参照 | Entry の明示 request。ただし Project access は EnvironmentSnapshot の bound 状態と Policy の許可でのみ current とする |
+| Task Fingerprint | Intent 内の７つの明示 semantic 次元と観測済み Project access。欠落・矛盾・未許可は停止 |
+| Primary Route / Execution Profile | `Orchestration/Routing/route_selector.py::select_route`。Entry の `route_id` / `execution_profile` は受理しない |
+| Active conditions / CapabilityRequest | `Orchestration/ToolRouting/capability_request_builder.py` と既存 capability-routing catalog。Entry の `capability_requests` は受理しない |
+| Node ID | 既存 ParentGraph の Runtime action node (`inspect_sources` / `execute_change`) を Orchestration が選ぶ |
+| Task Contract Runtime projection / validation requirements | Route に対応する既存 Task Contract の risk / task-level quality gates を projection に保持する。Runtime validation requirements は生成 CapabilityRequest の required evidence に限定する。Capability 実行の完了を Task Contract 全体の完了と混同しない |
+| Mutation Scope | read-only Pilot は空の scope を Orchestration が生成する。Entry の `mutation_scope` は受理しない。Mutation は既存の Project scope / Approval / source byte 観測を結ぶ projection が揃うまで dispatch 前に停止 |
+| Context ID / Fingerprint | UnityAgent Context Assembly のみ。Entry から受理しない |
+
+v2 Production は `project_inspection` / `visual_capture` の read-only outcome を解釈する。Mutation intent、無効な Task Fingerprint、要求 Outcome に合う Capability がない Route は dispatch 前に停止する。Camera FOV reference の既存 v1.1 専用 projection は一般の Artist Task Contract から生成できないため、旧 live runner の v2 移行は未完了であり、preflight / apply より前に明示停止する。専用 projection を Entry の任意値として再導入して通したことにはしない。
 
 `artist-lookdev` が以前必須としていた Hub の外部 spec は、現在の Runtime が参照する同一 repository の canonical `subagent-catalog.yaml` に置き換えた。Hub を複製せず、外部取得の未観測値を恒久的に current 扱いしない。Local source は revision ごとに一度だけ Budget に算入し、複数の意味上の参照は `selected_refs` に保持する。
 
