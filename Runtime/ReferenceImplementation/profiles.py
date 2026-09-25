@@ -259,12 +259,16 @@ class SubAgentProfile:
 
     @property
     def action_property_path(self) -> str:
+        if not self.scope:
+            raise ProfileValidationError("generic Specialist profile has no camera reference property path")
         if len(self.scope["property_paths"]) != 1:
             raise ProfileValidationError("TypedAction requires a profile with one canonical property path")
         return str(self.scope["property_paths"][0])
 
     @property
     def action_mutation_channel(self) -> str:
+        if not self.scope:
+            raise ProfileValidationError("generic Specialist profile has no camera reference mutation channel")
         if len(self.scope["mutation_channels"]) != 1:
             raise ProfileValidationError("TypedAction requires a profile with one canonical mutation channel")
         return str(self.scope["mutation_channels"][0])
@@ -284,6 +288,8 @@ class SubAgentProfile:
             raise ProfileValidationError(f"SubAgent is not eligible ({failure[0]}): {failure[1]}")
 
     def validate_scope(self, value: Mapping[str, Any]) -> dict[str, Any]:
+        if not self.scope:
+            raise ProfileValidationError("generic Specialist profile cannot authorize a mutation scope")
         data = _mapping(value, "scope")
         required = {"target_guids", "component_type", "property_paths", "mutation_channels"}
         if set(data) != required:
@@ -310,6 +316,8 @@ class SubAgentProfile:
         return result
 
     def validate_value(self, value: float) -> float:
+        if not self.value:
+            raise ProfileValidationError("generic Specialist profile has no reference value range")
         number = _finite_number(value, "value")
         lower = float(self.value["minimum"])
         upper = float(self.value["maximum"])
@@ -318,6 +326,8 @@ class SubAgentProfile:
         return number
 
     def validate_parameter_envelope(self, value: Mapping[str, Any]) -> dict[str, float]:
+        if not self.value or not self.approval:
+            raise ProfileValidationError("generic Specialist profile has no reference approval range")
         data = _mapping(value, "parameter_envelope")
         if set(data) != {"min", "max"}:
             raise ProfileValidationError("parameter_envelope fields are not exact")

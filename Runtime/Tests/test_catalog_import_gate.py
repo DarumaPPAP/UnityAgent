@@ -101,6 +101,10 @@ class CatalogImportGateTests(unittest.TestCase):
         self.assertEqual(parsed.to_mapping(), generic)
         with self.assertRaisesRegex(Exception, "no camera reference scope"):
             _ = parsed.get("artist_subagent").default_scope
+        with self.assertRaisesRegex(Exception, "cannot authorize a mutation scope"):
+            parsed.get("artist_subagent").validate_scope({})
+        with self.assertRaisesRegex(Exception, "no reference value range"):
+            parsed.get("artist_subagent").validate_value(45)
         plan = _plan(generic)
         self.assertEqual(plan["status"], "blocked")
         self.assertTrue(any("protected_field_changed" in reason for reason in plan["blocking_reasons"]))
