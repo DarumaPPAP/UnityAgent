@@ -363,8 +363,15 @@ class UnityAgentControlPlane:
         runtime_provider_arguments = {name: dict(values) for name, values in (provider_arguments or {}).items()}
         if specialist_selection["status"] == "selected":
             # The immutable manifest is the only Specialist Context source for the backend.
+            specialist_execution_context = {
+                "schema_version": "1.0",
+                "context_id": view["context_id"],
+                "context_fingerprint": view["context_fingerprint"]["value"],
+                "specialist_context": deepcopy(view["specialist_context"]),
+            }
             runtime_provider_arguments["unity_artist_cli"] = {
                 **runtime_provider_arguments.get("unity_artist_cli", {}),
+                "specialist_execution_context": specialist_execution_context,
                 "specialist_context_manifest_path": str(manifest_path.resolve()),
             }
         for index, request in enumerate(handoff["capability_requests"]):

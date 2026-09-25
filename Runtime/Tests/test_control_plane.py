@@ -258,6 +258,10 @@ class ControlPlaneTests(unittest.TestCase):
     def artist_receipt_executor(request, context, arguments):
         manifest = json.loads(Path(arguments["specialist_context_manifest_path"]).read_text(encoding="utf-8"))
         view = manifest["materialized_context"]
+        execution_context = arguments["specialist_execution_context"]
+        assert execution_context["context_id"] == view["context_id"]
+        assert execution_context["context_fingerprint"] == view["context_fingerprint"]["value"]
+        assert execution_context["specialist_context"] == view["specialist_context"]
         return {"status": "passed", "provider_ref": "unity_artist_cli", "evidence": ["visual_capture"],
             "received_context_id": view["context_id"],
             "received_context_fingerprint": view["context_fingerprint"]["value"]}
