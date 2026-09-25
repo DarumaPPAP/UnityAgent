@@ -67,18 +67,14 @@ class ControlPlaneTests(unittest.TestCase):
             "request_id": "inspect-1",
             "entry_point": "codex_plugin",
             "project_root": str(self.project.resolve()),
-            "intent": {"kind": "project_inspection", "task_fingerprint": {
-                "intent": "review", "artifact": "project", "scope": "read_only", "failure_mode": "none",
-                "architecture_state": "decided", "mutation_target": "none", "evidence_state": "known"}},
+            "intent": {"kind": "project_inspection"},
         }
 
     def capture_request(self) -> dict:
         request = self.entry_request()
         request["intent"] = {"kind": "visual_capture", "visual_intent": "capture camera",
             "exact_scene_or_asset_scope": "Assets/Scenes/Main.unity",
-            "reference_or_visual_definition": "Main Camera image", "task_fingerprint": {
-                "intent": "review", "artifact": "visual", "scope": "project_asset", "failure_mode": "none",
-                "architecture_state": "decided", "mutation_target": "none", "evidence_state": "known"}}
+            "reference_or_visual_definition": "Main Camera image"}
         return request
 
     def make_artist_available(self) -> None:
@@ -157,21 +153,20 @@ class ControlPlaneTests(unittest.TestCase):
                 request[field] = value
                 with self.assertRaises(Exception):
                     validate_entry_request(request)
-        request = self.entry_request()
-        request["intent"]["task_fingerprint"]["project_access"] = "authorized"
-        with self.assertRaises(Exception):
-            validate_entry_request(request)
-        request = self.entry_request()
-        request["intent"]["route_id"] = "artist-lookdev"
-        with self.assertRaisesRegex(ValueError, "authority"):
-            validate_entry_request(request)
-        request = self.entry_request()
-        request["intent"]["task_fingerprint"]["artifact"] = "visual"
-        result = UnityAgentControlPlane(self.root / "forged-semantics").execute(request,
-            environment_snapshot=self.snapshot, context=ResolutionContext(policy_allowed=True),
-            executors={}, definition_fingerprint=fingerprint())
-        self.assertEqual(result["status"], "blocked")
-        self.assertEqual(result["results"], [])
+        for field in ("task_fingerprint", "intent", "artifact", "scope", "failure_mode",
+                      "architecture_state", "mutation_target", "evidence_state", "project_access",
+                      "route_id", "capability_requests", "context_id", "context_fingerprint"):
+            with self.subTest(nested_field=field):
+                request = self.entry_request()
+                request["intent"][field] = {"artifact": "visual"} if field == "task_fingerprint" else "forged"
+                with self.assertRaises(Exception):
+                    validate_entry_request(request)
+        for field in ("task_fingerprint", "route_id", "capability_requests", "context_id", "context_fingerprint"):
+            with self.subTest(top_field=field):
+                request = self.entry_request()
+                request[field] = "forged"
+                with self.assertRaises(Exception):
+                    validate_entry_request(request)
 
     def test_identical_intent_resolves_same_route_and_generated_requests(self) -> None:
         plane = UnityAgentControlPlane(self.root / "repeat-state")
@@ -185,6 +180,26 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertEqual(first["status"], second["status"])
         self.assertEqual(first["handoff"]["route_id"], second["handoff"]["route_id"])
         self.assertEqual(first["handoff"]["capability_requests"], second["handoff"]["capability_requests"])
+        proofs = [json.loads((plane.state_store.layout.root / result["orchestration_decision_ref"]).read_text(encoding="utf-8"))
+                  for result in (first, second)]
+        self.assertEqual(proofs[0]["task_fingerprint"], proofs[1]["task_fingerprint"])
+        self.assertEqual(proofs[0]["route_decision"], proofs[1]["route_decision"])
+        self.assertEqual(proofs[0]["task_fingerprint"]["evidence_state"], "unknown")
+
+    def test_visual_intent_projection_is_deterministic(self) -> None:
+        from Orchestration.Routing.route_selector import load_routes, select_route, task_fingerprint_from_intent
+        intent = self.capture_request()["intent"]
+        fingerprints = [task_fingerprint_from_intent(intent, self.snapshot,
+            project_root=str(self.project.resolve()), policy_allowed=True) for _ in range(2)]
+        self.assertEqual(fingerprints[0], fingerprints[1])
+        self.assertEqual(fingerprints[0]["evidence_state"], "not_applicable")
+        catalog = load_routes(ROOT / "Orchestration/Routing/task-routes.yaml")
+        routes = [select_route(item, catalog) for item in fingerprints]
+        self.assertEqual(routes[0], routes[1])
+        self.assertEqual(routes[0]["route_id"], "artist-lookdev")
+        with self.assertRaisesRegex(ValueError, "project access"):
+            task_fingerprint_from_intent(intent, self.snapshot,
+                project_root=str(self.project.resolve()), policy_allowed=False)
 
     def test_missing_required_context_blocks_before_provider(self) -> None:
         plane = UnityAgentControlPlane(self.root / "blocked-state")
@@ -192,11 +207,22 @@ class ControlPlaneTests(unittest.TestCase):
         request = self.capture_request()
         del request["intent"]["visual_intent"]
         called = []
-        result = plane.execute(request, environment_snapshot=self.snapshot,
-            context=ResolutionContext(policy_allowed=True), executors={"file": lambda *args: called.append(True)},
-            definition_fingerprint=fingerprint())
-        self.assertEqual(result["status"], "blocked")
-        self.assertIn("binding", result["reason"])
+        with self.assertRaises(Exception):
+            plane.execute(request, environment_snapshot=self.snapshot,
+                context=ResolutionContext(policy_allowed=True), executors={"file": lambda *args: called.append(True)},
+                definition_fingerprint=fingerprint())
+        self.assertEqual(called, [])
+
+    def test_unknown_and_mutation_intents_fail_before_dispatch(self) -> None:
+        called = []
+        for kind in ("unknown", "scene_mutation", "visual_optimization"):
+            with self.subTest(kind=kind):
+                request = self.entry_request()
+                request["intent"] = {"kind": kind}
+                with self.assertRaises(Exception):
+                    UnityAgentControlPlane(self.root / "unsupported-state").execute(request,
+                        environment_snapshot=self.snapshot, context=ResolutionContext(policy_allowed=True),
+                        executors={"file": lambda *_: called.append(True)}, definition_fingerprint=fingerprint())
         self.assertEqual(called, [])
 
     def test_artist_capture_uses_assembled_context_and_measured_budget(self) -> None:

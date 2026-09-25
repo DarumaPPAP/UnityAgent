@@ -33,7 +33,7 @@ Control Plane は既存 Persistence の immutable snapshot に Task Fingerprint�
 | 値 | 正本と生成元 |
 | --- | --- |
 | Project / Task 意図、承認参照 | Entry の明示 request。ただし Project access は EnvironmentSnapshot の bound 状態と Policy の許可でのみ current とする |
-| Task Fingerprint | Intent 内の７つの明示 semantic 次元と観測済み Project access。欠落・矛盾・未許可は停止 |
+| Task Fingerprint | Orchestration が２つの Typed Intent から決定的に投影し、Project access は EnvironmentSnapshot と Policy から生成。未知・欠落・未許可は停止 |
 | Primary Route / Execution Profile | `Orchestration/Routing/route_selector.py::select_route`。Entry の `route_id` / `execution_profile` は受理しない |
 | Active conditions / CapabilityRequest | `Orchestration/ToolRouting/capability_request_builder.py` と既存 capability-routing catalog。Entry の `capability_requests` は受理しない |
 | Node ID | 既存 ParentGraph の Runtime action node (`inspect_sources` / `execute_change`) を Orchestration が選ぶ |
@@ -41,7 +41,7 @@ Control Plane は既存 Persistence の immutable snapshot に Task Fingerprint�
 | Mutation Scope | read-only Pilot は空の scope を Orchestration が生成する。Entry の `mutation_scope` は受理しない。Mutation は既存の Project scope / Approval / source byte 観測を結ぶ projection が揃うまで dispatch 前に停止 |
 | Context ID / Fingerprint | UnityAgent Context Assembly のみ。Entry から受理しない |
 
-v2 Production は `project_inspection` / `visual_capture` の read-only outcome を解釈する。Mutation intent、無効な Task Fingerprint、要求 Outcome に合う Capability がない Route は dispatch 前に停止する。Camera FOV reference の既存 v1.1 専用 projection は一般の Artist Task Contract から生成できないため、旧 live runner の v2 移行は未完了であり、preflight / apply より前に明示停止する。専用 projection を Entry の任意値として再導入して通したことにはしない。
+v2 Production は `project_inspection` / `visual_capture` の read-only outcome を解釈する。Entry の７次元 Fingerprint は受理しない。`project_inspection` の事前 evidence は `unknown`、`visual_capture` は過去の障害 evidence を要求しないため `not_applicable` と投影する。Mutation intent、未知または不完全な Typed Intent、要求 Outcome に合う Capability がない Route は dispatch 前に停止する。Camera FOV reference の既存 v1.1 専用 projection は一般の Artist Task Contract から生成できないため、旧 live runner の v2 移行は未完了であり、preflight / apply より前に明示停止する。専用 projection を Entry の任意値として再導入して通したことにはしない。
 
 `artist-lookdev` が以前必須としていた Hub の外部 spec は、現在の Runtime が参照する同一 repository の canonical `subagent-catalog.yaml` に置き換えた。Hub を複製せず、外部取得の未観測値を恒久的に current 扱いしない。Local source は revision ごとに一度だけ Budget に算入し、複数の意味上の参照は `selected_refs` に保持する。
 

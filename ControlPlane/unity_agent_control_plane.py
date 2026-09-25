@@ -49,7 +49,9 @@ ENTRY_SCHEMA_PATH = Path("Runtime/Contracts/entry-request.schema.yaml")
 ENTRY_V2_SCHEMA_PATH = Path("Runtime/Contracts/entry-request.v2.schema.yaml")
 PROVIDER_ID_KEYS = frozenset({"provider", "provider_ref", "provider_id"})
 ENTRY_AUTHORITY_KEYS = frozenset({"route_id", "capability_requests", "context_id", "context_fingerprint",
-    "node_id", "execution_profile", "task_contract_runtime_projection", "mutation_scope", "validation_requirements"})
+    "node_id", "execution_profile", "task_contract_runtime_projection", "mutation_scope", "validation_requirements",
+    "task_fingerprint", "intent", "artifact", "scope", "failure_mode", "architecture_state",
+    "mutation_target", "evidence_state", "project_access"})
 
 
 def _now() -> str:

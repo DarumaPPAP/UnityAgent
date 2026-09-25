@@ -24,21 +24,18 @@ properties:
     type: string
     minLength: 1
   intent:
-    type: object
-    additionalProperties: true
-    required: [kind, task_fingerprint]
-    properties:
-      kind: {type: string, minLength: 1}
-      task_fingerprint:
-        type: object
-        additionalProperties: false
-        required: [intent, artifact, scope, failure_mode, architecture_state, mutation_target, evidence_state]
-        properties:
-          intent: {type: string, minLength: 1}
-          artifact: {type: string, minLength: 1}
-          scope: {type: string, minLength: 1}
-          failure_mode: {type: string, minLength: 1}
-          architecture_state: {type: string, minLength: 1}
-          mutation_target: {type: string, minLength: 1}
-          evidence_state: {type: string, minLength: 1}
+    oneOf:
+    - type: object
+      additionalProperties: false
+      required: [kind]
+      properties:
+        kind: {const: project_inspection}
+    - type: object
+      additionalProperties: false
+      required: [kind, visual_intent, exact_scene_or_asset_scope, reference_or_visual_definition]
+      properties:
+        kind: {const: visual_capture}
+        visual_intent: {type: string, minLength: 1, pattern: '\S'}
+        exact_scene_or_asset_scope: {type: string, minLength: 1, pattern: '\S'}
+        reference_or_visual_definition: {type: string, minLength: 1, pattern: '\S'}
   approval_ref: {type: [string, 'null'], minLength: 1}
