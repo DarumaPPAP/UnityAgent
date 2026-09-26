@@ -16,6 +16,11 @@ properties:
     - runtime_cancelled
     - runtime_permission_denied
     - runtime_tool_unavailable
+    - runner_unavailable
+    - structured_output_invalid
+    - context_binding_failed
+    - world_plan_contract_failed
+    - mutation_attempt_detected
   reason:
     type: string
     minLength: 1

@@ -15,7 +15,7 @@ Repository内の優先順位は `Policy/User/user-policy.yaml#instruction_priori
 2. `Orchestration/Routing/task-routes.yaml` で意図と範囲からRouteを選び、`Context/Selection/context-catalog.yaml` で必要なContext / Skill / Task Contractだけ解決する。選択Routeの`required_policy_clauses`をPolicy provenanceとして記録する。
 3. `Context/Assembly/materialize_context.py` でcurrent-call Contextを構築する。Context / Retrieval Budgetと圧縮時の必須制約保持は `Context/Budget/context-budget.yaml` に従う。
 4. bounded TaskはFast Pathを使う。Graph、Local Loop、SubAgentは分解・修復・独立並列作業が必要な場合にだけ利用する。
-5. Orchestrationは必要Capabilityを要求する。専門作業はSubAgent Definitionから適格なSubAgentを解決し、その後Runtime Tool Brokerが実行Backend Providerを解決・実行する。SubAgent / Providerの直接呼出しでApproval / Scopeを迂回しない。
+5. Orchestrationは必要Capabilityを要求する。専門作業はSubAgent Definitionから適格なSubAgentを解決する。Provider-backed CapabilityはRuntime Tool Brokerが実行Backendを解決・実行し、Providerless reasoningはCanonical Runtime HandoffからCodexRunnerが実行する。SubAgent / Providerの直接呼出しでApproval / Scopeを迂回しない。
 6. 変更リスクと必須Gateに応じて検証する。新しい変更・失敗・未解決リスクがなければ同じPASS検証を反復しない。
 7. 承認済み依頼に複数段階が含まれるなら全体のGoalまで継続する。依頼外の次Taskには進まない。LoopはGoal / Failureを基準とし、既存Retry Budgetを守る。
 
@@ -51,6 +51,6 @@ Policy追加の前にKnowledge / Retrieval / Tool / Harness / Eval / Architectur
 - SubAgentの `profile_id` が専門Agentの正本IDであり、`provider_id` は実行BackendのIDに限定する。Artistの正本名は `artist_subagent` / `ArtistSubAgent`、`unity_artist_cli` はBackend互換IDである。
 - Specialist の選出は Orchestration、型付き Fact / 明示 Decision / Skill / Policy の選別と Budget 記録は既存 Context Assembly が行う。未観測の項目や Budget `unmeasured` を実行可能として扱わない。詳細は `docs/architecture/specialist-context-assembly.md`。
 - SubAgentはoptional installとし、未インストール・未Bind・非互換・必要Environment Fact未成立のSubAgentを候補から除外する。RuntimeはCapabilityを満たすためにSubAgentを自動インストールしない。
-- UI / CodexはSubAgentやProviderへ直接到達しない。必ずEntry → UnityAgent Control Plane → Capability / Policy → SubAgent Resolver（必要時）→ Backend Provider Resolver → Evidenceを通る。
+- UI / CodexはSubAgentやProviderへ直接到達しない。必ずEntry → UnityAgent Control Plane → Capability / Policy → SubAgent Resolver（必要時）→ Runtime Handoffを通る。Tool CapabilityはBackend Provider Resolver、Providerless reasoningはCodexRunnerを経由し、Evidenceへ到達する。
 - Setupは `unity-agent doctor → setup plan → approval → setup apply` の順序で行い、InstallReceiptとEvidenceを残す。
 - Host Control PlaneはGitHubのremote bootstrapから直接導入できる。UPM PackageとCodex Pluginは同じGitHubリポジトリの別Entryとして扱い、bootstrapがProviderを直接実行しない。

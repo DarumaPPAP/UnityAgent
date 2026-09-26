@@ -9,6 +9,10 @@ class WorldPlanContractError(ValueError):
     pass
 
 
+class WorldPlanContextError(WorldPlanContractError):
+    pass
+
+
 RESULT_FIELDS = frozenset({"status", "profile_id", "capability", "execution_mode", "provider_resolution", "source_context_id", "source_context_fingerprint", "world_plan", "evidence_level", "known_limitations", "runtime_evaluation"})
 PLAN_FIELDS = frozenset({"world_goal", "scene_scope", "environment_type", "visual_intent", "zones", "camera_requirements", "lighting_requirements", "content_requirements", "technical_constraints", "performance_constraints", "platform_constraints", "prohibited_changes", "acceptance_criteria", "work_packages", "dependencies", "required_evidence", "open_decisions", "human_review_required", "direct_unity_mutation", "automatic_visual_acceptance"})
 PACKAGE_FIELDS = frozenset({"id", "goal", "scope", "domain_hint", "depends_on", "constraints", "acceptance_criteria", "required_evidence"})
@@ -48,8 +52,8 @@ def _validate_dependencies(packages: list[Mapping[str, Any]], edges: list[Mappin
         pending.difference_update(ready)
 
 
-def verify_world_plan(manifest: Mapping[str, Any], result: Mapping[str, Any]) -> dict[str, Any]:
-    """Generated Contextへの参照とWorld Planの静的安全境界を照合する。"""
+def verify_world_plan(manifest: Mapping[str, Any], result: Mapping[str, Any], *, runtime_observed: bool = False) -> dict[str, Any]:
+    """Generated Contextへの参照とWorld Planの安全境界を照合する。"""
     view = manifest.get("materialized_context")
     if not isinstance(view, Mapping) or not isinstance(view.get("specialist_context"), Mapping):
         raise WorldPlanContractError("World Specialist Context is missing")
@@ -62,8 +66,10 @@ def verify_world_plan(manifest: Mapping[str, Any], result: Mapping[str, Any]) ->
     if not isinstance(result, Mapping) or set(result) != RESULT_FIELDS:
         raise WorldPlanContractError("World Plan Result fields are not exact")
     if (result["source_context_id"], result["source_context_fingerprint"]) != expected:
-        raise WorldPlanContractError("source Context identity or fingerprint does not match generated Context")
-    if any(result[key] != value for key, value in {"status": "completed", "profile_id": "world_creator_subagent", "capability": "world.plan", "execution_mode": "planning_only", "provider_resolution": "not_required", "evidence_level": "static", "runtime_evaluation": "NOT_EVALUATED_RUNTIME"}.items()) or not _texts(result["known_limitations"]):
+        raise WorldPlanContextError("source Context identity or fingerprint does not match generated Context")
+    level = "runtime_reasoning" if runtime_observed else "static"
+    evaluation = "RUNTIME_OBSERVED" if runtime_observed else "NOT_EVALUATED_RUNTIME"
+    if any(result[key] != value for key, value in {"status": "completed", "profile_id": "world_creator_subagent", "capability": "world.plan", "execution_mode": "planning_only", "provider_resolution": "not_required", "evidence_level": level, "runtime_evaluation": evaluation}.items()) or not _texts(result["known_limitations"]):
         raise WorldPlanContractError("World Plan Result claims invalid execution or evidence")
     plan = result["world_plan"]
     if not isinstance(plan, Mapping) or set(plan) != PLAN_FIELDS:
@@ -113,4 +119,4 @@ def verify_world_plan(manifest: Mapping[str, Any], result: Mapping[str, Any]) ->
     if not isinstance(plan["dependencies"], list):
         raise WorldPlanContractError("dependencies must be a list")
     _validate_dependencies(packages, plan["dependencies"])
-    return {"status": "fixture_contract_verified", "evidence_type": "world_plan", "evidence_level": "static", "runtime_evaluation": "NOT_EVALUATED_RUNTIME"}
+    return {"status": "runtime_contract_verified" if runtime_observed else "fixture_contract_verified", "evidence_type": "world_plan", "evidence_level": level, "runtime_evaluation": evaluation}

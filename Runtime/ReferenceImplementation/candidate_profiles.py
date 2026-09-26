@@ -14,6 +14,7 @@ PROFILE_ID = re.compile(r"^[a-z][a-z0-9_]*_subagent$")
 CAPABILITY_ID = re.compile(r"^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$")
 CONTEXT_KEY = re.compile(r"^(?:project_fact|project_decision|platform_fact|platform_decision|task_fact):[a-z][a-z0-9_]*$")
 PROFILE_FIELDS = {"profile_id", "display_name", "audience", "goal_type", "capabilities", "required_evidence", "execution_mode", "provider_resolution", "runtime_evaluation", "activation", "compatibility", "capability_context"}
+REASONING_FIELDS = {"output_contract_ref", "instructions_ref"}
 
 
 class CandidateProfileError(ValueError):
@@ -29,7 +30,7 @@ def _texts(value: Any, name: str, pattern: re.Pattern[str] | None = None, *, all
 
 
 def validate_candidate_profile(profile: Any) -> dict[str, Any]:
-    if not isinstance(profile, dict) or set(profile) != PROFILE_FIELDS:
+    if not isinstance(profile, dict) or set(profile) != PROFILE_FIELDS | (REASONING_FIELDS if isinstance(profile, dict) and profile.get("execution_mode") == "planning_only" else set()):
         raise CandidateProfileError("Candidate Profile fields are not exact")
     if not isinstance(profile["profile_id"], str) or PROFILE_ID.fullmatch(profile["profile_id"]) is None:
         raise CandidateProfileError("invalid candidate profile_id")
@@ -43,6 +44,11 @@ def validate_candidate_profile(profile: Any) -> dict[str, Any]:
     execution_contracts = {"read_only_analysis": ("runtime_tool_broker", True), "planning_only": ("not_required", False)}
     if profile["execution_mode"] not in execution_contracts or profile["provider_resolution"] != execution_contracts[profile["execution_mode"]][0] or profile["runtime_evaluation"] != "NOT_EVALUATED_RUNTIME":
         raise CandidateProfileError("unsupported Candidate execution contract")
+    if profile["execution_mode"] == "planning_only":
+        if not isinstance(profile["output_contract_ref"], str) or re.fullmatch(r"Runtime/Contracts/[a-z0-9-]+\.schema\.json", profile["output_contract_ref"]) is None:
+            raise CandidateProfileError("planning output contract reference is invalid")
+        if not isinstance(profile["instructions_ref"], str) or re.fullmatch(r"\.agents/skills/[a-z0-9-]+/SKILL\.md", profile["instructions_ref"]) is None:
+            raise CandidateProfileError("planning instructions reference is invalid")
     activation = profile["activation"]
     if not isinstance(activation, dict) or set(activation) != {"required_environment"}:
         raise CandidateProfileError("activation fields are not exact")

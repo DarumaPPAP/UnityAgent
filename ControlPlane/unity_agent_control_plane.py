@@ -40,8 +40,14 @@ from Runtime.Tooling.capability_resolver import ResolutionContext
 from Runtime.Tooling.provider_registry import RuntimeProviderRegistry
 from Runtime.Tooling.tool_broker import ToolBroker
 from Runtime.Contracts.capability_contract import validate_capability_request
+from Runtime.Contracts.runtime_handoff import validate_runtime_handoff
+from Runtime.Contracts.reasoning_output import ReasoningOutputContractError, verify_reasoning_artifact
 from Runtime.Contracts.toolchain_setup_contract import validate_toolchain_setup_request
 from Runtime.ReferenceImplementation.authority import ApprovalDecisionResolver
+from Runtime.ReferenceImplementation.candidate_profiles import load_candidate_profile
+from Runtime.Handoff.reasoning_runtime import ContextBindingError, execute_reasoning
+from Runtime.Runner.Codex.codex_runner import CodexRunnerError
+from Runtime.ReferenceImplementation.world_planning import WorldPlanContextError
 from ControlPlane.reference_camera_fov import execute_camera_fov_reference, is_camera_fov_reference_request
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -51,7 +57,7 @@ PROVIDER_ID_KEYS = frozenset({"provider", "provider_ref", "provider_id"})
 ENTRY_AUTHORITY_KEYS = frozenset({"route_id", "capability_requests", "context_id", "context_fingerprint",
     "node_id", "execution_profile", "task_contract_runtime_projection", "mutation_scope", "validation_requirements",
     "task_fingerprint", "intent", "artifact", "scope", "failure_mode", "architecture_state",
-    "mutation_target", "evidence_state", "project_access"})
+    "mutation_target", "evidence_state", "project_access", "execution_mode", "provider_resolution", "runtime_action", "output_contract_ref"})
 
 
 def _now() -> str:
@@ -183,8 +189,14 @@ class UnityAgentControlPlane:
         definition_fingerprint: Mapping[str, Any],
         provider_arguments: Mapping[str, Mapping[str, Any]] | None = None,
         run_id: str | None = None,
+        specialist_pilot_enabled: bool = False,
+        reasoning_model: str | None = None,
+        reasoning_model_revision: str | None = None,
+        reasoning_effort: str = "high",
+        reasoning_timeout_seconds: float = 120.0,
+        reasoning_command_prefix: list[str] | None = None,
     ) -> dict[str, Any]:
-        """Run Entry -> Orchestration -> ToolBroker -> Provider -> Evidence."""
+        """Run Entry and Orchestration through the selected runtime handoff, then record Evidence."""
         validate_entry_request(entry_request)
         if entry_request["schema_version"] == "1.0":
             raise ValueError("Entry v1 migration required: use v2 without caller-supplied Context identity")
@@ -223,12 +235,19 @@ class UnityAgentControlPlane:
         except ValueError as exc:
             return {"schema_version": "2.0", "status": "blocked", "run_id": resolved_run_id,
                     "reason": str(exc), "results": [], "evidence_refs": []}
-        specialist_selection = resolve_specialist(route_id, selected_capability or capabilities[0], snapshot)
+        try:
+            inputs = derive_context_inputs(str(entry_request["project_root"]), snapshot, intent)
+        except ValueError as exc:
+            return {"schema_version": "2.0", "status": "blocked", "run_id": resolved_run_id, "reason": str(exc), "results": [], "evidence_refs": []}
+        specialist_selection = resolve_specialist(route_id, selected_capability or capabilities[0], snapshot, pilot_enabled=specialist_pilot_enabled, context_items=inputs["specialist_items"])
         if specialist_selection["status"] in {"unavailable", "unsupported"}:
             return {"schema_version": "2.0", "status": "blocked", "run_id": resolved_run_id,
                     "reason": f"Specialist {specialist_selection['status']}: {selected_capability}", "results": [], "evidence_refs": []}
+        project_path = Path(entry_request["project_root"]).resolve()
+        persistence_roots = (self.state_store.layout.root, self.evidence_store.layout.root)
+        if specialist_selection.get("execution_mode") == "planning_only" and any(root == project_path or project_path in root.parents for root in persistence_roots):
+            return {"schema_version": "2.0", "status": "blocked", "run_id": resolved_run_id, "reason": "reasoning Persistence root must be outside the original Project", "results": [], "evidence_refs": []}
         try:
-            inputs = derive_context_inputs(str(entry_request["project_root"]), snapshot, intent)
             manifest = build_context_manifest(resolved_run_id, route_id, project_facts=inputs["project_facts"],
                 bindings=inputs["bindings"], capability_ids=capabilities, active_conditions=conditions,
                 specialist_selection=specialist_selection,
@@ -254,6 +273,10 @@ class UnityAgentControlPlane:
         definition_fingerprint = {**definition_fingerprint,
             "policy_revision": view["definition_fingerprint"]["policy_revision"],
             "context_revision": view["definition_fingerprint"]["context_revision"]}
+        runtime_action = {"kind": "capability_dispatch"}
+        if specialist_selection["status"] == "selected" and specialist_selection.get("execution_mode") == "planning_only":
+            candidate = load_candidate_profile(specialist_selection["profile_id"])
+            runtime_action = {"kind": "specialist_reasoning", "profile_id": candidate["profile_id"], "capability": selected_capability, "execution_mode": candidate["execution_mode"], "provider_resolution": candidate["provider_resolution"], "output_contract_ref": candidate["output_contract_ref"], "instructions_ref": candidate["instructions_ref"]}
         handoff = runtime_handoff(
             run_id=resolved_run_id,
             node_id=node_id,
@@ -265,7 +288,10 @@ class UnityAgentControlPlane:
             mutation_scope=mutation_scope,
             validation_requirements=requirements,
             capability_requests=capability_requests,
+            runtime_action=runtime_action,
+            definition_fingerprint=dict(definition_fingerprint),
         )
+        validate_runtime_handoff(handoff)
         routing_proof = {"task_fingerprint": task_fingerprint, "route_decision": route_decision,
             "active_conditions": sorted(conditions), "task_contract_projection": projection,
             "capability_requests": handoff["capability_requests"], "candidate_capability_requests": candidate_requests,
@@ -421,6 +447,48 @@ class UnityAgentControlPlane:
                 node_id=capability_step_id,
                 evidence_refs=evidence_refs,
             )
+
+        if runtime_action["kind"] == "specialist_reasoning" and all(item.get("status") == "completed" for item in results):
+            reasoning_output = self.state_store.layout.run_root(resolved_run_id) / "runtime" / node_id
+            execution_result, artifact, artifact_ref = None, None, None
+            try:
+                if not reasoning_model:
+                    raise CodexRunnerError("host-selected reasoning model is unavailable")
+                execution_result, artifact = execute_reasoning(handoff, manifest, original_project=Path(entry_request["project_root"]), output=reasoning_output, model=reasoning_model, model_revision=reasoning_model_revision, command_prefix=reasoning_command_prefix, timeout_seconds=reasoning_timeout_seconds, reasoning_effort=reasoning_effort)
+                failure = execution_result.get("runtime_failure")
+                if execution_result["status"] == "passed":
+                    verify_reasoning_artifact(runtime_action["output_contract_ref"], manifest, artifact)
+                    artifact_path = self.state_store.layout.snapshot(resolved_run_id, "reasoning-artifact", sha256_json(artifact))
+                    write_immutable_json(artifact_path, artifact)
+                    artifact_ref = relative_ref(self.state_store.layout.root, artifact_path)
+                else:
+                    artifact_ref = None
+            except CodexRunnerError as exc:
+                failure = {"failure_class": "runner_unavailable", "reason": str(exc)}
+                execution_result, artifact, artifact_ref = None, None, None
+            except (ContextBindingError, WorldPlanContextError) as exc:
+                failure = {"failure_class": "context_binding_failed", "reason": str(exc)}
+                artifact_ref = None
+            except ReasoningOutputContractError as exc:
+                failure = {"failure_class": "runtime_protocol_failure", "reason": str(exc)}
+                artifact_ref = None
+            except ValueError as exc:
+                failure = {"failure_class": "world_plan_contract_failed", "reason": str(exc)}
+                artifact_ref = None
+            if execution_result is not None and failure and execution_result["status"] == "passed":
+                execution_result = {**execution_result, "status": "failed", "runtime_failure": {"schema_version": "1.0", "failure_class": failure["failure_class"], "reason": failure["reason"], "retryable": False, "source_ref": "response.json", "observation_state": "observed"}}
+            reasoning_status = "completed" if artifact_ref else "blocked"
+            outcome = {"status": reasoning_status, "capability": runtime_action["capability"], "runtime_action": "specialist_reasoning", "output_contract_ref": runtime_action["output_contract_ref"], "artifact_ref": artifact_ref, "runtime_failure": failure}
+            if execution_result is not None:
+                execution_path = self.state_store.layout.snapshot(resolved_run_id, "reasoning-execution", sha256_json(execution_result))
+                write_immutable_json(execution_path, execution_result)
+                outcome["execution_ref"] = relative_ref(self.state_store.layout.root, execution_path)
+            evidence_id = f"{resolved_run_id}-reasoning-evidence"
+            evidence = {"schema_version": "1.1", "evidence_id": evidence_id, "run_id": resolved_run_id, "step_id": node_id, "source_type": "reasoning_execution", "source_ref": outcome.get("execution_ref"), "timestamp": _now(), "hash": sha256_json(artifact) if artifact_ref else None, "producer": "Runtime/CodexRunner", "verification_status": "passed" if artifact_ref else "failed", "provenance": ["runtime_handoff", "codex_runner", "schema_validation", "semantic_validation", "context_binding", "workspace_mutation_observation"], "payload_ref": artifact_ref, "gate_outcome": None, "definition_fingerprint": dict(definition_fingerprint)}
+            self.evidence_store.append(evidence)
+            evidence_refs.append(evidence_id)
+            outcome["evidence_ref"] = evidence_id
+            results.append(outcome)
 
         final_status = "completed" if all(item.get("status") == "completed" for item in results) else "blocked"
         state_ref = self._save_execution_state(

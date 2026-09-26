@@ -1,6 +1,7 @@
 """Workspace path confinement and deterministic snapshot/change observation."""
 from __future__ import annotations
 from pathlib import Path, PurePosixPath
+import hashlib
 
 
 class WorkspaceGuardError(ValueError):
@@ -44,3 +45,15 @@ def snapshot_workspace(workspace: Path, *, excluded_prefixes: tuple[str, ...] = 
 
 def changed_paths(before: dict[str, bytes], after: dict[str, bytes]) -> list[str]:
     return sorted(path for path in set(before) | set(after) if before.get(path) != after.get(path))
+
+
+def snapshot_workspace_hashes(workspace: Path) -> dict[str, str]:
+    """Observe original project contents without copying them into reasoning memory."""
+    snapshot: dict[str, str] = {}
+    for path in sorted(item for item in workspace.rglob("*") if item.is_file()):
+        digest = hashlib.sha256()
+        with path.open("rb") as source:
+            for chunk in iter(lambda: source.read(1024 * 1024), b""):
+                digest.update(chunk)
+        snapshot[path.relative_to(workspace).as_posix()] = digest.hexdigest()
+    return snapshot

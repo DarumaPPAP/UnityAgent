@@ -103,6 +103,7 @@ routes:
       mutation_target: [none, source, shader_source, renderer_pipeline]
       evidence_state: [baseline_required, known, partial]
   world-creation:
+    forced_profile: generic_planning
     specialist_profile: world_creator_subagent
     specialist_pilot: true
     specialist_phase: planning
