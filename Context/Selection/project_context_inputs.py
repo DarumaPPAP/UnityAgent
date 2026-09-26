@@ -22,7 +22,7 @@ def derive_context_inputs(project_root: str, snapshot: dict[str, Any], intent: d
     fact = {"key": "unity_version", "value": version, "source_kind": "detected_project",
             "source_path": str(source), "revision": revision, "observed_at_attempt": attempt,
             "freshness": freshness, "reason": "reobserved ProjectVersion.txt and matched bound EnvironmentSnapshot"}
-    specialist_tags = {"project_inspection": "project", "visual_capture": "camera", "rendering_diagnosis": "rendering", "performance_analysis": "performance"}
+    specialist_tags = {"project_inspection": "project", "visual_capture": "camera", "rendering_diagnosis": "rendering", "performance_analysis": "performance", "world_planning": "world"}
     try:
         specialist_tag = specialist_tags[intent["kind"]]
     except KeyError as exc:
@@ -37,10 +37,11 @@ def derive_context_inputs(project_root: str, snapshot: dict[str, Any], intent: d
         items.append({"category": "platform_fact", "key": "requested_target", "value": platform,
                       "source": "EnvironmentSnapshot.build.requested_target", "revision": environment_revision,
                       "freshness": freshness, "observed_at_attempt": attempt, "tags": [specialist_tag]})
-    scope = intent.get("target_scope") if specialist_tag in {"rendering", "performance"} else intent.get("exact_scene_or_asset_scope")
+    scope_key = {"world": "scene_scope", "rendering": "target_scope", "performance": "target_scope", "camera": "exact_scene_or_asset_scope"}.get(specialist_tag)
+    scope = intent.get(scope_key) if scope_key else None
     if isinstance(scope, str) and scope:
         items.append({"category": "task_fact", "key": "requested_scope", "value": scope,
-                      "source": "user:request.intent.target_scope" if specialist_tag in {"rendering", "performance"} else "user:request.intent.exact_scene_or_asset_scope", "revision": request_revision,
+                      "source": f"user:request.intent.{scope_key}", "revision": request_revision,
                       "freshness": freshness, "observed_at_attempt": attempt, "tags": [specialist_tag], "required": True})
     if specialist_tag == "rendering":
         items.append({"category": "task_fact", "key": "rendering_symptom", "value": intent["symptom"], "source": "user:request.intent.symptom", "revision": request_revision, "freshness": freshness, "observed_at_attempt": attempt, "tags": [specialist_tag], "required": True})
@@ -48,11 +49,17 @@ def derive_context_inputs(project_root: str, snapshot: dict[str, Any], intent: d
         items.append({"category": "task_fact", "key": "performance_symptom", "value": intent["symptom"], "source": "user:request.intent.symptom", "revision": request_revision, "freshness": freshness, "observed_at_attempt": attempt, "tags": [specialist_tag], "required": True})
         if intent.get("comparison_requested"):
             items.append({"category": "task_fact", "key": "analysis_mode", "value": "comparison_requested", "source": "user:request.intent.comparison_requested", "revision": request_revision, "freshness": freshness, "observed_at_attempt": attempt, "tags": [specialist_tag]})
+    if specialist_tag == "world":
+        for key in ("world_goal", "environment_type", "desired_mood", "target_platforms", "prohibited_changes", "acceptance_criteria"):
+            if key in intent:
+                items.append({"category": "task_fact", "key": key, "value": intent[key], "source": f"user:request.intent.{key}", "revision": request_revision, "freshness": freshness, "observed_at_attempt": attempt, "tags": [specialist_tag], "required": key == "world_goal"})
     bindings: dict[str, Any] = {"project_root": {"value": str(observed["root"]), "source_kind": "environment_snapshot",
         "revision": environment_revision, "freshness": freshness}}
     if isinstance(intent.get("kind"), str) and intent["kind"]:
         bindings["goal"] = {"value": intent["kind"], "source_kind": "user_request",
                             "revision": request_revision, "freshness": freshness}
+    if specialist_tag == "world":
+        bindings["scene_scope"] = {"value": intent["scene_scope"], "source_kind": "user_request", "revision": request_revision, "freshness": freshness}
     for key in ("visual_intent", "exact_scene_or_asset_scope", "reference_or_visual_definition"):
         value = intent.get(key)
         if isinstance(value, str) and value:
@@ -63,5 +70,7 @@ def derive_context_inputs(project_root: str, snapshot: dict[str, Any], intent: d
         required_keys.add("task_fact:rendering_symptom")
     if specialist_tag == "performance":
         required_keys.add("task_fact:performance_symptom")
+    if specialist_tag == "world":
+        required_keys.add("task_fact:world_goal")
     return {"project_facts": [fact], "specialist_items": items, "bindings": bindings,
             "specialist_tags": {specialist_tag}, "required_specialist_keys": required_keys}

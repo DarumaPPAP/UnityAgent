@@ -1,0 +1,23 @@
+schema_version: "1.0"
+kind: world_planning_candidate_contract
+status: pilot_unregistered
+identity: world_creator_subagent
+compatibility:
+  unity_version: Unity 6.x+
+capabilities:
+  world.plan:
+    mode: planning_only
+    requires: [bound_project_identity, world_goal, scene_scope]
+    returns: [structured_world_plan, work_packages, dependencies, required_evidence, open_decisions, human_review_required]
+boundaries:
+  route_reuse: [world-creation]
+  excludes: [provider_selection, global_routing, direct_specialist_dispatch, mutation_apply, scene_mutation, save, bake, automatic_visual_acceptance]
+  mutation: prohibited_during_pilot
+  provider_resolution: not_required
+  unsupported_behavior: explicit_unsupported
+  unavailable_behavior: explicit_unavailable_no_fallback
+evidence:
+  required_type: world_plan
+  levels: [static]
+  unobserved_runtime: NOT_EVALUATED_RUNTIME
+  receipt: not_required_source_context_binding

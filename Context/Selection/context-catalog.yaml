@@ -50,6 +50,10 @@ routes:
     context_pack: Context/Packs/performance.yaml
     primary_skill: .agents/skills/unity-runtime-evidence/SKILL.md
     task_contract: Orchestration/Contracts/TaskContracts/performance-experiment.yaml
+  world-creation:
+    context_pack: Context/Packs/world-creation.yaml
+    primary_skill: .agents/skills/unity-architecture-design/SKILL.md
+    task_contract: Orchestration/Contracts/TaskContracts/world-creation.yaml
   asset-data-change:
     context_pack: Context/Packs/asset-data-change.yaml
     primary_skill: .agents/skills/csharp-safe-patch/SKILL.md

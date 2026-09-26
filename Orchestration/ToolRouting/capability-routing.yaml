@@ -64,6 +64,11 @@ routes:
       - {capability: project.inspect, operation_kind: read, required_evidence: [project_fact], preferred_surface: project, when: always}
       - {capability: profiler.observe, operation_kind: read, required_evidence: [profiler_observation], preferred_surface: live_editor, when: runtime_measurement_needed}
       - {capability: player.observe, operation_kind: player_observe, required_evidence: [player_observation], preferred_surface: player, when: player_observation_needed}
+  world-creation:
+    candidate_capabilities:
+      - {capability: world.plan, operation_kind: read, required_evidence: [world_plan], preferred_surface: project, when: always}
+    capabilities:
+      - {capability: project.inspect, operation_kind: read, required_evidence: [project_fact], preferred_surface: project, when: always}
   asset-data-change:
     capabilities:
       - {capability: project.inspect, operation_kind: read, required_evidence: [project_fact], preferred_surface: project, when: always}

@@ -20,6 +20,10 @@
 
 Candidate SpecialistはProduction Catalogと別の `Runtime/ReferenceImplementation/candidate-specialists.yaml` から参照する。Routeの `specialist_profile` は専門的な意味解析のOwnerを示し、ApplyやProvider解決のOwnerではない。`specialist_phase: analysis` の候補は `entry_action: implement` のRouteでも診断・事前確認・提案Diffまでを担当する。Taskの変更要求とSpecialist Capability自身の変更権限を区別する。ActivationはProject存在、読み取り可能性、対応Unity Versionを判定し、Capability ContextはRender Pipelineや対象Source等の観測事実を別途要求する。欠落Factは `required_context_missing` として停止し、推測しない。
 
+WorldCreator Candidateは`execution_mode: planning_only`、`provider_resolution: not_required`、`receipt_required: false`を組合せで検証し、`world-creation` Routeの`specialist_phase: planning`へ束縛する。`world.plan`はStructured World Plan Artifactを返し、UnityAgentが後続のRoute、Policy、Approval、Capabilityを再解決する。Work Packageの`domain_hint`はRoute決定ではない。Providerless CandidateにProvider、ProviderResult、Generated→Transported→Received Receiptを作らず、Plan Artifactの`source_context_id`と`source_context_fingerprint`を生成元Manifestに照合する。Pilotの静的fixtureはPlanning reasoningのProduction実行を証明しない。
+
+WorldCreatorのProduction登録は`BLOCKED_BY_ARCHITECTURE`である。Hub Manifest v4はBackendを1件以上要求し、Production `SubAgentProfile`とCatalog Import GateはProvider bindingを要求する。Planner reasoningをどのExecution Surfaceが実行するか未定義のため、Production SchemaやRegistryを緩めず、架空の内部Providerも追加しない。Production昇格前にExecution Authorityを決定し、その経路のEvidenceとReviewを検証する。
+
 Specialist CapabilityはEntry Intentの分岐で決めない。OrchestrationのRouteが生成するProduction CapabilityRequestとCandidate用の意味的CapabilityRequestを集め、Routeに束縛されたProfileのCapability集合と交差させる。一致が0件または複数件なら停止する。Candidate用の要求はProduction dispatchへ渡さず、Provider Registryへの架空Graphics Provider登録も行わない。`goal_type` とHubの旧 `primary_capability` は実行時選択に使わない。
 
 Specialist 項目の型は `project_fact`、`project_decision`、`platform_fact`、`platform_decision`、`task_fact`。それぞれ key、value、tag、source、SHA-256 revision、freshness を保持する。Fact は観測 attempt を指定する。Decision は `user:` または `project_policy:` に由来する明示的な判断に限定する。unknown／stale／別 attempt の情報は採用しない。必須情報が無ければ生成を停止し、Budget 超過でも必須情報を捨てない。全項目を一つの選択済み Specialist bundle として測定し、その全 byte 数と出典を記録する。

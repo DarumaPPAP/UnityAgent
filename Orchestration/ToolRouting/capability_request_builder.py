@@ -31,6 +31,8 @@ def conditions_for_intent(intent: dict[str, Any], fingerprint: dict[str, str]) -
         return {"project_fact_needed"}
     if kind == "performance_analysis" and fingerprint["artifact"] == "performance" and fingerprint["failure_mode"] == "performance":
         return {"project_fact_needed"}
+    if kind == "world_planning" and fingerprint["artifact"] == "world" and fingerprint["mutation_target"] == "none":
+        return {"project_fact_needed"}
     raise ValueError(f"no verified Capability conditions for intent kind: {kind}")
 
 

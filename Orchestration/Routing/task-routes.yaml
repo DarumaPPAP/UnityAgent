@@ -102,6 +102,18 @@ routes:
       failure_mode: [performance]
       mutation_target: [none, source, shader_source, renderer_pipeline]
       evidence_state: [baseline_required, known, partial]
+  world-creation:
+    specialist_profile: world_creator_subagent
+    specialist_pilot: true
+    specialist_phase: planning
+    priority: 95
+    entry_action: plan
+    design_review: required
+    fingerprint_match:
+      intent: [design, plan]
+      artifact: [world]
+      scope: [project_asset]
+      mutation_target: [none]
   asset-data-change:
     priority: 90
     entry_action: implement

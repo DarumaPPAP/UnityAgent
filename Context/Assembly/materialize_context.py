@@ -303,6 +303,9 @@ def materialize_context(
             specialist_context = {"profile_id": profile_id, "capability": capability,
                                   "skill": specialist_skill, "policy": specialist_policies, "items": entries,
                                   "required_evidence": list(required_evidence)}
+            if "execution_mode" in specialist_selection and "provider_resolution" in specialist_selection:
+                specialist_context["execution_mode"] = specialist_selection["execution_mode"]
+                specialist_context["provider_resolution"] = specialist_selection["provider_resolution"]
             # One selected bundle is one retrieval artifact; account for all of its payload bytes.
             specialist_sizes = [len(yaml.safe_dump(entries, allow_unicode=True, sort_keys=True).encode("utf-8"))]
         elif specialist_items or specialist_skill_ref or required_specialist_keys:

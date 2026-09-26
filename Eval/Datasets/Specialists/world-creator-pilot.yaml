@@ -1,0 +1,48 @@
+schema_version: '1.0'
+kind: specialist_pilot_cases
+specialist_candidate: world_creator_subagent
+status: pending_live_evaluation
+promotion_decision: requires_human_review
+comparison_arms:
+  A: unity_agent_generic_planning
+  B: unity_agent_with_world_planning_skill
+  C: unity_agent_with_world_creator_specialist
+common_context: [unity_version, scene_scope, world_goal, target_platforms, prohibited_changes, acceptance_criteria]
+required_metrics:
+  - goal_preservation
+  - plan_completeness
+  - dependency_quality
+  - open_decision_detection
+  - hidden_decision_count
+  - unnecessary_work_packages
+  - domain_hint_quality
+  - evidence_requirement_quality
+  - context_usage
+  - token_usage
+  - trace_clarity
+cases:
+  - id: dungeon
+    task: 地下ダンジョンのGoalをZones、Lighting、Work Packagesへ分解する
+    expected_route: world-creation
+    required_plan_sections: [zones, lighting_requirements, work_packages, dependencies]
+    expected_boundary: Sceneを直接変更しない
+  - id: boss_arena
+    task: Boss ArenaのCamera、Visual、Graphics、Performance要件を分解する
+    expected_route: world-creation
+    required_plan_sections: [camera_requirements, work_packages, required_evidence]
+    expected_boundary: domain_hintからSubAgentを直接Dispatchしない
+  - id: live_stage
+    task: Live Stageの演出意図とHuman Review要件を保持する
+    expected_route: world-creation
+    required_plan_sections: [visual_intent, acceptance_criteria, open_decisions]
+    expected_boundary: automatic_visual_acceptanceはfalse
+  - id: multi_zone_world
+    task: 複数Zoneの依存関係を分解する
+    expected_route: world-creation
+    required_plan_sections: [zones, work_packages, dependencies]
+    expected_boundary: 依存の循環を作らない
+  - id: existing_scene_expansion
+    task: 既存Sceneを制約付きで拡張するPlanを作る
+    expected_route: world-creation
+    required_plan_sections: [scene_scope, prohibited_changes, work_packages]
+    expected_boundary: 既存Sceneと禁止変更を保持する

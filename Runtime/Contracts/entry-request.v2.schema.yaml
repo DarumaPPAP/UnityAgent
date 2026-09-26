@@ -54,4 +54,16 @@ properties:
         symptom: {type: string, minLength: 1, pattern: '\S'}
         target_scope: {type: string, minLength: 1, pattern: '\S'}
         comparison_requested: {type: boolean}
+    - type: object
+      additionalProperties: false
+      required: [kind, world_goal, scene_scope]
+      properties:
+        kind: {const: world_planning}
+        world_goal: {type: string, minLength: 1, pattern: '\S'}
+        scene_scope: {type: string, minLength: 1, pattern: '\S'}
+        environment_type: {type: string, minLength: 1, pattern: '\S'}
+        desired_mood: {type: string, minLength: 1, pattern: '\S'}
+        target_platforms: {type: array, minItems: 1, items: {type: string, minLength: 1, pattern: '\S'}, uniqueItems: true}
+        prohibited_changes: {type: array, items: {type: string, minLength: 1, pattern: '\S'}, uniqueItems: true}
+        acceptance_criteria: {type: array, items: {type: string, minLength: 1, pattern: '\S'}, uniqueItems: true}
   approval_ref: {type: [string, 'null'], minLength: 1}

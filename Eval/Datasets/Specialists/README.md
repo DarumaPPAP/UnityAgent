@@ -4,7 +4,11 @@
 
 `performance-pilot.yaml` はPerformanceSubAgent候補のA/B/C評価ケース、`performance-pilot-instructions.md` はC ArmのRead-only指示です。CPU / GPU / GC / Memory / 比較 / Target固有の6ケースを定義します。DatasetとComparator入力だけを用意しており、Live実行とProduction昇格判断は未実施です。Promotionは`requires_human_review`です。
 
-実行結果は同一 `task_id` のContext Manifest、Runtime result、永続化済みEvidenceと人手Reviewを各Armで記録します。`Eval/Regression/compare_specialist_promotion.py` は既存のContext / Evidence検証を再利用し、Context bytes / tokens、不要Context、Tool call / Retry、誤前提、Tool選択誤り、Approval違反、未裏付けClaim、Trace可読性、Latencyを比較します。Context Receiptが不正なC Armは拒否します。ComparatorはProduction昇格を自動決定しません。
+`world-creator-pilot.yaml`はWorldCreatorのDungeon / Boss Arena / Live Stage / Multi-zone / Existing Sceneの5ケースです。AはUnityAgent generic planning、BはWorld planning Skill、CはWorldCreator候補を比較します。Providerless C ArmではProvider Receiptを要求せず、Plan Artifactのsource Context ID / Fingerprintを検証します。Live評価は未実施で、Promotionは`requires_human_review`です。
+
+World PlanningのA/B/C記録は`Eval/Regression/compare_world_planning_promotion.py`へ渡す。各Armに同一`task_id`、Context Manifest、Plan Artifact、人手Review指標を記録し、B Armに選択Skill、C Armに生成元Contextを参照するWorld Plan Resultを含める。比較器はC Armの静的契約を検証し、Winnerを決めない。Fixture入力と実際に記録したPlanning runは`run_kind`で分離し、どちらもUnity Runtime Evidenceへ昇格しない。
+
+実行結果は同一 `task_id` のContext Manifest、Runtime result、永続化済みEvidenceと人手Reviewを各Armで記録します。`Eval/Regression/compare_specialist_promotion.py` は既存のContext / Evidence検証を再利用し、Context bytes / tokens、不要Context、Tool call / Retry、誤前提、Tool選択誤り、Approval違反、未裏付けClaim、Trace可読性、Latencyを比較します。Provider-backed C ArmのContext Receiptが不正な場合は拒否します。WorldCreatorのProviderless Planは別のsource Context binding契約で検証します。ComparatorはProduction昇格を自動決定しません。
 
 Graphicsの初期PilotはRead-onlyです。RendererFeatureやShaderのMutationは、実測Eval、Exact Diff、Approval、実行Providerの契約を確認した後に独立して扱います。`rendering-incident`、`shader-change`、`renderer-feature-change` の既存Routeを優先し、Route数をSpecialist数に合わせて増やしません。
 
