@@ -1,0 +1,28 @@
+profile_id: graphics_subagent
+display_name: GraphicsSubAgent
+audience: graphics_subagent
+goal_type: graphics.diagnose
+capabilities: [graphics.inspect, graphics.diagnose, graphics.validate]
+required_evidence: [graphics_diagnosis]
+execution_mode: read_only_analysis
+provider_resolution: runtime_tool_broker
+runtime_evaluation: NOT_EVALUATED_RUNTIME
+activation:
+  required_environment: [project.exists, filesystem.readable]
+compatibility:
+  unity_version_prefixes: ['6000.']
+  context_values:
+    project_fact:render_pipeline: [builtin, urp, hdrp]
+capability_context:
+  graphics.inspect:
+    all_of: [project_fact:unity_version, project_fact:render_pipeline]
+    any_of: [project_fact:relevant_source, project_fact:renderer_feature_state]
+    receipt_required: true
+  graphics.diagnose:
+    all_of: [project_fact:unity_version, project_fact:render_pipeline, task_fact:rendering_symptom]
+    any_of: [project_fact:relevant_source, project_fact:renderer_feature_state]
+    receipt_required: true
+  graphics.validate:
+    all_of: [project_fact:unity_version, project_fact:render_pipeline, task_fact:validation_claim]
+    any_of: [project_fact:relevant_source, project_fact:renderer_feature_state]
+    receipt_required: true

@@ -204,6 +204,9 @@ class ToolBroker:
         context: ResolutionContext,
         executors: Mapping[str, Any],
         provider_arguments: Mapping[str, Mapping[str, Any]] | None = None,
+        specialist_execution_context: Mapping[str, Any] | None = None,
+        specialist_context_manifest_path: str | None = None,
+        receipt_required: bool = False,
         maximum_retry_attempts: int = 1,
     ) -> dict[str, Any]:
         """Execute through the Production dispatcher after Broker-owned resolution."""
@@ -218,5 +221,8 @@ class ToolBroker:
             context=context,
             executors=executors,
             provider_arguments=provider_arguments,
+            specialist_execution_context=specialist_execution_context,
+            specialist_context_manifest_path=specialist_context_manifest_path,
+            receipt_required=receipt_required,
             maximum_retry_attempts=maximum_retry_attempts,
         )

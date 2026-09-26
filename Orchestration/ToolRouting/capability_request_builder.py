@@ -27,6 +27,8 @@ def conditions_for_intent(intent: dict[str, Any], fingerprint: dict[str, str]) -
     if (kind == "visual_capture" and fingerprint["artifact"] == "visual"
             and fingerprint["scope"] == "project_asset" and fingerprint["mutation_target"] == "none"):
         return {"visual_evidence_needed"}
+    if kind == "rendering_diagnosis" and fingerprint["artifact"] == "rendering" and fingerprint["failure_mode"] == "rendering_unknown":
+        return {"project_fact_needed"}
     raise ValueError(f"no verified Capability conditions for intent kind: {kind}")
 
 
@@ -107,3 +109,15 @@ def build_capability_requests(
             request["qualifiers"] = dict(qualifiers)
         requests.append(request)
     return requests
+
+
+def build_candidate_capability_requests(route_id: str, project_root: str, *, active_conditions: set[str] | None = None, root: Path = ROOT) -> list[dict[str, Any]]:
+    """Build semantic candidate requests from the route, without Production dispatch authority."""
+    route = (_load(root).get("routes") or {}).get(route_id)
+    if not isinstance(route, dict):
+        raise ValueError(f"unknown capability route: {route_id}")
+    conditions = set(active_conditions or set()) | {"always"}
+    return [{"schema_version": "1.0", "capability": str(item["capability"]), "project_root": project_root,
+             "operation_kind": str(item["operation_kind"]), "required_evidence": list(item["required_evidence"]),
+             "mutation_scope": None, "approval_ref": None, "preferred_surface": item.get("preferred_surface")}
+            for item in route.get("candidate_capabilities") or [] if item.get("when") in conditions]

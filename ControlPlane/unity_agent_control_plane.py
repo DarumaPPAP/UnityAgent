@@ -18,8 +18,8 @@ import yaml
 from jsonschema import Draft202012Validator
 
 from Orchestration.Orchestrator.orchestrator import runtime_handoff, runtime_node_for_requests
-from Orchestration.Routing.route_selector import load_routes, resolve_specialist, select_route, task_fingerprint_from_intent
-from Orchestration.ToolRouting.capability_request_builder import (build_capability_requests, conditions_for_intent,
+from Orchestration.Routing.route_selector import load_routes, resolve_specialist, select_route, select_specialist_capability, task_fingerprint_from_intent
+from Orchestration.ToolRouting.capability_request_builder import (build_capability_requests, build_candidate_capability_requests, conditions_for_intent,
     task_contract_projection)
 from Context.Manifest.build_context_manifest import build as build_context_manifest
 from Context.Selection.project_context_inputs import derive_context_inputs
@@ -202,6 +202,8 @@ class UnityAgentControlPlane:
             capability_requests = build_capability_requests(route_id=route_id,
                 project_root=str(entry_request["project_root"]), active_conditions=conditions,
                 mutation_scope=mutation_scope, approval_ref=entry_request.get("approval_ref"))
+            candidate_requests = build_candidate_capability_requests(route_id, str(entry_request["project_root"]), active_conditions=conditions)
+            selected_capability = select_specialist_capability(route_id, capability_requests + candidate_requests)
             if not capability_requests:
                 raise ValueError(f"Orchestration produced no runnable CapabilityRequest: {route_id}")
             if any(request["operation_kind"] != "read" for request in capability_requests):
@@ -221,8 +223,7 @@ class UnityAgentControlPlane:
         except ValueError as exc:
             return {"schema_version": "2.0", "status": "blocked", "run_id": resolved_run_id,
                     "reason": str(exc), "results": [], "evidence_refs": []}
-        selected_capability = "visual.capture" if "visual.capture" in capabilities else capabilities[0]
-        specialist_selection = resolve_specialist(route_id, selected_capability, snapshot)
+        specialist_selection = resolve_specialist(route_id, selected_capability or capabilities[0], snapshot)
         if specialist_selection["status"] in {"unavailable", "unsupported"}:
             return {"schema_version": "2.0", "status": "blocked", "run_id": resolved_run_id,
                     "reason": f"Specialist {specialist_selection['status']}: {selected_capability}", "results": [], "evidence_refs": []}
@@ -267,7 +268,8 @@ class UnityAgentControlPlane:
         )
         routing_proof = {"task_fingerprint": task_fingerprint, "route_decision": route_decision,
             "active_conditions": sorted(conditions), "task_contract_projection": projection,
-            "capability_requests": handoff["capability_requests"], "node_id": node_id,
+            "capability_requests": handoff["capability_requests"], "candidate_capability_requests": candidate_requests,
+            "selected_specialist_capability": selected_capability, "node_id": node_id,
             "execution_profile": handoff["execution_profile"], "mutation_scope": mutation_scope,
             "validation_requirements": requirements, "context_manifest_ref": manifest_ref}
         routing_path = self.state_store.layout.snapshot(resolved_run_id, "orchestration-decision", sha256_json(routing_proof))
@@ -361,6 +363,7 @@ class UnityAgentControlPlane:
 
         results: list[dict[str, Any]] = []
         runtime_provider_arguments = {name: dict(values) for name, values in (provider_arguments or {}).items()}
+        specialist_execution_context = None
         if specialist_selection["status"] == "selected":
             # The immutable manifest is the only Specialist Context source for the backend.
             specialist_execution_context = {
@@ -368,11 +371,6 @@ class UnityAgentControlPlane:
                 "context_id": view["context_id"],
                 "context_fingerprint": view["context_fingerprint"]["value"],
                 "specialist_context": deepcopy(view["specialist_context"]),
-            }
-            runtime_provider_arguments["unity_artist_cli"] = {
-                **runtime_provider_arguments.get("unity_artist_cli", {}),
-                "specialist_execution_context": specialist_execution_context,
-                "specialist_context_manifest_path": str(manifest_path.resolve()),
             }
         for index, request in enumerate(handoff["capability_requests"]):
             capability_step_id = f"{node_id}-{index + 1}"
@@ -382,20 +380,16 @@ class UnityAgentControlPlane:
                 context=context,
                 executors=executors,
                 provider_arguments=runtime_provider_arguments,
+                specialist_execution_context=specialist_execution_context if request["capability"] == selected_capability else None,
+                specialist_context_manifest_path=str(manifest_path.resolve()) if request["capability"] == selected_capability else None,
+                receipt_required=specialist_selection["status"] == "selected" and request["capability"] == selected_capability and specialist_selection.get("receipt_required", True),
             )
             result = deepcopy(outcome)
             resolution = outcome.get("resolution")
             provider_result = outcome.get("provider_result")
-            if specialist_selection["status"] == "selected" and isinstance(resolution, Mapping) and resolution.get("subagent_profile_id") == specialist_selection["profile_id"]:
-                received = (provider_result.get("received_context_id"), provider_result.get("received_context_fingerprint")) if isinstance(provider_result, Mapping) else (None, None)
-                generated = (view["context_id"], view["context_fingerprint"]["value"])
-                if received != generated:
-                    result["status"] = "blocked"
-                    result["receipt_integrity"] = "failed"
-                    result["reason"] = "Specialist Context received identity missing or mismatched"
-                    results.append(result)
-                    break
-                result["receipt_integrity"] = "verified"
+            if result.get("receipt_integrity") == "failed":
+                results.append(result)
+                break
             if isinstance(resolution, Mapping) and resolution.get("status") == "resolved" and isinstance(provider_result, Mapping):
                 evidence_id = f"{resolved_run_id}-evidence-{index + 1}"
                 evidence = normalize_provider_result(

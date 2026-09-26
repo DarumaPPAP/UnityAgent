@@ -18,6 +18,10 @@
 
 `resolve_specialist(route_id, capability, environment_snapshot)` は Orchestration に属し、`status` と `profile_id` を返す。Provider ID は返さない。`selected` の場合だけ、同じ `materialize_context` が `specialist_selection`、`specialist_items`、`specialist_tags`、`required_specialist_keys`、必要なら `specialist_skill_ref` を受け取る。`build_context_manifest.build` も同じ引数を転送する。
 
+Candidate SpecialistはProduction Catalogと別の `Runtime/ReferenceImplementation/candidate-specialists.yaml` から参照する。Routeの `specialist_profile` は専門的な意味解析のOwnerを示し、ApplyやProvider解決のOwnerではない。`specialist_phase: analysis` の候補は `entry_action: implement` のRouteでも診断・事前確認・提案Diffまでを担当する。Taskの変更要求とSpecialist Capability自身の変更権限を区別する。ActivationはProject存在、読み取り可能性、対応Unity Versionを判定し、Capability ContextはRender Pipelineや対象Source等の観測事実を別途要求する。欠落Factは `required_context_missing` として停止し、推測しない。
+
+Specialist CapabilityはEntry Intentの分岐で決めない。OrchestrationのRouteが生成するProduction CapabilityRequestとCandidate用の意味的CapabilityRequestを集め、Routeに束縛されたProfileのCapability集合と交差させる。一致が0件または複数件なら停止する。Candidate用の要求はProduction dispatchへ渡さず、Provider Registryへの架空Graphics Provider登録も行わない。`goal_type` とHubの旧 `primary_capability` は実行時選択に使わない。
+
 Specialist 項目の型は `project_fact`、`project_decision`、`platform_fact`、`platform_decision`、`task_fact`。それぞれ key、value、tag、source、SHA-256 revision、freshness を保持する。Fact は観測 attempt を指定する。Decision は `user:` または `project_policy:` に由来する明示的な判断に限定する。unknown／stale／別 attempt の情報は採用しない。必須情報が無ければ生成を停止し、Budget 超過でも必須情報を捨てない。全項目を一つの選択済み Specialist bundle として測定し、その全 byte 数と出典を記録する。
 
 既存 Route の primary Skill は維持する。追加 Skill は Orchestration から対象に適した `.agents/skills/<name>/SKILL.md` を明示したときだけ全文を選択し、全 Skill を常時読み込まない。Policy は Route の必須参照を全量含める。Context は Specialist を選出せず、Runtime の Provider を決めない。
@@ -33,7 +37,7 @@ Control Plane は既存 Persistence の immutable snapshot に Task Fingerprint�
 | 値 | 正本と生成元 |
 | --- | --- |
 | Project / Task 意図、承認参照 | Entry の明示 request。ただし Project access は EnvironmentSnapshot の bound 状態と Policy の許可でのみ current とする |
-| Task Fingerprint | Orchestration が２つの Typed Intent から決定的に投影し、Project access は EnvironmentSnapshot と Policy から生成。未知・欠落・未許可は停止 |
+| Task Fingerprint | Orchestration が Typed Intent から決定的に投影し、Project access は EnvironmentSnapshot と Policy から生成。未知・欠落・未許可は停止 |
 | Primary Route / Execution Profile | `Orchestration/Routing/route_selector.py::select_route`。Entry の `route_id` / `execution_profile` は受理しない |
 | Active conditions / CapabilityRequest | `Orchestration/ToolRouting/capability_request_builder.py` と既存 capability-routing catalog。Entry の `capability_requests` は受理しない |
 | Node ID | 既存 ParentGraph の Runtime action node (`inspect_sources` / `execute_change`) を Orchestration が選ぶ |
@@ -41,7 +45,7 @@ Control Plane は既存 Persistence の immutable snapshot に Task Fingerprint�
 | Mutation Scope | read-only Pilot は空の scope を Orchestration が生成する。Entry の `mutation_scope` は受理しない。Mutation は既存の Project scope / Approval / source byte 観測を結ぶ projection が揃うまで dispatch 前に停止 |
 | Context ID / Fingerprint | UnityAgent Context Assembly のみ。Entry から受理しない |
 
-v2 Production は `project_inspection` / `visual_capture` の read-only outcome を解釈する。Entry の７次元 Fingerprint は受理しない。`project_inspection` の事前 evidence は `unknown`、`visual_capture` は過去の障害 evidence を要求しないため `not_applicable` と投影する。Mutation intent、未知または不完全な Typed Intent、要求 Outcome に合う Capability がない Route は dispatch 前に停止する。Camera FOV reference の既存 v1.1 専用 projection は一般の Artist Task Contract から生成できないため、旧 live runner の v2 移行は未完了であり、preflight / apply より前に明示停止する。専用 projection を Entry の任意値として再導入して通したことにはしない。
+v2 Production の実行対象は `project_inspection` / `visual_capture` の read-only outcome。Entry Schemaには `rendering_diagnosis` を追加し、そのRepository fixtureはRoute、候補選出、Context、静的Evidenceまで検証する。Production Control PlaneのGraphics実行経路とLive Provider Evidenceは未評価。Entry の７次元 Fingerprint は受理しない。`project_inspection` の事前 evidence は `unknown`、`visual_capture` は過去の障害 evidence を要求しないため `not_applicable` と投影する。未対応Mutation実行、未知または不完全な Typed Intent、要求 Outcome に合う Capability がない Route は dispatch 前に停止する。Camera FOV reference の既存 v1.1 専用 projection は一般の Artist Task Contract から生成できないため、旧 live runner の v2 移行は未完了であり、preflight / apply より前に明示停止する。専用 projection を Entry の任意値として再導入して通したことにはしない。
 
 `artist-lookdev` が以前必須としていた Hub の外部 spec は、現在の Runtime が参照する同一 repository の canonical `subagent-catalog.yaml` に置き換えた。Hub を複製せず、外部取得の未観測値を恒久的に current 扱いしない。Local source は revision ごとに一度だけ Budget に算入し、複数の意味上の参照は `selected_refs` に保持する。
 
@@ -65,8 +69,8 @@ Candidate には Project Fact、Project Decision、Platform Fact、Platform Deci
 ## Context receipt の境界
 
 - Generated: Context Assembly が immutable Manifest に `context_id` と `context_fingerprint` を生成する。
-- Transported: Runtime が Manifest path を選択済み `unity_artist_cli` に渡す。
-- Received: Backend CLI が Manifest を読み、structured result に `received_context_id` / `received_context_fingerprint` を返す。Control Plane は Manifest の Identity と照合し、欠落・不一致を fail-closed とする。
+- Transported: ToolBrokerがProviderを解決した後、Runtime Dispatcherが対応可能な解決済みProviderへ共通の `specialist_execution_context` とManifest pathを渡す。ContextとSpecialist identityはProviderを選ばない。非対応Providerでは実行前に停止する。
+- Received: Backendがstructured resultに `received_context_id` / `received_context_fingerprint` を返す。Receipt必須のSpecialist CapabilityではRuntime Dispatcherが生成Identityと照合し、欠落・不一致をfail-closedとする。通常CapabilityにはReceiptを要求しない。
 - Applied: Specialist inference / decision input への実適用は今回未評価。受信 Echo を semantic consumption と呼ばない。
 
 現行 Production の正式対象は Unity 6.x+（Built-in / URP / HDRP）。Unity CLI は automation / command surface、Unity Pipeline は実行中 Editor の local HTTP bridge であり、connected Editor commands に使う。Unity 2022.3 は現行 Support 対象外。Historical bounded batch Evidence は別途保存する。Skill は既存 `.agents/skills` / Context catalog の metadata から選別し、必要な SKILL.md と Reference のみ段階的にロードする。Hub の `skill_refs` 追加は現時点で必須ではない。

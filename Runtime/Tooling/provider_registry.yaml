@@ -211,6 +211,7 @@ providers:
 
   unity_artist_cli:
     id: unity_artist_cli
+    context_transport_supported: true
     transport: cli
     surfaces: [host, editor, live_editor]
     health: environment_fact

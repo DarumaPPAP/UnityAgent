@@ -1,0 +1,62 @@
+schema_version: '1.0'
+kind: specialist_pilot_cases
+specialist_candidate: graphics_subagent
+status: pending_live_evaluation
+comparison_arms:
+  A: unity_agent_only
+  B: unity_agent_with_skill_and_deterministic_tool
+  C: unity_agent_with_graphics_specialist
+common_context:
+  - unity_version
+  - render_pipeline
+  - pipeline_package_version
+  - renderer_type
+  - graphics_api
+  - target_platform
+  - graphics_settings
+  - project_decisions
+required_metrics:
+  - task_success
+  - evidence_completeness
+  - wrong_assumptions
+  - tool_selection_errors
+  - context_bytes
+  - context_tokens
+  - irrelevant_context
+  - tool_calls
+  - retries
+  - approval_violations
+  - unsupported_claims
+  - trace_legibility
+  - latency_when_measurable
+cases:
+  - id: render_graph_pass_failure
+    task: RenderGraph Passが実行されない原因を特定する
+    expected_route: rendering-incident
+    required_facts: [renderer_feature, render_graph_settings, pass_order]
+    required_evidence: [render_graph_observation, render_pass_observation]
+    boundary: RenderPassの実行正当性はGraphics、測定された重さはPerformance
+  - id: shader_compile_issue
+    task: Shader compile errorの原因と対象Variantを特定する
+    expected_route: rendering-incident
+    required_facts: [shader_source, shader_target, compile_error]
+    required_evidence: [shader_compile_evidence]
+    boundary: 修正はExact DiffとApproval後にのみ行う
+  - id: shader_variant_issue
+    task: Platform固有のShader Variant欠落を診断する
+    expected_route: rendering-incident
+    required_facts: [shader_keywords, variant_policy, target_platform]
+    required_evidence: [variant_observation, pipeline_compatibility]
+    boundary: Editor成功をTarget Device Verifiedへ昇格しない
+  - id: depth_motion_vectors_issue
+    task: DepthまたはMotionVectorsの不足を診断する
+    expected_route: rendering-incident
+    required_facts: [depth_settings, motion_vector_settings, renderer_feature]
+    required_evidence: [render_pass_observation, frame_debugger_observation]
+    boundary: 診断と視覚的合格判断を分離する
+  - id: renderer_feature_issue
+    task: RendererFeatureの順序または互換性問題を診断する
+    expected_route: rendering-incident
+    required_facts: [renderer_feature, renderer_type, pipeline_package_version]
+    required_evidence: [render_pass_observation, pipeline_compatibility]
+    boundary: AestheticなOutline調整はArtistへ返す

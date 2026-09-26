@@ -1,0 +1,33 @@
+schema_version: "1.0"
+kind: graphics_read_only_candidate_contract
+status: pilot_unregistered
+identity: graphics_subagent
+compatibility:
+  unity_version: Unity 6.x+
+  render_pipelines: [builtin, urp, hdrp]
+capabilities:
+  graphics.inspect:
+    mode: read_only
+    requires: [bound_project_identity, observed_unity_version, observed_render_pipeline, relevant_source_or_project_fact]
+    returns: [confirmed_facts, observed_evidence, evidence_level, known_limitations]
+  graphics.diagnose:
+    mode: read_only
+    requires: [bounded_rendering_symptom, relevant_observation, context_receipt]
+    returns: [confirmed_facts, hypotheses, rejected_hypotheses, required_observations, graphics_diagnosis]
+  graphics.validate:
+    mode: read_only
+    requires: [explicit_claim, matching_observation, context_receipt]
+    returns: [observed_evidence, evidence_level, known_limitations]
+boundaries:
+  route_reuse: [rendering-incident, shader-change, renderer-feature-change]
+  excludes: [art_direction, aesthetic_approval, performance_measurement, project_orchestration, provider_selection]
+  mutation: prohibited_during_pilot
+  provider_resolution: unity_agent_tool_broker_only
+  unsupported_behavior: explicit_unsupported
+  unavailable_behavior: explicit_unavailable_no_fallback
+evidence:
+  required_type: graphics_diagnosis
+  observations: [shader_compile_evidence, render_pass_observation, render_graph_observation, frame_debugger_observation, variant_observation, pipeline_compatibility, visual_regression_reference]
+  levels: [static, compile, editor, player, target_device]
+  unobserved_runtime: NOT_EVALUATED_RUNTIME
+  receipt: generated_transported_received_identity_and_fingerprint_match

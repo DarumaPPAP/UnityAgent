@@ -22,21 +22,24 @@ def derive_context_inputs(project_root: str, snapshot: dict[str, Any], intent: d
     fact = {"key": "unity_version", "value": version, "source_kind": "detected_project",
             "source_path": str(source), "revision": revision, "observed_at_attempt": attempt,
             "freshness": freshness, "reason": "reobserved ProjectVersion.txt and matched bound EnvironmentSnapshot"}
+    specialist_tag = "rendering" if intent.get("kind") == "rendering_diagnosis" else "camera"
     items = [{"category": "project_fact", "key": "unity_version", "value": version, "source": str(source),
               "revision": revision, "freshness": freshness, "observed_at_attempt": attempt,
-              "tags": ["camera"], "required": True}]
+              "tags": [specialist_tag], "required": True}]
     environment_revision = "sha256:" + hashlib.sha256(json.dumps(snapshot, sort_keys=True, default=str).encode()).hexdigest()
     request_revision = "sha256:" + hashlib.sha256(json.dumps(intent, sort_keys=True, default=str).encode()).hexdigest()
     platform = (snapshot.get("build") or {}).get("requested_target")
     if isinstance(platform, str) and platform and platform != "unknown":
         items.append({"category": "platform_fact", "key": "requested_target", "value": platform,
                       "source": "EnvironmentSnapshot.build.requested_target", "revision": environment_revision,
-                      "freshness": freshness, "observed_at_attempt": attempt, "tags": ["camera"]})
-    scope = intent.get("exact_scene_or_asset_scope")
+                      "freshness": freshness, "observed_at_attempt": attempt, "tags": [specialist_tag]})
+    scope = intent.get("target_scope") if specialist_tag == "rendering" else intent.get("exact_scene_or_asset_scope")
     if isinstance(scope, str) and scope:
         items.append({"category": "task_fact", "key": "requested_scope", "value": scope,
-                      "source": "user:request.intent.exact_scene_or_asset_scope", "revision": request_revision,
-                      "freshness": freshness, "observed_at_attempt": attempt, "tags": ["camera"], "required": True})
+                      "source": "user:request.intent.target_scope" if specialist_tag == "rendering" else "user:request.intent.exact_scene_or_asset_scope", "revision": request_revision,
+                      "freshness": freshness, "observed_at_attempt": attempt, "tags": [specialist_tag], "required": True})
+    if specialist_tag == "rendering":
+        items.append({"category": "task_fact", "key": "rendering_symptom", "value": intent["symptom"], "source": "user:request.intent.symptom", "revision": request_revision, "freshness": freshness, "observed_at_attempt": attempt, "tags": [specialist_tag], "required": True})
     bindings: dict[str, Any] = {"project_root": {"value": str(observed["root"]), "source_kind": "environment_snapshot",
         "revision": environment_revision, "freshness": freshness}}
     if isinstance(intent.get("kind"), str) and intent["kind"]:
@@ -47,5 +50,8 @@ def derive_context_inputs(project_root: str, snapshot: dict[str, Any], intent: d
         if isinstance(value, str) and value:
             bindings[key] = {"value": value, "source_kind": "user_request", "revision": request_revision,
                              "freshness": freshness}
+    required_keys = {"project_fact:unity_version", "task_fact:requested_scope"}
+    if specialist_tag == "rendering":
+        required_keys.add("task_fact:rendering_symptom")
     return {"project_facts": [fact], "specialist_items": items, "bindings": bindings,
-            "specialist_tags": {"camera"}, "required_specialist_keys": {"project_fact:unity_version", "task_fact:requested_scope"}}
+            "specialist_tags": {specialist_tag}, "required_specialist_keys": required_keys}

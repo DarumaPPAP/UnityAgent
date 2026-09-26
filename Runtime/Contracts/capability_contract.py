@@ -157,6 +157,19 @@ def validate_contract_foundation(root: Path = ROOT) -> list[CapabilityContractFi
                     )
                 )
 
+        candidate_templates = (route or {}).get("candidate_capabilities") or []
+        task_route = (task_routes.get("routes") or {}).get(route_id) or {}
+        if candidate_templates and (not task_route.get("specialist_pilot") or not task_route.get("specialist_profile")):
+            findings.append(CapabilityContractFinding(ROUTING_PATH.as_posix(), f"{route_id}: candidate capability requires a Candidate Specialist route"))
+        for template in candidate_templates:
+            if not isinstance(template, dict) or set(template) != {"capability", "operation_kind", "required_evidence", "preferred_surface", "when"}:
+                findings.append(CapabilityContractFinding(ROUTING_PATH.as_posix(), f"{route_id}: invalid candidate capability template"))
+                continue
+            if template["operation_kind"] != "read":
+                findings.append(CapabilityContractFinding(ROUTING_PATH.as_posix(), f"{route_id}: candidate capability must be read-only"))
+            if not isinstance(template["capability"], str) or not template["capability"] or not isinstance(template["required_evidence"], list) or not template["required_evidence"] or template["when"] not in declared_conditions:
+                findings.append(CapabilityContractFinding(ROUTING_PATH.as_posix(), f"{route_id}: invalid candidate capability requirement"))
+
         for template in (route or {}).get("capabilities") or []:
             capability = str(template.get("capability") or "")
             operation_kind = str(template.get("operation_kind") or "")

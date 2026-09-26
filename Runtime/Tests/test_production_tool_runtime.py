@@ -5,6 +5,7 @@ import hashlib
 from pathlib import Path
 import sys
 import unittest
+from types import SimpleNamespace
 
 import yaml
 
@@ -16,6 +17,7 @@ from Policy.Security.capability_policy import policy_for_capability
 from Runtime.Contracts.capability_contract import validate_capability_request
 from Runtime.Tooling.capability_resolver import ResolutionContext
 from Runtime.Tooling.tool_broker import ToolBroker
+from Runtime.Dispatcher.tool_runtime_dispatcher import dispatch_capability
 
 MATRIX_PATH = ROOT / "Eval/Datasets/Behavior/production-tool-runtime-environment-matrix.yaml"
 
@@ -274,6 +276,54 @@ class ProductionToolRuntimeTests(unittest.TestCase):
         )
         self.assertEqual(outcome["status"], "blocked")
         self.assertEqual(outcome["provider_result"]["failure_class"], "ambiguous_binding")
+
+    def test_context_transport_targets_resolved_provider_and_verifies_receipt(self):
+        received = []
+        class SyntheticBroker:
+            registry = SimpleNamespace(provider=lambda provider_id: SimpleNamespace(context_transport_supported=provider_id == "provider_b"))
+            def resolve(self, request, snapshot, *, context):
+                return {"status": "resolved", "provider_ref": "provider_b", "subagent_profile_id": "sample_subagent"}
+        context_payload = {"context_id": "ctx-1", "context_fingerprint": "sha256:one", "specialist_context": {"profile_id": "sample_subagent"}}
+        def provider_b(request, context, arguments):
+            received.append(arguments)
+            return {"status": "passed", "provider_ref": "provider_b", "evidence": ["project_fact"], "received_context_id": "ctx-1", "received_context_fingerprint": "sha256:one"}
+        outcome = dispatch_capability(SyntheticBroker(), self.request("project.inspect"), self.snapshot("FILES_ONLY"), context=self.context("project.inspect"), executors={"provider_a": lambda *_: self.fail("wrong provider"), "provider_b": provider_b}, specialist_execution_context=context_payload, specialist_context_manifest_path="/fixture/manifest.json", receipt_required=True)
+        self.assertEqual(outcome["status"], "completed")
+        self.assertEqual(outcome["receipt_integrity"], "verified")
+        self.assertEqual(received[0]["specialist_execution_context"], context_payload)
+        self.assertEqual(received[0]["specialist_context_manifest_path"], "/fixture/manifest.json")
+
+    def test_context_transport_blocks_missing_or_mismatched_receipt(self):
+        class SyntheticBroker:
+            registry = SimpleNamespace(provider=lambda provider_id: SimpleNamespace(context_transport_supported=True))
+            def resolve(self, request, snapshot, *, context):
+                return {"status": "resolved", "provider_ref": "provider_b", "subagent_profile_id": "sample_subagent"}
+        payload = {"context_id": "ctx-1", "context_fingerprint": "sha256:one", "specialist_context": {"profile_id": "sample_subagent"}}
+        for received in ({}, {"received_context_id": "ctx-1", "received_context_fingerprint": "sha256:wrong"}):
+            with self.subTest(received=received):
+                outcome = dispatch_capability(SyntheticBroker(), self.request("project.inspect"), self.snapshot("FILES_ONLY"), context=self.context("project.inspect"), executors={"provider_b": lambda *_: {"status": "passed", "provider_ref": "provider_b", "evidence": ["project_fact"], **received}}, specialist_execution_context=payload, receipt_required=True)
+                self.assertEqual((outcome["status"], outcome["receipt_integrity"]), ("blocked", "failed"))
+
+    def test_required_context_is_not_silently_dropped_by_unsupported_provider(self):
+        calls = []
+        class SyntheticBroker:
+            registry = SimpleNamespace(provider=lambda provider_id: SimpleNamespace(context_transport_supported=False))
+            def resolve(self, request, snapshot, *, context):
+                return {"status": "resolved", "provider_ref": "provider_b", "subagent_profile_id": "sample_subagent"}
+        payload = {"context_id": "ctx-1", "context_fingerprint": "sha256:one", "specialist_context": {"profile_id": "sample_subagent"}}
+        outcome = dispatch_capability(SyntheticBroker(), self.request("project.inspect"), self.snapshot("FILES_ONLY"), context=self.context("project.inspect"), executors={"provider_b": lambda *_: calls.append(True)}, specialist_execution_context=payload, receipt_required=True)
+        self.assertEqual(outcome["status"], "blocked")
+        self.assertEqual(outcome["provider_result"]["failure_class"], "precondition_failed")
+        self.assertEqual(calls, [])
+
+    def test_regular_capability_needs_no_specialist_receipt(self):
+        outcome = ToolBroker().dispatch(self.request("project.inspect"), self.snapshot("FILES_ONLY"), context=self.context("project.inspect"), executors={"file": lambda *_: {"status": "passed", "provider_ref": "file", "evidence": ["project_fact"]}})
+        self.assertEqual(outcome["status"], "completed")
+        self.assertNotIn("receipt_integrity", outcome)
+
+    def test_provider_arguments_cannot_preselect_specialist_context_target(self):
+        with self.assertRaisesRegex(ValueError, "Specialist Context must use the common runtime envelope"):
+            ToolBroker().dispatch(self.request("project.inspect"), self.snapshot("FILES_ONLY"), context=self.context("project.inspect"), executors={"file": lambda *_: self.fail("unexpected execution")}, provider_arguments={"file": {"specialist_execution_context": {"context_id": "forged"}}})
 
 
 if __name__ == "__main__":
