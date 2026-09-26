@@ -3,3 +3,4 @@ kind: candidate_specialist_catalog
 profiles:
   graphics_subagent: Runtime/ReferenceImplementation/graphics-pilot-profile.yaml
   performance_subagent: Runtime/ReferenceImplementation/performance-pilot-profile.yaml
+  world_creator_subagent: Runtime/ReferenceImplementation/world-creator-pilot-profile.yaml

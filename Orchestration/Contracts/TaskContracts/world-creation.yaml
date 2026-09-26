@@ -1,0 +1,17 @@
+id: world-creation
+default_execution_profile: generic_planning
+risk_level: R0
+mutation_channel_binding: none
+required_inputs: [world_goal, scene_scope]
+allowed_mutations: []
+prohibited_mutations: [scene_mutation, shader_modification, save, bake, direct_specialist_dispatch, automatic_visual_acceptance]
+required_knowledge: []
+required_quality_gates: [static_review]
+conditional_quality_gates: []
+completion: [goal_preserved, scope_explicit, work_packages_decomposed, dependencies_explicit, constraints_preserved, evidence_explicit, open_decisions_explicit, human_review_required]
+stop_conditions: [world_goal_missing, scene_scope_missing, production_execution_requested]
+result_format:
+  summary: structured_world_plan
+  changed_artifacts: none
+  validation: static_plan_contract
+  unresolved: open_decisions

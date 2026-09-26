@@ -27,6 +27,8 @@ def task_fingerprint_from_intent(intent: dict[str, Any], environment_snapshot: d
         fingerprint = {"intent": "fix" if intent.get("change_requested") else "investigate", "artifact": "rendering", "scope": "local", "failure_mode": "rendering_unknown", "architecture_state": "not_applicable", "mutation_target": "source" if intent.get("change_requested") else "none", "evidence_state": "unknown"}
     elif kind == "performance_analysis" and set(intent).issubset({"kind", "symptom", "target_scope", "comparison_requested"}) and all(isinstance(intent.get(key), str) and intent[key].strip() for key in ("symptom", "target_scope")) and isinstance(intent.get("comparison_requested", False), bool):
         fingerprint = {"intent": "investigate", "artifact": "performance", "scope": "local", "failure_mode": "performance", "architecture_state": "not_applicable", "mutation_target": "none", "evidence_state": "baseline_required" if intent.get("comparison_requested") else "partial"}
+    elif kind == "world_planning" and set(intent).issubset({"kind", "world_goal", "scene_scope", "environment_type", "desired_mood", "target_platforms", "prohibited_changes", "acceptance_criteria"}) and all(isinstance(intent.get(key), str) and intent[key].strip() for key in ("world_goal", "scene_scope")) and all(key not in intent or isinstance(intent[key], str) and intent[key].strip() for key in ("environment_type", "desired_mood")) and all(key not in intent or isinstance(intent[key], list) and all(isinstance(value, str) and value.strip() for value in intent[key]) for key in ("target_platforms", "prohibited_changes", "acceptance_criteria")):
+        fingerprint = {"intent": "design", "artifact": "world", "scope": "project_asset", "failure_mode": "none", "architecture_state": "not_applicable", "mutation_target": "none", "evidence_state": "unknown"}
     else:
         raise ValueError("unsupported or incomplete read-only Typed Intent")
     project = environment_snapshot.get("project") or {}
@@ -45,8 +47,14 @@ def load_routes(path: Path) -> dict[str, Any]:
         requirement = route.get("design_review", "not_required")
         if requirement not in DESIGN_REVIEW_REQUIREMENTS:
             raise ValueError(f"invalid design_review requirement for {route_id}: {requirement}")
-        if route.get("specialist_pilot") and (not route.get("specialist_profile") or route.get("specialist_phase") != "analysis"):
-            raise ValueError(f"candidate Specialist route must declare analysis phase: {route_id}")
+        if route.get("specialist_pilot"):
+            from Runtime.ReferenceImplementation.candidate_profiles import load_candidate_profile
+            if not route.get("specialist_profile"):
+                raise ValueError(f"candidate Specialist route requires a Profile: {route_id}")
+            profile = load_candidate_profile(route["specialist_profile"], root=path.resolve().parents[2])
+            phase = {"read_only_analysis": "analysis", "planning_only": "planning"}[profile["execution_mode"]]
+            if route.get("specialist_phase") != phase:
+                raise ValueError(f"candidate Specialist route has invalid phase: {route_id}")
     return data
 
 

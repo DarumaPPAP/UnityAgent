@@ -20,8 +20,8 @@ class CandidateProfileError(ValueError):
     pass
 
 
-def _texts(value: Any, name: str, pattern: re.Pattern[str] | None = None) -> list[str]:
-    if not isinstance(value, list) or not value or any(not isinstance(item, str) or not item for item in value) or len(set(value)) != len(value):
+def _texts(value: Any, name: str, pattern: re.Pattern[str] | None = None, *, allow_empty: bool = False) -> list[str]:
+    if not isinstance(value, list) or (not value and not allow_empty) or any(not isinstance(item, str) or not item for item in value) or len(set(value)) != len(value):
         raise CandidateProfileError(f"{name} requires unique non-empty strings")
     if pattern and any(pattern.fullmatch(item) is None for item in value):
         raise CandidateProfileError(f"{name} has an invalid item")
@@ -40,7 +40,8 @@ def validate_candidate_profile(profile: Any) -> dict[str, Any]:
     if profile["goal_type"] not in capabilities or profile["audience"] != profile["profile_id"]:
         raise CandidateProfileError("goal_type or audience does not match candidate identity")
     _texts(profile["required_evidence"], "required_evidence")
-    if profile["execution_mode"] != "read_only_analysis" or profile["provider_resolution"] != "runtime_tool_broker" or profile["runtime_evaluation"] != "NOT_EVALUATED_RUNTIME":
+    execution_contracts = {"read_only_analysis": ("runtime_tool_broker", True), "planning_only": ("not_required", False)}
+    if profile["execution_mode"] not in execution_contracts or profile["provider_resolution"] != execution_contracts[profile["execution_mode"]][0] or profile["runtime_evaluation"] != "NOT_EVALUATED_RUNTIME":
         raise CandidateProfileError("unsupported Candidate execution contract")
     activation = profile["activation"]
     if not isinstance(activation, dict) or set(activation) != {"required_environment"}:
@@ -60,10 +61,10 @@ def validate_candidate_profile(profile: Any) -> dict[str, Any]:
     if not isinstance(requirements, dict) or set(requirements) != set(capabilities):
         raise CandidateProfileError("each capability requires a Context contract")
     for capability, requirement in requirements.items():
-        if not isinstance(requirement, dict) or set(requirement) != {"all_of", "any_of", "receipt_required"} or requirement["receipt_required"] is not True:
+        if not isinstance(requirement, dict) or set(requirement) != {"all_of", "any_of", "receipt_required"} or requirement["receipt_required"] is not execution_contracts[profile["execution_mode"]][1]:
             raise CandidateProfileError(f"invalid Context contract: {capability}")
         _texts(requirement["all_of"], f"{capability}.all_of", CONTEXT_KEY)
-        _texts(requirement["any_of"], f"{capability}.any_of", CONTEXT_KEY)
+        _texts(requirement["any_of"], f"{capability}.any_of", CONTEXT_KEY, allow_empty=True)
         if any(key not in requirement["all_of"] for key in compatibility["context_values"]):
             raise CandidateProfileError(f"{capability} must require each compatibility Context key")
     return profile
@@ -123,11 +124,11 @@ def resolve_candidate(profile: dict[str, Any], capability: str, snapshot: Mappin
     values = _context_values(context_items)
     requirement = profile["capability_context"][capability]
     missing = [key for key in requirement["all_of"] if key not in values]
-    if not any(key in values for key in requirement["any_of"]):
+    if requirement["any_of"] and not any(key in values for key in requirement["any_of"]):
         missing.extend(requirement["any_of"])
     if missing:
         return {**common, "status": "unavailable", "reason_code": "required_context_missing", "required_observations": sorted(set(missing))}
     for key, allowed in profile["compatibility"]["context_values"].items():
         if values[key] not in allowed:
             return {**common, "status": "unsupported", "reason_code": "context_value_unsupported", "unsupported_context_key": key}
-    return {"status": "selected", "profile_id": profile["profile_id"], "capability": capability, "required_evidence": list(profile["required_evidence"]), "receipt_required": requirement["receipt_required"]}
+    return {"status": "selected", "profile_id": profile["profile_id"], "capability": capability, "required_evidence": list(profile["required_evidence"]), "execution_mode": profile["execution_mode"], "provider_resolution": profile["provider_resolution"], "receipt_required": requirement["receipt_required"]}
