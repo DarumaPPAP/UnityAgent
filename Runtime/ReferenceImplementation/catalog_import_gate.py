@@ -90,13 +90,20 @@ HUB_MANIFEST_KEYS = frozenset({"schema_version", "kind", "identity", "lifecycle"
 HUB_MANIFEST_REF = re.compile(r"^SubAgents/([a-z][a-z0-9_]*_subagent)/manifest\.yaml$")
 HUB_SNAPSHOT_SCHEMA_PATH = ROOT / "Runtime/ReferenceImplementation/Schemas/hub-snapshot-v1.schema.json"
 HUB_MANIFEST_SCHEMA_PATH = ROOT / "Runtime/ReferenceImplementation/Schemas/hub-manifest-v3.schema.json"
+HUB_V2_SNAPSHOT_SCHEMA_PATH = ROOT / "Runtime/ReferenceImplementation/Schemas/hub-snapshot-v2.schema.json"
+HUB_V4_MANIFEST_SCHEMA_PATH = ROOT / "Runtime/ReferenceImplementation/Schemas/hub-manifest-v4.schema.json"
 
 
 def _validate_hub_schema(snapshot: Mapping[str, Any]) -> None:
     """Validate pinned Hub contracts before adapting their runtime-relevant fields."""
+    version = snapshot.get("schema_version")
+    if version not in {"1.0", "2.0"}:
+        raise CatalogImportError("hub_snapshot_schema", "unsupported Hub snapshot version")
+    snapshot_path = HUB_V2_SNAPSHOT_SCHEMA_PATH if version == "2.0" else HUB_SNAPSHOT_SCHEMA_PATH
+    manifest_path = HUB_V4_MANIFEST_SCHEMA_PATH if version == "2.0" else HUB_MANIFEST_SCHEMA_PATH
     try:
-        snapshot_schema = json.loads(HUB_SNAPSHOT_SCHEMA_PATH.read_text(encoding="utf-8"))
-        manifest_schema = json.loads(HUB_MANIFEST_SCHEMA_PATH.read_text(encoding="utf-8"))
+        snapshot_schema = json.loads(snapshot_path.read_text(encoding="utf-8"))
+        manifest_schema = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise CatalogImportError("hub_schema_unavailable", str(exc)) from exc
     errors = list(Draft202012Validator(snapshot_schema).iter_errors(snapshot))
@@ -116,8 +123,10 @@ def _exact_mapping(value: Any, expected: frozenset[str], location: str) -> Mappi
 
 def _hub_profile_catalog(snapshot: Mapping[str, Any], consumer_catalog: SubAgentProfileCatalog) -> SubAgentProfileCatalog:
     _exact_mapping(snapshot, frozenset({"schema_version", "kind", "specialists"}), "Hub snapshot")
-    if snapshot["schema_version"] != "1.0" or snapshot["kind"] != "subagent_catalog_snapshot":
+    snapshot_version = snapshot["schema_version"]
+    if snapshot_version not in {"1.0", "2.0"} or snapshot["kind"] != "subagent_catalog_snapshot":
         raise CatalogImportError("hub_snapshot_schema", "unsupported Hub snapshot version or kind")
+    static_contract = snapshot_version == "2.0"
     specialists = snapshot["specialists"]
     if not isinstance(specialists, list) or not specialists:
         raise CatalogImportError("hub_snapshot_schema", "specialists must be a non-empty list")
@@ -131,8 +140,9 @@ def _hub_profile_catalog(snapshot: Mapping[str, Any], consumer_catalog: SubAgent
         if match is None:
             raise CatalogImportError("hub_snapshot_schema", f"specialists[{index}].manifest_ref is invalid")
         manifest = _exact_mapping(entry["manifest"], HUB_MANIFEST_KEYS, f"specialists[{index}].manifest")
-        if manifest["schema_version"] != "3.0" or manifest["kind"] != "subagent_manifest":
-            raise CatalogImportError("hub_snapshot_schema", f"specialists[{index}] requires Manifest v3")
+        expected_manifest_version = "4.0" if static_contract else "3.0"
+        if manifest["schema_version"] != expected_manifest_version or manifest["kind"] != "subagent_manifest":
+            raise CatalogImportError("hub_snapshot_schema", f"specialists[{index}] requires Manifest v{expected_manifest_version[0]}")
         identity = _exact_mapping(manifest["identity"], frozenset({"id", "name", "version"}), f"specialists[{index}].identity")
         profile_id = identity["id"]
         if not isinstance(profile_id, str) or profile_id != match.group(1) or profile_id in seen_ids or not isinstance(identity["name"], str) or not identity["name"] or not isinstance(identity["version"], str) or not identity["version"]:
@@ -142,9 +152,10 @@ def _hub_profile_catalog(snapshot: Mapping[str, Any], consumer_catalog: SubAgent
             raise CatalogImportError("hub_snapshot_schema", f"{profile_id}: invalid lifecycle")
         if not isinstance(manifest["capability_contract_ref"], str) or not manifest["capability_contract_ref"]:
             raise CatalogImportError("hub_snapshot_schema", f"{profile_id}: invalid capability contract reference")
-        compatibility = _exact_mapping(manifest["compatibility"], frozenset({"supported_targets", "support_matrix_ref"}), f"{profile_id}.compatibility")
+        compatibility_keys = frozenset({"supported_targets"}) if static_contract else frozenset({"supported_targets", "support_matrix_ref"})
+        compatibility = _exact_mapping(manifest["compatibility"], compatibility_keys, f"{profile_id}.compatibility")
         targets = compatibility["supported_targets"]
-        if not isinstance(targets, list) or not targets or not isinstance(compatibility["support_matrix_ref"], str) or not compatibility["support_matrix_ref"]:
+        if not isinstance(targets, list) or not targets or (not static_contract and (not isinstance(compatibility["support_matrix_ref"], str) or not compatibility["support_matrix_ref"])):
             raise CatalogImportError("hub_snapshot_schema", f"{profile_id}: invalid compatibility")
         for target in targets:
             target = _exact_mapping(target, frozenset({"unity_version", "render_pipeline"}), f"{profile_id}.supported_target")
@@ -170,7 +181,8 @@ def _hub_profile_catalog(snapshot: Mapping[str, Any], consumer_catalog: SubAgent
         if not isinstance(backends, list) or not backends:
             raise CatalogImportError("hub_snapshot_schema", f"{profile_id}: backends must be non-empty")
         for backend in backends:
-            if not isinstance(backend, Mapping) or not set(backend).issubset({"id", "kind", "executable", "package_id", "transport", "contract_ref"}) or not {"id", "kind", "contract_ref"}.issubset(backend):
+            allowed_backend_keys = {"id", "kind", "contract_ref"} if static_contract else {"id", "kind", "executable", "package_id", "transport", "contract_ref"}
+            if not isinstance(backend, Mapping) or not set(backend).issubset(allowed_backend_keys) or not {"id", "kind", "contract_ref"}.issubset(backend):
                 raise CatalogImportError("hub_snapshot_schema", f"{profile_id}: invalid backend")
             if not isinstance(backend["id"], str) or PROVIDER_ID_PATTERN.fullmatch(backend["id"]) is None or any(not isinstance(backend[key], str) or not backend[key] for key in backend):
                 raise CatalogImportError("hub_snapshot_schema", f"{profile_id}: invalid backend identity or reference")
@@ -192,8 +204,9 @@ def _hub_profile_catalog(snapshot: Mapping[str, Any], consumer_catalog: SubAgent
             if not isinstance(capability["id"], str) or not isinstance(capability["operations"], list) or not capability["operations"] or any(not isinstance(operation, str) or not operation for operation in capability["operations"]):
                 raise CatalogImportError("hub_snapshot_schema", f"{profile_id}: invalid capability")
             flattened.extend(f"{capability['id']}.{operation}" for operation in capability["operations"])
-        evidence = _exact_mapping(manifest["evidence"], frozenset({"required", "required_artifacts", "runtime_types", "terminal_states", "contract_ref"}), f"{profile_id}.evidence")
-        if evidence["required"] is not True or any(not isinstance(evidence[key], list) or not evidence[key] or any(not isinstance(item, str) or not item for item in evidence[key]) for key in ("required_artifacts", "runtime_types", "terminal_states")) or not isinstance(evidence["contract_ref"], str) or not evidence["contract_ref"]:
+        evidence_keys = frozenset({"required", "required_artifacts", "runtime_types", "terminal_states"}) if static_contract else frozenset({"required", "required_artifacts", "runtime_types", "terminal_states", "contract_ref"})
+        evidence = _exact_mapping(manifest["evidence"], evidence_keys, f"{profile_id}.evidence")
+        if evidence["required"] is not True or any(not isinstance(evidence[key], list) or not evidence[key] or any(not isinstance(item, str) or not item for item in evidence[key]) for key in ("required_artifacts", "runtime_types", "terminal_states")) or (not static_contract and (not isinstance(evidence["contract_ref"], str) or not evidence["contract_ref"])):
             raise CatalogImportError("hub_snapshot_schema", f"{profile_id}: invalid evidence requirements")
         profile = current.to_mapping()
         profile.update(display_name=identity["name"], capabilities=flattened, required_evidence=evidence["runtime_types"], activation={"install_mode": installation["mode"], "auto_install": installation["auto_install"], "required_environment": required_environment})
