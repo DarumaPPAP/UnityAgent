@@ -127,17 +127,18 @@ class SpecialistContextTests(unittest.TestCase):
 
     def test_graphics_context_selects_rendering_facts_and_rejects_unavailable_selection(self):
         environment = {"project": {"exists": True, "unity_version": "6000.3"}, "filesystem": {"readable": True}}
-        decision = resolve_specialist("rendering-incident", "graphics.diagnose", environment, pilot_enabled=True)
         observations = [item("project_fact", "unity_version", "6000.3", ("rendering",), required=True),
                         item("project_fact", "render_pipeline", "urp", ("rendering",)),
+                        item("project_fact", "relevant_source", "Assets/Shaders/Example.shader", ("rendering",)),
                         item("platform_fact", "graphics_api", "Vulkan", ("rendering",)),
-                        item("task_fact", "shader_error", "Pass missing", ("rendering",)),
+                        item("task_fact", "rendering_symptom", "Pass missing", ("rendering",)),
                         item("project_fact", "audio_importer", "Vorbis", ("audio",))]
+        decision = resolve_specialist("rendering-incident", "graphics.diagnose", environment, pilot_enabled=True, context_items=observations)
         view = self.materializer.materialize_context("graphics-fixture", "rendering-incident", specialist_selection=decision,
             specialist_items=observations, specialist_tags={"rendering"}, required_specialist_keys={"project_fact:unity_version"}, root=ROOT)
         self.assertEqual(view["specialist_context"]["profile_id"], "graphics_subagent")
         self.assertEqual(view["specialist_context"]["required_evidence"], ["graphics_diagnosis"])
-        self.assertEqual({entry["key"] for entry in view["specialist_context"]["items"]}, {"unity_version", "render_pipeline", "graphics_api", "shader_error"})
+        self.assertEqual({entry["key"] for entry in view["specialist_context"]["items"]}, {"unity_version", "render_pipeline", "relevant_source", "graphics_api", "rendering_symptom"})
         self.assertEqual(len(view["specialist_context"]["policy"]), 1)
         with self.assertRaisesRegex(ValueError, "required specialist context"):
             self.materializer.materialize_context("graphics-fixture", "rendering-incident", specialist_selection=decision,

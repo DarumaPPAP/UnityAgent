@@ -27,6 +27,8 @@ def conditions_for_intent(intent: dict[str, Any], fingerprint: dict[str, str]) -
     if (kind == "visual_capture" and fingerprint["artifact"] == "visual"
             and fingerprint["scope"] == "project_asset" and fingerprint["mutation_target"] == "none"):
         return {"visual_evidence_needed"}
+    if kind == "rendering_diagnosis" and fingerprint["artifact"] == "rendering" and fingerprint["failure_mode"] == "rendering_unknown":
+        return {"project_fact_needed"}
     raise ValueError(f"no verified Capability conditions for intent kind: {kind}")
 
 

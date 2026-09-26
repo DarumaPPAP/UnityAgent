@@ -221,7 +221,7 @@ class UnityAgentControlPlane:
         except ValueError as exc:
             return {"schema_version": "2.0", "status": "blocked", "run_id": resolved_run_id,
                     "reason": str(exc), "results": [], "evidence_refs": []}
-        selected_capability = "visual.capture" if "visual.capture" in capabilities else capabilities[0]
+        selected_capability = "graphics.diagnose" if intent["kind"] == "rendering_diagnosis" else ("visual.capture" if "visual.capture" in capabilities else capabilities[0])
         specialist_selection = resolve_specialist(route_id, selected_capability, snapshot)
         if specialist_selection["status"] in {"unavailable", "unsupported"}:
             return {"schema_version": "2.0", "status": "blocked", "run_id": resolved_run_id,

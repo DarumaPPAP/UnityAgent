@@ -45,6 +45,7 @@ routes:
   rendering-incident:
     specialist_profile: graphics_subagent
     specialist_pilot: true
+    specialist_phase: analysis
     required_policy_clauses:
       - Policy/Evidence/evidence-policy.yaml
     priority: 100
@@ -59,6 +60,7 @@ routes:
   shader-change:
     specialist_profile: graphics_subagent
     specialist_pilot: true
+    specialist_phase: analysis
     required_policy_clauses:
       - Policy/Evidence/evidence-policy.yaml
     priority: 90
@@ -74,6 +76,7 @@ routes:
   renderer-feature-change:
     specialist_profile: graphics_subagent
     specialist_pilot: true
+    specialist_phase: analysis
     required_policy_clauses:
       - Policy/Evidence/evidence-policy.yaml
     priority: 90

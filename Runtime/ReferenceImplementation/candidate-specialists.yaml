@@ -1,0 +1,4 @@
+schema_version: '1.0'
+kind: candidate_specialist_catalog
+profiles:
+  graphics_subagent: Runtime/ReferenceImplementation/graphics-pilot-profile.yaml

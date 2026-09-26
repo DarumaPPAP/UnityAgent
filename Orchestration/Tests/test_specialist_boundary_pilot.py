@@ -43,16 +43,23 @@ class SpecialistBoundaryPilotTests(unittest.TestCase):
 
     def test_graphics_pilot_fails_closed_and_keeps_provider_selection_out_of_orchestration(self) -> None:
         environment = {"project": {"exists": True, "unity_version": "6000.3"}, "filesystem": {"readable": True}}
+        context_items = [{"category": "project_fact", "key": key, "value": value, "freshness": {"status": "current"}} for key, value in (("unity_version", "6000.3"), ("render_pipeline", "urp"), ("relevant_source", "Assets/Shaders/Example.shader"))]
+        context_items.append({"category": "task_fact", "key": "rendering_symptom", "value": "Pass missing", "freshness": {"status": "current"}})
         for route_id in ("rendering-incident", "shader-change", "renderer-feature-change"):
+            self.assertEqual(self.routes["routes"][route_id]["specialist_phase"], "analysis")
+            if route_id != "rendering-incident":
+                self.assertEqual(self.routes["routes"][route_id]["entry_action"], "implement")
             self.assertEqual(resolve_specialist(route_id, "graphics.diagnose", environment)["status"], "unavailable")
-            decision = resolve_specialist(route_id, "graphics.diagnose", environment, pilot_enabled=True)
+            decision = resolve_specialist(route_id, "graphics.diagnose", environment, pilot_enabled=True, context_items=context_items)
             self.assertEqual(decision["profile_id"], "graphics_subagent")
             self.assertEqual(decision["required_evidence"], ["graphics_diagnosis"])
             self.assertNotIn("provider_id", decision)
             self.assertEqual(resolve_specialist(route_id, "graphics.patch_shader", environment, pilot_enabled=True)["status"], "unsupported")
-            self.assertEqual(resolve_specialist(route_id, "graphics.diagnose", environment, pilot_enabled=True, requested_mutation=True)["status"], "unsupported")
+            self.assertEqual(resolve_specialist(route_id, "graphics.diagnose", environment, pilot_enabled=True, requested_mutation=True, context_items=context_items)["status"], "selected")
+            self.assertEqual(resolve_specialist(route_id, "graphics.diagnose", environment, pilot_enabled=True, specialist_capability_mutates=True, context_items=context_items)["status"], "unsupported")
             self.assertEqual(resolve_specialist(route_id, "graphics.inspect", {}, pilot_enabled=True)["status"], "unavailable")
             self.assertEqual(resolve_specialist(route_id, "graphics.inspect", {"project": {"unity_version": "2022.3"}}, pilot_enabled=True)["status"], "unsupported")
+            self.assertEqual(resolve_specialist(route_id, "graphics.diagnose", environment, pilot_enabled=True)["reason_code"], "required_context_missing")
 
 
 if __name__ == "__main__":

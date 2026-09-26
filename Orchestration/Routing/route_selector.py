@@ -23,6 +23,8 @@ def task_fingerprint_from_intent(intent: dict[str, Any], environment_snapshot: d
         fingerprint = {"intent": "review", "artifact": "visual", "scope": "project_asset",
             "failure_mode": "none", "architecture_state": "not_applicable",
             "mutation_target": "none", "evidence_state": "not_applicable"}
+    elif kind == "rendering_diagnosis" and set(intent).issubset({"kind", "symptom", "target_scope", "change_requested"}) and all(isinstance(intent.get(key), str) and intent[key].strip() for key in ("symptom", "target_scope")) and isinstance(intent.get("change_requested", False), bool):
+        fingerprint = {"intent": "fix" if intent.get("change_requested") else "investigate", "artifact": "rendering", "scope": "local", "failure_mode": "rendering_unknown", "architecture_state": "not_applicable", "mutation_target": "source" if intent.get("change_requested") else "none", "evidence_state": "unknown"}
     else:
         raise ValueError("unsupported or incomplete read-only Typed Intent")
     project = environment_snapshot.get("project") or {}
@@ -41,6 +43,8 @@ def load_routes(path: Path) -> dict[str, Any]:
         requirement = route.get("design_review", "not_required")
         if requirement not in DESIGN_REVIEW_REQUIREMENTS:
             raise ValueError(f"invalid design_review requirement for {route_id}: {requirement}")
+        if route.get("specialist_pilot") and (not route.get("specialist_profile") or route.get("specialist_phase") != "analysis"):
+            raise ValueError(f"candidate Specialist route must declare analysis phase: {route_id}")
     return data
 
 
@@ -99,8 +103,8 @@ def _profile(fingerprint: dict[str, str], forced: str | None) -> str:
     return "generic_planning"
 
 
-def resolve_specialist(route_id: str, capability: str, environment_snapshot: Any, *, root: Path | None = None, pilot_enabled: bool = False, requested_mutation: bool = False) -> dict[str, Any]:
-    """Resolve semantic specialist identity; leave execution Provider resolution to Runtime."""
+def resolve_specialist(route_id: str, capability: str, environment_snapshot: Any, *, root: Path | None = None, pilot_enabled: bool = False, requested_mutation: bool = False, specialist_capability_mutates: bool = False, context_items: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    """Resolve semantic analysis ownership; requested_mutation is Task intent, not Specialist authority."""
     from Runtime.ReferenceImplementation.profiles import CATALOG, ProfileValidationError
 
     repository = root or Path(__file__).resolve().parents[2]
@@ -111,31 +115,10 @@ def resolve_specialist(route_id: str, capability: str, environment_snapshot: Any
     if profile_id is None:
         return {"status": "not_required", "profile_id": None, "capability": capability}
     if route.get("specialist_pilot"):
-        pilot_path = repository / "Runtime/ReferenceImplementation/graphics-pilot-profile.yaml"
-        pilot = yaml.safe_load(pilot_path.read_text(encoding="utf-8"))
-        required = {"profile_id", "display_name", "audience", "goal_type", "capabilities", "required_evidence", "execution_mode", "provider_resolution", "runtime_evaluation", "activation"}
-        if not isinstance(pilot, dict) or set(pilot) != required:
-            raise ValueError("Graphics Pilot Consumer Profile is invalid")
-        identity_valid = pilot["profile_id"] == "graphics_subagent" and pilot["audience"] == "graphics_subagent" and pilot["goal_type"] == "graphics.diagnose"
-        boundary_valid = pilot["execution_mode"] == "read_only_analysis" and pilot["provider_resolution"] == "runtime_tool_broker" and pilot["runtime_evaluation"] == "NOT_EVALUATED_RUNTIME"
-        contract_valid = pilot["capabilities"] == ["graphics.inspect", "graphics.diagnose", "graphics.validate"] and pilot["required_evidence"] == ["graphics_diagnosis"] and pilot["activation"] == {"required_environment": ["project.exists", "filesystem.readable"]}
-        if not identity_valid or not boundary_valid or not contract_valid:
-            raise ValueError("Graphics Pilot Consumer Profile is invalid")
-        if profile_id != pilot["profile_id"] or requested_mutation or capability not in pilot["capabilities"]:
-            return {"status": "unsupported", "profile_id": None, "capability": capability}
-        if not pilot_enabled:
-            return {"status": "unavailable", "profile_id": None, "capability": capability}
+        from Runtime.ReferenceImplementation.candidate_profiles import load_candidate_profile, resolve_candidate
         snapshot = environment_snapshot.to_dict() if hasattr(environment_snapshot, "to_dict") else environment_snapshot
-        project = snapshot.get("project", {}) if isinstance(snapshot, dict) else {}
-        filesystem = snapshot.get("filesystem", {}) if isinstance(snapshot, dict) else {}
-        version = project.get("unity_version") if isinstance(project, dict) else None
-        if not isinstance(version, str) or not version:
-            return {"status": "unavailable", "profile_id": None, "capability": capability}
-        if not version.startswith("6000."):
-            return {"status": "unsupported", "profile_id": None, "capability": capability}
-        if project.get("exists") is not True or not isinstance(filesystem, dict) or filesystem.get("readable") is not True:
-            return {"status": "unavailable", "profile_id": None, "capability": capability}
-        return {"status": "selected", "profile_id": profile_id, "capability": capability, "required_evidence": list(pilot["required_evidence"])}
+        profile = load_candidate_profile(profile_id, root=repository)
+        return resolve_candidate(profile, capability, snapshot, pilot_enabled=pilot_enabled, specialist_capability_mutates=specialist_capability_mutates, context_items=context_items)
     try:
         profile = CATALOG.resolve_capability(capability)
     except ProfileValidationError:
