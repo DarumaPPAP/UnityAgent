@@ -43,6 +43,10 @@ routes:
       mutation_target: [source, none]
       evidence_state: [known, partial]
   rendering-incident:
+    specialist_profile: graphics_subagent
+    specialist_pilot: true
+    required_policy_clauses:
+      - Policy/Evidence/evidence-policy.yaml
     priority: 100
     entry_action: investigate
     design_review: conditional
@@ -53,6 +57,10 @@ routes:
       failure_mode: [rendering_unknown, platform_divergence]
       evidence_state: [unknown, partial]
   shader-change:
+    specialist_profile: graphics_subagent
+    specialist_pilot: true
+    required_policy_clauses:
+      - Policy/Evidence/evidence-policy.yaml
     priority: 90
     entry_action: implement
     design_review: not_required
@@ -64,6 +72,10 @@ routes:
       mutation_target: [shader_source]
       evidence_state: [known, partial, baseline_required]
   renderer-feature-change:
+    specialist_profile: graphics_subagent
+    specialist_pilot: true
+    required_policy_clauses:
+      - Policy/Evidence/evidence-policy.yaml
     priority: 90
     entry_action: implement
     design_review: conditional

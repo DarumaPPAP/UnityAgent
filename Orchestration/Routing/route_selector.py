@@ -99,7 +99,7 @@ def _profile(fingerprint: dict[str, str], forced: str | None) -> str:
     return "generic_planning"
 
 
-def resolve_specialist(route_id: str, capability: str, environment_snapshot: Any, *, root: Path | None = None) -> dict[str, Any]:
+def resolve_specialist(route_id: str, capability: str, environment_snapshot: Any, *, root: Path | None = None, pilot_enabled: bool = False, requested_mutation: bool = False) -> dict[str, Any]:
     """Resolve semantic specialist identity; leave execution Provider resolution to Runtime."""
     from Runtime.ReferenceImplementation.profiles import CATALOG, ProfileValidationError
 
@@ -110,6 +110,32 @@ def resolve_specialist(route_id: str, capability: str, environment_snapshot: Any
     profile_id = route.get("specialist_profile")
     if profile_id is None:
         return {"status": "not_required", "profile_id": None, "capability": capability}
+    if route.get("specialist_pilot"):
+        pilot_path = repository / "Runtime/ReferenceImplementation/graphics-pilot-profile.yaml"
+        pilot = yaml.safe_load(pilot_path.read_text(encoding="utf-8"))
+        required = {"profile_id", "display_name", "audience", "goal_type", "capabilities", "required_evidence", "execution_mode", "provider_resolution", "runtime_evaluation", "activation"}
+        if not isinstance(pilot, dict) or set(pilot) != required:
+            raise ValueError("Graphics Pilot Consumer Profile is invalid")
+        identity_valid = pilot["profile_id"] == "graphics_subagent" and pilot["audience"] == "graphics_subagent" and pilot["goal_type"] == "graphics.diagnose"
+        boundary_valid = pilot["execution_mode"] == "read_only_analysis" and pilot["provider_resolution"] == "runtime_tool_broker" and pilot["runtime_evaluation"] == "NOT_EVALUATED_RUNTIME"
+        contract_valid = pilot["capabilities"] == ["graphics.inspect", "graphics.diagnose", "graphics.validate"] and pilot["required_evidence"] == ["graphics_diagnosis"] and pilot["activation"] == {"required_environment": ["project.exists", "filesystem.readable"]}
+        if not identity_valid or not boundary_valid or not contract_valid:
+            raise ValueError("Graphics Pilot Consumer Profile is invalid")
+        if profile_id != pilot["profile_id"] or requested_mutation or capability not in pilot["capabilities"]:
+            return {"status": "unsupported", "profile_id": None, "capability": capability}
+        if not pilot_enabled:
+            return {"status": "unavailable", "profile_id": None, "capability": capability}
+        snapshot = environment_snapshot.to_dict() if hasattr(environment_snapshot, "to_dict") else environment_snapshot
+        project = snapshot.get("project", {}) if isinstance(snapshot, dict) else {}
+        filesystem = snapshot.get("filesystem", {}) if isinstance(snapshot, dict) else {}
+        version = project.get("unity_version") if isinstance(project, dict) else None
+        if not isinstance(version, str) or not version:
+            return {"status": "unavailable", "profile_id": None, "capability": capability}
+        if not version.startswith("6000."):
+            return {"status": "unsupported", "profile_id": None, "capability": capability}
+        if project.get("exists") is not True or not isinstance(filesystem, dict) or filesystem.get("readable") is not True:
+            return {"status": "unavailable", "profile_id": None, "capability": capability}
+        return {"status": "selected", "profile_id": profile_id, "capability": capability, "required_evidence": list(pilot["required_evidence"])}
     try:
         profile = CATALOG.resolve_capability(capability)
     except ProfileValidationError:
