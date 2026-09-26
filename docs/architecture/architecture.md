@@ -67,11 +67,23 @@ Provider Layer → Evidence & State
 - InstallReceipt: `Runtime/Contracts/install-receipt.schema.yaml`
 - Durable Evidence: `Persistence/Contracts/evidence-record.schema.yaml`
 
-UI / Codexから実行する場合も、経路は必ず
-`Entry → UnityAgent → Capability / Policy / Resolver → Provider → Evidence`
-です。UnityAgentは既存のCapability → Provider Registry → Resolver →
-Dispatcher → Provider Adapter → Evidenceを再利用し、第二のPlayer Frameworkや
-第二のProvider Registryを作りません。
+UI / Codexから実行する場合は、必ずEntryからUnityAgent Control Plane、Orchestration、Context、Runtime、Persistenceを通る。Tool Capabilityは既存のCapability → Provider Registry → Resolver → Dispatcher → Provider Adapter → Evidenceを再利用する。Reasoning Capabilityは下記のCodexRunner経路を使う。第二のPlayer FrameworkやProvider Registryは作らない。
+
+Providerless Specialist reasoningでは同じControl Planeから別のRuntime Actionを選ぶ。`Runtime/Contracts/runtime-handoff.schema.yaml`が`capability_dispatch`と`specialist_reasoning`を区別し、後者は既存CodexRunnerでModel reasoningを行う。ToolBroker Providerへの`provider_ref`を付けず、Materialized Contextから構造化Artifactを作り、Schema・意味・Context identity・変更観測を通した後にPersistenceへ記録する。
+
+```text
+                  UnityAgent
+                      │
+           ┌──────────┴──────────┐
+           │                     │
+ Specialist Reasoning      Tool Capability
+           │                     │
+       CodexRunner             ToolBroker
+           │                     │
+ Structured Artifact          Provider
+```
+
+WorldCreatorはこのReasoning経路の最初のCandidate Consumerであり、Production Registryへは未登録である。Policy defines; Orchestration decides; Context materializes; Runtime executes; Persistence remembers; Eval measures、という責務境界を維持する。
 
 ---
 

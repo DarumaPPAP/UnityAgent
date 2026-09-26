@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from jsonschema import Draft202012Validator, SchemaError, ValidationError
 
 ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
@@ -22,7 +23,7 @@ if str(ROOT) not in sys.path:
 from Runtime.ExecutionControl.process_runtime import run_streaming_process
 from Runtime.Guardrails.mutation_guard import evaluate_mutation_scope
 from Runtime.Guardrails.permission_guard import RuntimePermissionError, enforce_permission
-from Runtime.Sandbox.workspace_guard import changed_paths, snapshot_workspace, workspace_path
+from Runtime.Sandbox.workspace_guard import changed_paths, snapshot_workspace, snapshot_workspace_hashes, workspace_path
 
 
 class CodexRunnerError(ValueError):
@@ -66,8 +67,8 @@ def _profile(profile_id: str) -> dict[str, Any]:
     return profile
 
 
-def _runtime_failure(failure_class: str, reason: str, source_ref: str | None = None, *, retryable: bool = False) -> dict:
-    return {"schema_version": "1.0", "failure_class": failure_class, "reason": reason, "retryable": retryable, "source_ref": source_ref, "observation_state": "not_observed"}
+def _runtime_failure(failure_class: str, reason: str, source_ref: str | None = None, *, retryable: bool = False, observed: bool = False) -> dict:
+    return {"schema_version": "1.0", "failure_class": failure_class, "reason": reason, "retryable": retryable, "source_ref": source_ref, "observation_state": "observed" if observed else "not_observed"}
 
 
 def _tool_identity(request: dict, model: str, provider: str) -> dict:
@@ -103,8 +104,9 @@ def _write_permission_denied(request: dict[str, Any], output: Path, *, model: st
 
 
 def execute(request: dict[str, Any], output: Path, *, command_prefix: list[str], timeout_seconds: float, reasoning_effort: str) -> dict:
+    if reasoning_effort not in {"none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"}:
+        raise CodexRunnerError("unsupported reasoning effort")
     workspace = workspace_path(request["workspace_root"])
-    output.mkdir(parents=True, exist_ok=True)
     execution = request.get("execution", {}) or {}
     profile_id = str(execution.get("profile") or "").strip()
     work_kind = str(execution.get("work_kind") or "").strip()
@@ -112,10 +114,29 @@ def execute(request: dict[str, Any], output: Path, *, command_prefix: list[str],
     if not model:
         raise CodexRunnerError("tool_identity.model is required")
     provider = str((request.get("tool_identity") or {}).get("provider") or "openai")
+    reasoning = execution.get("reasoning") is True
+    if reasoning and any(not isinstance(request.get(key), str) or not request[key].strip() for key in ("original_workspace_root", "output_schema_path", "profile_id", "capability", "source_context_id", "source_context_fingerprint")):
+        raise CodexRunnerError("reasoning request identity, workspace, or schema field is missing")
+    original = workspace_path(request["original_workspace_root"]) if reasoning else None
+    schema_path = Path(request["output_schema_path"]).resolve() if reasoning else None
+    output_path = output.resolve()
+    if reasoning:
+        if profile_id != "generic_planning" or work_kind != "analysis" or execution.get("mutation_authorized") is True or request.get("mutation_scope"):
+            raise CodexRunnerError("reasoning requires generic_planning analysis with empty mutation scope")
+        if original == workspace or original in workspace.parents or workspace in original.parents:
+            raise CodexRunnerError("reasoning workspace must be isolated from the original Project")
+        if not schema_path.is_file() or workspace not in schema_path.parents:
+            raise CodexRunnerError("reasoning output schema must be materialized in the isolated workspace")
+        if output_path == original or original in output_path.parents or output_path == workspace or workspace in output_path.parents:
+            raise CodexRunnerError("reasoning output must be outside the isolated and original workspaces")
+    runtime_profile = _profile(profile_id)
+    if reasoning and (runtime_profile.get("project_access") != "none" or runtime_profile.get("direct_mutation") is not False):
+        raise CodexRunnerError("reasoning Runtime Profile must prohibit project access and direct mutation")
+    output.mkdir(parents=True, exist_ok=True)
 
     try:
         enforce_permission(
-            profile=_profile(profile_id), work_kind=work_kind,
+            profile=runtime_profile, work_kind=work_kind,
             mutation_authorized=execution.get("mutation_authorized") is True,
             human_approval_required=execution.get("human_approval_required") is True,
             human_approval_granted=execution.get("human_approval_granted") is True,
@@ -124,10 +145,17 @@ def execute(request: dict[str, Any], output: Path, *, command_prefix: list[str],
         return _write_permission_denied(request, output, model=model, provider=provider, reason=str(exc))
 
     before = snapshot_workspace(workspace, excluded_prefixes=(".unityagent-control",))
-    final_path = output / "response.md"
+    original_before = snapshot_workspace_hashes(original) if original else None
+    final_path = output / ("response.json" if reasoning else "response.md")
     events_path = output / "codex-events.jsonl"
     stderr_path = output / "codex-stderr.txt"
-    command = [*command_prefix, "exec", "--ephemeral", "--json", "--skip-git-repo-check", "--sandbox", "workspace-write", "--model", model, "-c", f'model_reasoning_effort="{reasoning_effort}"', "--output-last-message", str(final_path), "--cd", str(workspace), "-"]
+    sandbox_mode = "read-only" if work_kind in {"analysis", "verification"} else "workspace-write"
+    command = [*command_prefix, "exec", "--ephemeral", "--json", "--skip-git-repo-check", "--sandbox", sandbox_mode, "--model", model, "-c", f'model_reasoning_effort="{reasoning_effort}"']
+    if reasoning:
+        command.append("--ignore-user-config")
+    if schema_path:
+        command.extend(["--output-schema", str(schema_path)])
+    command.extend(["--output-last-message", str(final_path), "--cd", str(workspace), "-"])
     process = run_streaming_process(
         command,
         cwd=workspace,
@@ -138,6 +166,7 @@ def execute(request: dict[str, Any], output: Path, *, command_prefix: list[str],
     )
     after = snapshot_workspace(workspace, excluded_prefixes=(".unityagent-control",))
     changed = changed_paths(before, after)
+    original_changed = changed_paths(original_before, snapshot_workspace_hashes(original)) if original else []
     scope = request.get("mutation_scope", {}) or {}
     guard = evaluate_mutation_scope(work_kind=work_kind, changed_paths=changed, allowed_paths=list(scope.get("allowed_paths", []) or []), prohibited_paths=list(scope.get("prohibited_paths", []) or []))
 
@@ -154,13 +183,30 @@ def execute(request: dict[str, Any], output: Path, *, command_prefix: list[str],
         failure = _runtime_failure("runtime_protocol_failure", f"Codex exited with code {process.returncode}", "codex-stderr.txt", retryable=True)
     elif guard["status"] != "passed":
         status = "failed"
-        failure = _runtime_failure("runtime_permission_denied", str(guard["reason"]), "mutation-evidence.yaml")
+        failure = _runtime_failure("mutation_attempt_detected" if reasoning else "runtime_permission_denied", str(guard["reason"]), "mutation-evidence.yaml", observed=True)
+    if original_changed:
+        status = "failed"
+        failure = _runtime_failure("mutation_attempt_detected", f"original workspace changed: {original_changed}", "mutation-evidence.yaml", observed=True)
+    if reasoning and status == "passed":
+        try:
+            schema = json.loads(schema_path.read_text(encoding="utf-8"))
+            Draft202012Validator.check_schema(schema)
+            structured = json.loads(final_path.read_text(encoding="utf-8"))
+            Draft202012Validator(schema).validate(structured)
+        except (OSError, ValueError, KeyError, SchemaError, ValidationError) as exc:
+            status = "failed"
+            failure = _runtime_failure("structured_output_invalid", str(exc), "response.json", observed=True)
 
     mutation = {"schema_version": "1.0", "mutation_id": f"{request['run_id']}:{request['step_id']}", "run_id": request["run_id"], "step_id": request["step_id"], "scope": {"allowed_paths": list(scope.get("allowed_paths", []) or []), "prohibited_paths": list(scope.get("prohibited_paths", []) or [])}, "changed_paths": {"observation_state": "observed", "paths": changed}, "diff_ref": None, "before_fingerprint": None, "after_fingerprint": None, "scope_status": guard["scope_status"], "verification_refs": []}
     (output / "mutation-evidence.yaml").write_text(yaml.safe_dump(mutation, sort_keys=False, allow_unicode=True), encoding="utf-8")
     result = {"schema_version": "1.0", "run_id": request["run_id"], "step_id": request["step_id"], "action_id": request["action_id"], "status": status, "started_at": None, "completed_at": None, "exit_code": process.returncode, "runtime_failure": failure, "changed_paths": {"observation_state": "observed", "paths": changed}, "gate_outcomes": list(request.get("gate_outcomes", []) or []), "tool_identity": _tool_identity(request, model, provider), "evidence_refs": ["codex-events.jsonl", "codex-stderr.txt", "mutation-evidence.yaml"], "telemetry_refs": [], "definition_fingerprint": request["definition_fingerprint"]}
+    if reasoning:
+        result.update({"sandbox_mode": sandbox_mode, "original_workspace_changed_paths": original_changed, "structured_output_ref": "response.json" if final_path.is_file() else None, "source_context_id": request["source_context_id"], "source_context_fingerprint": request["source_context_fingerprint"], "reasoning_provenance": {"profile_id": request["profile_id"], "capability": request["capability"], "runtime_profile": profile_id, "model": model, "model_provider": provider, "model_revision": _tool_identity(request, model, provider)["model_revision"], "reasoning_effort": reasoning_effort}})
+        result["telemetry_refs"] = ["metrics.json"]
+        if final_path.is_file():
+            result["evidence_refs"].append("response.json")
     (output / "execution-result.yaml").write_text(yaml.safe_dump(result, sort_keys=False, allow_unicode=True), encoding="utf-8")
-    metrics = {"changed_paths": changed, "runtime": {"launched": True, "timed_out": process.timed_out, "cancelled": process.cancelled, "duration_seconds": process.duration_seconds, "process_tree_cleanup": process.process_tree_cleanup, "remaining_processes": process.remaining_processes, "event_count": process.event_count}}
+    metrics = {"changed_paths": changed, "original_workspace_changed_paths": original_changed, "runtime": {"launched": True, "timed_out": process.timed_out, "cancelled": process.cancelled, "duration_seconds": process.duration_seconds, "process_tree_cleanup": process.process_tree_cleanup, "remaining_processes": process.remaining_processes, "event_count": process.event_count, "sandbox_mode": sandbox_mode}}
     (output / "metrics.json").write_text(json.dumps(metrics, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return result
 
