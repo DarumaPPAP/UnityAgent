@@ -22,7 +22,11 @@ def derive_context_inputs(project_root: str, snapshot: dict[str, Any], intent: d
     fact = {"key": "unity_version", "value": version, "source_kind": "detected_project",
             "source_path": str(source), "revision": revision, "observed_at_attempt": attempt,
             "freshness": freshness, "reason": "reobserved ProjectVersion.txt and matched bound EnvironmentSnapshot"}
-    specialist_tag = "rendering" if intent.get("kind") == "rendering_diagnosis" else "camera"
+    specialist_tags = {"project_inspection": "project", "visual_capture": "camera", "rendering_diagnosis": "rendering", "performance_analysis": "performance"}
+    try:
+        specialist_tag = specialist_tags[intent["kind"]]
+    except KeyError as exc:
+        raise ValueError("unsupported Context intent kind") from exc
     items = [{"category": "project_fact", "key": "unity_version", "value": version, "source": str(source),
               "revision": revision, "freshness": freshness, "observed_at_attempt": attempt,
               "tags": [specialist_tag], "required": True}]
@@ -33,13 +37,17 @@ def derive_context_inputs(project_root: str, snapshot: dict[str, Any], intent: d
         items.append({"category": "platform_fact", "key": "requested_target", "value": platform,
                       "source": "EnvironmentSnapshot.build.requested_target", "revision": environment_revision,
                       "freshness": freshness, "observed_at_attempt": attempt, "tags": [specialist_tag]})
-    scope = intent.get("target_scope") if specialist_tag == "rendering" else intent.get("exact_scene_or_asset_scope")
+    scope = intent.get("target_scope") if specialist_tag in {"rendering", "performance"} else intent.get("exact_scene_or_asset_scope")
     if isinstance(scope, str) and scope:
         items.append({"category": "task_fact", "key": "requested_scope", "value": scope,
-                      "source": "user:request.intent.target_scope" if specialist_tag == "rendering" else "user:request.intent.exact_scene_or_asset_scope", "revision": request_revision,
+                      "source": "user:request.intent.target_scope" if specialist_tag in {"rendering", "performance"} else "user:request.intent.exact_scene_or_asset_scope", "revision": request_revision,
                       "freshness": freshness, "observed_at_attempt": attempt, "tags": [specialist_tag], "required": True})
     if specialist_tag == "rendering":
         items.append({"category": "task_fact", "key": "rendering_symptom", "value": intent["symptom"], "source": "user:request.intent.symptom", "revision": request_revision, "freshness": freshness, "observed_at_attempt": attempt, "tags": [specialist_tag], "required": True})
+    if specialist_tag == "performance":
+        items.append({"category": "task_fact", "key": "performance_symptom", "value": intent["symptom"], "source": "user:request.intent.symptom", "revision": request_revision, "freshness": freshness, "observed_at_attempt": attempt, "tags": [specialist_tag], "required": True})
+        if intent.get("comparison_requested"):
+            items.append({"category": "task_fact", "key": "analysis_mode", "value": "comparison_requested", "source": "user:request.intent.comparison_requested", "revision": request_revision, "freshness": freshness, "observed_at_attempt": attempt, "tags": [specialist_tag]})
     bindings: dict[str, Any] = {"project_root": {"value": str(observed["root"]), "source_kind": "environment_snapshot",
         "revision": environment_revision, "freshness": freshness}}
     if isinstance(intent.get("kind"), str) and intent["kind"]:
@@ -53,5 +61,7 @@ def derive_context_inputs(project_root: str, snapshot: dict[str, Any], intent: d
     required_keys = {"project_fact:unity_version", "task_fact:requested_scope"}
     if specialist_tag == "rendering":
         required_keys.add("task_fact:rendering_symptom")
+    if specialist_tag == "performance":
+        required_keys.add("task_fact:performance_symptom")
     return {"project_facts": [fact], "specialist_items": items, "bindings": bindings,
             "specialist_tags": {specialist_tag}, "required_specialist_keys": required_keys}

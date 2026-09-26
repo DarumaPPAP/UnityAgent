@@ -1,0 +1,19 @@
+profile_id: performance_subagent
+display_name: PerformanceSubAgent
+audience: performance_subagent
+goal_type: performance.analyze
+capabilities: [performance.analyze]
+required_evidence: [performance_analysis]
+execution_mode: read_only_analysis
+provider_resolution: runtime_tool_broker
+runtime_evaluation: NOT_EVALUATED_RUNTIME
+activation:
+  required_environment: [project.exists, filesystem.readable]
+compatibility:
+  unity_version_prefixes: ['6000.']
+  context_values: {}
+capability_context:
+  performance.analyze:
+    all_of: [project_fact:unity_version, task_fact:performance_symptom, task_fact:requested_scope]
+    any_of: [platform_fact:requested_target]
+    receipt_required: true

@@ -10,7 +10,7 @@ DESIGN_REVIEW_REQUIREMENTS = {"required", "conditional", "not_required"}
 
 
 def task_fingerprint_from_intent(intent: dict[str, Any], environment_snapshot: dict[str, Any], *, project_root: str, policy_allowed: bool) -> dict[str, str]:
-    """Project the two read-only Pilot intents; only observed binding and Policy grant access."""
+    """Project bounded Entry intents; only observed binding and Policy grant access."""
     kind = intent.get("kind")
     if kind == "project_inspection" and set(intent) == {"kind"}:
         fingerprint = {"intent": "review", "artifact": "project", "scope": "read_only",
@@ -25,6 +25,8 @@ def task_fingerprint_from_intent(intent: dict[str, Any], environment_snapshot: d
             "mutation_target": "none", "evidence_state": "not_applicable"}
     elif kind == "rendering_diagnosis" and set(intent).issubset({"kind", "symptom", "target_scope", "change_requested"}) and all(isinstance(intent.get(key), str) and intent[key].strip() for key in ("symptom", "target_scope")) and isinstance(intent.get("change_requested", False), bool):
         fingerprint = {"intent": "fix" if intent.get("change_requested") else "investigate", "artifact": "rendering", "scope": "local", "failure_mode": "rendering_unknown", "architecture_state": "not_applicable", "mutation_target": "source" if intent.get("change_requested") else "none", "evidence_state": "unknown"}
+    elif kind == "performance_analysis" and set(intent).issubset({"kind", "symptom", "target_scope", "comparison_requested"}) and all(isinstance(intent.get(key), str) and intent[key].strip() for key in ("symptom", "target_scope")) and isinstance(intent.get("comparison_requested", False), bool):
+        fingerprint = {"intent": "investigate", "artifact": "performance", "scope": "local", "failure_mode": "performance", "architecture_state": "not_applicable", "mutation_target": "none", "evidence_state": "baseline_required" if intent.get("comparison_requested") else "partial"}
     else:
         raise ValueError("unsupported or incomplete read-only Typed Intent")
     project = environment_snapshot.get("project") or {}
