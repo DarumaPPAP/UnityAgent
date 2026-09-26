@@ -71,6 +71,7 @@ class ProviderDescriptor:
     legacy: bool = False
     production_enabled: bool = True
     management_operations: tuple[str, ...] = ()
+    context_transport_supported: bool = False
 
 
 @dataclass(frozen=True)
@@ -264,10 +265,13 @@ def parse_provider_registry(value: Any, *, root: Path = ROOT) -> ProviderRegistr
         )
         legacy = raw.get("legacy", False)
         production_enabled = raw.get("production_enabled", True)
+        context_transport_supported = raw.get("context_transport_supported", False)
         if not isinstance(legacy, bool):
             raise ValueError(f"{provider_id}: legacy must be boolean")
         if not isinstance(production_enabled, bool):
             raise ValueError(f"{provider_id}: production_enabled must be boolean")
+        if not isinstance(context_transport_supported, bool):
+            raise ValueError(f"{provider_id}: context_transport_supported must be boolean")
 
         management_operations = _optional_string_list(
             raw.get("management_operations"),
@@ -308,6 +312,7 @@ def parse_provider_registry(value: Any, *, root: Path = ROOT) -> ProviderRegistr
             legacy=legacy,
             production_enabled=production_enabled,
             management_operations=management_operations,
+            context_transport_supported=context_transport_supported,
         )
 
     for capability in known_capabilities:

@@ -109,6 +109,9 @@ def dispatch_capability(
     context: ResolutionContext,
     executors: Mapping[str, ProviderExecutor],
     provider_arguments: Mapping[str, Mapping[str, Any]] | None = None,
+    specialist_execution_context: Mapping[str, Any] | None = None,
+    specialist_context_manifest_path: str | None = None,
+    receipt_required: bool = False,
     maximum_retry_attempts: int = 1,
 ) -> dict[str, Any]:
     """Resolve and execute one capability without accepting caller-selected Provider identity."""
@@ -117,6 +120,10 @@ def dispatch_capability(
     validate_environment_snapshot(snapshot)
     if not isinstance(executors, Mapping):
         raise ValueError("executors must be a provider-id mapping")
+    if any("specialist_execution_context" in values or "specialist_context_manifest_path" in values for values in (provider_arguments or {}).values()):
+        raise ValueError("Specialist Context must use the common runtime envelope")
+    if receipt_required and specialist_execution_context is None:
+        raise ValueError("receipt_required needs Specialist Execution Context")
 
     guard = guard_runtime_dispatch(request, snapshot, context=context)
     if not guard.allowed:
@@ -187,7 +194,18 @@ def dispatch_capability(
             }
 
         executor = executors.get(provider_ref)
-        arguments = arguments_by_provider.get(provider_ref) or {}
+        arguments = dict(arguments_by_provider.get(provider_ref) or {})
+        if specialist_execution_context is not None:
+            profile_id = (specialist_execution_context.get("specialist_context") or {}).get("profile_id")
+            if current_resolution.get("subagent_profile_id") != profile_id:
+                # A different Specialist backend must never receive this Context.
+                return {"schema_version": "1.0", "status": "blocked", "capability": request["capability"], "resolution": current_resolution, "provider_result": _failure(provider_ref, "ambiguous_binding", "resolved Provider is not bound to selected Specialist"), "attempts": [item.to_dict() for item in attempts], "fallback_from": fallback_from}
+            if broker.registry.provider(provider_ref).context_transport_supported is not True:
+                # Required Specialist Context cannot be discarded at invocation.
+                return {"schema_version": "1.0", "status": "blocked", "capability": request["capability"], "resolution": current_resolution, "provider_result": _failure(provider_ref, "precondition_failed", "resolved Provider does not support Specialist Context transport"), "attempts": [item.to_dict() for item in attempts], "fallback_from": fallback_from}
+            arguments["specialist_execution_context"] = dict(specialist_execution_context)
+            if specialist_context_manifest_path is not None:
+                arguments["specialist_context_manifest_path"] = specialist_context_manifest_path
         provider_result = _invoke_executor(
             executor,
             provider_ref=provider_ref,
@@ -204,12 +222,19 @@ def dispatch_capability(
             )
         )
         if provider_result.get("status") in {"passed", "not_applicable"}:
+            if receipt_required:
+                generated = (specialist_execution_context.get("context_id"), specialist_execution_context.get("context_fingerprint")) if specialist_execution_context else (None, None)
+                received = (provider_result.get("received_context_id"), provider_result.get("received_context_fingerprint"))
+                if generated == (None, None) or received != generated:
+                    # An unacknowledged Context cannot support Specialist Evidence.
+                    return {"schema_version": "1.0", "status": "blocked", "capability": request["capability"], "resolution": current_resolution, "provider_result": provider_result, "receipt_integrity": "failed", "reason": "Specialist Context received identity missing or mismatched", "attempts": [item.to_dict() for item in attempts], "fallback_from": fallback_from}
             return {
                 "schema_version": "1.0",
                 "status": "completed",
                 "capability": request["capability"],
                 "resolution": current_resolution,
                 "provider_result": provider_result,
+                **({"receipt_integrity": "verified"} if receipt_required else {}),
                 "attempts": [item.to_dict() for item in attempts],
                 "fallback_from": fallback_from,
             }

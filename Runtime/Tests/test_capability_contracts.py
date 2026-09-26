@@ -210,6 +210,19 @@ class CapabilityContractTests(unittest.TestCase):
         self.assertTrue((ROOT / "Context/Selection/tool-capability-catalog.yaml").is_file())
         self.assertFalse((ROOT / "Context/Selection/mcp-selection.yaml").exists())
 
+    def test_candidate_capability_templates_are_read_only_and_bound_to_candidate_route(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fixture_root = Path(tmp)
+            for relative in (REQUEST_SCHEMA_PATH, RESOLUTION_SCHEMA_PATH, POLICY_PATH, ROUTING_PATH, TASK_ROUTES_PATH, CONTEXT_CATALOG_PATH):
+                target = fixture_root / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(ROOT / relative, target)
+            routing_path = fixture_root / ROUTING_PATH
+            routing = yaml.safe_load(routing_path.read_text(encoding="utf-8"))
+            routing["routes"]["rendering-incident"]["candidate_capabilities"][0]["operation_kind"] = "editor_mutation"
+            routing_path.write_text(yaml.safe_dump(routing, sort_keys=False), encoding="utf-8")
+            self.assertTrue(any("candidate capability must be read-only" in item.message for item in validate_contract_foundation(fixture_root)))
+
     def test_orchestration_provider_product_fixture_is_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
             fixture_root = Path(tmp)

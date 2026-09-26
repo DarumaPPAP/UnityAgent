@@ -253,6 +253,7 @@ class ControlPlaneTests(unittest.TestCase):
         proof = json.loads((plane.state_store.layout.root / result["orchestration_decision_ref"]).read_text(encoding="utf-8"))
         self.assertEqual(proof["active_conditions"], ["visual_evidence_needed"])
         self.assertEqual(proof["context_manifest_ref"], result["context_manifest_ref"])
+        self.assertEqual(proof["selected_specialist_capability"], "visual.capture")
 
     @staticmethod
     def artist_receipt_executor(request, context, arguments):

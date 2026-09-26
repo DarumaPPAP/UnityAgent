@@ -8,6 +8,8 @@ import unittest
 import yaml
 
 from Orchestration.Routing.route_selector import resolve_specialist
+from Orchestration.Routing.route_selector import select_specialist_capability
+from Orchestration.ToolRouting.capability_request_builder import build_candidate_capability_requests
 from Runtime.ReferenceImplementation.candidate_profiles import CandidateProfileError, load_candidate_profile, resolve_candidate, validate_candidate_profile
 
 
@@ -67,8 +69,21 @@ class CandidateProfileTests(unittest.TestCase):
             routes = root / "Orchestration/Routing/task-routes.yaml"
             routes.parent.mkdir(parents=True)
             routes.write_text(yaml.safe_dump({"authority": "Orchestration", "routes": {"sample-route": {"specialist_profile": "sample_subagent", "specialist_pilot": True, "specialist_phase": "analysis"}}}), encoding="utf-8")
+            capability_route = root / "Orchestration/ToolRouting/capability-routing.yaml"
+            capability_route.parent.mkdir(parents=True)
+            capability_route.write_text(yaml.safe_dump({"routes": {"sample-route": {"candidate_capabilities": [{"capability": "sample.analyze", "operation_kind": "read", "required_evidence": ["graphics_diagnosis"], "preferred_surface": "project", "when": "always"}]}}}), encoding="utf-8")
             decision = resolve_specialist("sample-route", "sample.analyze", self.environment, root=root, pilot_enabled=True, context_items=self.items)
             self.assertEqual(decision["profile_id"], "sample_subagent")
+            requests = build_candidate_capability_requests("sample-route", "/fixture", root=root)
+            self.assertEqual(select_specialist_capability("sample-route", requests, root=root), "sample.analyze")
+
+    def test_specialist_capability_is_selected_from_route_requests(self) -> None:
+        requests = [{"capability": "project.inspect"}] + build_candidate_capability_requests("rendering-incident", "/fixture")
+        self.assertEqual(select_specialist_capability("rendering-incident", requests), "graphics.diagnose")
+        with self.assertRaisesRegex(ValueError, "no specialist capability match"):
+            select_specialist_capability("rendering-incident", [{"capability": "project.inspect"}])
+        with self.assertRaisesRegex(ValueError, "ambiguous specialist capability"):
+            select_specialist_capability("rendering-incident", requests + [{"capability": "graphics.inspect"}])
 
     def test_pinned_hub_candidate_contract_matches_consumer_boundary(self) -> None:
         # UnitySubAgentHub PR #72, commit ef8dc9c32c1c46252cb146b330b6f49916010706.

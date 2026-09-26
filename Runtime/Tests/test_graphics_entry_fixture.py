@@ -11,7 +11,8 @@ from Context.Manifest.build_context_manifest import build as build_context_manif
 from Context.Selection.project_context_inputs import derive_context_inputs
 from ControlPlane.unity_agent_control_plane import UnityAgentControlPlane, validate_entry_request
 from Orchestration.Routing.route_selector import load_routes, resolve_specialist, select_route, task_fingerprint_from_intent
-from Orchestration.ToolRouting.capability_request_builder import build_capability_requests, conditions_for_intent
+from Orchestration.Routing.route_selector import select_specialist_capability
+from Orchestration.ToolRouting.capability_request_builder import build_capability_requests, build_candidate_capability_requests, conditions_for_intent
 from Runtime.ReferenceImplementation.graphics_read_only import GraphicsPilotContractError, verify_graphics_read_only
 from Runtime.Tooling.capability_resolver import ResolutionContext
 
@@ -52,7 +53,9 @@ class GraphicsEntryFixtureTests(unittest.TestCase):
         if include_pipeline:
             inputs["specialist_items"].append(self.observed("project_fact", "render_pipeline", "urp", self.project / "ProjectSettings/GraphicsSettings.asset"))
         inputs["specialist_items"].append(self.observed("project_fact", "relevant_source", "Assets/Example.shader", self.project / "Assets/Example.shader"))
-        selection = resolve_specialist(route["route_id"], "graphics.diagnose", snapshot, pilot_enabled=pilot_enabled, requested_mutation=change_requested, context_items=inputs["specialist_items"])
+        candidate_requests = build_candidate_capability_requests(route["route_id"], request["project_root"], active_conditions=conditions)
+        selected_capability = select_specialist_capability(route["route_id"], requests + candidate_requests)
+        selection = resolve_specialist(route["route_id"], selected_capability, snapshot, pilot_enabled=pilot_enabled, requested_mutation=change_requested, context_items=inputs["specialist_items"])
         return request, route, requests, inputs, selection
 
     def test_entry_to_context_receipt_and_static_evidence(self) -> None:

@@ -20,6 +20,8 @@
 
 Candidate SpecialistはProduction Catalogと別の `Runtime/ReferenceImplementation/candidate-specialists.yaml` から参照する。Routeの `specialist_profile` は専門的な意味解析のOwnerを示し、ApplyやProvider解決のOwnerではない。`specialist_phase: analysis` の候補は `entry_action: implement` のRouteでも診断・事前確認・提案Diffまでを担当する。Taskの変更要求とSpecialist Capability自身の変更権限を区別する。ActivationはProject存在、読み取り可能性、対応Unity Versionを判定し、Capability ContextはRender Pipelineや対象Source等の観測事実を別途要求する。欠落Factは `required_context_missing` として停止し、推測しない。
 
+Specialist CapabilityはEntry Intentの分岐で決めない。OrchestrationのRouteが生成するProduction CapabilityRequestとCandidate用の意味的CapabilityRequestを集め、Routeに束縛されたProfileのCapability集合と交差させる。一致が0件または複数件なら停止する。Candidate用の要求はProduction dispatchへ渡さず、Provider Registryへの架空Graphics Provider登録も行わない。`goal_type` とHubの旧 `primary_capability` は実行時選択に使わない。
+
 Specialist 項目の型は `project_fact`、`project_decision`、`platform_fact`、`platform_decision`、`task_fact`。それぞれ key、value、tag、source、SHA-256 revision、freshness を保持する。Fact は観測 attempt を指定する。Decision は `user:` または `project_policy:` に由来する明示的な判断に限定する。unknown／stale／別 attempt の情報は採用しない。必須情報が無ければ生成を停止し、Budget 超過でも必須情報を捨てない。全項目を一つの選択済み Specialist bundle として測定し、その全 byte 数と出典を記録する。
 
 既存 Route の primary Skill は維持する。追加 Skill は Orchestration から対象に適した `.agents/skills/<name>/SKILL.md` を明示したときだけ全文を選択し、全 Skill を常時読み込まない。Policy は Route の必須参照を全量含める。Context は Specialist を選出せず、Runtime の Provider を決めない。
@@ -67,8 +69,8 @@ Candidate には Project Fact、Project Decision、Platform Fact、Platform Deci
 ## Context receipt の境界
 
 - Generated: Context Assembly が immutable Manifest に `context_id` と `context_fingerprint` を生成する。
-- Transported: Runtime が Manifest path を選択済み `unity_artist_cli` に渡す。
-- Received: Backend CLI が Manifest を読み、structured result に `received_context_id` / `received_context_fingerprint` を返す。Control Plane は Manifest の Identity と照合し、欠落・不一致を fail-closed とする。
+- Transported: ToolBrokerがProviderを解決した後、Runtime Dispatcherが対応可能な解決済みProviderへ共通の `specialist_execution_context` とManifest pathを渡す。ContextとSpecialist identityはProviderを選ばない。非対応Providerでは実行前に停止する。
+- Received: Backendがstructured resultに `received_context_id` / `received_context_fingerprint` を返す。Receipt必須のSpecialist CapabilityではRuntime Dispatcherが生成Identityと照合し、欠落・不一致をfail-closedとする。通常CapabilityにはReceiptを要求しない。
 - Applied: Specialist inference / decision input への実適用は今回未評価。受信 Echo を semantic consumption と呼ばない。
 
 現行 Production の正式対象は Unity 6.x+（Built-in / URP / HDRP）。Unity CLI は automation / command surface、Unity Pipeline は実行中 Editor の local HTTP bridge であり、connected Editor commands に使う。Unity 2022.3 は現行 Support 対象外。Historical bounded batch Evidence は別途保存する。Skill は既存 `.agents/skills` / Context catalog の metadata から選別し、必要な SKILL.md と Reference のみ段階的にロードする。Hub の `skill_refs` 追加は現時点で必須ではない。

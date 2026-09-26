@@ -129,3 +129,31 @@ def resolve_specialist(route_id: str, capability: str, environment_snapshot: Any
         return {"status": "unavailable", "profile_id": None, "capability": capability}
     return {"status": "selected", "profile_id": profile.profile_id, "capability": capability,
             "required_evidence": list(profile.required_evidence)}
+
+
+def select_specialist_capability(route_id: str, requests: list[dict[str, Any]], *, root: Path | None = None) -> str | None:
+    """Intersect route requests with the bound Specialist Profile; never choose by order."""
+    from Runtime.ReferenceImplementation.profiles import CATALOG
+    from Runtime.ReferenceImplementation.candidate_profiles import load_candidate_profile
+
+    repository = root or Path(__file__).resolve().parents[2]
+    route = load_routes(repository / "Orchestration/Routing/task-routes.yaml").get("routes", {}).get(route_id)
+    if route is None:
+        raise ValueError(f"unknown route: {route_id}")
+    profile_id = route.get("specialist_profile")
+    if profile_id is None:
+        # Core routes have no Specialist phase to select.
+        return None
+    if route.get("specialist_pilot"):
+        capabilities = set(load_candidate_profile(profile_id, root=repository)["capabilities"])
+    else:
+        profiles = [item.profile for item in CATALOG.definitions() if item.profile.profile_id == profile_id]
+        if len(profiles) != 1:
+            raise ValueError(f"unknown Specialist Profile: {profile_id}")
+        capabilities = set(profiles[0].capabilities)
+    matches = {str(request["capability"]) for request in requests if request.get("capability") in capabilities}
+    if not matches:
+        raise ValueError(f"no specialist capability match: {route_id}")
+    if len(matches) != 1:
+        raise ValueError(f"ambiguous specialist capability: {sorted(matches)}")
+    return next(iter(matches))
