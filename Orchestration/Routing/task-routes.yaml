@@ -90,6 +90,9 @@ routes:
       mutation_target: [renderer_pipeline]
       evidence_state: [known, partial]
   performance-experiment:
+    specialist_profile: performance_subagent
+    specialist_pilot: true
+    specialist_phase: analysis
     priority: 95
     entry_action: investigate
     design_review: conditional

@@ -46,4 +46,12 @@ properties:
         symptom: {type: string, minLength: 1, pattern: '\S'}
         target_scope: {type: string, minLength: 1, pattern: '\S'}
         change_requested: {type: boolean}
+    - type: object
+      additionalProperties: false
+      required: [kind, symptom, target_scope]
+      properties:
+        kind: {const: performance_analysis}
+        symptom: {type: string, minLength: 1, pattern: '\S'}
+        target_scope: {type: string, minLength: 1, pattern: '\S'}
+        comparison_requested: {type: boolean}
   approval_ref: {type: [string, 'null'], minLength: 1}

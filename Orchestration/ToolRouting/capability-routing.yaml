@@ -58,6 +58,8 @@ routes:
       - {capability: compile.observe, operation_kind: read, required_evidence: [compile_observation], preferred_surface: editor, when: verification_requested}
       - {capability: scene.inspect, operation_kind: read, required_evidence: [editor_observation], preferred_surface: live_editor, when: editor_observation_needed}
   performance-experiment:
+    candidate_capabilities:
+      - {capability: performance.analyze, operation_kind: read, required_evidence: [performance_analysis], preferred_surface: project, when: always}
     capabilities:
       - {capability: project.inspect, operation_kind: read, required_evidence: [project_fact], preferred_surface: project, when: always}
       - {capability: profiler.observe, operation_kind: read, required_evidence: [profiler_observation], preferred_surface: live_editor, when: runtime_measurement_needed}

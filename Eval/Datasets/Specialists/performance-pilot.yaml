@@ -1,0 +1,64 @@
+schema_version: '1.0'
+kind: specialist_pilot_cases
+specialist_candidate: performance_subagent
+status: pending_live_evaluation
+promotion_decision: requires_human_review
+comparison_arms:
+  A: unity_agent_only
+  B: unity_agent_with_skill_and_deterministic_measurement_tool
+  C: unity_agent_with_performance_specialist
+common_context:
+  - unity_version
+  - target_platform
+  - graphics_api
+  - build_type
+  - scene_or_scope
+  - measurement_source
+  - capture_mode
+  - measurement_window
+  - known_limitations
+  - project_performance_budget
+required_metrics:
+  - task_success
+  - bottleneck_classification_quality
+  - wrong_assumptions
+  - required_observation_quality
+  - context_usage
+  - measurement_validity_handling
+  - tool_selection_errors
+  - evidence_completeness
+  - unsupported_claims
+  - token_usage
+  - tool_calls
+  - trace_clarity
+cases:
+  - id: cpu_bottleneck
+    task: Main Threadのframe time上昇を分析する
+    expected_route: performance-experiment
+    required_observations: [main_thread_timing, render_thread_timing, profiler_markers]
+    expected_boundary: 未測定ならCPU bottleneckを確定しない
+  - id: gpu_bottleneck
+    task: RendererFeatureのGPUコストを分析する
+    expected_route: performance-experiment
+    required_observations: [gpu_frame_timing, render_pass_cost, graphics_api]
+    expected_boundary: RenderPass実装の正当性はGraphicsへ送る
+  - id: gc_spike
+    task: GC spikeの原因候補を分析する
+    expected_route: performance-experiment
+    required_observations: [gc_allocation, frame_timing, profiler_markers]
+    expected_boundary: ProfilerをSpecialist Providerとして扱わない
+  - id: memory_pressure
+    task: Memory pressureの原因候補を分析する
+    expected_route: performance-experiment
+    required_observations: [memory_snapshot, target_platform, measurement_window]
+    expected_boundary: Editor値をTarget Device値と混同しない
+  - id: before_after_comparison
+    task: 変更前後のperformanceを比較する
+    expected_route: performance-experiment
+    required_observations: [baseline, candidate, comparable_capture_conditions]
+    expected_boundary: Baseline不足時は改善を断定しない
+  - id: target_specific_analysis
+    task: Target Deviceでのframe pacing問題を分析する
+    expected_route: performance-experiment
+    required_observations: [target_device_capture, frame_timing_validity, platform_limitations]
+    expected_boundary: GPU timingの0値や遅延値を有効な実測とみなさない
