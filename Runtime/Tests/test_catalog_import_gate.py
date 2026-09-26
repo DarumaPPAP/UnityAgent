@@ -30,6 +30,20 @@ def _hub_snapshot() -> dict:
     return yaml.safe_load(HUB_V3_FIXTURE_PATH.read_text(encoding="utf-8"))
 
 
+def _hub_v2_snapshot() -> dict:
+    snapshot = _hub_snapshot()
+    snapshot["schema_version"] = "2.0"
+    manifest = snapshot["specialists"][0]["manifest"]
+    manifest["schema_version"] = "4.0"
+    manifest["compatibility"].pop("support_matrix_ref")
+    manifest["evidence"].pop("contract_ref")
+    for backend in manifest["backends"]:
+        backend.pop("executable", None)
+        backend.pop("package_id", None)
+        backend.pop("transport", None)
+    return snapshot
+
+
 def _snapshot_bytes(value: dict) -> bytes:
     return yaml.safe_dump(value, sort_keys=False, allow_unicode=True, width=1000).encode("utf-8")
 
@@ -95,6 +109,26 @@ def _review_profile() -> dict:
 
 
 class CatalogImportGateTests(unittest.TestCase):
+    def test_static_hub_v2_snapshot_preserves_consumer_owned_profile(self) -> None:
+        snapshot = _hub_v2_snapshot()
+        manifest = snapshot["specialists"][0]["manifest"]
+        self.assertEqual(set(manifest["compatibility"]), {"supported_targets"})
+        self.assertNotIn("contract_ref", manifest["evidence"])
+
+        plan = _plan(snapshot)
+
+        self.assertEqual(plan["status"], "no_op")
+        self.assertEqual(CATALOG.get("artist_subagent").provider_id, "unity_artist_cli")
+
+    def test_static_hub_v2_rejects_backend_implementation_fields(self) -> None:
+        snapshot = _hub_v2_snapshot()
+        snapshot["specialists"][0]["manifest"]["backends"][0]["executable"] = "unity-artist"
+
+        with self.assertRaises(CatalogImportError) as context:
+            _plan(snapshot)
+
+        self.assertEqual(context.exception.code, "hub_snapshot_schema")
+
     def test_neutral_hub_snapshot_preserves_unityagent_profile_values(self) -> None:
         snapshot = _hub_snapshot()
         self.assertNotIn("default_profile", snapshot)

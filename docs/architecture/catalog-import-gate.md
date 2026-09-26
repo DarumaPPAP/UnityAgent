@@ -15,7 +15,7 @@ python Tools/import_subagent_catalog.py \
 
 `source-ref`とSHA-256は呼び出し側がSnapshotの取得元と取得バイト列に対して指定します。SHA-256が一致しない、YAMLに重複キーがある、Snapshot / Identity / Capability / Provider / activation / scope / approval / Evidenceが不正、または未知のEnvironment Factを参照するSnapshotはfail-closedになります。
 
-Hub Snapshot v1はManifest v3を含みます。AdapterはHub Schemaの固定コピーを`Runtime/ReferenceImplementation/Schemas/`からオフラインで検証し、active Specialistの静的Capability、Activation、Backend参照、Evidence requirementsを読みます。Hub Schemaが更新される場合はこのコピーとImport Testを同じUnityAgent PRで更新します。`audience`、`goal_type`、`primary_capability`、既定Profile、Reference scope / approval、Evidence producerはUnityAgentの現行Catalogから保持します。HubがこれらのRuntime値を決めません。新しいSpecialistにUnityAgent側Profileがなければ`consumer_profile_required`で停止し、明示的なCatalog Migrationを要求します。複数のactive Specialistが同じCapabilityを宣言した場合も、現行Resolverが一意に選べないためImport Gateで拒否します。
+Hub Snapshot v2はManifest v4を含みます。移行期間中は既存のSnapshot v1 / Manifest v3も受け入れます。v4ではBackend実装フィールドとBackend Test Evidence参照をHub Manifestから除外します。AdapterはHub Schemaの固定コピーを`Runtime/ReferenceImplementation/Schemas/`からオフラインで検証し、active Specialistの静的Capability、Activation、Backend参照、Evidence requirementsを読みます。Hub Schemaが更新される場合はこのコピーとImport Testを同じUnityAgent PRで更新します。`audience`、`goal_type`、`primary_capability`、既定Profile、Reference scope / approval、Evidence producerはUnityAgentの現行Catalogから保持します。HubがこれらのRuntime値を決めません。新しいSpecialistにUnityAgent側Profileがなければ`consumer_profile_required`で停止し、明示的なCatalog Migrationを要求します。複数のactive Specialistが同じCapabilityを宣言した場合も、現行Resolverが一意に選べないためImport Gateで拒否します。
 
 ## Planの扱い
 
