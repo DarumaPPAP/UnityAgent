@@ -12,8 +12,9 @@ from Context.Selection.project_context_inputs import derive_context_inputs
 from ControlPlane.unity_agent_control_plane import UnityAgentControlPlane, validate_entry_request
 from Orchestration.Routing.route_selector import load_routes, resolve_specialist, select_route, task_fingerprint_from_intent
 from Orchestration.Routing.route_selector import select_specialist_capability
-from Orchestration.ToolRouting.capability_request_builder import build_capability_requests, build_candidate_capability_requests, conditions_for_intent
+from Orchestration.ToolRouting.capability_request_builder import build_capability_requests, build_specialist_capability_requests, conditions_for_intent
 from Runtime.ReferenceImplementation.graphics_read_only import GraphicsPilotContractError, verify_graphics_read_only
+from Runtime.ReferenceImplementation.candidate_profiles import load_candidate_profile, resolve_candidate
 from Runtime.Tooling.capability_resolver import ResolutionContext
 
 
@@ -53,7 +54,7 @@ class GraphicsEntryFixtureTests(unittest.TestCase):
         if include_pipeline:
             inputs["specialist_items"].append(self.observed("project_fact", "render_pipeline", "urp", self.project / "ProjectSettings/GraphicsSettings.asset"))
         inputs["specialist_items"].append(self.observed("project_fact", "relevant_source", "Assets/Example.shader", self.project / "Assets/Example.shader"))
-        candidate_requests = build_candidate_capability_requests(route["route_id"], request["project_root"], active_conditions=conditions)
+        candidate_requests = build_specialist_capability_requests(route["route_id"], request["project_root"], active_conditions=conditions)
         selected_capability = select_specialist_capability(route["route_id"], requests + candidate_requests)
         selection = resolve_specialist(route["route_id"], selected_capability, snapshot, pilot_enabled=pilot_enabled, requested_mutation=change_requested, context_items=inputs["specialist_items"])
         return request, route, requests, inputs, selection
@@ -76,17 +77,22 @@ class GraphicsEntryFixtureTests(unittest.TestCase):
 
     def test_missing_context_pilot_disabled_and_unsupported_version(self) -> None:
         self.assertEqual(self.prepare(include_pipeline=False)[4]["reason_code"], "required_context_missing")
-        self.assertEqual(self.prepare(pilot_enabled=False)[4]["reason_code"], "pilot_disabled")
+        self.assertEqual(resolve_candidate(load_candidate_profile("graphics_subagent"), "graphics.diagnose", self.environment, pilot_enabled=False)["reason_code"], "pilot_disabled")
         old = copy.deepcopy(self.environment)
         old["project"]["unity_version"] = "2022.3.62f1"
         self.assertEqual(resolve_specialist("rendering-incident", "graphics.diagnose", old, pilot_enabled=True)["reason_code"], "unity_version_unsupported")
 
-    def test_production_entry_fails_closed_while_candidate_pilot_is_disabled(self) -> None:
+    def test_production_entry_fails_closed_without_observation_executor(self) -> None:
         plane = UnityAgentControlPlane(self.project.parent / "state")
         revisions = {name: "fixture-v1" for name in ("architecture_version", "policy_revision", "prompt_revision", "context_revision", "graph_revision", "runtime_profile_revision", "tool_schema_revision", "checkpoint_schema_revision", "evidence_schema_revision", "eval_contract_revision")}
-        result = plane.execute(self.entry(), environment_snapshot=self.environment, context=ResolutionContext(policy_allowed=True), executors={}, definition_fingerprint={"schema_version": "1.0", **revisions})
+        from Runtime.Tooling.Environment.discovery import discover_environment
+        from Runtime.Tooling.Environment.environment_snapshot import UnityCliSnapshot
+        snapshot = discover_environment(str(self.project), editor_candidates=[], editor_candidates_observed=True, editor_processes=[], editor_processes_observed=True, unity_cli_observation=UnityCliSnapshot(False, None, None, "unavailable"), provider_instances={"myunitymcp": [], "coplay_mcp": []}, which_fn=lambda _: None).to_dict()
+        result = plane.execute(self.entry(), environment_snapshot=snapshot, context=ResolutionContext(policy_allowed=True), executors={}, definition_fingerprint={"schema_version": "1.0", **revisions})
         self.assertEqual(result["status"], "blocked")
-        self.assertIn("Specialist unavailable: graphics.diagnose", result["reason"])
+        self.assertTrue(result["results"])
+        self.assertTrue(all(item["status"] == "blocked" for item in result["results"]))
+        self.assertFalse(any(item.get("runtime_action") == "specialist_reasoning" for item in result["results"]))
 
     def test_mutation_task_keeps_graphics_analysis_read_only(self) -> None:
         request, route, requests, inputs, selection = self.prepare(change_requested=True)

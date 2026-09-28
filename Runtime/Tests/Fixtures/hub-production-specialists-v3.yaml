@@ -1,0 +1,189 @@
+schema_version: '3.0'
+kind: subagent_catalog_snapshot
+specialists:
+- manifest_ref: SubAgents/artist_subagent/manifest.yaml
+  manifest:
+    schema_version: '5.0'
+    kind: subagent_manifest
+    execution:
+      kind: provider_backed
+    identity:
+      id: artist_subagent
+      name: ArtistSubAgent
+      version: 0.0.1-beta
+    lifecycle: active
+    installation:
+      mode: optional
+      required: false
+      auto_install: false
+    activation:
+      required_before_resolution:
+      - unity_artist_cli.available
+      - unity_artist_cli.compatible
+      - unity_artist_cli.project_bound
+      - unity_artist_cli.package_installed
+      - unity_artist_cli.pipeline_reachable
+      false_behavior: exclude_from_resolution
+      unknown_behavior: exclude_from_resolution
+    capabilities:
+    - id: artist.camera
+      operations:
+      - inspect
+      - refine
+    - id: visual
+      operations:
+      - capture
+    capability_contract_ref: SubAgents/artist_subagent/contracts/capability-contracts.yaml
+    compatibility:
+      supported_targets:
+      - unity_version: Unity 6.x+
+        render_pipeline: builtin
+      - unity_version: Unity 6.x+
+        render_pipeline: urp
+      - unity_version: Unity 6.x+
+        render_pipeline: hdrp
+    dependencies:
+    - id: unity_artist_cli
+      kind: backend
+      required: true
+      eligibility_gate: unity_artist_cli.available
+    - id: com.darumappap.unity-artist
+      kind: unity_package
+      required: true
+      eligibility_gate: unity_artist_cli.package_installed
+    - id: com.unity.pipeline
+      kind: unity_package
+      required: true
+      eligibility_gate: unity_artist_cli.pipeline_reachable
+    backends:
+    - id: unity_artist_cli
+      kind: cli
+      contract_ref: SubAgents/artist_subagent/contracts/backend-surface-contract.yaml
+    evidence:
+      required: true
+      required_artifacts:
+      - provider_result
+      - normalized_evidence
+      runtime_types:
+      - mutation_diff
+      - editor_observation
+      - visual_capture
+      terminal_states:
+      - verified
+      - partial_verified
+      - blocked_by_environment
+      - unavailable
+- manifest_ref: SubAgents/graphics_subagent/manifest.yaml
+  manifest:
+    schema_version: '5.0'
+    kind: subagent_manifest
+    identity:
+      id: graphics_subagent
+      name: GraphicsSubAgent
+      version: 0.0.1-beta
+    lifecycle: active
+    installation:
+      mode: optional
+      required: false
+      auto_install: false
+    activation:
+      required_before_resolution:
+      - project.exists
+      - filesystem.readable
+      false_behavior: exclude_from_resolution
+      unknown_behavior: exclude_from_resolution
+    execution:
+      kind: reasoning
+      reasoning_runtime: codex_runner
+      execution_mode: read_only_analysis
+      source_context_binding: required
+      required_observation_capabilities:
+      - project.inspect
+      - source.read
+      instructions_ref: SubAgents/graphics_subagent/instructions.md
+      output_contract_ref: SubAgents/graphics_subagent/contracts/graphics-analysis-result.schema.json
+    capabilities:
+    - id: graphics
+      operations:
+      - inspect
+      - diagnose
+      - validate
+    capability_contract_ref: SubAgents/graphics_subagent/contracts/production-capability-contract.yaml
+    compatibility:
+      supported_targets:
+      - unity_version: Unity 6.x+
+        render_pipeline: builtin
+      - unity_version: Unity 6.x+
+        render_pipeline: urp
+      - unity_version: Unity 6.x+
+        render_pipeline: hdrp
+    dependencies: []
+    backends: []
+    evidence:
+      required: true
+      required_artifacts:
+      - structured_reasoning_artifact
+      - normalized_evidence
+      - source_context_binding
+      runtime_types:
+      - graphics_diagnosis
+      terminal_states:
+      - verified
+      - partial_verified
+      - blocked_by_environment
+      - unavailable
+- manifest_ref: SubAgents/world_creator_subagent/manifest.yaml
+  manifest:
+    schema_version: '5.0'
+    kind: subagent_manifest
+    identity:
+      id: world_creator_subagent
+      name: WorldCreatorSubAgent
+      version: 0.0.1-beta
+    lifecycle: active
+    installation:
+      mode: optional
+      required: false
+      auto_install: false
+    activation:
+      required_before_resolution:
+      - project.exists
+      - filesystem.readable
+      false_behavior: exclude_from_resolution
+      unknown_behavior: exclude_from_resolution
+    execution:
+      kind: reasoning
+      reasoning_runtime: codex_runner
+      execution_mode: planning_only
+      source_context_binding: required
+      required_observation_capabilities: []
+      instructions_ref: SubAgents/world_creator_subagent/instructions.md
+      output_contract_ref: SubAgents/world_creator_subagent/contracts/world-plan-result.schema.json
+    capabilities:
+    - id: world
+      operations:
+      - plan
+    capability_contract_ref: SubAgents/world_creator_subagent/contracts/production-capability-contract.yaml
+    compatibility:
+      supported_targets:
+      - unity_version: Unity 6.x+
+        render_pipeline: builtin
+      - unity_version: Unity 6.x+
+        render_pipeline: urp
+      - unity_version: Unity 6.x+
+        render_pipeline: hdrp
+    dependencies: []
+    backends: []
+    evidence:
+      required: true
+      required_artifacts:
+      - structured_reasoning_artifact
+      - normalized_evidence
+      - source_context_binding
+      runtime_types:
+      - world_plan
+      terminal_states:
+      - verified
+      - partial_verified
+      - blocked_by_environment
+      - unavailable

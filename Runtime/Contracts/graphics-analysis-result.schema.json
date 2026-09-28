@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GraphicsAnalysisResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "status",
+    "profile_id",
+    "capability",
+    "execution_mode",
+    "provider_resolution",
+    "source_context_id",
+    "source_context_fingerprint",
+    "confirmed_facts",
+    "hypotheses",
+    "rejected_hypotheses",
+    "required_observations",
+    "known_limitations",
+    "mutation_performed",
+    "evidence_level",
+    "runtime_evaluation",
+    "observation_refs",
+    "proposed_diff",
+    "required_approval"
+  ],
+  "properties": {
+    "status": {
+      "type": "string",
+      "const": "completed"
+    },
+    "profile_id": {
+      "type": "string",
+      "const": "graphics_subagent"
+    },
+    "capability": {
+      "type": "string",
+      "enum": [
+        "graphics.inspect",
+        "graphics.diagnose",
+        "graphics.validate"
+      ]
+    },
+    "execution_mode": {
+      "type": "string",
+      "const": "read_only_analysis"
+    },
+    "provider_resolution": {
+      "type": "string",
+      "const": "not_required"
+    },
+    "source_context_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_context_fingerprint": {
+      "type": "string",
+      "minLength": 1
+    },
+    "confirmed_facts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "statement",
+          "source_ref"
+        ],
+        "properties": {
+          "statement": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_ref": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "hypotheses": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "rejected_hypotheses": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "required_observations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "known_limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    },
+    "mutation_performed": {
+      "type": "boolean",
+      "const": false
+    },
+    "evidence_level": {
+      "type": "string",
+      "const": "runtime_reasoning"
+    },
+    "runtime_evaluation": {
+      "type": "string",
+      "const": "RUNTIME_OBSERVED"
+    },
+    "observation_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "proposed_diff": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1
+    },
+    "required_approval": {
+      "type": "string",
+      "enum": [
+        "none",
+        "required_before_apply"
+      ]
+    }
+  }
+}

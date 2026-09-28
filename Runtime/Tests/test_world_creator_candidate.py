@@ -9,8 +9,8 @@ import unittest
 import yaml
 
 from Orchestration.Routing.route_selector import load_routes, resolve_specialist, select_specialist_capability
-from Orchestration.ToolRouting.capability_request_builder import build_candidate_capability_requests, build_capability_requests
-from Runtime.ReferenceImplementation.candidate_profiles import CandidateProfileError, load_candidate_profile, validate_candidate_profile
+from Orchestration.ToolRouting.capability_request_builder import build_specialist_capability_requests, build_capability_requests
+from Runtime.ReferenceImplementation.candidate_profiles import CandidateProfileError, load_candidate_profile, validate_candidate_profile, resolve_candidate
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -28,7 +28,7 @@ class WorldCreatorCandidateTests(unittest.TestCase):
         self.assertEqual(self.profile["required_evidence"], ["world_plan"])
         self.assertEqual(self.profile["capability_context"]["world.plan"]["any_of"], [])
         production = build_capability_requests(route_id="world-creation", project_root="/fixture", active_conditions={"project_fact_needed"})
-        candidate = build_candidate_capability_requests("world-creation", "/fixture")
+        candidate = build_specialist_capability_requests("world-creation", "/fixture")
         self.assertEqual([item["capability"] for item in production], ["project.inspect"])
         self.assertEqual([item["capability"] for item in candidate], ["world.plan"])
         self.assertEqual(select_specialist_capability("world-creation", production + candidate), "world.plan")
@@ -64,7 +64,7 @@ class WorldCreatorCandidateTests(unittest.TestCase):
     def test_missing_facts_disabled_pilot_and_unsupported_version(self) -> None:
         missing = resolve_specialist("world-creation", "world.plan", self.environment, pilot_enabled=True, context_items=self.items[:1])
         self.assertEqual((missing["status"], missing["reason_code"]), ("unavailable", "required_context_missing"))
-        self.assertEqual(resolve_specialist("world-creation", "world.plan", self.environment, pilot_enabled=False)["reason_code"], "pilot_disabled")
+        self.assertEqual(resolve_candidate(self.profile, "world.plan", self.environment, pilot_enabled=False)["reason_code"], "pilot_disabled")
         old = copy.deepcopy(self.environment)
         old["project"]["unity_version"] = "2022.3.62f1"
         self.assertEqual(resolve_specialist("world-creation", "world.plan", old, pilot_enabled=True)["reason_code"], "unity_version_unsupported")

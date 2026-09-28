@@ -213,6 +213,35 @@ class EvidenceStore:
             raise PersistenceError("evidence_tampered", "evidence event does not bind the persisted record")
         return record
 
+    def read_observation(self, evidence_id: str, *, expected_run_id: str, expected_project_root: str, expected_capability: str) -> dict[str, Any]:
+        """同一Runの検証済み読取Evidenceから、digestで結ばれたpayloadだけを再利用する。"""
+        record = self.verify_record(evidence_id, expected_run_id=expected_run_id)
+        if record.get("schema_version") != "1.2" or record.get("durability") != "durable" or record.get("verification_status") != "passed" or record.get("completion") != "verified" or record.get("observation_state") != "observed" or record.get("failure_class") is not None or record.get("mutation_provenance") is not None:
+            raise PersistenceError("observation_unverified", "observation requires verified read-only durable evidence")
+        if record.get("capability") != expected_capability:
+            raise PersistenceError("observation_scope_mismatch", "observation capability differs from request")
+        if not record.get("project_root") or Path(record["project_root"]).resolve() != Path(expected_project_root).resolve():
+            raise PersistenceError("observation_scope_mismatch", "observation project differs from request")
+        if not record.get("observed_evidence") or not set(record.get("required_evidence") or []).issubset(record["observed_evidence"]):
+            raise PersistenceError("observation_unverified", "observation required evidence is missing")
+        reference = record.get("payload_ref")
+        if not isinstance(reference, str) or not reference or Path(reference).is_absolute():
+            raise PersistenceError("observation_unverified", "observation payload reference is missing or invalid")
+        path = (self.layout.root / reference).resolve()
+        observation_root = (self.layout.run_root(expected_run_id) / "snapshots" / "observation").resolve()
+        if not path.is_relative_to(observation_root):
+            raise PersistenceError("observation_scope_mismatch", "observation payload is outside the current run")
+        payload = read_json(path)
+        digest = sha256_json(payload)
+        bindings = [item for item in record.get("provenance", []) if item.startswith("observation_payload:")]
+        if bindings != [f"observation_payload:{digest}"]:
+            raise PersistenceError("observation_tampered", "observation payload digest mismatch")
+        if set(payload) != {"schema_version", "capability", "operation_kind", "project_root", "result"} or payload.get("schema_version") != "1.0" or payload.get("operation_kind") != "read" or not isinstance(payload.get("result"), dict):
+            raise PersistenceError("observation_unverified", "invalid read observation payload")
+        if payload["capability"] != expected_capability or payload["project_root"] != record["project_root"]:
+            raise PersistenceError("observation_scope_mismatch", "observation payload capability or project mismatch")
+        return payload
+
     @staticmethod
     def verify_asset(path: str | Path, expected_digest: str, *, expected_bytes: int | None = None) -> dict[str, Any]:
         """Verify a capture asset digest without accepting metadata-only proof."""

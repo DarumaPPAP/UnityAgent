@@ -9,7 +9,7 @@ import yaml
 
 from Orchestration.Routing.route_selector import resolve_specialist
 from Orchestration.Routing.route_selector import select_specialist_capability
-from Orchestration.ToolRouting.capability_request_builder import build_candidate_capability_requests
+from Orchestration.ToolRouting.capability_request_builder import build_candidate_capability_requests, build_specialist_capability_requests
 from Runtime.ReferenceImplementation.candidate_profiles import CandidateProfileError, load_candidate_profile, resolve_candidate, validate_candidate_profile
 
 
@@ -78,7 +78,7 @@ class CandidateProfileTests(unittest.TestCase):
             self.assertEqual(select_specialist_capability("sample-route", requests, root=root), "sample.analyze")
 
     def test_specialist_capability_is_selected_from_route_requests(self) -> None:
-        requests = [{"capability": "project.inspect"}] + build_candidate_capability_requests("rendering-incident", "/fixture")
+        requests = [{"capability": "project.inspect"}] + build_specialist_capability_requests("rendering-incident", "/fixture")
         self.assertEqual(select_specialist_capability("rendering-incident", requests), "graphics.diagnose")
         with self.assertRaisesRegex(ValueError, "no specialist capability match"):
             select_specialist_capability("rendering-incident", [{"capability": "project.inspect"}])

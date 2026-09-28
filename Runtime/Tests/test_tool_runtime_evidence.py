@@ -16,11 +16,21 @@ if str(ROOT) not in sys.path:
 from Runtime.EvidenceCapture.tool_runtime_evidence import (
     attach_capability_outcome,
     normalize_provider_result,
+    observation_payload,
 )
 from Runtime.Telemetry.runtime_telemetry import provider_capability_metrics
 
 
 class ToolRuntimeEvidenceTests(unittest.TestCase):
+    def test_observation_payload_excludes_transport_logs_and_redacts_secrets(self):
+        request = {"capability": "source.read", "operation_kind": "read", "project_root": "/fixture"}
+        result = {"status": "passed", "provider_ref": "file", "evidence": ["source_read"], "received_context_id": "ctx-1", "stdout": "process log", "raw_log": "not structured evidence", "path": "Assets/Test.cs", "content": "source", "metadata": {"api_token": "private"}}
+        payload = observation_payload(request, result)
+        self.assertEqual(payload["result"], {"path": "Assets/Test.cs", "content": "source", "metadata": {"api_token": "***"}})
+        self.assertEqual(result["metadata"]["api_token"], "private")
+        with self.assertRaisesRegex(ValueError, "read"):
+            observation_payload({**request, "operation_kind": "source_mutation"}, result)
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)

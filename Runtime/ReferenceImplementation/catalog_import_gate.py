@@ -41,6 +41,8 @@ PROTECTED_FIELD_ROOTS = frozenset(
         "value",
         "approval",
         "evidence",
+        "execution",
+        "selection",
     }
 )
 
@@ -92,15 +94,19 @@ HUB_SNAPSHOT_SCHEMA_PATH = ROOT / "Runtime/ReferenceImplementation/Schemas/hub-s
 HUB_MANIFEST_SCHEMA_PATH = ROOT / "Runtime/ReferenceImplementation/Schemas/hub-manifest-v3.schema.json"
 HUB_V2_SNAPSHOT_SCHEMA_PATH = ROOT / "Runtime/ReferenceImplementation/Schemas/hub-snapshot-v2.schema.json"
 HUB_V4_MANIFEST_SCHEMA_PATH = ROOT / "Runtime/ReferenceImplementation/Schemas/hub-manifest-v4.schema.json"
+HUB_V3_SNAPSHOT_SCHEMA_PATH = ROOT / "Runtime/ReferenceImplementation/Schemas/hub-snapshot-v3.schema.json"
+HUB_V5_MANIFEST_SCHEMA_PATH = ROOT / "Runtime/ReferenceImplementation/Schemas/hub-manifest-v5.schema.json"
 
 
 def _validate_hub_schema(snapshot: Mapping[str, Any]) -> None:
     """Validate pinned Hub contracts before adapting their runtime-relevant fields."""
     version = snapshot.get("schema_version")
-    if version not in {"1.0", "2.0"}:
+    if version not in {"1.0", "2.0", "3.0"}:
         raise CatalogImportError("hub_snapshot_schema", "unsupported Hub snapshot version")
     snapshot_path = HUB_V2_SNAPSHOT_SCHEMA_PATH if version == "2.0" else HUB_SNAPSHOT_SCHEMA_PATH
     manifest_path = HUB_V4_MANIFEST_SCHEMA_PATH if version == "2.0" else HUB_MANIFEST_SCHEMA_PATH
+    if version == "3.0":
+        snapshot_path, manifest_path = HUB_V3_SNAPSHOT_SCHEMA_PATH, HUB_V5_MANIFEST_SCHEMA_PATH
     try:
         snapshot_schema = json.loads(snapshot_path.read_text(encoding="utf-8"))
         manifest_schema = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -124,9 +130,12 @@ def _exact_mapping(value: Any, expected: frozenset[str], location: str) -> Mappi
 def _hub_profile_catalog(snapshot: Mapping[str, Any], consumer_catalog: SubAgentProfileCatalog) -> SubAgentProfileCatalog:
     _exact_mapping(snapshot, frozenset({"schema_version", "kind", "specialists"}), "Hub snapshot")
     snapshot_version = snapshot["schema_version"]
-    if snapshot_version not in {"1.0", "2.0"} or snapshot["kind"] != "subagent_catalog_snapshot":
+    if snapshot_version not in {"1.0", "2.0", "3.0"} or snapshot["kind"] != "subagent_catalog_snapshot":
         raise CatalogImportError("hub_snapshot_schema", "unsupported Hub snapshot version or kind")
-    static_contract = snapshot_version == "2.0"
+    static_contract = snapshot_version in {"2.0", "3.0"}
+    execution_contract = snapshot_version == "3.0"
+    if execution_contract and consumer_catalog.schema_version != "3.0":
+        raise CatalogImportError("consumer_migration_required", "Manifest v5 requires explicit Consumer Profile v3 migration")
     specialists = snapshot["specialists"]
     if not isinstance(specialists, list) or not specialists:
         raise CatalogImportError("hub_snapshot_schema", "specialists must be a non-empty list")
@@ -139,8 +148,8 @@ def _hub_profile_catalog(snapshot: Mapping[str, Any], consumer_catalog: SubAgent
         match = HUB_MANIFEST_REF.fullmatch(reference) if isinstance(reference, str) else None
         if match is None:
             raise CatalogImportError("hub_snapshot_schema", f"specialists[{index}].manifest_ref is invalid")
-        manifest = _exact_mapping(entry["manifest"], HUB_MANIFEST_KEYS, f"specialists[{index}].manifest")
-        expected_manifest_version = "4.0" if static_contract else "3.0"
+        manifest = _exact_mapping(entry["manifest"], HUB_MANIFEST_KEYS | ({"execution"} if execution_contract else set()), f"specialists[{index}].manifest")
+        expected_manifest_version = "5.0" if execution_contract else "4.0" if static_contract else "3.0"
         if manifest["schema_version"] != expected_manifest_version or manifest["kind"] != "subagent_manifest":
             raise CatalogImportError("hub_snapshot_schema", f"specialists[{index}] requires Manifest v{expected_manifest_version[0]}")
         identity = _exact_mapping(manifest["identity"], frozenset({"id", "name", "version"}), f"specialists[{index}].identity")
@@ -168,6 +177,17 @@ def _hub_profile_catalog(snapshot: Mapping[str, Any], consumer_catalog: SubAgent
             current = consumer_catalog.get(profile_id)
         except ProfileValidationError as exc:
             raise CatalogImportError("consumer_profile_required", f"{profile_id}: UnityAgent must define consumer-owned Profile fields before import") from exc
+        reasoning = execution_contract and manifest["execution"]["kind"] == "reasoning"
+        if execution_contract:
+            declared = manifest["execution"]
+            if current.execution.get("kind") != declared["kind"]:
+                raise CatalogImportError("execution_contract_mismatch", f"{profile_id}: execution kind differs from Consumer Profile")
+            if reasoning:
+                if current.selection["supported_targets"] != targets:
+                    raise CatalogImportError("compatibility_contract_mismatch", f"{profile_id}: supported targets differ from Consumer Profile")
+                shared = ("reasoning_runtime", "execution_mode", "source_context_binding", "required_observation_capabilities")
+                if any(current.execution[key] != declared[key] for key in shared) or any(current.execution["hub_contract_refs"][key] != declared[key] for key in ("instructions_ref", "output_contract_ref")):
+                    raise CatalogImportError("execution_contract_mismatch", f"{profile_id}: reasoning contracts differ from Consumer Profile")
         installation = _exact_mapping(manifest["installation"], frozenset({"mode", "required", "auto_install"}), f"{profile_id}.installation")
         activation = _exact_mapping(manifest["activation"], frozenset({"required_before_resolution", "false_behavior", "unknown_behavior"}), f"{profile_id}.activation")
         if installation != {"mode": "optional", "required": False, "auto_install": False} or activation["false_behavior"] != "exclude_from_resolution" or activation["unknown_behavior"] != "exclude_from_resolution":
@@ -178,7 +198,7 @@ def _hub_profile_catalog(snapshot: Mapping[str, Any], consumer_catalog: SubAgent
 
         backend_ids: set[str] = set()
         backends = manifest["backends"]
-        if not isinstance(backends, list) or not backends:
+        if not isinstance(backends, list) or (not reasoning and not backends) or (reasoning and backends):
             raise CatalogImportError("hub_snapshot_schema", f"{profile_id}: backends must be non-empty")
         for backend in backends:
             allowed_backend_keys = {"id", "kind", "contract_ref"} if static_contract else {"id", "kind", "executable", "package_id", "transport", "contract_ref"}
@@ -187,12 +207,14 @@ def _hub_profile_catalog(snapshot: Mapping[str, Any], consumer_catalog: SubAgent
             if not isinstance(backend["id"], str) or PROVIDER_ID_PATTERN.fullmatch(backend["id"]) is None or any(not isinstance(backend[key], str) or not backend[key] for key in backend):
                 raise CatalogImportError("hub_snapshot_schema", f"{profile_id}: invalid backend identity or reference")
             backend_ids.add(backend["id"])
-        if len(backend_ids) != len(backends) or current.provider_id not in backend_ids:
+        if len(backend_ids) != len(backends) or (not reasoning and current.provider_id not in backend_ids):
             raise CatalogImportError("provider_binding_required", f"{profile_id}: current UnityAgent provider is not declared by Hub backends")
         dependencies = manifest["dependencies"]
         if not isinstance(dependencies, list) or any(not isinstance(item, Mapping) or not set(item).issubset({"id", "kind", "required", "eligibility_gate"}) or not {"id", "kind", "required"}.issubset(item) or not isinstance(item["id"], str) or not isinstance(item["kind"], str) or not isinstance(item["required"], bool) for item in dependencies):
             raise CatalogImportError("hub_snapshot_schema", f"{profile_id}: invalid dependencies")
-        if not any(item.get("id") == current.provider_id and item.get("kind") == "backend" and item.get("required") is True and item.get("eligibility_gate") in required_environment for item in dependencies):
+        if reasoning and any(item.get("kind") == "backend" for item in dependencies):
+            raise CatalogImportError("execution_contract_mismatch", f"{profile_id}: reasoning cannot require a semantic Tool Backend")
+        if not reasoning and not any(item.get("id") == current.provider_id and item.get("kind") == "backend" and item.get("required") is True and item.get("eligibility_gate") in required_environment for item in dependencies):
             raise CatalogImportError("provider_binding_required", f"{profile_id}: current provider has no required activation gate")
 
         capabilities = manifest["capabilities"]
@@ -301,21 +323,23 @@ def _validate_semantics(catalog: SubAgentProfileCatalog, provider_registry: Prov
         profile = definition.profile
         if PROFILE_ID_PATTERN.fullmatch(profile.profile_id) is None:
             raise CatalogImportError("invalid_identity", f"invalid profile_id: {profile.profile_id!r}")
-        if PROVIDER_ID_PATTERN.fullmatch(profile.provider_id) is None:
-            raise CatalogImportError("invalid_provider", f"invalid provider_id: {profile.provider_id!r}")
-        if profile.profile_id == profile.provider_id:
-            raise CatalogImportError("identity_provider_collision", f"{profile.profile_id} must differ from provider_id")
-        provider = provider_registry.providers.get(profile.provider_id)
-        if provider is None:
-            raise CatalogImportError("unknown_provider", f"unknown provider_id: {profile.provider_id}")
-        if not provider.production_enabled:
-            raise CatalogImportError("provider_disabled", f"provider is production-disabled: {profile.provider_id}")
-        if profile.provider_id in seen_providers:
-            raise CatalogImportError(
-                "duplicate_provider",
-                f"provider_id {profile.provider_id} is used by both {seen_providers[profile.provider_id]} and {profile.profile_id}",
-            )
-        seen_providers[profile.provider_id] = profile.profile_id
+        if profile.execution.get("kind") == "reasoning":
+            observed_capabilities = {capability for provider in provider_registry.providers.values() if provider.production_enabled for capability in provider.capabilities}
+            if any(capability not in observed_capabilities for capability in profile.execution["required_observation_capabilities"]):
+                raise CatalogImportError("observation_capability_unregistered", f"{profile.profile_id}: required observation is absent from the Provider contract")
+        else:
+            if not isinstance(profile.provider_id, str) or PROVIDER_ID_PATTERN.fullmatch(profile.provider_id) is None:
+                raise CatalogImportError("invalid_provider", f"invalid provider_id: {profile.provider_id!r}")
+            if profile.profile_id == profile.provider_id:
+                raise CatalogImportError("identity_provider_collision", f"{profile.profile_id} must differ from provider_id")
+            provider = provider_registry.providers.get(profile.provider_id)
+            if provider is None:
+                raise CatalogImportError("unknown_provider", f"unknown provider_id: {profile.provider_id}")
+            if not provider.production_enabled:
+                raise CatalogImportError("provider_disabled", f"provider is production-disabled: {profile.provider_id}")
+            if profile.provider_id in seen_providers:
+                raise CatalogImportError("duplicate_provider", f"provider_id {profile.provider_id} is used by both {seen_providers[profile.provider_id]} and {profile.profile_id}")
+            seen_providers[profile.provider_id] = profile.profile_id
 
         if profile.goal_type in seen_goals:
             raise CatalogImportError(

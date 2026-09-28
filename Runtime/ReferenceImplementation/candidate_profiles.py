@@ -29,6 +29,27 @@ def _texts(value: Any, name: str, pattern: re.Pattern[str] | None = None, *, all
     return value
 
 
+def validate_selection_context(compatibility: Any, requirements: Any, capabilities: list[str] | tuple[str, ...], *, receipt_required: bool) -> None:
+    if not isinstance(compatibility, dict) or set(compatibility) != {"unity_version_prefixes", "context_values"}:
+        raise CandidateProfileError("compatibility fields are not exact")
+    _texts(compatibility["unity_version_prefixes"], "compatibility.unity_version_prefixes")
+    if not isinstance(compatibility["context_values"], dict):
+        raise CandidateProfileError("compatibility.context_values must be a mapping")
+    for key, allowed in compatibility["context_values"].items():
+        if not isinstance(key, str) or CONTEXT_KEY.fullmatch(key) is None:
+            raise CandidateProfileError("invalid compatibility Context key")
+        _texts(allowed, f"compatibility.context_values.{key}")
+    if not isinstance(requirements, dict) or set(requirements) != set(capabilities):
+        raise CandidateProfileError("each capability requires a Context contract")
+    for capability, requirement in requirements.items():
+        if not isinstance(requirement, dict) or set(requirement) != {"all_of", "any_of", "receipt_required"} or requirement["receipt_required"] is not receipt_required:
+            raise CandidateProfileError(f"invalid Context contract: {capability}")
+        _texts(requirement["all_of"], f"{capability}.all_of", CONTEXT_KEY)
+        _texts(requirement["any_of"], f"{capability}.any_of", CONTEXT_KEY, allow_empty=True)
+        if any(key not in requirement["all_of"] for key in compatibility["context_values"]):
+            raise CandidateProfileError(f"{capability} must require each compatibility Context key")
+
+
 def validate_candidate_profile(profile: Any) -> dict[str, Any]:
     if not isinstance(profile, dict) or set(profile) != PROFILE_FIELDS | (REASONING_FIELDS if isinstance(profile, dict) and profile.get("execution_mode") == "planning_only" else set()):
         raise CandidateProfileError("Candidate Profile fields are not exact")
@@ -53,26 +74,7 @@ def validate_candidate_profile(profile: Any) -> dict[str, Any]:
     if not isinstance(activation, dict) or set(activation) != {"required_environment"}:
         raise CandidateProfileError("activation fields are not exact")
     _texts(activation["required_environment"], "activation.required_environment")
-    compatibility = profile["compatibility"]
-    if not isinstance(compatibility, dict) or set(compatibility) != {"unity_version_prefixes", "context_values"}:
-        raise CandidateProfileError("compatibility fields are not exact")
-    _texts(compatibility["unity_version_prefixes"], "compatibility.unity_version_prefixes")
-    if not isinstance(compatibility["context_values"], dict):
-        raise CandidateProfileError("compatibility.context_values must be a mapping")
-    for key, allowed in compatibility["context_values"].items():
-        if not isinstance(key, str) or CONTEXT_KEY.fullmatch(key) is None:
-            raise CandidateProfileError("invalid compatibility Context key")
-        _texts(allowed, f"compatibility.context_values.{key}")
-    requirements = profile["capability_context"]
-    if not isinstance(requirements, dict) or set(requirements) != set(capabilities):
-        raise CandidateProfileError("each capability requires a Context contract")
-    for capability, requirement in requirements.items():
-        if not isinstance(requirement, dict) or set(requirement) != {"all_of", "any_of", "receipt_required"} or requirement["receipt_required"] is not execution_contracts[profile["execution_mode"]][1]:
-            raise CandidateProfileError(f"invalid Context contract: {capability}")
-        _texts(requirement["all_of"], f"{capability}.all_of", CONTEXT_KEY)
-        _texts(requirement["any_of"], f"{capability}.any_of", CONTEXT_KEY, allow_empty=True)
-        if any(key not in requirement["all_of"] for key in compatibility["context_values"]):
-            raise CandidateProfileError(f"{capability} must require each compatibility Context key")
+    validate_selection_context(profile["compatibility"], profile["capability_context"], capabilities, receipt_required=execution_contracts[profile["execution_mode"]][1])
     return profile
 
 
@@ -114,10 +116,15 @@ def _context_values(items: list[dict[str, Any]] | None) -> dict[str, Any]:
 
 def resolve_candidate(profile: dict[str, Any], capability: str, snapshot: Mapping[str, Any], *, pilot_enabled: bool, specialist_capability_mutates: bool = False, context_items: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     profile = validate_candidate_profile(profile)
+    return resolve_profile_context(profile, capability, snapshot, enabled=pilot_enabled, specialist_capability_mutates=specialist_capability_mutates, context_items=context_items)
+
+
+def resolve_profile_context(profile: dict[str, Any], capability: str, snapshot: Mapping[str, Any], *, enabled: bool, specialist_capability_mutates: bool = False, context_items: list[dict[str, Any]] | None = None, activation_only: bool = False) -> dict[str, Any]:
+    """検証済みProfileのActivationと必要Contextを共通手順で判定する。"""
     common = {"profile_id": None, "capability": capability}
     if capability not in profile["capabilities"] or specialist_capability_mutates:
         return {**common, "status": "unsupported", "reason_code": "capability_unsupported"}
-    if not pilot_enabled:
+    if not enabled:
         return {**common, "status": "unavailable", "reason_code": "pilot_disabled"}
     version = _fact(snapshot, "project.unity_version")
     if not isinstance(version, str) or not version:
@@ -127,8 +134,14 @@ def resolve_candidate(profile: dict[str, Any], capability: str, snapshot: Mappin
     for path in profile["activation"]["required_environment"]:
         if _fact(snapshot, path) is not True:
             return {**common, "status": "unavailable", "reason_code": "activation_fact_unavailable", "required_observations": [path]}
-    values = _context_values(context_items)
     requirement = profile["capability_context"][capability]
+    result = {"status": "activated" if activation_only else "selected", "profile_id": profile["profile_id"], "capability": capability, "required_evidence": list(profile["required_evidence"]), "execution_mode": profile["execution_mode"], "provider_resolution": profile["provider_resolution"], "receipt_required": requirement["receipt_required"]}
+    if profile["provider_resolution"] == "not_required":
+        result.update({key: profile[key] for key in ("instructions_ref", "output_contract_ref")})
+    if activation_only:
+        # 観測を開始する適格性だけを返し、Specialistの実行許可にはしない。
+        return result
+    values = _context_values(context_items)
     missing = [key for key in requirement["all_of"] if key not in values]
     if requirement["any_of"] and not any(key in values for key in requirement["any_of"]):
         missing.extend(requirement["any_of"])
@@ -137,4 +150,4 @@ def resolve_candidate(profile: dict[str, Any], capability: str, snapshot: Mappin
     for key, allowed in profile["compatibility"]["context_values"].items():
         if values[key] not in allowed:
             return {**common, "status": "unsupported", "reason_code": "context_value_unsupported", "unsupported_context_key": key}
-    return {"status": "selected", "profile_id": profile["profile_id"], "capability": capability, "required_evidence": list(profile["required_evidence"]), "execution_mode": profile["execution_mode"], "provider_resolution": profile["provider_resolution"], "receipt_required": requirement["receipt_required"]}
+    return result

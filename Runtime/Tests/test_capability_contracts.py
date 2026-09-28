@@ -219,7 +219,7 @@ class CapabilityContractTests(unittest.TestCase):
                 shutil.copy2(ROOT / relative, target)
             routing_path = fixture_root / ROUTING_PATH
             routing = yaml.safe_load(routing_path.read_text(encoding="utf-8"))
-            routing["routes"]["rendering-incident"]["candidate_capabilities"][0]["operation_kind"] = "editor_mutation"
+            routing["routes"]["rendering-incident"]["reasoning_capabilities"][0]["operation_kind"] = "editor_mutation"
             routing_path.write_text(yaml.safe_dump(routing, sort_keys=False), encoding="utf-8")
             self.assertTrue(any("candidate capability must be read-only" in item.message for item in validate_contract_foundation(fixture_root)))
 

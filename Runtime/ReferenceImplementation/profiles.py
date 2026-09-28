@@ -7,13 +7,16 @@ The first profile is ArtistSubAgent. Its provider_id identifies only the executi
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import hashlib
 import math
 from pathlib import Path
 from typing import Any, Mapping
 
 import yaml
+
+from .execution_contract import validate_execution_contract
+from .candidate_profiles import validate_selection_context
 
 
 class ProfileValidationError(ValueError):
@@ -100,7 +103,7 @@ class SubAgentProfile:
 
     profile_id: str
     display_name: str
-    provider_id: str
+    provider_id: str | None
     audience: str
     goal_type: str
     capabilities: tuple[str, ...]
@@ -111,6 +114,8 @@ class SubAgentProfile:
     value: dict[str, Any]
     approval: dict[str, Any]
     evidence: dict[str, str]
+    execution: dict[str, Any] = field(default_factory=dict)
+    selection: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_mapping(cls, value: Mapping[str, Any], *, catalog_version: str = "1.0") -> "SubAgentProfile":
@@ -122,7 +127,32 @@ class SubAgentProfile:
             "capabilities", "primary_capability", "required_evidence", "activation", "scope",
             "value", "approval", "evidence",
         }
-        if catalog_version == "2.0":
+        execution = {}
+        selection = {}
+        if catalog_version == "3.0":
+            try:
+                execution = validate_execution_contract(data.get("execution"), _unique_texts(data.get("capabilities"), "capabilities"))
+            except ValueError as exc:
+                raise ProfileValidationError(str(exc)) from exc
+            required.add("execution")
+            if execution["kind"] == "reasoning":
+                required.remove("provider_id")
+                required.add("selection")
+                selection = _mapping(data.get("selection"), "selection")
+                if set(selection) != {"compatibility", "capability_context", "supported_targets"}:
+                    raise ProfileValidationError("reasoning selection requires compatibility and per-capability Context")
+                targets = selection["supported_targets"]
+                if not isinstance(targets, list) or not targets or any(not isinstance(target, dict) or set(target) != {"unity_version", "render_pipeline"} or any(not isinstance(item, str) or not item for item in target.values()) for target in targets):
+                    raise ProfileValidationError("selection.supported_targets requires explicit Unity and pipeline pairs")
+                try:
+                    validate_selection_context(selection["compatibility"], selection["capability_context"], data["capabilities"], receipt_required=False)
+                except ValueError as exc:
+                    raise ProfileValidationError(str(exc)) from exc
+                if selection["compatibility"]["unity_version_prefixes"] != ["6000."] or any(target["unity_version"] != "Unity 6.x+" or target["render_pipeline"] not in {"builtin", "urp", "hdrp"} for target in targets):
+                    raise ProfileValidationError("unsupported production compatibility mapping; explicit version migration is required")
+                if any(name in data for name in ("scope", "value", "approval")):
+                    raise ProfileValidationError("reasoning profile cannot declare mutation authority")
+        if catalog_version == "2.0" or catalog_version == "3.0" and "scope" not in data:
             required -= {"scope", "value", "approval"}
         unknown = set(data) - required
         missing = required - set(data)
@@ -147,18 +177,18 @@ class SubAgentProfile:
             "auto_install": False,
             "required_environment": list(_unique_texts(activation["required_environment"], "activation.required_environment")),
         }
-        if catalog_version == "2.0":
+        if catalog_version == "2.0" or catalog_version == "3.0" and "scope" not in data:
             evidence = _mapping(data["evidence"], "evidence")
             if set(evidence) != {"source_type", "producer", "provenance_token"}:
                 raise ProfileValidationError("profile evidence fields are not exact")
             return cls(profile_id=_text(data["profile_id"], "profile_id"),
                 display_name=_text(data["display_name"], "display_name"),
-                provider_id=_text(data["provider_id"], "provider_id"),
+                provider_id=None if execution.get("kind") == "reasoning" else _text(data["provider_id"], "provider_id"),
                 audience=_text(data["audience"], "audience"),
                 goal_type=_text(data["goal_type"], "goal_type"),
                 capabilities=capabilities, primary_capability=primary, required_evidence=evidence_types,
                 activation=activation, scope={}, value={}, approval={},
-                evidence={key: _text(evidence[key], f"evidence.{key}") for key in evidence})
+                evidence={key: _text(evidence[key], f"evidence.{key}") for key in evidence}, execution=execution, selection=selection)
         scope = _mapping(data["scope"], "scope")
         scope_required = {"default_target_guid", "component_type", "property_paths", "mutation_channels", "max_targets"}
         if set(scope) != scope_required:
@@ -222,6 +252,7 @@ class SubAgentProfile:
             value=value_spec,
             approval=approval_spec,
             evidence=evidence,
+            execution=execution,
         )
 
     def to_mapping(self) -> dict[str, Any]:
@@ -244,6 +275,12 @@ class SubAgentProfile:
         }
         if self.scope:
             result.update(scope=dict(self.scope), value=dict(self.value), approval=dict(self.approval))
+        if self.execution:
+            result["execution"] = dict(self.execution)
+        if self.selection:
+            result["selection"] = dict(self.selection)
+        if self.provider_id is None:
+            result.pop("provider_id")
         return result
 
     @property
@@ -372,8 +409,8 @@ class SubAgentProfileCatalog:
         if set(data) != {"schema_version", "default_profile", "profiles"}:
             raise ProfileValidationError("SubAgentProfileCatalog fields are not exact")
         version = data.get("schema_version")
-        if version not in {"1.0", "2.0"}:
-            raise ProfileValidationError("profile catalog schema_version must be 1.0 or 2.0")
+        if version not in {"1.0", "2.0", "3.0"}:
+            raise ProfileValidationError("profile catalog schema_version must be 1.0, 2.0 or 3.0")
         profiles = _mapping(data.get("profiles"), "profiles")
         if any(not isinstance(key, str) or not key.strip() for key in profiles):
             raise ProfileValidationError("profile catalog profile keys must be non-empty strings")

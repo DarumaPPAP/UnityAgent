@@ -16,6 +16,10 @@ if str(ROOT) not in sys.path:
 from ControlPlane.unity_agent_control_plane import UnityAgentControlPlane
 from Runtime.Tooling.Providers.Installer.installer_provider import InstallerProvider
 from Runtime.ReferenceImplementation.profiles import runtime_profile_revision
+from ControlPlane.unity_agent_control_plane import validate_entry_request
+from Runtime.Tooling.Environment.discovery import discover_environment
+from Runtime.Tooling.capability_resolver import ResolutionContext
+from Runtime.Tooling.Providers.File.file_provider import FileProvider
 
 PRODUCTS = (
     "official_unity_cli",
@@ -60,6 +64,11 @@ def _default_state_root() -> Path:
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="UnityAgent Control Plane host")
     subparsers = parser.add_subparsers(dest="command", required=True)
+    run_parser = subparsers.add_parser("run", help="Entry v2からRead-only TaskをControl Planeへ渡す")
+    run_parser.add_argument("--request", type=Path, required=True)
+    run_parser.add_argument("--state-root", type=Path, default=_default_state_root())
+    run_parser.add_argument("--reasoning-model")
+    run_parser.add_argument("--reasoning-effort", default="high")
     for command in ("doctor", "setup"):
         subparser = subparsers.add_parser(command)
         subparser.add_argument("--operation", choices=("doctor", "plan", "apply"), default=command if command == "doctor" else "plan")
@@ -80,6 +89,19 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = _parse_args()
+    if args.command == "run":
+        request = json.loads(args.request.read_text(encoding="utf-8"))
+        validate_entry_request(request)
+        project_root = request["project_root"]
+        snapshot = discover_environment(project_root)
+        file_provider = FileProvider(project_root)
+        source_scope = request.get("intent", {}).get("target_scope")
+        definition = _fingerprint()
+        definition["tool_schema_revision"] = "sha256:" + hashlib.sha256((ROOT / "Runtime/Contracts/capability-request.schema.yaml").read_bytes()).hexdigest()
+        result = UnityAgentControlPlane(args.state_root).execute(request, environment_snapshot=snapshot, context=ResolutionContext(policy_allowed=True), executors={"file": file_provider.execute}, provider_arguments={"file": {"relative_path": source_scope}}, definition_fingerprint=definition, reasoning_model=args.reasoning_model, reasoning_effort=args.reasoning_effort)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        # Control Planeの未完了をCLI成功へ昇格しない。
+        return 0 if result["status"] == "completed" else 1
     if args.channel != CHANNEL:
         raise SystemExit(f"only the {CHANNEL} setup channel is supported")
     project_root = Path(args.project_path).expanduser().resolve(strict=False)

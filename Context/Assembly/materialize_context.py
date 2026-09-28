@@ -77,6 +77,10 @@ def _process_entry(
 ) -> None:
     if not isinstance(entry, dict):
         raise ValueError("Context Pack typed entries must be mappings")
+    if "required_when_active" in entry and type(entry["required_when_active"]) is not bool:
+        raise ValueError("required_when_active must be boolean")
+    if condition is not None and entry.get("required_when_active") is True:
+        requirement = "required"
     kind = str(entry.get("type", "")).strip()
     if kind == "binding":
         name = str(entry.get("name", "")).strip()

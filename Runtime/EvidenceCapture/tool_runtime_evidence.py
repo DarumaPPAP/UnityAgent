@@ -98,6 +98,15 @@ def _redact_sensitive(value: Any) -> Any:
     return value
 
 
+def observation_payload(request: Mapping[str, Any], provider_result: Mapping[str, Any]) -> dict[str, Any]:
+    """構造化された読取結果を保存する。実行ログと搬送metadataは推論入力に含めない。"""
+    if request.get("operation_kind") != "read":
+        raise ValueError("observation payload requires a read capability request")
+    metadata = {"status", "failure_class", "reason", "provider_ref", "evidence", "stdout", "stderr", "logs", "raw_log", "received_context_id", "received_context_fingerprint"}
+    result = {key: value for key, value in provider_result.items() if key not in metadata}
+    return {"schema_version": "1.0", "capability": request["capability"], "operation_kind": "read", "project_root": request["project_root"], "result": _redact_sensitive(result)}
+
+
 def _string_list(value: Any, *, field: str) -> list[str]:
     if value is None:
         return []

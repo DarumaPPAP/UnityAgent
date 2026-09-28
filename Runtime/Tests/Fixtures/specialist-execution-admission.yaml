@@ -1,0 +1,55 @@
+schema_version: '1.0'
+kind: specialist_execution_admission
+source:
+  repository: DarumaPPAP/UnityAgent
+  revision: e388f19011d432513daed8d25b394a4e3019b27a
+  provider_registry: Runtime/Tooling/provider_registry.yaml
+  reasoning_runtime: Runtime/Runner/Codex/codex_runner.py
+  handoff: Runtime/Handoff/reasoning_runtime.py
+  semantics: Admission records architecture; it is not installation or runtime verification.
+specialists:
+  - profile_id: graphics_subagent
+    semantic_capabilities: [graphics.inspect, graphics.diagnose, graphics.validate]
+    execution_model: reasoning
+    required_observation_capabilities: [project.inspect, source.read]
+    production_observation_gaps: []
+    optional_observation_capabilities: [compile.observe, scene.inspect, visual.capture]
+    reasoning_runtime_required: true
+    provider_binding_required: false
+    receipt_semantics: source_context_binding_and_observation_provider_receipts
+    evidence_contract: graphics_diagnosis
+    alternatives:
+      provider_backed: rejected_no_registered_semantic_provider
+      reasoning_only: rejected_rendering_claims_require_observations
+      reasoning_with_tools: admitted
+    known_limitations: [runtime_levels_require_matching_observation, no_visual_acceptance, no_mutation]
+  - profile_id: performance_subagent
+    semantic_capabilities: [performance.analyze]
+    execution_model: reasoning
+    required_observation_capabilities: [profiler.observe]
+    production_observation_gaps: [profiler.observe]
+    optional_observation_capabilities: [player.observe, project.inspect]
+    reasoning_runtime_required: true
+    provider_binding_required: false
+    receipt_semantics: source_context_binding_and_observation_provider_receipts
+    evidence_contract: performance_analysis
+    alternatives:
+      provider_backed: rejected_no_registered_semantic_provider
+      reasoning_only: rejected_bottleneck_claims_require_measurements
+      reasoning_with_tools: admitted
+    known_limitations: [missing_measurement_requires_unknown_classification, target_timing_requires_target_capture, no_mutation]
+  - profile_id: world_creator_subagent
+    semantic_capabilities: [world.plan]
+    execution_model: reasoning
+    required_observation_capabilities: []
+    production_observation_gaps: []
+    optional_observation_capabilities: [project.inspect, scene.inspect]
+    reasoning_runtime_required: true
+    provider_binding_required: false
+    receipt_semantics: source_context_binding
+    evidence_contract: world_plan
+    alternatives:
+      provider_backed: rejected_no_registered_semantic_provider
+      reasoning_only: admitted
+      reasoning_with_tools: optional_observations_only
+    known_limitations: [human_review_required, no_scene_creation, no_direct_specialist_dispatch, no_mutation]
