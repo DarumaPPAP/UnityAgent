@@ -35,24 +35,27 @@ routes:
       - {capability: source.patch, operation_kind: source_mutation, required_evidence: [source_diff], preferred_surface: project, when: mutation_requested}
       - {capability: compile.observe, operation_kind: read, required_evidence: [compile_observation], preferred_surface: editor, when: verification_requested}
   rendering-incident:
-    candidate_capabilities:
+    reasoning_capabilities:
       - {capability: graphics.diagnose, operation_kind: read, required_evidence: [graphics_diagnosis], preferred_surface: project, when: always}
     capabilities:
+      - {capability: source.read, operation_kind: read, required_evidence: [source_read], preferred_surface: project, when: always}
       - {capability: project.inspect, operation_kind: read, required_evidence: [project_fact], preferred_surface: project, when: always}
       - {capability: scene.inspect, operation_kind: read, required_evidence: [editor_observation], preferred_surface: live_editor, when: editor_observation_needed}
       - {capability: visual.capture, operation_kind: read, required_evidence: [visual_capture], preferred_surface: live_editor, when: visual_evidence_needed}
   shader-change:
-    candidate_capabilities:
+    reasoning_capabilities:
       - {capability: graphics.diagnose, operation_kind: read, required_evidence: [graphics_diagnosis], preferred_surface: project, when: always}
     capabilities:
+      - {capability: project.inspect, operation_kind: read, required_evidence: [project_fact], preferred_surface: project, when: always}
       - {capability: source.read, operation_kind: read, required_evidence: [source_read], preferred_surface: project, when: always}
       - {capability: source.patch, operation_kind: source_mutation, required_evidence: [source_diff], preferred_surface: project, when: mutation_requested}
       - {capability: compile.observe, operation_kind: read, required_evidence: [compile_observation], preferred_surface: editor, when: verification_requested}
       - {capability: visual.capture, operation_kind: read, required_evidence: [visual_capture], preferred_surface: live_editor, when: visual_evidence_needed}
   renderer-feature-change:
-    candidate_capabilities:
+    reasoning_capabilities:
       - {capability: graphics.diagnose, operation_kind: read, required_evidence: [graphics_diagnosis], preferred_surface: project, when: always}
     capabilities:
+      - {capability: project.inspect, operation_kind: read, required_evidence: [project_fact], preferred_surface: project, when: always}
       - {capability: source.read, operation_kind: read, required_evidence: [source_read], preferred_surface: project, when: always}
       - {capability: source.patch, operation_kind: source_mutation, required_evidence: [source_diff], preferred_surface: project, when: mutation_requested}
       - {capability: compile.observe, operation_kind: read, required_evidence: [compile_observation], preferred_surface: editor, when: verification_requested}
@@ -65,7 +68,7 @@ routes:
       - {capability: profiler.observe, operation_kind: read, required_evidence: [profiler_observation], preferred_surface: live_editor, when: runtime_measurement_needed}
       - {capability: player.observe, operation_kind: player_observe, required_evidence: [player_observation], preferred_surface: player, when: player_observation_needed}
   world-creation:
-    candidate_capabilities:
+    reasoning_capabilities:
       - {capability: world.plan, operation_kind: read, required_evidence: [world_plan], preferred_surface: project, when: always}
     capabilities:
       - {capability: project.inspect, operation_kind: read, required_evidence: [project_fact], preferred_surface: project, when: always}

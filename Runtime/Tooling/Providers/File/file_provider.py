@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import yaml
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +15,7 @@ from Runtime.Sandbox.workspace_guard import (
     workspace_path,
 )
 from Runtime.Tooling.Environment.project_identity import same_project_root
+from Runtime.Tooling.Providers.File.project_observation import inspect_project_files
 
 SERIALIZED_UNITY_MUTATION_SUFFIXES = frozenset({".unity", ".prefab", ".asset"})
 
@@ -33,6 +35,35 @@ class FileProvider:
 
     def __init__(self, project_root: str | Path) -> None:
         self.project_root = workspace_path(project_root)
+
+    def execute(self, request, context, arguments):
+        if request.get("operation_kind") != "read":
+            # Hostの観測executorはApply権限を持たない。
+            return _failure("unsupported", "File observation executor only accepts read operations")
+        if request.get("capability") == "project.inspect":
+            return self.inspect_project(request, policy_allowed=context.policy_allowed)
+        if request.get("capability") == "source.read":
+            relative_path = arguments.get("relative_path")
+            if not isinstance(relative_path, str) or not relative_path:
+                # 対象Sourceを推測して別Assetを読み取らない。
+                return _failure("precondition_failed", "source.read requires an explicit relative_path")
+            return self.read_text(request, relative_path=relative_path, policy_allowed=context.policy_allowed)
+        return _failure("unsupported", "File observation executor does not implement this capability")
+
+    def inspect_project(self, request: dict[str, Any], *, policy_allowed: bool) -> dict[str, Any]:
+        failure = self._validate_request(request, "project.inspect")
+        if failure:
+            # Project/Capability境界が成立しない読取は開始しない。
+            return failure
+        failure = self._authorize(request, policy_allowed=policy_allowed, approval_required=False, approval_complete=False)
+        if failure:
+            # Policy拒否後にProjectファイルを読み取らない。
+            return failure
+        try:
+            observation = inspect_project_files(self.project_root)
+        except (WorkspaceGuardError, OSError, UnicodeError, ValueError, yaml.YAMLError) as exc:
+            return _failure("precondition_failed", str(exc))
+        return {"status": "passed", "provider_ref": "file", "evidence": ["project_fact"], **observation}
 
     def _validate_request(self, request: dict[str, Any], capability: str) -> dict[str, Any] | None:
         try:

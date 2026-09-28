@@ -113,7 +113,7 @@ def _profile(fingerprint: dict[str, str], forced: str | None) -> str:
     return "generic_planning"
 
 
-def resolve_specialist(route_id: str, capability: str, environment_snapshot: Any, *, root: Path | None = None, pilot_enabled: bool = False, requested_mutation: bool = False, specialist_capability_mutates: bool = False, context_items: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+def resolve_specialist(route_id: str, capability: str, environment_snapshot: Any, *, root: Path | None = None, pilot_enabled: bool = False, requested_mutation: bool = False, specialist_capability_mutates: bool = False, context_items: list[dict[str, Any]] | None = None, activation_only: bool = False) -> dict[str, Any]:
     """Resolve semantic analysis ownership; requested_mutation is Task intent, not Specialist authority."""
     from Runtime.ReferenceImplementation.profiles import CATALOG, ProfileValidationError
 
@@ -135,6 +135,14 @@ def resolve_specialist(route_id: str, capability: str, environment_snapshot: Any
         return {"status": "unsupported", "profile_id": None, "capability": capability}
     if profile.profile_id != profile_id:
         return {"status": "unsupported", "profile_id": None, "capability": capability}
+    if profile.execution.get("kind") == "reasoning":
+        from Runtime.ReferenceImplementation.candidate_profiles import resolve_profile_context
+        snapshot = environment_snapshot.to_dict() if hasattr(environment_snapshot, "to_dict") else environment_snapshot
+        contract = {"profile_id": profile.profile_id, "capabilities": list(profile.capabilities), "required_evidence": list(profile.required_evidence), "activation": profile.activation, **profile.selection, "execution_mode": profile.execution["execution_mode"], "provider_resolution": "not_required", "instructions_ref": profile.execution["instructions_ref"], "output_contract_ref": profile.execution["output_contract_ref"]}
+        result = resolve_profile_context(contract, capability, snapshot, enabled=True, specialist_capability_mutates=specialist_capability_mutates, context_items=context_items, activation_only=activation_only and bool(profile.execution["required_observation_capabilities"]))
+        if result["status"] in {"selected", "activated"}:
+            result["required_observation_capabilities"] = list(profile.execution["required_observation_capabilities"])
+        return result
     if profile.eligibility_failure(environment_snapshot) is not None:
         return {"status": "unavailable", "profile_id": None, "capability": capability}
     return {"status": "selected", "profile_id": profile.profile_id, "capability": capability,

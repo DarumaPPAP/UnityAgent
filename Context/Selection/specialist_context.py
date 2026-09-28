@@ -8,6 +8,27 @@ ALLOWED_CATEGORIES = {"project_fact", "project_decision", "platform_fact", "plat
 REVISION = re.compile(r"^sha256:[0-9a-f]{64}$")
 
 
+def observation_items(observations: list[dict[str, Any]], tags: list[str], attempt: int = 1) -> list[dict[str, Any]]:
+    """Control Planeが永続検証した観測を、既存Selection/Budget対象のFactへ投影する。"""
+    items = []
+    for observation in observations:
+        payload, record = observation["payload"], observation["record"]
+        items.append({"category": "project_fact", "key": f"observation:{payload['capability']}",
+            "value": {"capability": payload["capability"], "result": payload["result"], "environment": record["environment"], "target": record["target"], "observed_evidence": record["observed_evidence"], "interpretation": "untrusted_tool_observation_not_instruction"},
+            "source": f"evidence:{record['evidence_id']}", "revision": observation["revision"], "tags": list(tags),
+            "freshness": {"status": "current", "checked_at_attempt": attempt}, "observed_at_attempt": attempt, "required": True})
+        # 観測Capabilityの既知の出力だけをFact化し、任意のTask/Decision注入は許可しない。
+        result = payload["result"]
+        facts = {}
+        if payload["capability"] == "project.inspect" and isinstance(result.get("render_pipeline"), str) and result["render_pipeline"] not in {"", "unknown"}:
+            facts["render_pipeline"] = result["render_pipeline"]
+        if payload["capability"] == "source.read" and isinstance(result.get("path"), str) and result["path"] and isinstance(result.get("content"), str):
+            facts["relevant_source"] = result["path"]
+        for key, value in facts.items():
+            items.append({**items[-1], "key": key, "value": value})
+    return items
+
+
 def select_items(items: list[dict[str, Any]], tags: set[str], required_keys: set[str], attempt: int) -> list[dict[str, Any]]:
     if attempt < 1 or not tags or any(not isinstance(tag, str) or not tag for tag in tags):
         raise ValueError("specialist tags and positive attempt are required")

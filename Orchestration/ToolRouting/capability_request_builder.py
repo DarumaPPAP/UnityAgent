@@ -117,6 +117,15 @@ def build_capability_requests(
 
 def build_candidate_capability_requests(route_id: str, project_root: str, *, active_conditions: set[str] | None = None, root: Path = ROOT) -> list[dict[str, Any]]:
     """Build semantic candidate requests from the route, without Production dispatch authority."""
+    return _semantic_requests(route_id, project_root, active_conditions=active_conditions, root=root, fields=("candidate_capabilities",))
+
+
+def build_specialist_capability_requests(route_id: str, project_root: str, *, active_conditions: set[str] | None = None, root: Path = ROOT) -> list[dict[str, Any]]:
+    """Candidateまたは登録済みReasoningの意味的要求を生成し、Tool dispatchとは分離する。"""
+    return _semantic_requests(route_id, project_root, active_conditions=active_conditions, root=root, fields=("candidate_capabilities", "reasoning_capabilities"))
+
+
+def _semantic_requests(route_id: str, project_root: str, *, active_conditions: set[str] | None, root: Path, fields: tuple[str, ...]) -> list[dict[str, Any]]:
     route = (_load(root).get("routes") or {}).get(route_id)
     if not isinstance(route, dict):
         raise ValueError(f"unknown capability route: {route_id}")
@@ -124,4 +133,4 @@ def build_candidate_capability_requests(route_id: str, project_root: str, *, act
     return [{"schema_version": "1.0", "capability": str(item["capability"]), "project_root": project_root,
              "operation_kind": str(item["operation_kind"]), "required_evidence": list(item["required_evidence"]),
              "mutation_scope": None, "approval_ref": None, "preferred_surface": item.get("preferred_surface")}
-            for item in route.get("candidate_capabilities") or [] if item.get("when") in conditions]
+            for field in fields for item in route.get(field) or [] if item.get("when") in conditions]

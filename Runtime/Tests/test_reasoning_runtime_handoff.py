@@ -19,6 +19,10 @@ from Runtime.ExecutionControl.process_runtime import StreamingProcessResult
 from Runtime.Handoff.reasoning_runtime import build_reasoning_request
 from Runtime.ReferenceImplementation.world_planning import WorldPlanContractError
 from Runtime.Tooling.capability_resolver import ResolutionContext
+from Runtime.Tooling.tool_broker import ToolBroker
+from Runtime.Tooling.Environment.discovery import discover_environment
+from Runtime.Tooling.Environment.environment_snapshot import UnityCliSnapshot
+from Orchestration.Routing.route_selector import resolve_specialist
 from Runtime.Runner.Codex import codex_runner
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -66,12 +70,13 @@ class ReasoningRuntimeHandoffTests(unittest.TestCase):
             plan["open_decisions"] = []
         return {"status": "completed", "profile_id": "world_creator_subagent", "capability": "world.plan", "execution_mode": "planning_only", "provider_resolution": "not_required", "source_context_id": context["context_id"], "source_context_fingerprint": "sha256:stale" if stale else context["context_fingerprint"], "world_plan": plan, "evidence_level": "runtime_reasoning", "known_limitations": ["Editor, Player and target device are not observed"], "runtime_evaluation": "RUNTIME_OBSERVED"}
 
-    def execute(self, *, stale: bool = False, mutate: bool = False, semantic_invalid: bool = False, write_attempt: bool = False, original_mutation: bool = False, output_missing: bool = False):
+    def execute(self, *, stale: bool = False, mutate: bool = False, semantic_invalid: bool = False, write_attempt: bool = False, original_mutation: bool = False, output_missing: bool = False, executors=None):
         captured = {}
 
         def fake_run(command, **kwargs):
             captured["command"] = list(command)
             workspace = Path(command[command.index("--cd") + 1])
+            captured["context"] = json.loads((workspace / "specialist-context.json").read_text(encoding="utf-8"))
             if write_attempt:
                 (workspace / "unwanted.txt").write_text("write attempt", encoding="utf-8")
             if original_mutation:
@@ -83,8 +88,51 @@ class ReasoningRuntimeHandoffTests(unittest.TestCase):
 
         plane = UnityAgentControlPlane(self.root / "state", broker=self.broker)
         with patch.object(codex_runner, "run_streaming_process", side_effect=fake_run):
-            response = plane.execute(self.entry, environment_snapshot=self.snapshot, context=ResolutionContext(policy_allowed=True), executors={}, definition_fingerprint=fingerprint(), specialist_pilot_enabled=True, reasoning_model="gpt-fixture", reasoning_command_prefix=["codex"])
+            response = plane.execute(self.entry, environment_snapshot=self.snapshot, context=ResolutionContext(policy_allowed=True), executors=executors or {}, definition_fingerprint=fingerprint(), specialist_pilot_enabled=True, reasoning_model="gpt-fixture", reasoning_command_prefix=["codex"])
         return response, plane, captured
+
+    def test_required_observation_reaches_reasoning_with_durable_context_binding(self):
+        self.broker = ToolBroker()
+        self.snapshot = discover_environment(str(self.project), editor_candidates=[], editor_candidates_observed=True, editor_processes=[], editor_processes_observed=True, unity_cli_observation=UnityCliSnapshot(False, None, None, "unavailable"), provider_instances={"myunitymcp": [], "coplay_mcp": []}, which_fn=lambda _: None).to_dict()
+        def selection(*args, **kwargs):
+            return {**resolve_specialist(*args, **kwargs), "required_observation_capabilities": ["project.inspect"]}
+        executor = lambda *_: {"status": "passed", "provider_ref": "file", "evidence": ["project_fact"], "observed_marker": "fixture-only-fact", "stdout": "excluded process log"}
+        with patch("ControlPlane.unity_agent_control_plane.resolve_specialist", side_effect=selection):
+            response, plane, captured = self.execute(executors={"file": executor})
+        self.assertEqual(response["status"], "completed", response)
+        items = captured["context"]["specialist_context"]["items"]
+        observations = [item for item in items if item["key"] == "observation:project.inspect"]
+        self.assertEqual(len(observations), 1)
+        self.assertEqual(observations[0]["value"]["result"], {"observed_marker": "fixture-only-fact"})
+        self.assertEqual(observations[0]["source"], "evidence:" + response["evidence_refs"][0])
+        proof = json.loads((plane.state_store.layout.root / response["orchestration_decision_ref"]).read_text(encoding="utf-8"))
+        self.assertEqual(proof["observation_evidence_refs"], [response["evidence_refs"][0]])
+        before = json.loads((plane.state_store.layout.root / proof["previous_context_manifest_ref"]).read_text(encoding="utf-8"))
+        self.assertNotEqual(before["materialized_context"]["context_fingerprint"]["value"], captured["context"]["context_fingerprint"])
+        self.assertEqual(captured["context"]["context_fingerprint"], response["handoff"]["context_fingerprint"])
+
+    def test_required_observation_without_durable_evidence_blocks_reasoning(self):
+        def selection(*args, **kwargs):
+            return {**resolve_specialist(*args, **kwargs), "required_observation_capabilities": ["project.inspect"]}
+        with patch("ControlPlane.unity_agent_control_plane.resolve_specialist", side_effect=selection):
+            response, _, captured = self.execute()
+        self.assertEqual(response["status"], "blocked")
+        self.assertNotIn("command", captured)
+        self.assertIn("required observation", response["results"][-1]["runtime_failure"]["reason"])
+
+    def test_unverified_or_over_budget_observation_cannot_start_reasoning(self):
+        self.broker = ToolBroker()
+        self.snapshot = discover_environment(str(self.project), editor_candidates=[], editor_candidates_observed=True, editor_processes=[], editor_processes_observed=True, unity_cli_observation=UnityCliSnapshot(False, None, None, "unavailable"), provider_instances={"myunitymcp": [], "coplay_mcp": []}, which_fn=lambda _: None).to_dict()
+        def selection(*args, **kwargs):
+            return {**resolve_specialist(*args, **kwargs), "required_observation_capabilities": ["project.inspect"]}
+        cases = [([], "small", "verified"), (["project_fact"], "x" * 300000, "budget")]
+        for evidence, observation, reason in cases:
+            with self.subTest(reason=reason), patch("ControlPlane.unity_agent_control_plane.resolve_specialist", side_effect=selection):
+                executor = lambda *_: {"status": "passed", "provider_ref": "file", "evidence": evidence, "observation": observation}
+                response, _, captured = self.execute(executors={"file": executor})
+                self.assertEqual(response["status"], "blocked")
+                self.assertNotIn("command", captured)
+                self.assertIn(reason, response["results"][-1]["runtime_failure"]["reason"].lower())
 
     def test_entry_to_durable_reasoning_plan_keeps_context_and_original_workspace(self):
         response, plane, captured = self.execute()

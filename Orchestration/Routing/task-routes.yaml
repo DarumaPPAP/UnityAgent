@@ -44,7 +44,7 @@ routes:
       evidence_state: [known, partial]
   rendering-incident:
     specialist_profile: graphics_subagent
-    specialist_pilot: true
+    specialist_pilot: false
     specialist_phase: analysis
     required_policy_clauses:
       - Policy/Evidence/evidence-policy.yaml
@@ -59,7 +59,7 @@ routes:
       evidence_state: [unknown, partial]
   shader-change:
     specialist_profile: graphics_subagent
-    specialist_pilot: true
+    specialist_pilot: false
     specialist_phase: analysis
     required_policy_clauses:
       - Policy/Evidence/evidence-policy.yaml
@@ -75,7 +75,7 @@ routes:
       evidence_state: [known, partial, baseline_required]
   renderer-feature-change:
     specialist_profile: graphics_subagent
-    specialist_pilot: true
+    specialist_pilot: false
     specialist_phase: analysis
     required_policy_clauses:
       - Policy/Evidence/evidence-policy.yaml
@@ -105,7 +105,7 @@ routes:
   world-creation:
     forced_profile: generic_planning
     specialist_profile: world_creator_subagent
-    specialist_pilot: true
+    specialist_pilot: false
     specialist_phase: planning
     priority: 95
     entry_action: plan

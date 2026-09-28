@@ -160,6 +160,15 @@ Human feedbackを次へ分類します。
 
 一度の指摘を普遍ルールへ即時昇格せず、`Beautiful-Definition/Observations/`へ候補として記録します。User承認後にDefinitionへ反映します。
 
+## Legacy Visual Planning Knowledge
+
+旧MyUnityMCPの`graphics.compile_direction`、`graphics.preview_plan`、`graphics.prepare_acceptance_profile`、`graphics.refine_direction`から、次の判断境界だけを引き継ぎます。旧ToolのPlan ID、Editor Revision、MCP実行経路は現行SkillのAPIではありません。
+
+- DirectionはGoal、Referenceの直接観測、感情、構図、Camera、Lighting、Color、Material、Atmosphere、Motion、Performance優先度、対象Platform、禁止変更を分ける。Reference画像の観測は人間またはVisionの出典を示し、Unity内部で画像解析したと見せない。
+- 実装前のPreviewは、作成・変更候補、Dirty状態、Bake要否、非対応・未検証箇所を区別する。PreviewをApply済みやSave済みと呼ばず、対象Projectの現在Revisionと差分を実行境界で再確認する。
+- Acceptance条件には評価項目、重み、最低合格値、Critical Failure、Reference Capture、Performance Budgetのうち適用するものを明示する。Beautyと技術・性能のEvidenceを混同しない。条件設定やCapture生成だけで自動合格にしない。
+- 次IterationのDirectionは、Capture Evidenceと人間が明示した観察・調整要求から作る。観測されていないVisual改善を自動で採用せず、Human Reviewを維持する。
+
 ## Verification levels
 
 実施済みの最上位だけを報告します。

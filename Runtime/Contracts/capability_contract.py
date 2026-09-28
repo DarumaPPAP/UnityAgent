@@ -3,12 +3,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import sys
 from typing import Any
 
 import yaml
 from jsonschema import Draft202012Validator
 
 ROOT = Path(__file__).resolve().parents[2]
+if __name__ == "__main__":
+    sys.path.insert(0, str(ROOT))
 REQUEST_SCHEMA_PATH = Path("Runtime/Contracts/capability-request.schema.yaml")
 RESOLUTION_SCHEMA_PATH = Path("Runtime/Contracts/capability-resolution.schema.yaml")
 POLICY_PATH = Path("Policy/Security/tool-capability-policy.yaml")
@@ -158,10 +161,25 @@ def validate_contract_foundation(root: Path = ROOT) -> list[CapabilityContractFi
                 )
 
         candidate_templates = (route or {}).get("candidate_capabilities") or []
+        reasoning_templates = (route or {}).get("reasoning_capabilities") or []
         task_route = (task_routes.get("routes") or {}).get(route_id) or {}
         if candidate_templates and (not task_route.get("specialist_pilot") or not task_route.get("specialist_profile")):
             findings.append(CapabilityContractFinding(ROUTING_PATH.as_posix(), f"{route_id}: candidate capability requires a Candidate Specialist route"))
-        for template in candidate_templates:
+        if reasoning_templates:
+            from Runtime.ReferenceImplementation.profiles import CATALOG, ProfileValidationError
+            try:
+                profile = CATALOG.get(task_route.get("specialist_profile"))
+                if task_route.get("specialist_pilot") or profile.execution.get("kind") != "reasoning" or candidate_templates:
+                    raise ValueError("reasoning capability requires a registered reasoning Specialist route")
+                requested = {item.get("capability") for item in reasoning_templates if isinstance(item, dict)}
+                if not requested.issubset(profile.capabilities):
+                    raise ValueError("reasoning capability is outside the registered Profile")
+                observed = {item.get("capability") for item in route.get("capabilities", []) if item.get("when") == "always"}
+                if not set(profile.execution["required_observation_capabilities"]).issubset(observed):
+                    raise ValueError("reasoning route omits required observation capabilities")
+            except (ProfileValidationError, ValueError) as exc:
+                findings.append(CapabilityContractFinding(ROUTING_PATH.as_posix(), f"{route_id}: {exc}"))
+        for template in candidate_templates + reasoning_templates:
             if not isinstance(template, dict) or set(template) != {"capability", "operation_kind", "required_evidence", "preferred_surface", "when"}:
                 findings.append(CapabilityContractFinding(ROUTING_PATH.as_posix(), f"{route_id}: invalid candidate capability template"))
                 continue

@@ -68,6 +68,7 @@ TEST_SUITES = (
     Path("Operations/Tests"),
     Path("Tests/ContextExplorer"),
     Path("Tests/Architecture"),
+    Path("Tests/ContentPilot"),
 )
 
 

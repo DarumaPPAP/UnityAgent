@@ -29,17 +29,19 @@ use_when:
 
 required:
   - type: binding
-    name: symptom_and_exact_error
+    name: rendering_symptom
   - type: binding
-    name: reproduction_conditions
-  - type: binding
-    name: affected_rendering_sources
-  - type: binding
-    name: renderer_feature_order
+    name: requested_rendering_scope
   - type: repository_reference
     path: SkillReferences/RENDERING_STANDARDS.md
 
 conditional:
+  verification_requested: &reproduction_inputs
+    - {type: binding, name: symptom_and_exact_error, required_when_active: true}
+    - {type: binding, name: reproduction_conditions, required_when_active: true}
+    - {type: binding, name: affected_rendering_sources, required_when_active: true}
+    - {type: binding, name: renderer_feature_order, required_when_active: true}
+  mutation_requested: *reproduction_inputs
   project_fallback:
     - type: repository_reference
       path: Specs/ProjectProfile.md
@@ -69,6 +71,8 @@ rules:
   direct_source_read_required: true
   detected_project_facts_override_project_profile: true
   project_profile_is_fallback_only: true
+  initial_analysis_is_not_runtime_reproduction: true
+  unknown_reproduction_and_feature_order_require_observation: true
 
 limits:
   initial_file_reads: 7

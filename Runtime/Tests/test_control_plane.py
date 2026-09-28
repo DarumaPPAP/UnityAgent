@@ -18,6 +18,7 @@ from Runtime.Tooling.Environment.environment_snapshot import UnityCliSnapshot
 from Runtime.Tooling.capability_resolver import ResolutionContext
 from Runtime.Tooling.Providers.Installer.codex_plugin_installer import CommandResult
 from Runtime.Tooling.Providers.Installer.installer_provider import InstallerProvider
+from Persistence.Store.atomic_store import PersistenceError
 
 
 def fingerprint() -> dict[str, str]:
@@ -122,6 +123,21 @@ class ControlPlaneTests(unittest.TestCase):
         evidence = plane.evidence_store.get(result["evidence_refs"][0])
         self.assertEqual(evidence["provider_ref"], "file")
         self.assertEqual(evidence["durability"], "durable")
+        self.assertIsNotNone(evidence["payload_ref"])
+        observed = plane.evidence_store.read_observation(evidence["evidence_id"], expected_run_id=result["run_id"], expected_project_root=str(self.project.resolve()), expected_capability="project.inspect")
+        self.assertEqual(observed["capability"], "project.inspect")
+        self.assertEqual(observed["operation_kind"], "read")
+        self.assertNotIn("provider_ref", observed["result"])
+        with self.assertRaisesRegex(PersistenceError, "another run"):
+            plane.evidence_store.read_observation(evidence["evidence_id"], expected_run_id="another-run", expected_project_root=str(self.project.resolve()), expected_capability="project.inspect")
+        with self.assertRaisesRegex(PersistenceError, "project"):
+            plane.evidence_store.read_observation(evidence["evidence_id"], expected_run_id=result["run_id"], expected_project_root=str(self.root / "OtherProject"), expected_capability="project.inspect")
+        with self.assertRaisesRegex(PersistenceError, "capability"):
+            plane.evidence_store.read_observation(evidence["evidence_id"], expected_run_id=result["run_id"], expected_project_root=str(self.project.resolve()), expected_capability="source.read")
+        payload_path = plane.evidence_store.layout.root / evidence["payload_ref"]
+        payload_path.write_text(json.dumps({**observed, "result": {"invented": "fact"}}), encoding="utf-8")
+        with self.assertRaisesRegex(PersistenceError, "digest"):
+            plane.evidence_store.read_observation(evidence["evidence_id"], expected_run_id=result["run_id"], expected_project_root=str(self.project.resolve()), expected_capability="project.inspect")
 
     def test_v1_identity_cannot_execute_and_v2_cannot_supply_identity(self) -> None:
         plane = UnityAgentControlPlane(self.root / "identity-state")

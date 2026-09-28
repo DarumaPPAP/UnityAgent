@@ -114,6 +114,8 @@ def validate_typed_item(root: Path, relative: str, section: str, item: Any, cont
         return [f"{relative} {section} entries must be typed mappings"]
     errors: list[str] = []
     item_type = item.get("type")
+    if "required_when_active" in item and (type(item["required_when_active"]) is not bool or not section.startswith("conditional")):
+        errors.append(f"{relative} {section} required_when_active requires a conditional entry and boolean value")
     if item_type not in CONTEXT_TYPES:
         return [f"{relative} {section} has unsupported context type: {item_type}"]
     required_fields = {

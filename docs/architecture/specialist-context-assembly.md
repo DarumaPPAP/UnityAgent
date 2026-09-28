@@ -53,7 +53,7 @@ Control Plane は既存 Persistence の immutable snapshot に Task Fingerprint�
 | Mutation Scope | read-only Pilot は空の scope を Orchestration が生成する。Entry の `mutation_scope` は受理しない。Mutation は既存の Project scope / Approval / source byte 観測を結ぶ projection が揃うまで dispatch 前に停止 |
 | Context ID / Fingerprint | UnityAgent Context Assembly のみ。Entry から受理しない |
 
-v2 Production の実行対象は `project_inspection` / `visual_capture` の read-only outcome。Entry Schemaには `rendering_diagnosis` を追加し、そのRepository fixtureはRoute、候補選出、Context、静的Evidenceまで検証する。Production Control PlaneのGraphics実行経路とLive Provider Evidenceは未評価。Entry の７次元 Fingerprint は受理しない。`project_inspection` の事前 evidence は `unknown`、`visual_capture` は過去の障害 evidence を要求しないため `not_applicable` と投影する。未対応Mutation実行、未知または不完全な Typed Intent、要求 Outcome に合う Capability がない Route は dispatch 前に停止する。Camera FOV reference の既存 v1.1 専用 projection は一般の Artist Task Contract から生成できないため、旧 live runner の v2 移行は未完了であり、preflight / apply より前に明示停止する。専用 projection を Entry の任意値として再導入して通したことにはしない。
+v2 Entryの `project_inspection` / `visual_capture` に加え、登録済みReasoning Profileの `rendering_diagnosis` / `world_planning` を共通Control Planeで処理する。GraphicsはTool観測後にCapability Contextを最終判定し、WorldCreatorは既存planning Runtimeを使用する。Production実行経路はRepository fixtureで検証し、Live Provider / Unity Evidenceとは区別する。Entry の７次元 Fingerprint は受理しない。`project_inspection` の事前 evidence は `unknown`、`visual_capture` は過去の障害 evidence を要求しないため `not_applicable` と投影する。未対応Mutation実行、未知または不完全な Typed Intent、要求 Outcome に合う Capability がない Route は dispatch 前に停止する。Camera FOV reference の既存 v1.1 専用 projection は一般の Artist Task Contract から生成できないため、旧 live runner の v2 移行は未完了であり、preflight / apply より前に明示停止する。専用 projection を Entry の任意値として再導入して通したことにはしない。
 
 `artist-lookdev` が以前必須としていた Hub の外部 spec は、現在の Runtime が参照する同一 repository の canonical `subagent-catalog.yaml` に置き換えた。Hub を複製せず、外部取得の未観測値を恒久的に current 扱いしない。Local source は revision ごとに一度だけ Budget に算入し、複数の意味上の参照は `selected_refs` に保持する。
 
@@ -84,6 +84,28 @@ Candidate には Project Fact、Project Decision、Platform Fact、Platform Deci
 現行 Production の正式対象は Unity 6.x+（Built-in / URP / HDRP）。Unity CLI は automation / command surface、Unity Pipeline は実行中 Editor の local HTTP bridge であり、connected Editor commands に使う。Unity 2022.3 は現行 Support 対象外。Historical bounded batch Evidence は別途保存する。Skill は既存 `.agents/skills` / Context catalog の metadata から選別し、必要な SKILL.md と Reference のみ段階的にロードする。Hub の `skill_refs` 追加は現時点で必須ではない。
 
 Hub Generic Artist Manifest / Export Snapshot v2 は Camera FOV Reference 固有の scope、value、approval を含まない。UnityAgent の現行 ReferenceImplementation Catalog v1 は既存 Camera FOV の歴史的契約として保持する。Offline Import Gate は Hub v2 Snapshot を構文・意味検証した後、保護フィールド差分を `blocked` として明示的 migration を要求する。v1 Catalog を無言で v2 の汎用 Profile に置換しない。
+
+## Reasoningの必須観測とContext binding
+
+Production reasoning Profileの `execution.required_observation_capabilities` は、意味的Capabilityを実行する前に必要なTool観測を表す。Control Planeは既存CapabilityRequest / ToolBroker経路で観測を実行する。読取結果の構造化payloadは、実行ログ・Provider搬送metadataを除外し、既存の機密値redactionを適用してimmutable snapshotへ保存する。payloadのdigestと参照をExecutionEvidenceに結び付け、Persistence append後にのみ再利用する。
+
+Reasoning前にEvidenceStoreがRun、Project、Capability、durability、verification、必須Evidence、event chain、payload digestを照合する。Control Planeは実行時のdefinition fingerprintも照合する。必須Capabilityごとに対応するdurable Evidenceが一意でない場合、未観測・部分検証・改変済みの場合はReasoningを開始しない。read以外の操作結果は、この読取観測契約へ暗黙変換しない。
+
+検証済み観測はContext Selectionの `project_fact:observation:<capability>` に投影する。Tool出力は未信頼の観測データであり、PolicyやInstructionではない。既存Context Assemblyで全量をBudgetへ算入し、Context fingerprintを再生成する。Budget超過は停止し、観測を黙って削って通さない。新Manifestを参照するHandoffとOrchestration Decisionを生成し、旧Manifest参照と観測Evidence IDを残す。Reasoning Artifactはこの更新後のContext ID / fingerprintへ束縛する。
+
+`test_reasoning_runtime_handoff.py` は実ToolBroker、EvidenceStore、Context Assembly、Handoffとcontrolled Codex processを通し、観測内容の到達・Fingerprint更新・Evidence欠落時の停止・Budget超過を検証する。これはRepository fixtureであり、Live Reasoningや実Unity Runtimeの成功証拠ではない。Production Catalogへの各Specialist登録は別のPromotion Gateで判定する。
+
+## 登録済みReasoningのActivationとContext Gate
+
+Graphics / WorldCreatorはConsumer Catalog v3のReasoning Profileとして登録する。HubのManifest v5 / Snapshot v3との一致は固定fixture `hub-production-specialists-v3.yaml` をImport Gateへ通して検証する。PerformanceのInstructions / Output Contractは用意するが、Production観測Surface `profiler.observe` の不足を理由に未登録とする。登録そのものはProduction Verifiedを意味しない。
+
+観測を必須とするReasoning Profileでは、Orchestrationは最初に `activated` を返す。この状態はVersionとEnvironmentの適格性だけを示し、Specialist Contextの生成やReasoning実行を許可しない。最初のHandoffは `capability_dispatch` である。必須観測を永続検証した後、既知の観測フィールドをFactへ投影して再選出する。`project.inspect.render_pipeline` と `source.read.path/content` が対象であり、任意のProvider出力をTask Decisionへ変換しない。unknown PipelineはFactとして採用せず、`required_context_missing` で停止する。
+
+最終選出が `selected` となり、再構築ManifestのBudgetとBindingが成立した場合だけ、共通 `specialist_reasoning` Handoffを生成する。Providerless RuntimeへObservation Capabilityを意味的Capabilityとして送らない。失敗理由、観測Evidence、旧Manifest参照を保持する。
+
+Renderingの初期分析では明示症状と対象Scopeを必須とする。`verification_requested` / `mutation_requested` の段階では再現条件、正確なError、対象Source、RendererFeature順序を追加必須とする。Context Packの条件付き項目に `required_when_active: true` があれば、当該条件の選択時に欠落をGate failureとする。初期分析の完了は再現検証やApplyの完了ではなく、従来のTask ContractのCompile / Runtime / Mutation Gateを満たしたと主張しない。
+
+`test_graphics_production_reasoning.py` は本番Catalog・ToolBroker・FileProviderによるProject設定観測とSource読取・EvidenceStore・Context・Handoffを使用し、Projectのファイル内容とCodex processをfixture化する。適格Contextでの到達、unknownでの停止、Read-only維持、再現段階の不足Contextを検証する。FileProviderはProjectVersion・GraphicsSettings・QualitySettingsを実ファイルから読取り、Built-in / URP / HDRPの一意な構成だけを採用する。Quality別の不一致、未解決GUID、独自Pipeline、設定欠落はunknownとし、観測範囲をserialized_project_configurationと記録する。実Editorのactive quality、Scriptによる実行時切替、Live Reasoning、Player/実機の品質は別途検証が必要である。Host CLIの `run --request` はEntry v2を既存Control Planeへ渡し、FileProviderが解決された場合だけ観測を実行する。明示対象Sourceがない場合、別Fileを推測して読まない。
 
 ## CI / Host 完了条件と未評価事項
 

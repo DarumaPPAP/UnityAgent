@@ -11,13 +11,15 @@ from unittest import mock
 import yaml
 
 from Runtime.ReferenceImplementation.catalog_import_gate import CatalogImportError, build_import_plan
-from Runtime.ReferenceImplementation.profiles import CATALOG, SubAgentProfileCatalog, runtime_profile_revision
+from Runtime.ReferenceImplementation.profiles import SubAgentProfileCatalog, runtime_profile_revision
 from Runtime.ReferenceImplementation.runtime import reference_definition_fingerprint
 from Tools.unity_agent_cli import _fingerprint
 
 
 ROOT = Path(__file__).resolve().parents[2]
-CATALOG_PATH = ROOT / "Runtime/ReferenceImplementation/subagent-catalog.yaml"
+CATALOG_PATH = ROOT / "Runtime/Tests/Fixtures/artist-consumer-v1.yaml"
+# Historical v1/v2 migration tests remain bound to their explicit pre-migration consumer.
+CATALOG = SubAgentProfileCatalog.from_file(CATALOG_PATH)
 HUB_FIXTURE_PATH = ROOT / "Runtime/Tests/Fixtures/hub-artist-subagent-catalog-v1.1.yaml"
 HUB_V3_FIXTURE_PATH = ROOT / "Runtime/Tests/Fixtures/hub-artist-subagent-catalog-v3.yaml"
 
@@ -342,6 +344,7 @@ class CatalogImportGateTests(unittest.TestCase):
                 source_ref="test://duplicate-key",
                 expected_sha256="sha256:" + hashlib.sha256(payload).hexdigest(),
                 current_catalog=CATALOG,
+                current_catalog_bytes=CATALOG_PATH.read_bytes(),
             )
         self.assertEqual(duplicate.exception.code, "snapshot_syntax")
 
@@ -420,6 +423,7 @@ class CatalogImportGateTests(unittest.TestCase):
                 source_ref="test://strict-types",
                 expected_sha256="sha256:" + hashlib.sha256(payload).hexdigest(),
                 current_catalog=CATALOG,
+                current_catalog_bytes=CATALOG_PATH.read_bytes(),
             )
 
         self.assertEqual(context.exception.code, "profile_validation")

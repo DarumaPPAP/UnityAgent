@@ -13,7 +13,7 @@ from Context.Manifest.build_context_manifest import build as build_context_manif
 from Context.Selection.project_context_inputs import derive_context_inputs
 from ControlPlane.unity_agent_control_plane import UnityAgentControlPlane, validate_entry_request
 from Orchestration.Routing.route_selector import load_routes, resolve_specialist, select_route, select_specialist_capability, task_fingerprint_from_intent
-from Orchestration.ToolRouting.capability_request_builder import build_candidate_capability_requests, build_capability_requests, conditions_for_intent
+from Orchestration.ToolRouting.capability_request_builder import build_specialist_capability_requests, build_capability_requests, conditions_for_intent
 from Runtime.ReferenceImplementation.world_planning import WorldPlanContractError, verify_world_plan
 from Runtime.Tooling.capability_resolver import ResolutionContext
 from Runtime.Tooling.tool_broker import ToolBroker
@@ -41,7 +41,7 @@ class WorldCreatorEntryFixtureTests(unittest.TestCase):
         route = select_route(fingerprint, load_routes(ROOT / "Orchestration/Routing/task-routes.yaml"))
         conditions = conditions_for_intent(entry["intent"], fingerprint)
         production = build_capability_requests(route_id=route["route_id"], project_root=entry["project_root"], active_conditions=conditions)
-        candidate = build_candidate_capability_requests(route["route_id"], entry["project_root"], active_conditions=conditions)
+        candidate = build_specialist_capability_requests(route["route_id"], entry["project_root"], active_conditions=conditions)
         capability = select_specialist_capability(route["route_id"], production + candidate)
         inputs = derive_context_inputs(entry["project_root"], self.snapshot, entry["intent"])
         selection = resolve_specialist(route["route_id"], capability, self.snapshot, pilot_enabled=True, context_items=inputs["specialist_items"])
@@ -101,19 +101,22 @@ class WorldCreatorEntryFixtureTests(unittest.TestCase):
                 self.assertTrue(result["world_plan"]["human_review_required"])
                 self.assertEqual(result["world_plan"]["prohibited_changes"], options.get("prohibited_changes", []))
 
-    def test_missing_entry_fields_and_pilot_disabled_block(self) -> None:
+    def test_missing_entry_fields_and_unavailable_reasoning_runtime_block(self) -> None:
         for key in ("world_goal", "scene_scope"):
             entry = self.entry()
             del entry["intent"][key]
             with self.subTest(key=key), self.assertRaises(ValidationError):
                 validate_entry_request(entry)
         revisions = {name: "fixture-v1" for name in ("architecture_version", "policy_revision", "prompt_revision", "context_revision", "graph_revision", "runtime_profile_revision", "tool_schema_revision", "checkpoint_schema_revision", "evidence_schema_revision", "eval_contract_revision")}
-        with patch.object(ToolBroker, "resolve", side_effect=AssertionError("world.plan must not resolve Provider")) as resolve, patch.object(ToolBroker, "dispatch", side_effect=AssertionError("world.plan must not dispatch Provider")) as dispatch:
+        def observation(request, *args, **kwargs):
+            self.assertEqual(request["capability"], "project.inspect")
+            return {"status": "completed"}
+        with patch.object(ToolBroker, "resolve", side_effect=AssertionError("world.plan must not resolve Provider")) as resolve, patch.object(ToolBroker, "dispatch", side_effect=observation) as dispatch:
             response = UnityAgentControlPlane(self.project.parent / "state").execute(self.entry(), environment_snapshot=self.snapshot, context=ResolutionContext(policy_allowed=True), executors={}, definition_fingerprint={"schema_version": "1.0", **revisions})
             resolve.assert_not_called()
-            dispatch.assert_not_called()
+            dispatch.assert_called_once()
         self.assertEqual(response["status"], "blocked")
-        self.assertIn("Specialist unavailable: world.plan", response["reason"])
+        self.assertEqual(response["results"][-1]["runtime_failure"]["failure_class"], "runner_unavailable")
 
     def test_platform_arrays_are_preserved_and_conflicts_are_open(self) -> None:
         self.snapshot["build"]["requested_target"] = "Windows"
