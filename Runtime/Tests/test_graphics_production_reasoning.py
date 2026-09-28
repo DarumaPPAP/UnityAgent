@@ -50,8 +50,8 @@ class GraphicsProductionReasoningTests(unittest.TestCase):
             return process_result()
 
         plane = UnityAgentControlPlane(self.root / "state")
-        with patch.object(codex_runner, "_command_prefix", return_value=["codex-fixture"]), patch.object(codex_runner, "run_streaming_process", side_effect=process) as runner:
-            response = plane.execute(self.entry, environment_snapshot=self.snapshot, context=ResolutionContext(policy_allowed=True), executors={"file": executor}, definition_fingerprint=fingerprint(), reasoning_model="fixture-model")
+        with patch.object(codex_runner, "run_streaming_process", side_effect=process) as runner:
+            response = plane.execute(self.entry, environment_snapshot=self.snapshot, context=ResolutionContext(policy_allowed=True), executors={"file": executor}, definition_fingerprint=fingerprint(), reasoning_model="fixture-model", reasoning_command_prefix=["codex-fixture"])
         return response, calls, captured, runner.call_count
 
     def test_production_entry_observes_before_selecting_reasoning(self):
