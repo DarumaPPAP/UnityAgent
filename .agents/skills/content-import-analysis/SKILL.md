@@ -17,6 +17,8 @@ AudioはLoad Type、Compression Format、Quality、Preload、Load in Background�
 
 AddressablesはPackage、Settings、Group、現在のAddress、Revisionを観測する。Analyzeで現状を確定し、Planには対象Group、Address、期待Revisionを含める。PackageやSettingsが無ければ不足状態を返し、存在を仮定しない。
 
+旧`addressables.get_support_matrix`の知識境界を維持する。旧Toolの利用可否を評価する場合は、Addressables Packageの導入・Versionと旧Backendの有無を別々に観測する。現行のread-only分析は旧Backendを必要としない。Settingsを自動作成せず、自動Saveもしない。Content Build、Remote Content Update、Platform固有Content BuildはこのPilotの対象外。旧SourceがAddressables 2.x互換性を未検証としていた事実を、現行Pilotの互換性保証に読み替えない。
+
 ## Output Contract
 
 Tool出力の`observed`、`proposed_changes`、`approval_required`、`applied`を分けて報告する。Textureの`proposed_format`も未適用の候補である。Applyする場合は別のUnityAgent実行経路で承認、現在Revision、exact diffを確認する。Pilotの出力だけでApply成功や品質改善を宣言しない。
