@@ -20,7 +20,7 @@ from jsonschema import Draft202012Validator
 from Orchestration.Orchestrator.orchestrator import runtime_handoff, runtime_node_for_requests
 from Orchestration.Routing.route_selector import load_routes, resolve_specialist, select_route, select_specialist_capability, task_fingerprint_from_intent
 from Orchestration.ToolRouting.capability_request_builder import (build_capability_requests, build_specialist_capability_requests, conditions_for_intent,
-    task_contract_projection)
+    mutation_scope_for_intent, task_contract_projection)
 from Context.Manifest.build_context_manifest import build as build_context_manifest
 from Context.Selection.project_context_inputs import derive_context_inputs
 from Context.Selection.specialist_context import observation_items
@@ -194,6 +194,7 @@ class UnityAgentControlPlane:
         reasoning_effort: str = "high",
         reasoning_timeout_seconds: float = 120.0,
         reasoning_command_prefix: list[str] | None = None,
+        maximum_retry_attempts: int = 1,
     ) -> dict[str, Any]:
         """Run Entry and Orchestration through the selected runtime handoff, then record Evidence."""
         validate_entry_request(entry_request)
@@ -209,7 +210,7 @@ class UnityAgentControlPlane:
             route_decision = select_route(task_fingerprint, load_routes(ROOT / "Orchestration/Routing/task-routes.yaml"))
             route_id = str(route_decision["route_id"])
             conditions = conditions_for_intent(intent, task_fingerprint)
-            mutation_scope: dict[str, Any] = {}
+            mutation_scope = mutation_scope_for_intent(intent, task_fingerprint)
             capability_requests = build_capability_requests(route_id=route_id,
                 project_root=str(entry_request["project_root"]), active_conditions=conditions,
                 mutation_scope=mutation_scope, approval_ref=entry_request.get("approval_ref"))
@@ -217,8 +218,14 @@ class UnityAgentControlPlane:
             selected_capability = select_specialist_capability(route_id, capability_requests + specialist_requests)
             if not capability_requests:
                 raise ValueError(f"Orchestration produced no runnable CapabilityRequest: {route_id}")
-            if any(request["operation_kind"] != "read" for request in capability_requests):
-                raise ValueError("v2 Entry has no approved mutation scope projection for this route")
+            mutating_requests = [request for request in capability_requests if request["operation_kind"] != "read"]
+            if mutating_requests:
+                if not mutation_scope:
+                    raise ValueError("v2 Entry has no approved mutation scope projection for this route")
+                if not entry_request.get("approval_ref"):
+                    raise ValueError("v2 mutation requires an approval_ref bound to the projected scope")
+                if any(request.get("mutation_scope") != mutation_scope for request in mutating_requests):
+                    raise ValueError("Orchestration mutation scope projection does not match generated CapabilityRequest")
             required_capability = "visual.capture" if intent["kind"] == "visual_capture" else (
                 "project.inspect" if intent["kind"] == "project_inspection" else None)
             if required_capability and required_capability not in {item["capability"] for item in capability_requests}:
@@ -412,6 +419,7 @@ class UnityAgentControlPlane:
                 specialist_execution_context=specialist_execution_context if request["capability"] == selected_capability else None,
                 specialist_context_manifest_path=str(manifest_path.resolve()) if request["capability"] == selected_capability else None,
                 receipt_required=specialist_selection["status"] == "selected" and request["capability"] == selected_capability and specialist_selection.get("receipt_required", True),
+                maximum_retry_attempts=maximum_retry_attempts,
             )
             result = deepcopy(outcome)
             resolution = outcome.get("resolution")
