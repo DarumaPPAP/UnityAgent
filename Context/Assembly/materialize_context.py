@@ -179,7 +179,7 @@ def materialize_context(
         if not isinstance(observation, dict):
             continue
         freshness = observation.get("freshness") or {}
-        if (observation.get("source_kind") not in {"user_request", "environment_snapshot"}
+        if (observation.get("source_kind") not in {"user_request", "environment_snapshot", "orchestration_projection"}
                 or not isinstance(observation.get("value"), str) or not observation["value"]
                 or not isinstance(observation.get("revision"), str)
                 or not re.fullmatch(r"sha256:[0-9a-f]{64}", observation["revision"])
