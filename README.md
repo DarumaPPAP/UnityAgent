@@ -85,7 +85,7 @@ EntryからProviderを直接呼び出したり、ProviderがPolicyやdurable sta
 
 ### UnitySubAgentHub
 
-[UnitySubAgentHub](https://github.com/DarumaPPAP/UnitySubAgentHub) は、Optional Specialist SubAgentのRegistry / Catalog / Manifest / Schema / Validationを管理する別Repositoryです。
+[UnitySubAgentHub](https://github.com/DarumaPPAP/UnitySubAgentHub) は、Optional Specialist SubAgentのRegistry / Catalog / Manifest / Schema / Validationとco-located Specialist sourceを管理する別Repositoryです。Hub/個別SubAgentは独立Releaseを公開せず、公開DistributionはUnityAgent Releaseへ集約します。
 
 | UnityAgent owns | UnitySubAgentHub owns |
 |---|---|
@@ -242,6 +242,6 @@ Local Regression Gateの一部はローカルCodex CLIや認証済み環境を�
 
 UnityAgentは **Beta** です。
 
-Release Workflowは `main/VERSION` をSource of Truthとしてcanonical tagを生成し、UPM Package、Codex Plugin、Python wheel / source distribution、`SHA256SUMS.txt` を公開します。手動入力したTagをRelease Source of Truthにはしません。
+Release Workflowは `main/VERSION` をSource of Truthとしてcanonical tagを生成します。さらに `Runtime/Distribution/subagent-sources.lock.json` の固定Hub commitを取得・検証し、Artist backend / package / Hub Snapshotを同じUnityAgent Releaseへ同梱します。Hub `main` や個別SubAgent Releaseを実行時DistributionのSource of Truthにはしません。
 
 UnityAgentは [MIT License](LICENSE) で提供されます。
