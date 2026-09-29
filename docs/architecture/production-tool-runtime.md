@@ -16,7 +16,7 @@ Transport  = どうProviderへ接続するか
 Evidence   = 実際に何を観測できたか
 ```
 
-`world.plan`のようなProviderless Specialist reasoningはTool Capabilityとは別の`specialist_reasoning` Runtime Actionである。ModelとModel ProviderはCodexRunnerの実行Provenanceであり、ToolBrokerのProvider IDではない。`world.plan`はToolBrokerへResolve/Dispatchせず、Project観測に使う`project.inspect`等のTool Capabilityだけが既存Provider経路を通る。WorldCreatorのProduction Registry登録はこのRuntime経路の追加だけでは成立しない。
+`world.plan`のようなProviderless Specialist reasoningはTool Capabilityとは別の`specialist_reasoning` Runtime Actionです。ModelとModel ProviderはCodexRunnerの実行Provenanceであり、ToolBrokerのProvider IDではありません。`world.plan`はToolBrokerへResolve / Dispatchせず、Project観測に使う`project.inspect`等のTool Capabilityだけが既存Provider経路を通ります。現在はGraphics / WorldCreator / PerformanceがConsumer Catalog v3のReasoning Profileとして登録されていますが、Reasoning用の架空Providerは作りません。また、Catalog登録とRepository fixtureの成立だけでLive ProjectのProduction Verification済みとは扱いません。
 
 したがってOrchestrationは、通常次のような要求を作ります。
 
