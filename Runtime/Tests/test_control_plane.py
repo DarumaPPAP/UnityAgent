@@ -358,7 +358,7 @@ class ControlPlaneTests(unittest.TestCase):
 
     def test_setup_uses_registry_resolved_installer_and_evidence(self) -> None:
         (self.project / "Packages/manifest.json").write_text(
-            '{"dependencies": {"com.darumappap.unity-artist": "0.0.1-beta"}}', encoding="utf-8"
+            '{"dependencies": {"com.darumappap.artist-subagent": "0.0.2-beta"}}', encoding="utf-8"
         )
         installer = InstallerProvider(
             self.project,
@@ -374,7 +374,7 @@ class ControlPlaneTests(unittest.TestCase):
                 "operation": "doctor",
                 "project_root": str(self.project.resolve()),
                 "products": ["official_unity_cli", "unity_artist_cli"],
-                "channel": "0.0.7-beta",
+                "channel": "0.0.8-beta",
                 "non_interactive": True,
             },
             executors={"installer": installer.execute},
@@ -395,7 +395,7 @@ class ControlPlaneTests(unittest.TestCase):
             if arguments[1:] == ["--version"]:
                 return CommandResult(0, "codex-cli 0.0-test\n", "")
             if arguments[1:] == ["plugin", "list", "--json"]:
-                return CommandResult(0, '[{"pluginId":"unity-agent@unity-agent","version":"0.0.7-beta","installed":true,"enabled":true}]', "")
+                return CommandResult(0, '[{"pluginId":"unity-agent@unity-agent","version":"0.0.8-beta","installed":true,"enabled":true}]', "")
             raise AssertionError(f"unexpected command: {arguments}")
 
         installer = InstallerProvider(
@@ -419,7 +419,7 @@ class ControlPlaneTests(unittest.TestCase):
                     "codex_cli",
                     "unity_agent_codex_plugin",
                 ],
-                "channel": "0.0.7-beta",
+                "channel": "0.0.8-beta",
                 "non_interactive": True,
                 "codex_cli_path": str(fake_codex),
             },
@@ -452,9 +452,9 @@ class ControlPlaneTests(unittest.TestCase):
         receipt_entry = {
             "product": "unity_artist_cli",
             "status": "installed",
-            "version": "0.0.1-beta",
+            "version": "0.0.2-beta",
             "location": "C:/Users/test/AppData/Local/UnityArtistCLI/Beta/unity-artist.exe",
-            "source": "github:DarumaPPAP/UnitySubAgentHub@v0.0.1-beta",
+            "source": "github:DarumaPPAP/UnitySubAgentHub@v0.0.2-beta",
             "sha256": "sha256:" + "a" * 64,
         }
         installer = InstallerProvider(
@@ -464,13 +464,13 @@ class ControlPlaneTests(unittest.TestCase):
                 "operation": "apply",
                 "status": "passed",
                 "project_root": str(self.project.resolve()),
-                "channel": "0.0.7-beta",
+                "channel": "0.0.8-beta",
                 "install_receipt": {
                     "schema_version": "1.0",
                     "receipt_id": "receipt-approved",
                     "run_id": "pending",
                     "project_root": str(self.project.resolve()),
-                    "channel": "0.0.7-beta",
+                    "channel": "0.0.8-beta",
                     "entries": [receipt_entry],
                     "verified_at": "2026-09-11T00:00:00+00:00",
                     "evidence_refs": [],
@@ -487,7 +487,7 @@ class ControlPlaneTests(unittest.TestCase):
                 "operation": "apply",
                 "project_root": str(self.project.resolve()),
                 "products": ["unity_artist_cli"],
-                "channel": "0.0.7-beta",
+                "channel": "0.0.8-beta",
                 "non_interactive": True,
                 "approval_ref": "approval-1",
                 "expected_plan_id": "plan-approved",

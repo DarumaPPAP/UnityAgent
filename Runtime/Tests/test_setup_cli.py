@@ -28,7 +28,7 @@ class SetupCliTests(unittest.TestCase):
                 if arguments[1:] == ["--version"]:
                     return CommandResult(0, "codex-cli 0.0-test\n", "")
                 if arguments[1:] == ["plugin", "list", "--json"]:
-                    return CommandResult(0, '[{"pluginId":"unity-agent@unity-agent","version":"0.0.7-beta","installed":true,"enabled":true}]', "")
+                    return CommandResult(0, '[{"pluginId":"unity-agent@unity-agent","version":"0.0.8-beta","installed":true,"enabled":true}]', "")
                 raise AssertionError(f"unexpected command: {arguments}")
 
             def installer_factory(project_path):

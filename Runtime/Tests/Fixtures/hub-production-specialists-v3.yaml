@@ -10,7 +10,7 @@ specialists:
     identity:
       id: artist_subagent
       name: ArtistSubAgent
-      version: 0.0.1-beta
+      version: 0.0.2-beta
     lifecycle: active
     installation:
       mode: optional
@@ -47,7 +47,7 @@ specialists:
       kind: backend
       required: true
       eligibility_gate: unity_artist_cli.available
-    - id: com.darumappap.unity-artist
+    - id: com.darumappap.artist-subagent
       kind: unity_package
       required: true
       eligibility_gate: unity_artist_cli.package_installed
@@ -80,7 +80,7 @@ specialists:
     identity:
       id: graphics_subagent
       name: GraphicsSubAgent
-      version: 0.0.1-beta
+      version: 0.0.2-beta
     lifecycle: active
     installation:
       mode: optional
@@ -139,7 +139,7 @@ specialists:
     identity:
       id: world_creator_subagent
       name: WorldCreatorSubAgent
-      version: 0.0.1-beta
+      version: 0.0.2-beta
     lifecycle: active
     installation:
       mode: optional
@@ -194,7 +194,7 @@ specialists:
     identity:
       id: performance_subagent
       name: PerformanceSubAgent
-      version: 0.0.1-beta
+      version: 0.0.2-beta
     lifecycle: active
     installation:
       mode: optional
