@@ -20,6 +20,7 @@
   <a href="#install">Install</a> ·
   <a href="#validation">Validation</a> ·
   <a href="docs/architecture/architecture.md">Architecture Docs</a> ·
+  <a href="docs/README.md">Docs Index</a> ·
   <a href="docs/references/unity-cli-reference.md">Unity CLI Reference</a> ·
   <a href="https://darumappap.github.io/UnityAgent/">Context Explorer</a> ·
   <a href="https://github.com/DarumaPPAP/UnityAgent/releases">Releases</a>
@@ -117,6 +118,18 @@ Offline Snapshotを反映候補として確認するときは、`python Tools/im
 `Capability` は「実現したいこと」、`Provider` は「具体的に実行する実体」です。
 
 代表的なProviderにはFile、Native Unity Editor、Official Unity CLI、`unity_artist_cli` Backend、Installer、Player Runtimeがあります。これはProvider種別の一覧であり、すべてのProjectやReleaseで常に利用可能という意味ではありません。
+
+## Current Production Surface
+
+| Surface | Current contract |
+|---|---|
+| Entry | `entry-request.v2` のTyped IntentをProduction入口とする。v1はValidation互換用で、Production Control Planeではcaller-owned Context / Route / Capabilityを拒否する |
+| Provider-backed Specialist | `artist_subagent` → `unity_artist_cli`。Eligibilityは現在のEnvironment FactでFail-Closed判定する |
+| Reasoning Specialists | `graphics_subagent`、`world_creator_subagent`、`performance_subagent` をConsumer Catalog v3へ登録済み。Tool Providerを偽装せずCodexRunnerのReasoning Handoffを使う |
+| Full E2E | 固定Typed Intent `fixed_full_e2e_probe` をControl Plane → ToolBroker → Unity Editor → PlayModeまで検証する |
+| Unity baseline | Production対象はUnity 6.x+のBuilt-in / URP / HDRP。Unity 2022.3の記録はHistorical Evidenceであり現行Supportではない |
+
+Specialist登録、Repository fixture、Static Contract PASSは、実Project上のEditor / Player / Target Device / Visual / Performance成功を意味しません。必要なObservationやEvidenceが未取得なら `unavailable` / `not_observed` / `partial_verified` を維持します。
 
 ## Request Lifecycle
 
