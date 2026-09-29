@@ -23,7 +23,9 @@ Reasoning specialists execute through UnityAgent's CodexRunner contract and do n
 
 - Hub Snapshot v3 / Manifest v5 are accepted through the Offline Import Gate.
 - Hub registration is not treated as runtime installation, compatibility, project binding, eligibility or readiness.
-- Artist backend is pinned to `DarumaPPAP/UnitySubAgentHub@v0.0.2-beta`.
+- UnitySubAgentHub and individual SubAgents do not publish independent releases.
+- This UnityAgent release pins `DarumaPPAP/UnitySubAgentHub@61d3fad2e0aef50b69fc76fbbd839aca076de19f` as source provenance.
+- Artist backend host/package bytes and the consumer-neutral Hub Snapshot are built from that exact commit and published as UnityAgent release assets.
 
 ## Fixed Full E2E capability
 
@@ -53,6 +55,12 @@ Unity 2022.3 records are historical or bounded compatibility evidence, not curre
 - `UnityAgent-CodexPlugin-0.0.8-beta.zip`
 - `unityagent_control_plane-0.0.8b0-py3-none-any.whl`
 - `unityagent_control_plane-0.0.8b0.tar.gz`
+- `UnityAgent-ArtistSubAgent-host-windows-x64-0.0.8-beta.zip`
+- `UnityAgent-ArtistSubAgent-host-windows-x64-0.0.8-beta.zip.sha256`
+- `UnityAgent-ArtistSubAgent-UPM-0.0.8-beta.tgz`
+- `UnityAgent-SubAgent-Catalog-0.0.8-beta.yaml`
+- `UnityAgent-SubAgent-Registry-0.0.8-beta.yaml`
+- `UnityAgent-SubAgent-Provenance-0.0.8-beta.json`
 - `SHA256SUMS.txt`
 
 UPM:
