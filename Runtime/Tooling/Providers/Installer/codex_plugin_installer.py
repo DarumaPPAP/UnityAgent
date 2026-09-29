@@ -13,7 +13,7 @@ from pathlib import Path
 import subprocess
 from typing import Any, Callable, Iterable, Mapping, Sequence
 
-CHANNEL = "0.0.7-beta"
+CHANNEL = "0.0.8-beta"
 MARKETPLACE_SOURCE = "DarumaPPAP/UnityAgent"
 MARKETPLACE_NAME = "unity-agent"
 MARKETPLACE_REF = f"v{CHANNEL}"

@@ -1,9 +1,9 @@
 {
   "name": "com.darumappap.unity-agent",
-  "version": "0.0.7-beta",
+  "version": "0.0.8-beta",
   "displayName": "UnityAgent",
   "description": "UnityAgent Control Plane entry package for approval-gated setup and evidence-backed execution.",
-  "unity": "2022.3",
+  "unity": "6000.0",
   "license": "MIT",
   "author": {
     "name": "DarumaPPAP"
