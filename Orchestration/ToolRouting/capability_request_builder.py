@@ -33,7 +33,25 @@ def conditions_for_intent(intent: dict[str, Any], fingerprint: dict[str, str]) -
         return {"project_fact_needed"}
     if kind == "world_planning" and fingerprint["artifact"] == "world" and fingerprint["mutation_target"] == "none":
         return {"project_fact_needed"}
+    if (kind == "fixed_full_e2e_probe" and fingerprint["artifact"] == "asset_data"
+            and fingerprint["scope"] == "project_asset"
+            and fingerprint["mutation_target"] == "serialized_asset"
+            and intent.get("target_scope") == "Assets/UnityAgentE2E"):
+        return {"full_e2e_requested"}
     raise ValueError(f"no verified Capability conditions for intent kind: {kind}")
+
+
+def mutation_scope_for_intent(intent: dict[str, Any], fingerprint: dict[str, str]) -> dict[str, Any]:
+    """Project mutation scope only for allowlisted Typed Intents; Entry never supplies this value."""
+    if (intent.get("kind") == "fixed_full_e2e_probe"
+            and intent.get("target_scope") == "Assets/UnityAgentE2E"
+            and fingerprint.get("artifact") == "asset_data"
+            and fingerprint.get("mutation_target") == "serialized_asset"):
+        return {
+            "allowed_paths": ["Assets/UnityAgentE2E", "Assets/UnityAgentE2E.meta"],
+            "prohibited_paths": ["ProjectSettings"],
+        }
+    return {}
 
 
 def task_contract_projection(route_id: str, *, root: Path = ROOT) -> dict[str, Any]:
