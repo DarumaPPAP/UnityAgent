@@ -46,7 +46,7 @@ specialists:
       kind: backend
       required: true
       eligibility_gate: unity_artist_cli.available
-    - id: com.darumappap.unity-artist
+    - id: com.darumappap.artist-subagent
       kind: unity_package
       required: true
       eligibility_gate: unity_artist_cli.package_installed
@@ -58,7 +58,7 @@ specialists:
     - id: unity_artist_cli
       kind: cli
       executable: unity-artist
-      package_id: com.darumappap.unity-artist
+      package_id: com.darumappap.artist-subagent
       transport: official_unity_cli_pipeline
       contract_ref: SubAgents/artist_subagent/contracts/backend-surface-contract.yaml
     evidence:

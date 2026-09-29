@@ -88,7 +88,7 @@ def _reference_tests(env: dict[str, str]) -> tuple[bool, str]:
 
 def _namespace_check(artist_root: Path) -> tuple[bool, str]:
     violations: list[str] = []
-    roots = [artist_root / "Packages" / "com.darumappap.unity-artist", artist_root / "src" / "UnityArtist.Cli"]
+    roots = [artist_root / "Packages" / "com.darumappap.artist-subagent", artist_root / "src" / "UnityArtist.Cli"]
     for root in roots:
         if not root.is_dir():
             violations.append(f"missing namespace root: {root}")

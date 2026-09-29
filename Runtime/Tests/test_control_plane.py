@@ -358,7 +358,7 @@ class ControlPlaneTests(unittest.TestCase):
 
     def test_setup_uses_registry_resolved_installer_and_evidence(self) -> None:
         (self.project / "Packages/manifest.json").write_text(
-            '{"dependencies": {"com.darumappap.unity-artist": "0.0.2-beta"}}', encoding="utf-8"
+            '{"dependencies": {"com.darumappap.artist-subagent": "0.0.2-beta"}}', encoding="utf-8"
         )
         installer = InstallerProvider(
             self.project,
