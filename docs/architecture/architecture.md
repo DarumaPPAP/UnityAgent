@@ -83,7 +83,7 @@ Providerless Specialist reasoningでは同じControl Planeから別のRuntime Ac
  Structured Artifact          Provider
 ```
 
-WorldCreatorはこのReasoning経路の最初のCandidate Consumerであり、Production Registryへは未登録である。Policy defines; Orchestration decides; Context materializes; Runtime executes; Persistence remembers; Eval measures、という責務境界を維持する。
+Graphics / WorldCreator / PerformanceはConsumer Catalog v3のProduction Reasoning Profileとして登録済みです。Graphicsは`project.inspect` / `source.read`、Performanceは`profiler.observe`の検証済みObservationをReasoning前に要求し、WorldCreatorは`world.plan`のplanning-only Handoffを使います。Reasoning ProfileはTool Providerを持たず、既存CodexRunnerで構造化Artifactを生成します。登録済みであることとLive ProjectでProduction Verifiedであることは別であり、未観測Evidenceを成功へ昇格しません。Policy defines; Orchestration decides; Context materializes; Runtime executes; Persistence remembers; Eval measures、という責務境界を維持します。
 
 ---
 
