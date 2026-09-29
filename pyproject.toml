@@ -19,4 +19,4 @@ include = ["ControlPlane*", "Runtime*", "Persistence*", "Orchestration*", "Tools
 namespaces = true
 
 [tool.setuptools.package-data]
-"*" = ["*.yaml", "*.yml", "*.json", "*.md"]
+"*" = ["*.yaml", "*.yml", "*.json", "*.md", "*.txt"]
