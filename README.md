@@ -166,7 +166,7 @@ Providerが利用できない場合は制約を弱めたり別Backendへ無条�
 Unity EditorでPackage Managerを開き、Git URLからUnityAgent UPM Packageを追加します。
 
 ```text
-https://github.com/DarumaPPAP/UnityAgent.git?path=/Packages/com.darumappap.unity-agent#v0.0.7-beta
+https://github.com/DarumaPPAP/UnityAgent.git?path=/Packages/com.darumappap.unity-agent#v0.0.8-beta
 ```
 
 追加後、`UnityAgent > Setup` を開いてControl PlaneとCodex CLIの状態を確認します。Setup画面からControl Planeの導入、検出、Codex Pluginの導入・修復を行えます。
@@ -183,7 +183,7 @@ BootstrapはRelease artifactをSHA-256検証してControl Planeを導入しま�
 <summary><strong>Manual Codex Plugin install</strong></summary>
 
 ```powershell
-codex plugin marketplace add DarumaPPAP/UnityAgent --ref v0.0.7-beta --json
+codex plugin marketplace add DarumaPPAP/UnityAgent --ref v0.0.8-beta --json
 codex plugin add unity-agent@unity-agent --json
 ```
 
