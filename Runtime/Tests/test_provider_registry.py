@@ -23,7 +23,7 @@ from Runtime.Tooling.provider_registry import RuntimeProviderRegistry
 class ProviderRegistryTests(unittest.TestCase):
     def test_canonical_registry_is_valid_and_complete(self):
         registry = load_provider_registry()
-        self.assertEqual(len(registry.providers), 8)
+        self.assertEqual(len(registry.providers), 9)
         self.assertEqual(len(registry.capability_requirements), 15)
         runtime = RuntimeProviderRegistry(registry=registry)
         self.assertEqual(runtime.provider("myunitymcp").transport, "mcp")
@@ -43,6 +43,10 @@ class ProviderRegistryTests(unittest.TestCase):
         self.assertIn("profiler_observation", profiler.capabilities["profiler.observe"].evidence_supported)
         self.assertGreaterEqual(profiler.safety_strength, registry.capability_requirements["profiler.observe"].minimum_safety_strength)
         self.assertGreaterEqual(profiler.evidence_strength, registry.capability_requirements["profiler.observe"].minimum_evidence_strength)
+        e2e = runtime.provider("unity_agent_editor")
+        self.assertEqual(e2e.required_qualifiers, ("workflow",))
+        self.assertEqual(e2e.qualifiers_supported, {"workflow": ("full_e2e",)})
+        self.assertTrue(e2e.production_enabled)
 
     def test_duplicate_yaml_key_is_rejected(self):
         text = """\
