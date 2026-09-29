@@ -72,6 +72,7 @@ jobs:
           bootstrap = pathlib.Path("Packages/com.darumappap.unity-agent/Editor/UnityAgentControlPlaneBootstrap.cs").read_text(encoding="utf-8")
 
           assert upm["version"] == version, (upm["version"], version)
+          assert upm.get("unity") == "6000.0", upm.get("unity")
           assert plugin["version"] == version, (plugin["version"], version)
           assert codex_plugin["version"] == version, (codex_plugin["version"], version)
           assert pyproject["project"]["version"] == expected_python, (pyproject["project"]["version"], expected_python)
@@ -91,16 +92,16 @@ jobs:
           assert f'internal const string Channel = "{version}"' in bootstrap
           assert f'internal const string ReleaseTag = "v{version}"' in bootstrap
 
-          artist = next(item for item in marketplace["plugins"] if item["name"] == "unity-artist")
-          artist_ref = artist["source"].get("ref", "")
-          assert artist_ref.startswith("v") and artist_ref != "main", artist_ref
+          plugin_names = [item.get("name") for item in marketplace.get("plugins", [])]
+          assert plugin_names == ["unity-agent"], plugin_names
+          assert "unity-artist" not in plugin_names
           print(f"Release version: {version}")
           print(f"Python version: {expected_python}")
           print(f"Release tag: v{version}")
           print("Codex marketplace: unity-agent")
           print("Control Plane bootstrap: pinned package-local installer")
           print("License: MIT")
-          print(f"Pinned UnityArtistCLI ref: {artist_ref}")
+          print("Marketplace plugins: unity-agent only")
           PY
 
           if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
@@ -123,18 +124,115 @@ jobs:
             Eval/Regression/compare_baseline.py \
             Tools/run_regression_gate.py
 
-      - name: Verify pinned UnityArtistCLI release
+      - name: Verify pinned ArtistSubAgent backend release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           artist_ref="$(python3 - <<'PY'
-          import json
-          data = json.load(open('.agents/plugins/marketplace.json', encoding='utf-8'))
-          print(next(item for item in data['plugins'] if item['name'] == 'unity-artist')['source']['ref'])
+          import pathlib
+          import re
+
+          text = pathlib.Path("Runtime/Tooling/Providers/Installer/release_installer.py").read_text(encoding="utf-8")
+          match = re.search(r'^RELEASE_TAG = "([^"]+)"
+      - name: Build Python distribution
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          python3 -m build --outdir artifacts
+
+      - name: Pack Unity UPM package
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          (
+            cd Packages/com.darumappap.unity-agent
+            npm pack --pack-destination "$GITHUB_WORKSPACE/artifacts"
+          )
+          upm_source="$(find artifacts -maxdepth 1 -type f -name 'com.darumappap.unity-agent-*.tgz' -print -quit)"
+          test -n "$upm_source"
+          upm_target="artifacts/UnityAgent-UPM-$RELEASE_VERSION.tgz"
+          mv "$upm_source" "$upm_target"
+
+          python3 - "$upm_target" <<'PY'
+          import sys
+          import tarfile
+
+          archive = sys.argv[1]
+          required = {
+              "package/package.json.meta",
+              "package/Editor.meta",
+              "package/Editor/DarumaPPAP.UnityAgent.Editor.asmdef.meta",
+              "package/Editor/UnityAgentCodexPathResolver.cs.meta",
+              "package/Editor/UnityAgentControlPlanePathResolver.cs.meta",
+              "package/Editor/UnityAgentControlPlaneBootstrap.cs.meta",
+              "package/Editor/UnityAgentControlPlaneClient.cs.meta",
+              "package/Editor/UnityAgentSetupWindow.cs.meta",
+              "package/Editor/Bootstrap~/install-control-plane.ps1",
+          }
+          with tarfile.open(archive, "r:gz") as package:
+              names = set(package.getnames())
+          missing = sorted(required - names)
+          if missing:
+              raise SystemExit("UPM artifact is missing bootstrap/meta files: " + ", ".join(missing))
+          print(f"UPM artifact validation passed: {len(required)} required files")
+          PY
+
+      - name: Pack Codex plugin
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          (
+            cd .agents/plugins/unity-agent
+            zip -qr "$GITHUB_WORKSPACE/artifacts/UnityAgent-CodexPlugin-$RELEASE_VERSION.zip" .
+          )
+
+      - name: Generate SHA-256 checksums
+        run: |
+          set -euo pipefail
+          (
+            cd artifacts
+            : > SHA256SUMS.txt
+            for artifact in *; do
+              [ "$artifact" = "SHA256SUMS.txt" ] && continue
+              [ -f "$artifact" ] || continue
+              sha256sum -- "$artifact" >> SHA256SUMS.txt
+            done
+          )
+
+      - name: Configure Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Create immutable tag
+        run: git tag -a "$RELEASE_TAG" -m "UnityAgent $RELEASE_TAG"
+
+      - name: Push immutable tag
+        run: git push origin "$RELEASE_TAG"
+
+      - name: Create GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$RELEASE_TAG" \
+            --verify-tag \
+            --prerelease \
+            --title "UnityAgent $RELEASE_TAG" \
+            --notes-file RELEASE_NOTES.md \
+            artifacts/*
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: UnityAgent-${{ env.RELEASE_TAG }}-Distribution
+          path: artifacts
+, text, re.MULTILINE)
+          if not match:
+              raise SystemExit("release_installer.py does not declare RELEASE_TAG")
+          print(match.group(1))
           PY
           )"
-          gh api "repos/DarumaPPAP/UnityArtistCLI/releases/tags/$artist_ref" >/dev/null
+          gh api "repos/DarumaPPAP/UnitySubAgentHub/releases/tags/$artist_ref" >/dev/null
 
       - name: Build Python distribution
         run: |

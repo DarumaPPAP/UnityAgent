@@ -1,74 +1,49 @@
-# UnityAgent 0.0.7-beta
+# UnityAgent 0.0.8-beta
 
-UnityAgent 0.0.7-beta focuses on a cleaner Unity-side setup experience and a more reliable managed runtime/bootstrap path.
+UnityAgent 0.0.8-beta updates the Control Plane to the current Specialist architecture and Unity 6+ production baseline.
 
-## Branded Setup Window
+## Highlights
 
-`UnityAgent > Setup` now uses the UnityAgent visual identity directly inside the Editor.
+- Entry v2 typed intents are the production execution entry; v1 remains validation compatibility only.
+- GraphicsSubAgent, WorldCreatorSubAgent and PerformanceSubAgent run as providerless reasoning specialists through CodexRunner.
+- ArtistSubAgent remains provider-backed through `unity_artist_cli`, with the backend release pinned independently.
+- The fixed Full E2E probe validates Codex/host entry → UnityAgent → ToolBroker → Unity Editor execution with evidence.
+- Consumer Catalog v3 / Hub Manifest v5 / Snapshot v3 contracts are aligned.
+- Current production support is Unity 6.x+ across Built-in, URP and HDRP.
 
-- Added the UnityAgent logo as a package asset and hardened Git UPM loading.
-- Removed the baked white logo background and enabled alpha transparency.
-- Enlarged the hero/header area and strengthened the red/charcoal visual hierarchy.
-- Refined Setup Readiness, Control Plane, Codex CLI, Codex Integration, and Current Status cards.
-- Added clearer path presentation, copy action, spacing, badges, and action hierarchy.
-- Kept Diagnostics / Raw response and Advanced collapsed so the primary setup path remains readable.
+## ArtistSubAgent backend
 
-The underlying Control Plane / approval / installer-provider / evidence flow remains unchanged.
-
-## Managed Control Plane runtime
-
-The Control Plane bootstrap and stable installer now use an isolated LocalAppData runtime instead of a legacy `pip --user` layout.
+The canonical Unity package ID is now:
 
 ```text
-%LOCALAPPDATA%/UnityAgent/ControlPlane/v0.0.7-beta/venv/
+com.darumappap.artist-subagent
 ```
 
-A stable shim remains available under:
+The previous beta ID `com.darumappap.unity-artist` is not treated as the current package. Existing projects using it must migrate the dependency explicitly.
 
-```text
-%LOCALAPPDATA%/UnityAgent/bin/unity-agent.cmd
+UnityAgent v0.0.8-beta pins the Artist backend to `UnitySubAgentHub@v0.0.2-beta`.
+
+## Codex Marketplace
+
+The Codex Marketplace contains only the `unity-agent` plugin. Specialist SubAgents are resolved inside UnityAgent and are not published as standalone Marketplace plugins.
+
+```powershell
+codex plugin marketplace add DarumaPPAP/UnityAgent --ref v0.0.8-beta --json
+codex plugin add unity-agent@unity-agent --json
 ```
-
-`UNITY_AGENT_CONTROL_PLANE` continues to be persisted as the stable discovery hint used by the Unity Editor package.
-
-## Codex Desktop discovery
-
-UnityAgent now searches additional managed Codex Desktop locations before requiring a manual override, including standalone/package-managed Desktop runtimes and the normal OpenAI Codex program location.
-
-The resolver remains discovery-only: Unity Entry code still does not execute Codex directly.
-
-## Installer and checksum hardening
-
-Both the package-local bootstrap installer and the stable installer now share stricter release verification behavior.
-
-- Canonical checksum parsing accepts normalized basename entries and legacy `./` / `.\` prefixes.
-- Release artifacts are SHA-256 verified before installation.
-- Managed runtime installation remains isolated from user Python package state.
-- UPM package validation checks required bootstrap and `.meta` files before release.
-
-## Unity package reliability
-
-Additional safeguards cover Git UPM and Unity 6 Editor behavior.
-
-- Stable `.meta` coverage for package assets/folders.
-- Fully-qualified `UnityEditor.PackageManager.PackageInfo` usage to avoid `PackageInfo` ambiguity.
-- Setup logo loading retries package-path/GUID resolution across import and focus timing.
-- Packed UPM contents are validated in CI.
 
 ## Release artifacts
 
-The v0.0.7-beta prerelease publishes:
-
-- `UnityAgent-UPM-0.0.7-beta.tgz`
-- `UnityAgent-CodexPlugin-0.0.7-beta.zip`
-- `unityagent_control_plane-0.0.7b0-py3-none-any.whl`
-- `unityagent_control_plane-0.0.7b0.tar.gz`
+- `UnityAgent-UPM-0.0.8-beta.tgz`
+- `UnityAgent-CodexPlugin-0.0.8-beta.zip`
+- `unityagent_control_plane-0.0.8b0-py3-none-any.whl`
+- `unityagent_control_plane-0.0.8b0.tar.gz`
 - `SHA256SUMS.txt`
 
 UPM Git URL:
 
 ```text
-https://github.com/DarumaPPAP/UnityAgent.git?path=/Packages/com.darumappap.unity-agent#v0.0.7-beta
+https://github.com/DarumaPPAP/UnityAgent.git?path=/Packages/com.darumappap.unity-agent#v0.0.8-beta
 ```
 
 This remains a beta release and may include breaking changes before 1.0.
