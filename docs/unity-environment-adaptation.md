@@ -353,16 +353,15 @@ Completionは状況に応じて:
 
 ## 15. Unity release matrix
 
-Artist Providerの正式Supportは次の4ケースに限定します。
+Current Production SupportはUnity 6.x+の3ケースです。
 
 | Unity | Render Pipeline | Support tier | First transport |
 | --- | --- | --- | --- |
-| 2022.3 LTS | Built-in | primary | Official Unity CLI + Unity Pipeline |
 | Unity 6.x+ | Built-in | primary | Official Unity CLI + Unity Pipeline |
 | Unity 6.x+ | URP | primary | Official Unity CLI + Unity Pipeline |
 | Unity 6.x+ | HDRP | primary | Official Unity CLI + Unity Pipeline |
 
-2022.3 Built-inも実測Gateを通るまで別Backendへ切り替えません。2022.3 URP/HDRP、Unity 2023、URP 14–16はMutation前にunsupportedを返します。
+Unity 2022.3のbounded fallback / compatibility記録はHistorical Evidenceとして保持しますが、現行Production Supportには含めません。Support Matrix外はMutation前にunsupportedまたはunavailableとしてFail-Closedします。
 
 ## 16. Environment Regression Matrix
 
@@ -396,7 +395,8 @@ UnityAgentはUnity CLIを要求しない。
 UnityAgentはArtist Providerを要求しない。
 UnityAgentはCapabilityを要求する。
 
-2022.3 Built-inはOfficial Unity CLI + Pipelineを第一候補にする。
+Current Production baselineはUnity 6.x+（Built-in / URP / HDRP）。
+Unity 2022.3の記録はHistorical Evidenceとして扱う。
 
 RuntimeがEnvironmentを観測し、
 現在安全に実行できるProviderだけを使う。
