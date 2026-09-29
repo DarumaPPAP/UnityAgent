@@ -15,7 +15,9 @@ python Tools/import_subagent_catalog.py \
 
 `source-ref`とSHA-256は呼び出し側がSnapshotの取得元と取得バイト列に対して指定します。SHA-256が一致しない、YAMLに重複キーがある、Snapshot / Identity / Capability / Provider / activation / scope / approval / Evidenceが不正、または未知のEnvironment Factを参照するSnapshotはfail-closedになります。
 
-Hub Snapshot v2はManifest v4を含みます。移行期間中は既存のSnapshot v1 / Manifest v3も受け入れます。v4ではBackend実装フィールドとBackend Test Evidence参照をHub Manifestから除外します。AdapterはHub Schemaの固定コピーを`Runtime/ReferenceImplementation/Schemas/`からオフラインで検証し、active Specialistの静的Capability、Activation、Backend参照、Evidence requirementsを読みます。Hub Schemaが更新される場合はこのコピーとImport Testを同じUnityAgent PRで更新します。`audience`、`goal_type`、`primary_capability`、既定Profile、Reference scope / approval、Evidence producerはUnityAgentの現行Catalogから保持します。HubがこれらのRuntime値を決めません。新しいSpecialistにUnityAgent側Profileがなければ`consumer_profile_required`で停止し、明示的なCatalog Migrationを要求します。複数のactive Specialistが同じCapabilityを宣言した場合も、現行Resolverが一意に選べないためImport Gateで拒否します。
+Current Hub contractはSnapshot v3 / Manifest v5です。Import Gateは明示的な互換入力としてSnapshot v1 / Manifest v3とSnapshot v2 / Manifest v4も受け入れますが、旧版をCurrent契約へ暗黙変換しません。v3では`execution.kind`を含むExecution Contractを検証し、Provider-backed SpecialistはBackend宣言を要求し、Reasoning SpecialistはSemantic Tool Backendを持たないことを要求します。v3 Snapshotを取り込むConsumer CatalogはProfile v3でなければ`consumer_migration_required`で停止します。
+
+AdapterはHub Schemaの固定コピーを`Runtime/ReferenceImplementation/Schemas/`からオフラインで検証し、active SpecialistのIdentity、Capability、Activation、Execution、Compatibility、Backend / Reasoning参照、Evidence requirementsを読みます。Hub Schemaが更新される場合はこのコピーとImport Testを同じUnityAgent PRで更新します。`audience`、`goal_type`、`primary_capability`、既定Profile、Reference scope / approval、Evidence producerなどConsumer所有値はUnityAgentの現行Catalogから保持します。HubがこれらのRuntime値を決めません。新しいSpecialistにUnityAgent側Profileがなければ`consumer_profile_required`で停止し、明示的なCatalog Migrationを要求します。複数のactive Specialistが同じCapabilityを宣言し、現行Consumerが一意に扱えない場合もImport Gateで拒否します。
 
 ## Planの扱い
 
