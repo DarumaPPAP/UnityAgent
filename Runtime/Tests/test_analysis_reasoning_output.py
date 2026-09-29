@@ -80,6 +80,17 @@ class AnalysisReasoningOutputTests(unittest.TestCase):
         with self.assertRaises(ReasoningOutputError):
             verify_reasoning_artifact("Runtime/Contracts/performance-analysis-result.schema.json", manifest, result)
 
+    def test_limited_editor_snapshot_cannot_support_bottleneck_or_comparison(self):
+        manifest, result = self.performance()
+        for capture in manifest["materialized_context"]["specialist_context"]["items"][0]["value"]["result"]["measurements"]:
+            capture["metadata"]["validity"] = "limited"
+        for capture in result["measurements"]:
+            capture["metadata"]["validity"] = "limited"
+        with self.assertRaises(ReasoningOutputError):
+            verify_reasoning_artifact("Runtime/Contracts/performance-analysis-result.schema.json", manifest, result)
+        result.update(bottleneck_classification="unknown", classification_basis=[], comparison=None)
+        verify_reasoning_artifact("Runtime/Contracts/performance-analysis-result.schema.json", manifest, result)
+
     def test_comparison_requires_same_conditions_and_exact_delta(self):
         manifest, result = self.performance()
         result["comparison"]["deltas"][0]["value"] = -4.0

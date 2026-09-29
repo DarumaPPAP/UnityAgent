@@ -127,6 +127,8 @@ Production Contractでは次の15 Capabilityを使用します。
 | `player.observe` | Development / QA Playerを観測する |
 | `player.mutate` | Approval付きPlayer controlを行う |
 
+`profiler.observe` のProduction経路は、Projectに結合したUnity EditorでUnity CLI / Pipelineの `get_performance_stats` を動的に発見できた場合だけ利用する。現在の正規化契約は単一のEditor snapshotを `limited` として記録し、取得できないGPU timingを0として補完しない。Player / 実機の時系列計測と比較・回帰判定は、この経路では検証していない。
+
 旧ドキュメントで使われていた次の語はCanonical Capabilityではありません。
 
 ```text

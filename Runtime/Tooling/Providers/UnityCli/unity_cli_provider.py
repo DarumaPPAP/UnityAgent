@@ -22,6 +22,7 @@ from Runtime.Tooling.Providers.UnityCli.discovery import (
     UnityCliSurfaceDiscovery,
     discover_unity_cli_surface,
 )
+from Runtime.Tooling.Providers.UnityCli.profiler_observation import ProfilerObservationError, normalize_profiler_observation
 from Runtime.Tooling.Providers.UnityCli.result_mapper import (
     extract_command_catalog,
     normalize_build_execution,
@@ -37,6 +38,7 @@ SUPPORTED_CAPABILITIES = frozenset(
         "project.test",
         "project.build",
         "scene.inspect",
+        "profiler.observe",
     }
 )
 SAFE_SCENE_INSPECT_COMMANDS = frozenset(
@@ -152,6 +154,9 @@ class UnityCliProvider:
         }
         if discovery.pipeline_reachable is True and catalog_names.intersection(SAFE_SCENE_INSPECT_COMMANDS):
             result.add("scene.inspect")
+        editor = self.environment_snapshot.get("unity_editor") or {}
+        if discovery.pipeline_reachable is True and "get_performance_stats" in catalog_names and editor.get("running") is True and editor.get("project_bound") is True and editor.get("safe_mode") is False:
+            result.add("profiler.observe")
         return frozenset(result)
 
     def _dispatch(
@@ -441,6 +446,42 @@ class UnityCliProvider:
             evidence=["editor_observation"],
         )
         return {**normalized, "provider_ref": "unity_cli", "command_name": command_name}
+
+    def run_profiler_observe(
+        self,
+        request: dict[str, Any],
+        *,
+        timeout_seconds: float,
+        policy_allowed: bool,
+        cancel_event: threading.Event | None = None,
+    ) -> dict[str, Any]:
+        failure = self._validate_common(request, expected_capability="profiler.observe", policy_allowed=policy_allowed, approval_required=False, approval_complete=False)
+        if failure:
+            return failure
+        editor = self.environment_snapshot.get("unity_editor") or {}
+        if editor.get("running") is not True or editor.get("project_bound") is not True or editor.get("safe_mode") is not False:
+            return _failure("not_observed", "a running, project-bound Editor outside Safe Mode is required")
+        discovery, failure = self._require_discovery("command")
+        if failure:
+            return failure
+        if discovery is None or discovery.pipeline_reachable is not True:
+            return _failure("unavailable", "Unity Pipeline is not observed reachable for this project")
+        if not any(item.get("name") == "get_performance_stats" and item.get("runtime_only") is not True for item in discovery.command_catalog):
+            return _failure("unsupported", "get_performance_stats is not exposed by the bound Editor")
+
+        cli = self.environment_snapshot.get("unity_cli") or {}
+        command = build_pipeline_command(str(cli["executable_path"]), self.project_root, "get_performance_stats")
+        exit_code, stdout, failure = self._dispatch(command, timeout_seconds=timeout_seconds, cancel_event=cancel_event)
+        if failure:
+            return failure
+        normalized = normalize_pipeline_command(exit_code=int(exit_code), stdout=stdout, evidence=["profiler_observation"])
+        if normalized["status"] != "passed":
+            return {**normalized, "provider_ref": "unity_cli"}
+        try:
+            observation = normalize_profiler_observation(normalized["result"], unity_version=str((self.environment_snapshot.get("project") or {}).get("unity_version") or "unknown"))
+        except ProfilerObservationError as exc:
+            return _failure("execution_failed", str(exc))
+        return {"status": "passed", "failure_class": None, "reason": None, "provider_ref": "unity_cli", "evidence": ["profiler_observation"], **observation}
 
     def discover_player_transport(
         self,

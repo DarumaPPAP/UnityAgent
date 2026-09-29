@@ -36,6 +36,13 @@ class ProviderRegistryTests(unittest.TestCase):
             ["installer"],
         )
         self.assertEqual(runtime.provider("installer").capabilities, {})
+        profiler = runtime.provider("unity_cli")
+        self.assertTrue(profiler.production_enabled)
+        self.assertFalse(profiler.legacy)
+        self.assertIn("profiler.observe", profiler.capabilities)
+        self.assertIn("profiler_observation", profiler.capabilities["profiler.observe"].evidence_supported)
+        self.assertGreaterEqual(profiler.safety_strength, registry.capability_requirements["profiler.observe"].minimum_safety_strength)
+        self.assertGreaterEqual(profiler.evidence_strength, registry.capability_requirements["profiler.observe"].minimum_evidence_strength)
 
     def test_duplicate_yaml_key_is_rejected(self):
         text = """\

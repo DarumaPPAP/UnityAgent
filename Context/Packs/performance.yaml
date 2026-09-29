@@ -29,17 +29,22 @@ use_when:
 
 required:
   - type: binding
-    name: measurable_metric
-  - type: binding
     name: reproduction_scene_or_workload
-  - type: binding
-    name: target_platform
-  - type: binding
-    name: quality_settings
-  - type: binding
-    name: baseline_capture_or_explicit_missing_baseline
 
 conditional:
+  mutation_requested:
+    - type: binding
+      name: measurable_metric
+      required_when_active: true
+    - type: binding
+      name: target_platform
+      required_when_active: true
+    - type: binding
+      name: quality_settings
+      required_when_active: true
+    - type: binding
+      name: baseline_capture_or_explicit_missing_baseline
+      required_when_active: true
   project_fallback:
     - type: repository_reference
       path: Specs/ProjectProfile.md

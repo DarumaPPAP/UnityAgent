@@ -33,7 +33,7 @@ def _texture_plan(result: dict[str, Any], observation: dict[str, Any]) -> dict[s
 
 def analyze_texture(observation: dict[str, Any], *, project_decision: dict[str, Any]) -> dict[str, Any]:
     result = _result("texture", observation, "observed")
-    result.update(classification="unobserved", proposed_format=None, proposed_max_size=None, confidence=None)
+    result.update(classification="unobserved", proposed_format=None, proposed_max_size=None, confidence=None, flat_fraction=None, sample_strategy=None, sample_count=0, known_limitations=["入力Sampleの代表性、Platform上の画質、Runtimeのメモリ使用量は未検証"])
     usage = observation.get("usage")
     if usage not in {"normal", "color", "mask", "height"}:
         raise ValueError("texture usage must be observed")
@@ -41,10 +41,11 @@ def analyze_texture(observation: dict[str, Any], *, project_decision: dict[str, 
         raise ValueError("texture dimensions and alpha must be observed")
     if usage == "normal":
         samples = observation.get("sampled_normals")
+        strategy = observation.get("sample_strategy")
         minimum = project_decision.get("normal_flat_min_samples")
         distance = project_decision.get("normal_flat_distance")
         threshold = project_decision.get("normal_flat_confidence")
-        if not isinstance(samples, list) or type(minimum) is not int or minimum < 1 or len(samples) < minimum or not all(type(value) in (int, float) and math.isfinite(value) for value in (distance, threshold)) or not (0 < distance <= 1 and 0 < threshold <= 1):
+        if not isinstance(samples, list) or not isinstance(strategy, str) or not strategy.strip() or type(minimum) is not int or minimum < 1 or len(samples) < minimum or not all(type(value) in (int, float) and math.isfinite(value) for value in (distance, threshold)) or not (0 < distance <= 1 and 0 < threshold <= 1):
             return result
         if any(not isinstance(sample, list) or len(sample) != 3 or any(type(value) not in (int, float) or not math.isfinite(value) or not 0 <= value <= 1 for value in sample) for sample in samples):
             raise ValueError("normal samples must be observed normalized RGB triples")
@@ -53,7 +54,11 @@ def analyze_texture(observation: dict[str, Any], *, project_decision: dict[str, 
         low = confidence >= threshold
         result["classification"] = "low_normal_candidate" if low else "high_normal_candidate"
         result["confidence"] = confidence
+        result["flat_fraction"] = confidence
+        result["sample_strategy"] = strategy
+        result["sample_count"] = len(samples)
         result["classification_criteria"] = {"flat_distance": distance, "minimum_samples": minimum, "flat_fraction_threshold": threshold, "observed_samples": len(samples)}
+        result["known_limitations"].append("confidenceは入力Sample内のFlat比率であり、Texture全体に対する統計的信頼度ではない")
         format_key = "low_normal_format" if low else "high_normal_format"
         proposed = project_decision.get(format_key)
         if proposed in {"BC1", "BC5"}:

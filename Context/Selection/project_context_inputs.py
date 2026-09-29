@@ -61,6 +61,8 @@ def derive_context_inputs(project_root: str, snapshot: dict[str, Any], intent: d
     if specialist_tag == "rendering":
         for key, value in (("rendering_symptom", intent["symptom"]), ("requested_rendering_scope", intent["target_scope"])):
             bindings[key] = {"value": value, "source_kind": "user_request", "revision": request_revision, "freshness": freshness}
+    if specialist_tag == "performance":
+        bindings["reproduction_scene_or_workload"] = {"value": intent["target_scope"], "source_kind": "user_request", "revision": request_revision, "freshness": freshness}
     if specialist_tag == "world":
         bindings["scene_scope"] = {"value": intent["scene_scope"], "source_kind": "user_request", "revision": request_revision, "freshness": freshness}
     for key in ("visual_intent", "exact_scene_or_asset_scope", "reference_or_visual_definition"):

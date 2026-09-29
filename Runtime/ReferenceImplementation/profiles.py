@@ -144,8 +144,13 @@ class SubAgentProfile:
                 targets = selection["supported_targets"]
                 if not isinstance(targets, list) or not targets or any(not isinstance(target, dict) or set(target) != {"unity_version", "render_pipeline"} or any(not isinstance(item, str) or not item for item in target.values()) for target in targets):
                     raise ProfileValidationError("selection.supported_targets requires explicit Unity and pipeline pairs")
+                if not isinstance(selection["capability_context"], dict):
+                    raise ProfileValidationError("selection.capability_context must be a mapping")
                 try:
-                    validate_selection_context(selection["compatibility"], selection["capability_context"], data["capabilities"], receipt_required=False)
+                    receipt_values = [item.get("receipt_required") for item in selection["capability_context"].values() if isinstance(item, dict)]
+                    if not receipt_values or any(not isinstance(value, bool) or value is not receipt_values[0] for value in receipt_values):
+                        raise ProfileValidationError("reasoning capabilities require one explicit Context receipt policy")
+                    validate_selection_context(selection["compatibility"], selection["capability_context"], data["capabilities"], receipt_required=receipt_values[0])
                 except ValueError as exc:
                     raise ProfileValidationError(str(exc)) from exc
                 if selection["compatibility"]["unity_version_prefixes"] != ["6000."] or any(target["unity_version"] != "Unity 6.x+" or target["render_pipeline"] not in {"builtin", "urp", "hdrp"} for target in targets):

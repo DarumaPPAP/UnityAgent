@@ -197,6 +197,7 @@
                 "type": "string",
                 "enum": [
                   "valid",
+                  "limited",
                   "invalid",
                   "not_measured",
                   "fixture_input"
