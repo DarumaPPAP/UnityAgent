@@ -299,7 +299,7 @@ def probe_unity_artist_cli(
         )
 
     project = Path(project_root).expanduser().resolve(strict=False)
-    package_version = _manifest_package_version(str(project), "com.darumappap.unity-artist")
+    package_version = _manifest_package_version(str(project), "com.darumappap.artist-subagent")
     package_installed: TriState = package_version is not None
     project_bound: TriState = package_installed if project.is_dir() else False
     binding_status: BindingStatus = "bound" if project_bound is True else (
