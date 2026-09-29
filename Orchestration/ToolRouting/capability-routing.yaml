@@ -15,6 +15,7 @@ conditions:
   - player_observation_needed
   - player_mutation_requested
   - domain_execution_requested
+  - full_e2e_requested
 
 routes:
   generic-planning:
@@ -76,6 +77,12 @@ routes:
     capabilities:
       - {capability: project.inspect, operation_kind: read, required_evidence: [project_fact], preferred_surface: project, when: always}
       - {capability: scene.mutate, operation_kind: editor_mutation, required_evidence: [editor_observation, mutation_evidence], preferred_surface: live_editor, when: mutation_requested}
+      - capability: scene.mutate
+        operation_kind: editor_mutation
+        required_evidence: [editor_observation, mutation_evidence, compile_observation, test_execution, exact_diff]
+        preferred_surface: live_editor
+        when: full_e2e_requested
+        qualifiers: {workflow: full_e2e}
   portable-feature:
     capabilities:
       - {capability: source.read, operation_kind: read, required_evidence: [source_read], preferred_surface: project, when: always}
