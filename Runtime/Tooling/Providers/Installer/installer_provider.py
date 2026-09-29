@@ -30,7 +30,7 @@ PRODUCTS = frozenset({
     "unity_agent_codex_plugin",
 })
 PACKAGE_IDS = ("com.unity-artist", "com.darumappap.unity-artist")
-CHANNEL = "0.0.7-beta"
+CHANNEL = "0.0.8-beta"
 
 
 def _now() -> str:
