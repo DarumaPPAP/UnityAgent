@@ -95,7 +95,20 @@ jobs:
           assert f'internal const string Channel = "{version}"' in bootstrap
           assert f'internal const string ReleaseTag = "v{version}"' in bootstrap
 
-          repo_match = re.search(r'^REPOSITORY = "([^"]+)"
+          repo_match = re.search(r'REPOSITORY = "([^"]+)"', artist_installer)
+          ref_match = re.search(r'RELEASE_TAG = "([^"]+)"', artist_installer)
+          assert repo_match and ref_match, "Artist backend release pin is missing"
+          artist_repo = repo_match.group(1)
+          artist_ref = ref_match.group(1)
+          assert artist_repo == "DarumaPPAP/UnitySubAgentHub", artist_repo
+          assert artist_ref.startswith("v") and artist_ref != "main", artist_ref
+          print(f"Release version: {version}")
+          print(f"Python version: {expected_python}")
+          print(f"Release tag: v{version}")
+          print("Codex marketplace: unity-agent only")
+          print("Control Plane bootstrap: pinned package-local installer")
+          print("License: MIT")
+          print(f"Pinned Artist backend: {artist_repo}@{artist_ref}")
           PY
 
           if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
