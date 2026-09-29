@@ -10,7 +10,7 @@ specialists:
     identity:
       id: artist_subagent
       name: ArtistSubAgent
-      version: 0.0.1-beta
+      version: 0.0.2-beta
     lifecycle: active
     installation:
       mode: optional

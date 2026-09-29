@@ -303,7 +303,7 @@ class EnvironmentDiscoveryTests(unittest.TestCase):
                 executable = root / "unity-artist"
                 executable.write_text("fixture", encoding="utf-8")
                 responses = iter([
-                    {"version": "0.0.1-beta"},
+                    {"version": "0.0.2-beta"},
                     {"capabilities": ["artist.camera.inspect"], "support": support},
                 ])
 
