@@ -1,74 +1,71 @@
-# UnityAgent 0.0.7-beta
+# UnityAgent 0.0.8-beta
 
-UnityAgent 0.0.7-beta focuses on a cleaner Unity-side setup experience and a more reliable managed runtime/bootstrap path.
+UnityAgent 0.0.8-beta promotes the current typed Control Plane and Specialist architecture into the next beta distribution.
 
-## Branded Setup Window
+## Entry v2 production boundary
 
-`UnityAgent > Setup` now uses the UnityAgent visual identity directly inside the Editor.
+- Typed v2 intents are the production execution entry.
+- Caller-supplied Context identity, route, capability and runtime handoff are rejected instead of trusted.
+- v1 remains an explicit validation-compatibility surface.
 
-- Added the UnityAgent logo as a package asset and hardened Git UPM loading.
-- Removed the baked white logo background and enabled alpha transparency.
-- Enlarged the hero/header area and strengthened the red/charcoal visual hierarchy.
-- Refined Setup Readiness, Control Plane, Codex CLI, Codex Integration, and Current Status cards.
-- Added clearer path presentation, copy action, spacing, badges, and action hierarchy.
-- Kept Diagnostics / Raw response and Advanced collapsed so the primary setup path remains readable.
+## Production Specialists
 
-The underlying Control Plane / approval / installer-provider / evidence flow remains unchanged.
+Consumer Catalog v3 currently exposes:
 
-## Managed Control Plane runtime
+- ArtistSubAgent — provider-backed through `unity_artist_cli`
+- GraphicsSubAgent — providerless reasoning / read-only analysis
+- WorldCreatorSubAgent — providerless reasoning / planning-only
+- PerformanceSubAgent — providerless reasoning / read-only analysis
 
-The Control Plane bootstrap and stable installer now use an isolated LocalAppData runtime instead of a legacy `pip --user` layout.
+Reasoning specialists execute through UnityAgent's CodexRunner contract and do not use fake semantic providers.
 
-```text
-%LOCALAPPDATA%/UnityAgent/ControlPlane/v0.0.7-beta/venv/
-```
+## Hub contract alignment
 
-A stable shim remains available under:
+- Hub Snapshot v3 / Manifest v5 are accepted through the Offline Import Gate.
+- Hub registration is not treated as runtime installation, compatibility, project binding, eligibility or readiness.
+- Artist backend is pinned to `DarumaPPAP/UnitySubAgentHub@v0.0.2-beta`.
 
-```text
-%LOCALAPPDATA%/UnityAgent/bin/unity-agent.cmd
-```
+## Fixed Full E2E capability
 
-`UNITY_AGENT_CONTROL_PLANE` continues to be persisted as the stable discovery hint used by the Unity Editor package.
+The bounded `fixed_full_e2e_probe` intent verifies:
 
-## Codex Desktop discovery
+`Entry v2 → UnityAgent Control Plane → ToolBroker → fixed Unity Editor provider → Scene/Material/Script → compile → Editor PlayMode → Evidence`
 
-UnityAgent now searches additional managed Codex Desktop locations before requiring a manual override, including standalone/package-managed Desktop runtimes and the normal OpenAI Codex program location.
+This is a fixed validation capability, not arbitrary command/script execution, and does not claim Player or target-device verification.
 
-The resolver remains discovery-only: Unity Entry code still does not execute Codex directly.
+## Marketplace boundary
 
-## Installer and checksum hardening
+The Codex Marketplace contains one public entry: `unity-agent`.
 
-Both the package-local bootstrap installer and the stable installer now share stricter release verification behavior.
+SubAgents are selected behind UnityAgent through the Resolver / Catalog contract. Standalone Artist / Graphics / WorldCreator / Performance Marketplace plugins are intentionally not published.
 
-- Canonical checksum parsing accepts normalized basename entries and legacy `./` / `.\` prefixes.
-- Release artifacts are SHA-256 verified before installation.
-- Managed runtime installation remains isolated from user Python package state.
-- UPM package validation checks required bootstrap and `.meta` files before release.
+## Production baseline
 
-## Unity package reliability
+- Unity 6.x+ + Built-in
+- Unity 6.x+ + URP
+- Unity 6.x+ + HDRP
 
-Additional safeguards cover Git UPM and Unity 6 Editor behavior.
-
-- Stable `.meta` coverage for package assets/folders.
-- Fully-qualified `UnityEditor.PackageManager.PackageInfo` usage to avoid `PackageInfo` ambiguity.
-- Setup logo loading retries package-path/GUID resolution across import and focus timing.
-- Packed UPM contents are validated in CI.
+Unity 2022.3 records are historical or bounded compatibility evidence, not current production support.
 
 ## Release artifacts
 
-The v0.0.7-beta prerelease publishes:
-
-- `UnityAgent-UPM-0.0.7-beta.tgz`
-- `UnityAgent-CodexPlugin-0.0.7-beta.zip`
-- `unityagent_control_plane-0.0.7b0-py3-none-any.whl`
-- `unityagent_control_plane-0.0.7b0.tar.gz`
+- `UnityAgent-UPM-0.0.8-beta.tgz`
+- `UnityAgent-CodexPlugin-0.0.8-beta.zip`
+- `unityagent_control_plane-0.0.8b0-py3-none-any.whl`
+- `unityagent_control_plane-0.0.8b0.tar.gz`
 - `SHA256SUMS.txt`
 
-UPM Git URL:
+UPM:
 
 ```text
-https://github.com/DarumaPPAP/UnityAgent.git?path=/Packages/com.darumappap.unity-agent#v0.0.7-beta
+https://github.com/DarumaPPAP/UnityAgent.git?path=/Packages/com.darumappap.unity-agent#v0.0.8-beta
+```
+
+Codex Marketplace:
+
+```powershell
+codex plugin marketplace add DarumaPPAP/UnityAgent --ref v0.0.8-beta --json
+codex plugin add unity-agent@unity-agent --json
 ```
 
 This remains a beta release and may include breaking changes before 1.0.
