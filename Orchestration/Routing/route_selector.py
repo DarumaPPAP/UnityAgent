@@ -29,8 +29,17 @@ def task_fingerprint_from_intent(intent: dict[str, Any], environment_snapshot: d
         fingerprint = {"intent": "investigate", "artifact": "performance", "scope": "local", "failure_mode": "performance", "architecture_state": "not_applicable", "mutation_target": "none", "evidence_state": "baseline_required" if intent.get("comparison_requested") else "partial"}
     elif kind == "world_planning" and set(intent).issubset({"kind", "world_goal", "scene_scope", "environment_type", "desired_mood", "target_platforms", "prohibited_changes", "acceptance_criteria"}) and all(isinstance(intent.get(key), str) and intent[key].strip() for key in ("world_goal", "scene_scope")) and all(key not in intent or isinstance(intent[key], str) and intent[key].strip() for key in ("environment_type", "desired_mood")) and all(key not in intent or isinstance(intent[key], list) and all(isinstance(value, str) and value.strip() for value in intent[key]) for key in ("target_platforms", "prohibited_changes", "acceptance_criteria")):
         fingerprint = {"intent": "design", "artifact": "world", "scope": "project_asset", "failure_mode": "none", "architecture_state": "not_applicable", "mutation_target": "none", "evidence_state": "unknown"}
+    elif (kind == "fixed_full_e2e_probe"
+            and set(intent) == {"kind", "plan_id", "target_scope"}
+            and isinstance(intent.get("plan_id"), str)
+            and len(intent["plan_id"]) == 64
+            and all(ch in "0123456789abcdef" for ch in intent["plan_id"])
+            and intent.get("target_scope") == "Assets/UnityAgentE2E"):
+        fingerprint = {"intent": "implement", "artifact": "asset_data", "scope": "project_asset",
+            "failure_mode": "runtime", "architecture_state": "not_applicable",
+            "mutation_target": "serialized_asset", "evidence_state": "known"}
     else:
-        raise ValueError("unsupported or incomplete read-only Typed Intent")
+        raise ValueError("unsupported or incomplete Typed Intent")
     project = environment_snapshot.get("project") or {}
     if (not policy_allowed or project.get("identity_status") != "bound"
             or not project.get("root") or not same_project_root(project_root, str(project["root"]))):
