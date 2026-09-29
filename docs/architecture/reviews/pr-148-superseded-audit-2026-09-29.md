@@ -1,10 +1,10 @@
 # PR #148 と現行 main の差分監査
 
-対象は `DarumaPPAP/UnityAgent` の PR #148（head `aa123f1c57b755d86d2fe556ec80d08857bfc06a`）と、2026-09-29 時点の `main`（`08c1c95842d65c4818bb5a222d0ea613e5272518`）。19 ファイル、追加 1632 行、削除 2 行を確認した。以下の分類は機能単位であり、1 ファイルに複数の機能が含まれる。
+対象は `DarumaPPAP/UnityAgent` の PR #148（head `aa123f1c57b755d86d2fe556ec80d08857bfc06a`）と、2026-09-29 時点のPR #157 merge後 `main`（`3aca3c221aa8bbc60d2ba49d4f392bc99c03bf78`）。19ファイル、追加1632行、削除2行を監査し、その後PR #158で固有挙動を現行Entry v2 Architectureへ回収した。以下の分類はPR #158着手前の機能差分である。
 
 ## 判定
 
-**PR #148 は現時点で superseded として閉じられない。** 現行 main は汎用の Control Plane、Tool Broker、Approval Store、Evidence Store、Compile Provider を持つが、固定の Scene / GameObject / Material / Script を実際の Editor で生成し、Compile と Editor PlayMode まで一続きで検証する経路を持たない。PR の専用 Editor Bridge、保存の別承認、実行後の範囲検査、署名付き結果も現行経路に相当するものがない。
+**初回監査時点ではPR #148をsupersededとして閉じられなかった。** その後PR #158で、固定Scene / GameObject / Material / Script生成、Compile / Editor PlayMode、専用Editor Bridge、保存の別承認、実行後Scope検査、署名付きResult等を現行Architectureへ回収した。PR #148のEntry v1によるRoute / Context / Mutation Scopeのcaller指定は回収せず、Entry v2 Typed Intent → Orchestration生成へ置換した。
 
 | 項目 | 分類 | 現行 main と PR #148 の差分 |
 |---|---|---|
@@ -38,3 +38,70 @@
 現行 Architecture の責務に合わせ、固定 Plan は Control Plane、Editor 観測と操作は Production Provider、権限と証跡は既存 Policy / Persistence に結合する。PR の実装をそのまま Production と判定せず、特に Editor Bridge の寿命、署名、失効、途中失敗、Scope 検査を現行契約に対して再検証する。上記 13 件の固有挙動を回収し、現在の clean checkout での検証が成立するまで PR #148 は開いたままとする。
 
 この監査は Source と PR 差分の静的比較である。PR #148 の Unity Editor、PlayMode、Player、実機での動作成功を示さない。
+
+
+## PR #158 回収結果
+
+PR #158 `PR #148のFull E2E固有機能をEntry v2へ回収` では、初回監査の `UNIQUE_REQUIRED_BEHAVIOR=13` を以下の現行責務へ移した。
+
+| 初回固有挙動 | 現行回収先 / 状態 |
+|---|---|
+| Scene / GameObject / Material / Script作成 | 固定Full E2E Editor Bridge + `unity_agent_editor` Production Provider |
+| Plan / script preview | `ControlPlane/full_e2e.py` のcreate-only immutable Plan |
+| exact diff | 固定Asset/.meta inventoryをPlanと署名Resultで照合 |
+| Approval / revocation | 既存Approval StoreへPlan/Project/Scope/期限をbindし、dispatch中にも再確認 |
+| mutation / separate save | Mutation承認とScene Save承認を分離 |
+| Editor PlayMode | 固定Probe `Start()` をEditor PlayModeで観測 |
+| Evidence Artifact | Control Plane Evidence + signed Editor Result Artifact |
+| process binding | heartbeat / PID / executable / Project / instance / signatureを照合 |
+| scope inventory | `Assets/UnityAgentE2E` create-only inventoryとundeclared path拒否 |
+| quarantine / fail-closed | malformed/stale/unsigned/out-of-scope resultを成功へ昇格しない |
+
+初回に `CURRENT_ARCHITECTURE_HAS_EQUIVALENT` としたCompileとbounded retryも、現行Compile/Evidence経路およびFull E2Eの `maximum_retry_attempts=0` と結合した。
+
+### Authority migration
+
+旧PR #148の次の設計は**移植しない**。
+
+```text
+Entry v1
+→ caller supplied route_id
+→ caller supplied context_id
+→ caller supplied mutation_scope
+→ caller supplied capability_requests
+```
+
+現行は次で固定する。
+
+```text
+Entry v2 fixed_full_e2e_probe Typed Intent
+↓
+Orchestration Task Fingerprint
+↓
+asset-data-change Route
+↓
+Orchestration-owned fixed Mutation Scope
+↓
+scene.mutate + workflow=full_e2e CapabilityRequest
+↓
+ToolBroker
+↓
+unity_agent_editor Provider
+```
+
+専用Providerは `required_qualifiers: [workflow]` により一般の `scene.mutate` 候補から隔離する。
+
+### Verification state
+
+PR #158のRepository / Fixture CIは全8 workflowがGreenになった。これは固定Plan、Approval、Provider resolution、署名Result、Scope検査、Evidence persistenceのRepository-level回収を示す。
+
+ただし実Unity Editor / Editor PlayMode / Player / Target DeviceのLive実行成功はこのCIからは証明しない。
+
+```text
+Repository Static / Fixture: PASS
+Live Unity Editor: NOT_EVALUATED_RUNTIME
+Player: NOT_EVALUATED_RUNTIME
+Target Device: NOT_EVALUATED_RUNTIME
+```
+
+**Close判定:** PR #158がcurrent mainへMergeされた時点で、PR #148の固有挙動は現行Architectureへ回収済みとなるため、PR #148は `Superseded by current UnityAgent architecture` としてClose可能。PR #148自体をMergeして旧Entry v1 Authorityを復活させてはならない。
