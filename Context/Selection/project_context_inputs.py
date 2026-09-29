@@ -22,7 +22,7 @@ def derive_context_inputs(project_root: str, snapshot: dict[str, Any], intent: d
     fact = {"key": "unity_version", "value": version, "source_kind": "detected_project",
             "source_path": str(source), "revision": revision, "observed_at_attempt": attempt,
             "freshness": freshness, "reason": "reobserved ProjectVersion.txt and matched bound EnvironmentSnapshot"}
-    specialist_tags = {"project_inspection": "project", "visual_capture": "camera", "rendering_diagnosis": "rendering", "performance_analysis": "performance", "world_planning": "world"}
+    specialist_tags = {"project_inspection": "project", "visual_capture": "camera", "rendering_diagnosis": "rendering", "performance_analysis": "performance", "world_planning": "world", "fixed_full_e2e_probe": "e2e"}
     try:
         specialist_tag = specialist_tags[intent["kind"]]
     except KeyError as exc:
@@ -37,7 +37,7 @@ def derive_context_inputs(project_root: str, snapshot: dict[str, Any], intent: d
         items.append({"category": "platform_fact", "key": "requested_target", "value": platform,
                       "source": "EnvironmentSnapshot.build.requested_target", "revision": environment_revision,
                       "freshness": freshness, "observed_at_attempt": attempt, "tags": [specialist_tag]})
-    scope_key = {"world": "scene_scope", "rendering": "target_scope", "performance": "target_scope", "camera": "exact_scene_or_asset_scope"}.get(specialist_tag)
+    scope_key = {"world": "scene_scope", "rendering": "target_scope", "performance": "target_scope", "camera": "exact_scene_or_asset_scope", "e2e": "target_scope"}.get(specialist_tag)
     scope = intent.get(scope_key) if scope_key else None
     if isinstance(scope, str) and scope:
         items.append({"category": "task_fact", "key": "requested_scope", "value": scope,
