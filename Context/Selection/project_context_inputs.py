@@ -58,6 +58,36 @@ def derive_context_inputs(project_root: str, snapshot: dict[str, Any], intent: d
     if isinstance(intent.get("kind"), str) and intent["kind"]:
         bindings["goal"] = {"value": intent["kind"], "source_kind": "user_request",
                             "revision": request_revision, "freshness": freshness}
+    if specialist_tag == "e2e":
+        fixed_bindings = {
+            "target_assets": (
+                "Assets/UnityAgentE2E/FullE2EScene.unity; "
+                "Assets/UnityAgentE2E/FullE2EMaterial.mat; "
+                "Assets/UnityAgentE2E/FullE2EProbe.cs; associated .meta files"
+            ),
+            "expected_serialized_change": (
+                "Create-only FullE2EScene with FullE2EProbeCube, FullE2EProbe component, "
+                "assigned material, fixed script template, and no overwrite"
+            ),
+            "reference_integrity_requirements": (
+                "Template SHA-256 must match; MonoScript.GetClass must resolve; component/material "
+                "bindings and the exact changed-path inventory including .meta must verify"
+            ),
+            "authoritative_mutation_channel": (
+                "Allowlisted unity_agent_editor Full E2E bridge using Unity Editor APIs; raw Unity YAML mutation prohibited"
+            ),
+            "rollback_asset_or_revision": (
+                "No automatic rollback; separately approved cleanup removes Assets/UnityAgentE2E and its .meta, "
+                "then verifies the resulting diff before a new create-only plan"
+            ),
+        }
+        for key, value in fixed_bindings.items():
+            bindings[key] = {
+                "value": value,
+                "source_kind": "orchestration_projection",
+                "revision": request_revision,
+                "freshness": freshness,
+            }
     if specialist_tag == "rendering":
         for key, value in (("rendering_symptom", intent["symptom"]), ("requested_rendering_scope", intent["target_scope"])):
             bindings[key] = {"value": value, "source_kind": "user_request", "revision": request_revision, "freshness": freshness}
