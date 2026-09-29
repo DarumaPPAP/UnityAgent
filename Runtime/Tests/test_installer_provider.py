@@ -67,7 +67,7 @@ class InstallerProviderTests(unittest.TestCase):
         self.assertTrue((self.install_root / "unity-artist.exe").is_file())
         self.assertEqual(result["install_receipt"]["entries"][0]["sha256"], f"sha256:{digest}")
         self.assertEqual(len(urls), 2)
-        release_base = "https://github.com/DarumaPPAP/UnitySubAgentHub/releases/download/v0.0.2-beta/UnityArtistCLI-host-windows-x64.zip"
+        release_base = "https://github.com/DarumaPPAP/UnityAgent/releases/download/v0.0.8-beta/UnityAgent-ArtistSubAgent-host-windows-x64-0.0.8-beta.zip"
         self.assertEqual(urls, [release_base, release_base + ".sha256"])
         self.assertEqual(result["entries"][0]["source"], release_base)
 

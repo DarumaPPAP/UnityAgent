@@ -1,7 +1,7 @@
-"""Verified UnityArtistCLI Beta artifact installer.
+"""Verified ArtistSubAgent backend installer from the UnityAgent distribution.
 
-Only the Installer Provider may use this module. The source is an immutable
-release tag and the archive is accepted only after its SHA-256 sidecar matches.
+Only the Installer Provider may use this module. Public backend bytes are owned
+by the immutable UnityAgent release and accepted only after SHA-256 verification.
 """
 from __future__ import annotations
 
@@ -15,10 +15,11 @@ import zipfile
 import posixpath
 import uuid
 
-REPOSITORY = "DarumaPPAP/UnitySubAgentHub"
-RELEASE_TAG = "v0.0.2-beta"
+DISTRIBUTION_REPOSITORY = "DarumaPPAP/UnityAgent"
+DISTRIBUTION_TAG = "v0.0.8-beta"
+BACKEND_VERSION = "0.0.2-beta"
 CONTROL_PLANE_CHANNEL = "0.0.8-beta"
-ARCHIVE_NAME = "UnityArtistCLI-host-windows-x64.zip"
+ARCHIVE_NAME = "UnityAgent-ArtistSubAgent-host-windows-x64-0.0.8-beta.zip"
 DEFAULT_INSTALL_ROOT = Path(os.environ.get("LOCALAPPDATA") or (Path.home() / "AppData/Local")) / "UnityArtistCLI/Beta"
 
 
@@ -65,7 +66,7 @@ def install_plan(
     if not isinstance(actions, list) or not actions:
         raise ReleaseInstallError("approved setup plan has no actions")
     root = Path(install_root or plan.get("install_root") or DEFAULT_INSTALL_ROOT).expanduser().resolve(strict=False)
-    release_base = f"https://github.com/{REPOSITORY}/releases/download/{RELEASE_TAG}"
+    release_base = f"https://github.com/{DISTRIBUTION_REPOSITORY}/releases/download/{DISTRIBUTION_TAG}"
     entries: list[dict[str, object]] = []
     for action in actions:
         if not isinstance(action, Mapping):
@@ -99,9 +100,9 @@ def install_plan(
             entries.append({
                 "product": product,
                 "status": "verified",
-                "version": RELEASE_TAG.removeprefix("v"),
+                "version": BACKEND_VERSION,
                 "location": location,
-                "source": f"github:{REPOSITORY}@{RELEASE_TAG}",
+                "source": f"github:{DISTRIBUTION_REPOSITORY}@{DISTRIBUTION_TAG}",
                 "sha256": None,
             })
             continue
@@ -125,7 +126,7 @@ def install_plan(
         entries.append({
             "product": product,
             "status": "installed",
-            "version": RELEASE_TAG.removeprefix("v"),
+            "version": BACKEND_VERSION,
             "location": str(root / "unity-artist.exe"),
             "source": archive_url,
             "sha256": f"sha256:{actual}",

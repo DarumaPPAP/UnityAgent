@@ -69,6 +69,10 @@ Doctor Evidence records the diagnostic operation status. The canonical hash cove
 
 Capability resolution is separate from Installer Provider observations. False, unknown, unavailable, or non-compatible Artist requirements exclude the Artist provider candidate only. Resolution for independent requests, such as `project.inspect`, continues through its own eligible provider. An execution exception is `failed`, not `unavailable`, and remains a failure for the affected operation.
 
+## Distribution boundary
+
+UnityAgent is the only public release owner. ArtistSubAgent and UnitySubAgentHub do not publish independent GitHub releases or Marketplace entries. Each UnityAgent release pins an exact Hub commit in `Runtime/Distribution/subagent-sources.lock.json`, builds the Artist backend/package from that source, and publishes those bytes under the immutable UnityAgent tag. Development may inspect Hub `main`, but released UnityAgent versions never float with Hub `main`.
+
 ## Codex surface
 
 UnityAgent is the single Codex plugin entry. ArtistSubAgent is not distributed as an independent Codex plugin because it cannot bypass or replace UnityAgent orchestration.
