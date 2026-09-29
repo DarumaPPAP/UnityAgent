@@ -185,8 +185,8 @@ Canonical references:
 - `Context/Selection/context-catalog.yaml`
 - `Context/Assembly/materialize_context.py`
 - `Runtime/ReferenceImplementation/subagent-catalog.yaml`
-- `Runtime/Handoff/`
-- `Runtime/Reasoning/`
+- `Runtime/Handoff/reasoning_runtime.py`
+- `Runtime/Runner/Codex/codex_runner.py`
 - `Runtime/Contracts/runtime-handoff.schema.yaml`
 - `Persistence/`
 - `docs/architecture/architecture.md`
