@@ -14,6 +14,8 @@ from jsonschema import ValidationError
 from referencing import Registry, Resource
 
 from ControlPlane.unity_agent_control_plane import UnityAgentControlPlane, validate_entry_request
+from Context.Manifest.build_context_manifest import build as build_context_manifest
+from Context.Selection.project_context_inputs import derive_context_inputs
 from Runtime.Contracts.runtime_handoff import validate_runtime_handoff
 from Runtime.ExecutionControl.process_runtime import StreamingProcessResult
 from Runtime.Handoff.reasoning_runtime import build_reasoning_request
@@ -24,6 +26,7 @@ from Runtime.Tooling.Environment.discovery import discover_environment
 from Runtime.Tooling.Environment.environment_snapshot import UnityCliSnapshot
 from Orchestration.Routing.route_selector import resolve_specialist
 from Runtime.Runner.Codex import codex_runner
+from Runtime.Tooling.Providers.UnityCli.profiler_observation import normalize_profiler_observation
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -166,6 +169,51 @@ class ReasoningRuntimeHandoffTests(unittest.TestCase):
         schemas = [yaml.safe_load(path.read_text(encoding="utf-8")) for path in schema_paths]
         registry = Registry().with_resources((schema["$id"], Resource.from_contents(schema)) for schema in schemas)
         Draft202012Validator(schemas[0], registry=registry).validate(execution)
+
+    def test_performance_observation_reaches_reasoning_as_limited_measurement(self):
+        snapshot = discover_environment(str(self.project), editor_candidates=[], editor_candidates_observed=True, editor_processes=[], editor_processes_observed=True, unity_cli_observation=UnityCliSnapshot(False, None, None, "unavailable"), provider_instances={"myunitymcp": [], "coplay_mcp": []}, which_fn=lambda _: None).to_dict()
+        editor_path = self.root / "Unity.exe"
+        cli_path = self.root / "unity.exe"
+        editor_path.write_text("fixture", encoding="utf-8")
+        cli_path.write_text("fixture", encoding="utf-8")
+        snapshot["unity_editor"].update(installed=True, version="6000.3.15f1", executable_path=str(editor_path), project_version_match=True, running=True, safe_mode=False, project_bound=True, binding_status="bound", bound_instance_id="editor-fixture")
+        snapshot["unity_cli"].update(available=True, version="1.0.0-beta.10", executable_path=str(cli_path), failure_class=None)
+        snapshot["pipeline"].update(installed=True, reachable=True)
+        snapshot["build"]["requested_target"] = "StandaloneWindows64"
+        stats = {"render": {"drawCalls": 4, "batches": 3, "setPassCalls": 2, "triangles": 8, "vertices": 12}, "memory": {"totalAllocatedBytes": 1048576, "totalReservedBytes": 2097152, "monoUsedBytes": 1024, "monoHeapBytes": 2048}, "frameTiming": {"available": False, "cpuFrameTimeMs": 0, "cpuMainThreadFrameTimeMs": 0, "gpuFrameTimeMs": 0}}
+        observation = normalize_profiler_observation(stats, unity_version="6000.3.15f1")
+        calls = []
+
+        def file_executor(request, _context, _arguments):
+            calls.append(request["capability"])
+            return {"status": "passed", "provider_ref": "file", "evidence": ["project_fact"], "unity_version": "6000.3.15f1", "render_pipeline": "builtin"}
+
+        def profiler_executor(request, _context, _arguments):
+            calls.append(request["capability"])
+            return {"status": "passed", "provider_ref": "unity_cli", "evidence": ["profiler_observation"], **observation}
+
+        def fake_run(command, **kwargs):
+            workspace = Path(command[command.index("--cd") + 1])
+            context = json.loads((workspace / "specialist-context.json").read_text(encoding="utf-8"))
+            observed = next(item for item in context["specialist_context"]["items"] if item["key"] == "observation:profiler.observe")
+            capture = observed["value"]["result"]["measurements"][0]
+            artifact = {"status": "completed", "profile_id": "performance_subagent", "capability": "performance.analyze", "execution_mode": "read_only_analysis", "provider_resolution": "not_required", "source_context_id": context["context_id"], "source_context_fingerprint": context["context_fingerprint"], "confirmed_facts": [], "hypotheses": [], "rejected_hypotheses": [], "required_observations": ["Collect controlled multi-frame Player timing"], "known_limitations": capture["metadata"]["known_limitations"], "mutation_performed": False, "evidence_level": "runtime_reasoning", "runtime_evaluation": "RUNTIME_OBSERVED", "measurements": [{"source_ref": observed["source"], **capture}], "bottleneck_classification": "unknown", "classification_basis": [], "comparison": None, "recommendations": ["Measure on the target device before classification"]}
+            Path(command[command.index("--output-last-message") + 1]).write_text(json.dumps(artifact), encoding="utf-8")
+            return process_result()
+
+        entry = {"schema_version": "2.0", "request_id": "performance-fixture", "entry_point": "codex_plugin", "project_root": str(self.project), "intent": {"kind": "performance_analysis", "symptom": "GPU frame time is high", "target_scope": "Scene/Main"}}
+        plane = UnityAgentControlPlane(self.root / "performance-state")
+        with patch.object(codex_runner, "run_streaming_process", side_effect=fake_run):
+            response = plane.execute(entry, environment_snapshot=snapshot, context=ResolutionContext(policy_allowed=True), executors={"file": file_executor, "unity_cli": profiler_executor}, definition_fingerprint=fingerprint(), reasoning_model="gpt-fixture", reasoning_command_prefix=["codex"])
+        self.assertEqual(response["status"], "completed", response)
+        self.assertEqual(calls, ["project.inspect", "profiler.observe"])
+        records = [plane.evidence_store.verify_record(ref) for ref in response["evidence_refs"]]
+        self.assertEqual([record["verification_status"] for record in records], ["passed", "passed", "passed"])
+        self.assertEqual([record["completion"] for record in records[:2]], ["verified", "verified"])
+        inputs = derive_context_inputs(str(self.project), snapshot, entry["intent"])
+        mutation_context = build_context_manifest("performance-mutation-fixture", "performance-experiment", project_facts=inputs["project_facts"], bindings=inputs["bindings"], capability_ids=["profiler.observe"], active_conditions={"mutation_requested"})
+        self.assertIn("binding:baseline_capture_or_explicit_missing_baseline", mutation_context["unresolved_bindings"])
+        self.assertIn("binding:quality_settings", mutation_context["unresolved_bindings"])
 
     def test_stale_context_semantic_failure_and_empty_output_fail_closed(self):
         cases = [({"stale": True}, "context_binding_failed"), ({"mutate": True}, "structured_output_invalid"), ({"semantic_invalid": True}, "world_plan_contract_failed"), ({"output_missing": True}, "structured_output_invalid"), ({"write_attempt": True}, "mutation_attempt_detected"), ({"original_mutation": True}, "mutation_attempt_detected")]

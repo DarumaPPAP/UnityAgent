@@ -131,7 +131,7 @@ providers:
   unity_cli:
     id: unity_cli
     transport: cli
-    surfaces: [host, editor, player]
+    surfaces: [host, editor, live_editor, player]
     health: environment_fact
     project_binding: explicit_project_path
     environment_key: unity_cli
@@ -180,6 +180,18 @@ providers:
           project.exists: true
           unity_cli.available: true
           pipeline.reachable: true
+        scope_preservation: true
+      profiler.observe:
+        priority: 90
+        surfaces: [live_editor]
+        evidence_supported: [profiler_observation]
+        environment_requirements:
+          project.exists: true
+          unity_cli.available: true
+          pipeline.reachable: true
+          unity_editor.running: true
+          unity_editor.project_bound: true
+          unity_editor.safe_mode: false
         scope_preservation: true
       scene.mutate:
         priority: 60

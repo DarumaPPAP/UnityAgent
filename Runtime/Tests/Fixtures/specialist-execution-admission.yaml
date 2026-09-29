@@ -27,7 +27,7 @@ specialists:
     semantic_capabilities: [performance.analyze]
     execution_model: reasoning
     required_observation_capabilities: [profiler.observe]
-    production_observation_gaps: [profiler.observe]
+    production_observation_gaps: []
     optional_observation_capabilities: [player.observe, project.inspect]
     reasoning_runtime_required: true
     provider_binding_required: false

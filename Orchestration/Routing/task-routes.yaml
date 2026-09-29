@@ -91,7 +91,7 @@ routes:
       evidence_state: [known, partial]
   performance-experiment:
     specialist_profile: performance_subagent
-    specialist_pilot: true
+    specialist_pilot: false
     specialist_phase: analysis
     priority: 95
     entry_action: investigate

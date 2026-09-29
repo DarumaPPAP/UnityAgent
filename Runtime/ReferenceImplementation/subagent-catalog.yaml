@@ -172,3 +172,52 @@ profiles:
           any_of: []
           receipt_required: false
       supported_targets: *id001
+  performance_subagent:
+    profile_id: performance_subagent
+    display_name: PerformanceSubAgent
+    audience: performance_subagent
+    goal_type: performance.analyze
+    capabilities:
+    - performance.analyze
+    required_evidence:
+    - performance_analysis
+    primary_capability: performance.analyze
+    activation:
+      install_mode: optional
+      auto_install: false
+      required_environment:
+      - project.exists
+      - filesystem.readable
+      - pipeline.reachable
+      - unity_editor.project_bound
+    evidence:
+      source_type: reasoning_execution
+      producer: Runtime/CodexRunner
+      provenance_token: performance_subagent
+    execution:
+      kind: reasoning
+      reasoning_runtime: codex_runner
+      execution_mode: read_only_analysis
+      source_context_binding: required
+      required_observation_capabilities:
+      - profiler.observe
+      instructions_ref: .agents/skills/performance-analysis/SKILL.md
+      output_contract_ref: Runtime/Contracts/performance-analysis-result.schema.json
+      hub_contract_refs:
+        instructions_ref: SubAgents/performance_subagent/instructions.md
+        output_contract_ref: SubAgents/performance_subagent/contracts/performance-analysis-result.schema.json
+    selection:
+      compatibility:
+        unity_version_prefixes:
+        - '6000.'
+        context_values: {}
+      capability_context:
+        performance.analyze:
+          all_of:
+          - project_fact:unity_version
+          - task_fact:performance_symptom
+          - task_fact:requested_scope
+          any_of:
+          - platform_fact:requested_target
+          receipt_required: true
+      supported_targets: *id001

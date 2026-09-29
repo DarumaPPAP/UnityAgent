@@ -24,9 +24,9 @@ class ProductionSpecialistRegistrationTests(unittest.TestCase):
         with self.assertRaises(CatalogImportError):
             _plan(changed, current_catalog=CATALOG)
 
-    def test_graphics_and_world_are_reasoning_profiles_without_tool_backends(self):
+    def test_registered_reasoning_profiles_have_no_semantic_tool_backends(self):
         self.assertEqual(CATALOG.schema_version, "3.0")
-        for identity, required in (("graphics_subagent", ["project.inspect", "source.read"]), ("world_creator_subagent", [])):
+        for identity, required in (("graphics_subagent", ["project.inspect", "source.read"]), ("world_creator_subagent", []), ("performance_subagent", ["profiler.observe"])):
             with self.subTest(identity=identity):
                 profile = CATALOG.get(identity)
                 self.assertIsNone(profile.provider_id)
@@ -35,10 +35,10 @@ class ProductionSpecialistRegistrationTests(unittest.TestCase):
                 require_reasoning_output_contract(profile.execution["output_contract_ref"])
                 self.assertTrue((ROOT / profile.execution["instructions_ref"]).is_file())
         self.assertEqual(CATALOG.get("artist_subagent").provider_id, "unity_artist_cli")
-        self.assertNotIn("performance_subagent", CATALOG.to_mapping()["profiles"])
+        self.assertTrue(CATALOG.get("performance_subagent").selection["capability_context"]["performance.analyze"]["receipt_required"])
 
     def test_production_routes_use_registered_semantic_owner(self):
         routes = yaml.safe_load((ROOT / "Orchestration/Routing/task-routes.yaml").read_text(encoding="utf-8"))["routes"]
-        for route in ("rendering-incident", "shader-change", "renderer-feature-change", "world-creation"):
+        for route in ("rendering-incident", "shader-change", "renderer-feature-change", "world-creation", "performance-experiment"):
             self.assertFalse(routes[route].get("specialist_pilot", False))
             self.assertEqual(CATALOG.get(routes[route]["specialist_profile"]).execution["kind"], "reasoning")

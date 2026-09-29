@@ -10,7 +10,8 @@ from Context.Selection.project_context_inputs import derive_context_inputs
 from Context.Manifest.build_context_manifest import build as build_context_manifest
 from ControlPlane.unity_agent_control_plane import UnityAgentControlPlane, validate_entry_request
 from Orchestration.Routing.route_selector import load_routes, resolve_specialist, select_route, select_specialist_capability, task_fingerprint_from_intent
-from Orchestration.ToolRouting.capability_request_builder import build_candidate_capability_requests, build_capability_requests, conditions_for_intent
+from Orchestration.ToolRouting.capability_request_builder import build_capability_requests, build_specialist_capability_requests, conditions_for_intent
+from Runtime.ReferenceImplementation.candidate_profiles import load_candidate_profile, resolve_candidate
 from Runtime.ReferenceImplementation.performance_read_only import PerformancePilotContractError, verify_performance_read_only
 from Runtime.Tooling.capability_resolver import ResolutionContext
 
@@ -38,7 +39,7 @@ class PerformanceEntryFixtureTests(unittest.TestCase):
         route = select_route(fingerprint, load_routes(ROOT / "Orchestration/Routing/task-routes.yaml"))
         conditions = conditions_for_intent(entry["intent"], fingerprint)
         production = build_capability_requests(route_id=route["route_id"], project_root=entry["project_root"], active_conditions=conditions)
-        candidate = build_candidate_capability_requests(route["route_id"], entry["project_root"], active_conditions=conditions)
+        candidate = build_specialist_capability_requests(route["route_id"], entry["project_root"], active_conditions=conditions)
         capability = select_specialist_capability(route["route_id"], production + candidate)
         inputs = derive_context_inputs(entry["project_root"], environment, entry["intent"])
         return fingerprint, route, conditions, production, candidate, capability, inputs
@@ -51,7 +52,7 @@ class PerformanceEntryFixtureTests(unittest.TestCase):
                 self.assertEqual((fingerprint["artifact"], route["route_id"], capability), ("performance", "performance-experiment", "performance.analyze"))
                 self.assertEqual(fingerprint["evidence_state"], "partial")
                 self.assertEqual(conditions, {"project_fact_needed"})
-                self.assertEqual([item["capability"] for item in production], ["project.inspect"])
+                self.assertEqual([item["capability"] for item in production], ["project.inspect", "profiler.observe"])
                 self.assertEqual([item["capability"] for item in candidate], ["performance.analyze"])
                 self.assertEqual(inputs["specialist_tags"], {"performance"})
                 facts = {(item["category"], item["key"]): item["value"] for item in inputs["specialist_items"]}
@@ -74,10 +75,10 @@ class PerformanceEntryFixtureTests(unittest.TestCase):
         self.assertFalse(any(item["key"] == "requested_target" for item in inputs["specialist_items"]))
         self.assertTrue(all(item["tags"] == ["performance"] for item in inputs["specialist_items"]))
         self.assertIn("task_fact:analysis_mode", {f"{item['category']}:{item['key']}" for item in inputs["specialist_items"]})
-        selection = resolve_specialist("performance-experiment", capability, unknown, pilot_enabled=True, context_items=inputs["specialist_items"])
+        selection = resolve_candidate(load_candidate_profile("performance_subagent"), capability, unknown, pilot_enabled=True, context_items=inputs["specialist_items"])
         self.assertEqual(selection["reason_code"], "required_context_missing")
 
-    def test_production_control_plane_blocks_unregistered_candidate(self) -> None:
+    def test_production_control_plane_blocks_unavailable_observation_environment(self) -> None:
         revisions = {name: "fixture-v1" for name in ("architecture_version", "policy_revision", "prompt_revision", "context_revision", "graph_revision", "runtime_profile_revision", "tool_schema_revision", "checkpoint_schema_revision", "evidence_schema_revision", "eval_contract_revision")}
         result = UnityAgentControlPlane(self.project.parent / "state").execute(self.entry(), environment_snapshot=self.snapshot, context=ResolutionContext(policy_allowed=True), executors={}, definition_fingerprint={"schema_version": "1.0", **revisions})
         self.assertEqual(result["status"], "blocked")
@@ -87,7 +88,7 @@ class PerformanceEntryFixtureTests(unittest.TestCase):
         entry = self.entry("GPU frame time is high after RendererFeature pass")
         _, route, conditions, production, candidate, capability, inputs = self.route_and_context(entry)
         self.assertEqual((route["route_id"], [item["capability"] for item in candidate]), ("performance-experiment", ["performance.analyze"]))
-        selection = resolve_specialist(route["route_id"], capability, self.snapshot, pilot_enabled=True, context_items=inputs["specialist_items"])
+        selection = resolve_candidate(load_candidate_profile("performance_subagent"), capability, self.snapshot, pilot_enabled=True, context_items=inputs["specialist_items"])
         self.assertEqual(selection["status"], "selected")
         manifest = build_context_manifest("performance-fixture", route["route_id"], project_facts=inputs["project_facts"], bindings=inputs["bindings"], capability_ids=[item["capability"] for item in production], active_conditions=conditions, specialist_selection=selection, specialist_items=inputs["specialist_items"], specialist_tags=inputs["specialist_tags"], required_specialist_keys=inputs["required_specialist_keys"])
         view = manifest["materialized_context"]
@@ -103,7 +104,7 @@ class PerformanceEntryFixtureTests(unittest.TestCase):
         fingerprint, route, _, production, _, capability, inputs = self.route_and_context(entry)
         self.assertEqual((route["route_id"], capability), ("performance-experiment", "performance.analyze"))
         self.assertEqual(fingerprint["evidence_state"], "baseline_required")
-        self.assertEqual([item["operation_kind"] for item in production], ["read"])
+        self.assertEqual([item["operation_kind"] for item in production], ["read", "read"])
         self.assertFalse(any(item["key"] == "baseline_reference" for item in inputs["specialist_items"]))
         self.assertEqual(next(item["value"] for item in inputs["specialist_items"] if item["key"] == "analysis_mode"), "comparison_requested")
         self.assertNotIn("performance.optimize", [capability])

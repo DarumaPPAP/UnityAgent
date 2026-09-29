@@ -97,7 +97,7 @@ Reasoning前にEvidenceStoreがRun、Project、Capability、durability、verific
 
 ## 登録済みReasoningのActivationとContext Gate
 
-Graphics / WorldCreatorはConsumer Catalog v3のReasoning Profileとして登録する。HubのManifest v5 / Snapshot v3との一致は固定fixture `hub-production-specialists-v3.yaml` をImport Gateへ通して検証する。PerformanceのInstructions / Output Contractは用意するが、Production観測Surface `profiler.observe` の不足を理由に未登録とする。登録そのものはProduction Verifiedを意味しない。
+Graphics / WorldCreator / PerformanceはConsumer Catalog v3のReasoning Profileとして登録する。HubのManifest v5 / Snapshot v3との一致は固定fixture `hub-production-specialists-v3.yaml` をImport Gateへ通して検証する。Performanceの必須観測 `profiler.observe` は、Projectに結合したUnity EditorとUnity CLI / Pipelineの `get_performance_stats` が利用可能な場合に限る。単一のEditor観測は `limited` として扱い、比較・回帰判定を許可しない。登録とfixture検証は実ProjectでのProduction Verifiedを意味しない。
 
 観測を必須とするReasoning Profileでは、Orchestrationは最初に `activated` を返す。この状態はVersionとEnvironmentの適格性だけを示し、Specialist Contextの生成やReasoning実行を許可しない。最初のHandoffは `capability_dispatch` である。必須観測を永続検証した後、既知の観測フィールドをFactへ投影して再選出する。`project.inspect.render_pipeline` と `source.read.path/content` が対象であり、任意のProvider出力をTask Decisionへ変換しない。unknown PipelineはFactとして採用せず、`required_context_missing` で停止する。
 

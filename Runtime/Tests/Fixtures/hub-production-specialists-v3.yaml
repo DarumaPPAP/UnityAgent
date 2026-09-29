@@ -187,3 +187,61 @@ specialists:
       - partial_verified
       - blocked_by_environment
       - unavailable
+- manifest_ref: SubAgents/performance_subagent/manifest.yaml
+  manifest:
+    schema_version: '5.0'
+    kind: subagent_manifest
+    identity:
+      id: performance_subagent
+      name: PerformanceSubAgent
+      version: 0.0.1-beta
+    lifecycle: active
+    installation:
+      mode: optional
+      required: false
+      auto_install: false
+    activation:
+      required_before_resolution:
+      - project.exists
+      - filesystem.readable
+      - pipeline.reachable
+      - unity_editor.project_bound
+      false_behavior: exclude_from_resolution
+      unknown_behavior: exclude_from_resolution
+    execution:
+      kind: reasoning
+      reasoning_runtime: codex_runner
+      execution_mode: read_only_analysis
+      source_context_binding: required
+      required_observation_capabilities:
+      - profiler.observe
+      instructions_ref: SubAgents/performance_subagent/instructions.md
+      output_contract_ref: SubAgents/performance_subagent/contracts/performance-analysis-result.schema.json
+    capabilities:
+    - id: performance
+      operations:
+      - analyze
+    capability_contract_ref: SubAgents/performance_subagent/contracts/production-capability-contract.yaml
+    compatibility:
+      supported_targets:
+      - unity_version: Unity 6.x+
+        render_pipeline: builtin
+      - unity_version: Unity 6.x+
+        render_pipeline: urp
+      - unity_version: Unity 6.x+
+        render_pipeline: hdrp
+    dependencies: []
+    backends: []
+    evidence:
+      required: true
+      required_artifacts:
+      - structured_reasoning_artifact
+      - normalized_evidence
+      - source_context_binding
+      runtime_types:
+      - performance_analysis
+      terminal_states:
+      - verified
+      - partial_verified
+      - blocked_by_environment
+      - unavailable

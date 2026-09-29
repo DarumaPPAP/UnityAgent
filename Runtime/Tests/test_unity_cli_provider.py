@@ -22,6 +22,9 @@ from Runtime.Tooling.Providers.UnityCli.discovery import discover_unity_cli_surf
 from Runtime.Tooling.Providers.UnityCli.result_mapper import classify_cli_failure, parse_json_sequence
 from Runtime.Tooling.Providers.UnityCli.session import UnityCliNdjsonSession
 from Runtime.Tooling.Providers.UnityCli.unity_cli_provider import UnityCliProvider
+from Runtime.Tooling.capability_resolver import ResolutionContext
+from Runtime.Tooling.tool_broker import ToolBroker
+from Runtime.EvidenceCapture.tool_runtime_evidence import normalize_provider_result, observation_payload
 
 
 def envelope(command: str, data=None, *, success=True, errors=None) -> str:
@@ -49,6 +52,7 @@ class FakeUnityCliDispatch:
         failure_class: str | None = None,
         runtime_catalog=None,
         commands_manifest=None,
+        performance_data=None,
     ) -> None:
         self.supported = set(supported or {"projects", "run", "test", "build", "status", "pipeline", "command", "shell"})
         self.malformed_project = malformed_project
@@ -72,6 +76,7 @@ class FakeUnityCliDispatch:
             {"name": "runtime_status", "runtimeOnly": True},
             {"name": "eval", "runtimeOnly": True},
         ]
+        self.performance_data = performance_data
 
     def _outcome(self, returncode: int, stdout: str = "", stderr: str = ""):
         result = SimpleNamespace(returncode=returncode, stdout=stdout, stderr=stderr)
@@ -136,8 +141,12 @@ class FakeUnityCliDispatch:
                     {"name": "eval", "runtimeOnly": False},
                     {"name": "delete_gameobject", "runtimeOnly": False},
                 ]
+                if self.performance_data is not None:
+                    catalog.append({"name": "get_performance_stats", "runtimeOnly": False})
                 return self._outcome(0, envelope("command", catalog))
             name = command[2]
+            if name == "get_performance_stats" and self.performance_data is not None:
+                return self._outcome(0, envelope(name, self.performance_data))
             return self._outcome(0, envelope(name, {"name": name, "ok": True}))
 
         if len(command) > 1 and command[1] == "run":
@@ -212,13 +221,13 @@ class UnityCliProviderTests(unittest.TestCase):
         self.cli.write_text("", encoding="utf-8")
         self.temp_root = Path(self.tmp.name) / "RuntimeTemp"
 
-    def snapshot(self, *, cli=True, pipeline=True, test_framework=True, build_module=True, safe_mode=False, running=False) -> dict:
+    def snapshot(self, *, cli=True, pipeline=True, test_framework=True, build_module=True, safe_mode=False, running=False, project_bound=False) -> dict:
         return {
             "schema_version": "1.0",
             "project": {"root": str(self.project.resolve()), "exists": True, "identity_status": "bound", "unity_version": "6000.3.12f1", "required_paths": {"assets": True, "packages": True, "project_settings": True}},
             "filesystem": {"readable": True, "writable": True, "writable_in_mutation_scope": "unknown"},
             "git": {"available": True, "repository_bound": True},
-            "unity_editor": {"installed": True, "version": "6000.3.12f1", "executable_path": None, "project_version_match": True, "running": running, "safe_mode": safe_mode, "project_bound": False, "binding_status": "unbound" if running else "not_running", "bound_instance_id": None},
+            "unity_editor": {"installed": True, "version": "6000.3.12f1", "executable_path": None, "project_version_match": True, "running": running, "safe_mode": safe_mode, "project_bound": project_bound, "binding_status": "bound" if project_bound else "unbound" if running else "not_running", "bound_instance_id": "editor-test" if project_bound else None},
             "unity_cli": {"available": cli, "version": "1.0.0-beta.3" if cli else None, "executable_path": str(self.cli.resolve()) if cli else None, "failure_class": None if cli else "unavailable"},
             "pipeline": {"installed": pipeline, "reachable": pipeline},
             "myunitymcp": {"reachable": False, "available": False, "project_bound": False, "binding_status": "unbound", "bound_instance_id": None},
@@ -238,6 +247,7 @@ class UnityCliProviderTests(unittest.TestCase):
             "project.test": ["test_execution"],
             "project.build": ["build_execution"],
             "scene.inspect": ["editor_observation"],
+            "profiler.observe": ["profiler_observation"],
         }[capability]
         return {
             "schema_version": "1.0",
@@ -421,6 +431,46 @@ class UnityCliProviderTests(unittest.TestCase):
             policy_allowed=True,
         )
         self.assertEqual(blocked["failure_class"], "blocked_by_policy")
+
+    def test_profiler_snapshot_preserves_conditions_and_unavailable_timing(self) -> None:
+        stats = {"render": {"drawCalls": 4, "batches": 3, "setPassCalls": 2, "triangles": 8, "vertices": 12}, "memory": {"totalAllocatedBytes": 1048576, "totalReservedBytes": 2097152, "monoUsedBytes": 1024, "monoHeapBytes": 2048}, "frameTiming": {"available": False, "cpuFrameTimeMs": 0, "cpuMainThreadFrameTimeMs": 0, "gpuFrameTimeMs": 0}}
+        fake = FakeUnityCliDispatch(performance_data=stats)
+        provider = self.provider(fake, snapshot=self.snapshot(running=True, project_bound=True))
+        self.assertIn("profiler.observe", provider.available_capabilities())
+        result = provider.run_profiler_observe(self.request("profiler.observe"), timeout_seconds=10, policy_allowed=True)
+        self.assertEqual(result["status"], "passed")
+        self.assertEqual(result["validity"], "limited")
+        self.assertEqual(result["measurements"][0]["metadata"]["build_type"], "Editor")
+        self.assertEqual({item["category"] for item in result["measurements"][0]["metrics"]}, {"memory"})
+        self.assertEqual(result["render_counters"]["drawCalls"], 4)
+
+    def test_profiler_requires_bound_editor_and_structured_counter_values(self) -> None:
+        stats = {"render": {"drawCalls": 4, "batches": 3, "setPassCalls": 2, "triangles": 8, "vertices": 12}, "memory": {"totalAllocatedBytes": 1048576, "totalReservedBytes": 2097152, "monoUsedBytes": 1024, "monoHeapBytes": 2048}, "frameTiming": {"available": True, "cpuFrameTimeMs": 10, "cpuMainThreadFrameTimeMs": 4, "gpuFrameTimeMs": 0}}
+        fake = FakeUnityCliDispatch(performance_data=stats)
+        unbound = self.provider(fake, snapshot=self.snapshot(running=True))
+        self.assertNotIn("profiler.observe", unbound.available_capabilities())
+        self.assertEqual(unbound.run_profiler_observe(self.request("profiler.observe"), timeout_seconds=10, policy_allowed=True)["failure_class"], "not_observed")
+        bound = self.provider(fake, snapshot=self.snapshot(running=True, project_bound=True))
+        result = bound.run_profiler_observe(self.request("profiler.observe"), timeout_seconds=10, policy_allowed=True)
+        self.assertEqual({item["name"] for item in result["measurements"][0]["metrics"] if item["category"] == "cpu"}, {"CPU Frame Time", "CPU Main Thread Frame Time"})
+        stats["memory"]["monoUsedBytes"] = float("nan")
+        self.assertEqual(bound.run_profiler_observe(self.request("profiler.observe"), timeout_seconds=10, policy_allowed=True)["failure_class"], "execution_failed")
+
+    def test_profiler_observation_flows_through_broker_and_evidence_receipt(self) -> None:
+        stats = {"render": {"drawCalls": 4, "batches": 3, "setPassCalls": 2, "triangles": 8, "vertices": 12}, "memory": {"totalAllocatedBytes": 1048576, "totalReservedBytes": 2097152, "monoUsedBytes": 1024, "monoHeapBytes": 2048}, "frameTiming": {"available": False, "cpuFrameTimeMs": 0, "cpuMainThreadFrameTimeMs": 0, "gpuFrameTimeMs": 0}}
+        snapshot = self.snapshot(running=True, project_bound=True)
+        provider = self.provider(FakeUnityCliDispatch(performance_data=stats), snapshot=snapshot)
+        request = self.request("profiler.observe")
+        request["preferred_surface"] = "live_editor"
+        broker = ToolBroker()
+        outcome = broker.dispatch(request, snapshot, context=ResolutionContext(policy_allowed=True), executors={"unity_cli": lambda capability_request, _context, _arguments: provider.run_profiler_observe(capability_request, timeout_seconds=10, policy_allowed=True)})
+        self.assertEqual(outcome["status"], "completed")
+        self.assertEqual(outcome["resolution"]["provider_ref"], "unity_cli")
+        payload = observation_payload(request, outcome["provider_result"])
+        self.assertEqual(payload["result"]["measurements"][0]["metadata"]["validity"], "limited")
+        receipt = normalize_provider_result(request, outcome["resolution"], snapshot, outcome["provider_result"], run_id="profiler-run", step_id="observation", evidence_id="profiler-evidence", definition_fingerprint={})
+        self.assertEqual(receipt["completion"], "verified")
+        self.assertEqual(receipt["observed_evidence"], ["profiler_observation"])
 
     def test_build_requires_repository_allowlisted_method_and_never_auto_installs(self) -> None:
         fake = FakeUnityCliDispatch()
