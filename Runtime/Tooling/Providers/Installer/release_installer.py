@@ -16,8 +16,8 @@ import posixpath
 import uuid
 
 REPOSITORY = "DarumaPPAP/UnitySubAgentHub"
-RELEASE_TAG = "v0.0.1-beta"
-CONTROL_PLANE_CHANNEL = "0.0.7-beta"
+RELEASE_TAG = "v0.0.2-beta"
+CONTROL_PLANE_CHANNEL = "0.0.8-beta"
 ARCHIVE_NAME = "UnityArtistCLI-host-windows-x64.zip"
 DEFAULT_INSTALL_ROOT = Path(os.environ.get("LOCALAPPDATA") or (Path.home() / "AppData/Local")) / "UnityArtistCLI/Beta"
 

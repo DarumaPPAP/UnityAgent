@@ -29,8 +29,8 @@ PRODUCTS = frozenset({
     "codex_cli",
     "unity_agent_codex_plugin",
 })
-PACKAGE_IDS = ("com.unity-artist", "com.darumappap.unity-artist")
-CHANNEL = "0.0.7-beta"
+PACKAGE_IDS = ("com.darumappap.artist-subagent",)
+CHANNEL = "0.0.8-beta"
 
 
 def _now() -> str:
@@ -251,7 +251,7 @@ class InstallerProvider:
                 message = "unity-artist CLI was not found on PATH."
             elif not package_version:
                 reason = "unity_artist_package_not_installed"
-                message = "UnityArtist package was not found in Packages/manifest.json."
+                message = "ArtistSubAgent backend package was not found in Packages/manifest.json."
             return {
                 "product": product,
                 "status": status,
