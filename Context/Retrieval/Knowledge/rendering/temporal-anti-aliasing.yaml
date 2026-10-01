@@ -82,6 +82,6 @@ stop_conditions:
   - requested_quality_claim_requires_unavailable_visual_evidence
 
 human_reference:
-  repository: DarumaPPAP/Unity-Knowledge-Products
+  repository: DarumaPPAP/MyResourceCenter
   knowledge_id: rendering.temporal_anti_aliasing
-  entry: Rendering/TemporalAntiAliasing/index.html
+  entry: docs/unity-implementation-context/Rendering/TemporalAntiAliasing.md
