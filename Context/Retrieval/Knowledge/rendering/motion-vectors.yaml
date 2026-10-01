@@ -40,6 +40,6 @@ related:
     - rendering.transparent_rendering
 
 human_reference:
-  repository: DarumaPPAP/Unity-Knowledge-Products
+  repository: DarumaPPAP/MyResourceCenter
   knowledge_id: rendering.motion_vectors
-  entry: Rendering/MotionVectors/index.html
+  entry: docs/unity-implementation-context/Rendering/MotionVectors.md

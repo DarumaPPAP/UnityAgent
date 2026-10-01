@@ -48,5 +48,5 @@ content_limits:
 
 ownership:
   ai_contract_source_of_truth: UnityAgent
-  detailed_human_knowledge_source_of_truth: Unity-Knowledge-Products
+  detailed_human_knowledge_source_of_truth: MyResourceCenter/docs/unity-implementation-context
   raw_source_source_of_truth: Google Drive CoreResourceForUnity
