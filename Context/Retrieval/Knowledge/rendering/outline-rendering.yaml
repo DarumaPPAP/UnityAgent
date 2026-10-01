@@ -41,6 +41,6 @@ related:
     - rendering.shader_variants
 
 human_reference:
-  repository: DarumaPPAP/Unity-Knowledge-Products
+  repository: DarumaPPAP/MyResourceCenter
   knowledge_id: rendering.outline_rendering
-  entry: Rendering/OutlineRendering/index.html
+  entry: docs/unity-implementation-context/Rendering/OutlineRendering.md

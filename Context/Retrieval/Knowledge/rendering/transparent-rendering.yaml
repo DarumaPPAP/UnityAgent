@@ -41,6 +41,6 @@ related:
     - rendering.ui_composition
 
 human_reference:
-  repository: DarumaPPAP/Unity-Knowledge-Products
+  repository: DarumaPPAP/MyResourceCenter
   knowledge_id: rendering.transparent_rendering
-  entry: Rendering/TransparentRendering/index.html
+  entry: docs/unity-implementation-context/Rendering/TransparentRendering.md
