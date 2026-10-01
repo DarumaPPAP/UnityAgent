@@ -40,7 +40,3 @@ related:
     - rendering.transparent_rendering
     - rendering.shader_variants
 
-human_reference:
-  repository: DarumaPPAP/Unity-Knowledge-Products
-  knowledge_id: rendering.outline_rendering
-  entry: Rendering/OutlineRendering/index.html

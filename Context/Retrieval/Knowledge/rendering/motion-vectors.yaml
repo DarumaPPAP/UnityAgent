@@ -39,7 +39,3 @@ related:
     - rendering.outline_rendering
     - rendering.transparent_rendering
 
-human_reference:
-  repository: DarumaPPAP/Unity-Knowledge-Products
-  knowledge_id: rendering.motion_vectors
-  entry: Rendering/MotionVectors/index.html

@@ -16,7 +16,7 @@ TASK_ID_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 KNOWLEDGE_REQUIRED = {
     "id", "version", "status", "use_when", "required_inputs",
-    "implementation_contract", "prohibited", "required_evidence", "human_reference",
+    "implementation_contract", "prohibited", "required_evidence"
 }
 TASK_REQUIRED = {
     "id", "default_execution_profile", "risk_level", "required_inputs",
