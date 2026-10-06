@@ -21,7 +21,7 @@ Semantic Type NamingではReadabilityを短さより優先し、Type Necessity�
 
 ユーザーが具体的なGameObject、Component、Assetを指定している場合、再利用性だけを理由に任意Targetへ一般化しない。Unityまたは既存DomainがSource of Truthを持つ状態を、理由なくprivate fieldへ複製しない。
 
-C# Formattingでは短い代入とMethod Callを1行で記述し、`=`直後の機械的改行を行わない。Formatting変更またはSemantic Naming導入を理由に現行enum / struct / field / const規則を変更しない。
+C# Formattingでは1行で自然に読める代入、関数宣言・呼び出し、条件式、三項演算子、Method Chain、LINQ式を1行で記述する。行長や引数数だけを理由に折り返さず、`=`、`&&`、`||`、`?`、`:`を機械的な改行境界にしない。複雑な条件を分離する場合は短絡評価、評価順序、副作用、実行コストを維持する。Formatting変更またはSemantic Naming導入を理由に現行enum / struct / field / const規則を変更しない。
 
 データ並列処理ではECS、Jobs、Burstを候補から除外せず、ECS Component、Tag、Aspect、Jobを1型1ファイルへ機械的に分割しない。
 

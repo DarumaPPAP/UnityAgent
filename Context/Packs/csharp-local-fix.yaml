@@ -76,6 +76,10 @@ rules:
   preserve_current_naming_convention: true
   short_assignment_stays_on_one_line: true
   no_mechanical_line_break_after_assignment_operator: true
+  arguments_stay_on_one_line_unless_semantically_complex: true
+  no_mechanical_line_break_at_logical_operators: true
+  ternary_stays_on_one_line_when_readable: true
+  preserve_short_circuit_and_evaluation_order_when_splitting_conditions: true
   no_unrelated_formatting_churn: true
   no_premature_generalization: true
   detected_project_facts_override_project_profile: true
