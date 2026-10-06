@@ -9,9 +9,12 @@ UnityAgentが生成・修正するC#の見た目をモデル依存にせず、�
 ## 1. Core principle
 
 - 1行で自然に読める式は1行で書く。
-- 改行は装飾ではなく、可読性または意味の分離が必要な場合だけ行う。
+- 行長や引数数だけを理由に、関数宣言、関数呼び出し、条件式、三項演算子、Method Chain、LINQ式を機械的に改行しない。
+- 改行は装飾ではなく、式そのものの意味を分離しなければ理解しづらい場合に限って検討する。
 - `=`の直後で機械的に改行しない。
 - 短いMethod CallやProperty accessを縦方向へ分解しない。
+- `&&`、`||`を単なる改行境界として使用しない。
+- 既存コードの改行を、一般的なFormatterの好みだけで変更しない。
 - 既存Projectに明示的なFormatterまたはStyleがある場合はProject固有規約を優先する。
 
 ## 2. Assignment
@@ -45,20 +48,13 @@ _cameraData = camera.GetUniversalAdditionalCameraData();
 RestoreDefaultSettings();
 ```
 
-Method Chainは短い場合は1行、複数段の処理を読む必要がある場合だけ`.`の境界で改行する。
+Method Chain、LINQ、`Enum.GetNames`等も、1行で意味が明確に読める場合は1行で記述する。行長だけを理由に`.`の境界で機械的に分割しない。
 
 ```csharp
 var result = source.Where(IsValid).Select(Convert).ToArray();
 ```
 
-長い場合:
-
-```csharp
-var result = source
-	.Where(IsValid)
-	.Select(Convert)
-	.ToArray();
-```
+式そのものが複雑で理解しづらい場合は、単なる折り返しよりも意味のある中間結果への分離を検討する。ただし、1行を短くすることだけを目的に不要なローカル変数やメソッドを追加しない。
 
 短いchainを1呼び出しごとに縦へ積まない。
 
@@ -73,34 +69,73 @@ if (_urpAsset == null)
 }
 ```
 
-複数条件で1行が読みづらい場合だけ、論理演算子単位で改行する。
+条件式は、意味が明確に読める限り1行で記述する。`&&`、`||`を改行境界として機械的に分割しない。
 
 ```csharp
-if (isCameraEnabled &&
-	isUrpEnabled &&
-	hasValidSettings)
+if (isCameraEnabled && isUrpEnabled && hasValidSettings)
 {
 	ApplySettings();
 }
 ```
 
-開き括弧直後だけを理由に条件を改行しない。
+条件式そのものが複雑で理解しづらい場合は、意味のある中間結果への分離を検討する。
+
+```csharp
+bool isEligible = target != null && target.gameObject.activeInHierarchy;
+bool canUpdate = isEligible && Vector3.Distance(cameraPosition, target.position) <= maxDistance && IsVisible(target);
+
+if (canUpdate)
+{
+	UpdateTarget(target);
+}
+```
+
+条件を分離するときは、null判定、短絡評価、評価順序、評価回数、副作用、実行コスト、後続処理を維持する。元のコードで実行されなかった式を先に評価しない。
+
+開き括弧直後や行長だけを理由に条件を改行しない。
 
 ## 5. Arguments
 
-短い引数列は1行にする。
+関数宣言と関数呼び出しの引数は原則として1行にまとめる。引数の数や行長だけを理由に1引数1行へ展開しない。
 
 ```csharp
+private Column CreateTextColumn(string title, float width, Func<ImportEntry, string> valueSelector, TextAnchor align = TextAnchor.MiddleLeft, bool stretchable = false)
+{
+}
+
 Debug.LogError(message, this);
+CreateSettings(camera, antiAliasing, msaaSampleCount);
 ```
 
-引数が長い、引数ごとの意味を分ける必要がある、または1行では読みづらい場合だけ1引数1行へ展開する。
+避ける:
 
 ```csharp
-CreateSettings(
-	camera,
-	antiAliasing,
-	msaaSampleCount);
+private Column CreateTextColumn(
+	string title,
+	float width,
+	Func<ImportEntry, string> valueSelector,
+	TextAnchor align = TextAnchor.MiddleLeft,
+	bool stretchable = false)
+{
+}
+```
+
+式そのものが複雑で理解しづらい場合は、単なる引数の縦並びより、意味のある中間結果への分離やAPI責務の見直しを検討する。ただし、行を短くすることだけを目的に不要な変数、メソッド、抽象化を追加しない。
+
+### Ternary operator
+
+三項演算子は、意味が明確に読める場合は1行で記述する。
+
+```csharp
+LoadType = _editLoadTypeField == null ? AudioClipLoadType.DecompressOnLoad : _editLoadTypeField.value;
+```
+
+次のように、`?`と`:`を機械的な改行境界として使用しない。
+
+```csharp
+LoadType = _editLoadTypeField == null
+	? AudioClipLoadType.DecompressOnLoad
+	: _editLoadTypeField.value;
 ```
 
 ## 6. Braces
@@ -220,8 +255,11 @@ private void Awake()
 
 - [ ] 1行で自然に読める代入を不必要に折っていない
 - [ ] `=`の直後で機械的に改行していない
-- [ ] 短いMethod Call / Property accessを縦へ分解していない
-- [ ] 条件や引数は必要な場合だけ意味単位で改行している
+- [ ] 関数宣言・呼び出しの引数を、数や行長だけを理由に縦へ分解していない
+- [ ] `&&`、`||`、`?`、`:`を機械的な改行境界にしていない
+- [ ] 短いMethod Call / Property access / Method Chain / LINQ式を縦へ分解していない
+- [ ] 条件分離時に短絡評価、評価順序、評価回数、副作用、実行コスト、後続処理を維持している
+- [ ] 既存コードの改行をFormatterの好みだけで変更していない
 - [ ] Allman StyleとTab indentationを守っている
 - [ ] Member orderが既定またはProject規約に従っている
 - [ ] Formatting変更を理由に命名規則を変更していない
