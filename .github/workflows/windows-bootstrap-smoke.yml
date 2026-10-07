@@ -46,7 +46,7 @@ jobs:
           & "Packages/com.darumappap.unity-agent/Editor/Bootstrap~/install-control-plane.ps1" -ReleaseTag $env:PUBLISHED_SMOKE_TAG
           $controlPlane = [Environment]::GetEnvironmentVariable("UNITY_AGENT_CONTROL_PLANE", "User")
           if (-not $controlPlane) { throw "UNITY_AGENT_CONTROL_PLANE was not persisted." }
-          $expectedRoot = Join-Path $env:LOCALAPPDATA "UnityAgent\ControlPlane\$($env:PUBLISHED_SMOKE_TAG.TrimStart('v'))\venv\Scripts"
+          $expectedRoot = Join-Path $env:LOCALAPPDATA "UnityAgent\ControlPlane\$env:PUBLISHED_SMOKE_TAG\venv\Scripts"
           if (-not $controlPlane.StartsWith($expectedRoot, [StringComparison]::OrdinalIgnoreCase)) {
             throw "Control Plane was not installed into the managed LocalAppData runtime: $controlPlane"
           }
