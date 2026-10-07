@@ -222,20 +222,9 @@ The old subprocess-capable Behavior runner is retained only under `Eval/Compatib
 
 ## CI
 
-`.github/workflows/validate-eval.yml` validates:
+``.github/workflows/validate-agent-contracts.yml` is the canonical PR CI entrypoint. It runs `Tools/validate_all.py`, which covers the Eval validators and Eval / Persistence / Orchestration / Runtime regression suites described above.
 
-- Phase-1 canonical Eval/replay contracts;
-- Phase-6 attribution and denominator behavior;
-- Runtime -> Eval structured fact preservation;
-- observed mutation no-op classification;
-- GoldenContract construction and no-leak task projection;
-- dataset byte parity;
-- ChangeProposal non-applying invariant;
-- four-namespace historical replay path;
-- canonical Golden/Behavior validators;
-- Persistence / Orchestration / Runtime regression suites.
-
-`.github/workflows/actual-behavior-eval.yml` no longer claims Unity-Graph-Engineering owns Production execution. It documents UnityAgent `Runtime/` as the actual execution authority and Eval as post-execution measurement authority.
+The former Eval-specific and Actual Behavior workflows were removed during CI consolidation because they repeated the same canonical validation and created duplicate PR checks. Real Production execution remains a separate manual-only workflow in `.github/workflows/production-smoke.yml`; Eval remains post-execution measurement authority.
 
 ## Non-goals
 
