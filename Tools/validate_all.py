@@ -30,6 +30,7 @@ VALIDATORS = (
     Path("Tools/validate_catalog_import_gate.py"),
     Path("Tools/ProductionToolRuntime/validate_production_tool_runtime.py"),
     Path("Tools/LayerBoundaryValidator/validate_layer_boundaries.py"),
+    Path("Tools/RepositoryAuthorityValidator/validate_repository_authority.py"),
     Path("Tools/DocumentationValidator/validate_documentation.py"),
     Path("Tools/ContextExplorer/validate.py"),
     Path("Tools/SkillValidator/validate_skills.py"),
