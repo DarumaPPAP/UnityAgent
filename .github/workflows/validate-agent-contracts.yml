@@ -69,7 +69,7 @@ jobs:
                   raise SystemExit(f"{path} must use the canonical checksum parser")
               if "[IO.Path]::GetFileName" not in text:
                   raise SystemExit(f"{path} must normalize checksum entry paths to basenames")
-              if "^[.][\\/]+" not in text:
+              if "^[.][\\\\/]+" not in text:
                   raise SystemExit(f"{path} must accept legacy ./ or .\\ checksum prefixes")
           print("Checksum parser hardening validation passed.")
           PY
