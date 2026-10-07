@@ -7,7 +7,7 @@
 <p align="center"><strong>Unity開発の要求を Policy → Capability → Provider → Evidence の一貫した経路で扱う Control Plane。</strong></p>
 
 <p align="center">
-  <a href="VERSION"><img alt="Version" src="https://img.shields.io/badge/version-0.0.7--beta-blue"></a>
+  <a href="VERSION"><img alt="Version" src="https://img.shields.io/badge/version-0.0.8--beta-blue"></a>
   <a href="https://unity.com/"><img alt="Unity 6.x+" src="https://img.shields.io/badge/Unity-6.x%2B-000000?logo=unity&logoColor=white"></a>
   <a href="https://github.com/openai/codex"><img alt="Codex Plugin" src="https://img.shields.io/badge/Codex-Plugin-111827?logo=openai&logoColor=white"></a>
   <a href="https://github.com/DarumaPPAP/UnityAgent/actions/workflows/validate-agent-contracts.yml"><img alt="Contracts CI" src="https://github.com/DarumaPPAP/UnityAgent/actions/workflows/validate-agent-contracts.yml/badge.svg"></a>
@@ -228,6 +228,7 @@ Local Regression Gateの一部はローカルCodex CLIや認証済み環境を�
 
 | Concern | Source |
 |---|---|
+| Repository authority / mirrored declarations | `Specs/repository-authority-map.yaml` |
 | Layer boundary | `Specs/unityagent-layer-contract.yaml` |
 | Policy / Approval | `Policy/` |
 | Routing / Orchestration | `Orchestration/` |

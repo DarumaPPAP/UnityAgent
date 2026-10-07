@@ -25,6 +25,7 @@ Policy追加の前にKnowledge / Retrieval / Tool / Harness / Eval / Architectur
 ## Canonical map
 | 必要な情報 | 正本 / 入口 |
 |---|---|
+| Repository authority / mirrored declarations | `Specs/repository-authority-map.yaml` / `Tools/RepositoryAuthorityValidator/validate_repository_authority.py` |
 | User preferences / Comments | `Policy/User/user-policy.yaml` |
 | Risk / Approval / Evidence | `Policy/Risk/` / `Policy/Approval/` / `Policy/Evidence/` |
 | Route / Graph / Task boundary | `Orchestration/Routing/` / `Orchestration/Definitions/` / `Orchestration/Contracts/TaskContracts/` |
