@@ -10,6 +10,12 @@ Repository内の優先順位は `Policy/User/user-policy.yaml#instruction_priori
 現在の明示要求・対象Taskの指示をSkillの一般的手順で上書きしない。
 承認判断は `Policy/Approval/approval-policy.yaml` に従い、既に与えられた承認の範囲を確認する。
 
+## Git workflow
+branch運用の正本は `.github/branch-policy.json`、説明は `docs/development/branch-policy.md` とする。
+`main` は永続する統合正本であり、通常の作業は `main` から `feature/*`、`fix/*`、`chore/*`、必要時のみ `release/*` を作成する。
+新機能は `feature/*`、不具合修正は `fix/*`、CI・Docs・Refactor・Repository整理は `chore/*` に分類する。`release/*` を `develop` の代替として常設しない。
+新規branchに `codex/*`、`refactor/*`、`docs/*`、`ci/*` 等の追加prefixを作らない。通常PRのbaseは `main` とし、Squash Merge後に短命branchを削除する。
+
 ## Execution
 1. User Policyを読み、Goal・対象範囲・完了条件を固定する。修正依頼は調査だけで終えず、変更・検証・必要な修復まで進む。
 2. `Orchestration/Routing/task-routes.yaml` で意図と範囲からRouteを選び、`Context/Selection/context-catalog.yaml` で必要なContext / Skill / Task Contractだけ解決する。選択Routeの`required_policy_clauses`をPolicy provenanceとして記録する。
@@ -26,6 +32,7 @@ Policy追加の前にKnowledge / Retrieval / Tool / Harness / Eval / Architectur
 | 必要な情報 | 正本 / 入口 |
 |---|---|
 | Repository authority / mirrored declarations | `Specs/repository-authority-map.yaml` / `Tools/RepositoryAuthorityValidator/validate_repository_authority.py` |
+| Git branch policy | `.github/branch-policy.json` / `Tools/BranchPolicy/validate_branch_policy.py` |
 | User preferences / Comments | `Policy/User/user-policy.yaml` |
 | Risk / Approval / Evidence | `Policy/Risk/` / `Policy/Approval/` / `Policy/Evidence/` |
 | Route / Graph / Task boundary | `Orchestration/Routing/` / `Orchestration/Definitions/` / `Orchestration/Contracts/TaskContracts/` |
