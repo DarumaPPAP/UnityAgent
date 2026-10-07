@@ -18,6 +18,7 @@
   <a href="#quick-start">Quick Start</a> ·
   <a href="#architecture">Architecture</a> ·
   <a href="#install">Install</a> ·
+  <a href="#branch-workflow">Branch Workflow</a> ·
   <a href="#validation">Validation</a> ·
   <a href="docs/architecture/architecture.md">Architecture Docs</a> ·
   <a href="docs/README.md">Docs Index</a> ·
@@ -210,6 +211,12 @@ Setup PlanのApplyは別操作です。承認済みPlanとApproval Referenceを�
 UnityAgentのLocal Reference Navigatorは、取得済みReference Snapshotをローカル検索する仕組みです。通常の質問で外部Driveや検索サービスへ常時接続したり、ベクトルDBへ同期したりする機能ではありません。
 
 詳細: [Local Reference Navigator](docs/architecture/local-reference-navigator.md)
+
+## Branch Workflow
+
+開発branchは `main` から作成し、`feature/*`、`fix/*`、`chore/*`、必要時のみ `release/*` を使用します。通常PRは `main` をbaseにし、Squash Merge後の短命branchは自動削除します。
+
+詳細と機械可読な契約は [Branch Policy](docs/development/branch-policy.md) を参照してください。
 
 ## Validation
 
