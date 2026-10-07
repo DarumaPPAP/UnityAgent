@@ -1,0 +1,70 @@
+name: Windows Bootstrap Smoke
+
+on:
+  pull_request:
+    paths:
+      - "scripts/install.ps1"
+      - "Packages/com.darumappap.unity-agent/Editor/Bootstrap~/**"
+      - "Packages/com.darumappap.unity-agent/Editor/UnityAgentControlPlanePathResolver.cs"
+      - "Packages/com.darumappap.unity-agent/Editor/UnityAgentControlPlaneBootstrap.cs"
+      - "Packages/com.darumappap.unity-agent/Editor/UnityAgentSetupWindow.cs"
+      - ".github/workflows/windows-bootstrap-smoke.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/install.ps1"
+      - "Packages/com.darumappap.unity-agent/Editor/Bootstrap~/**"
+      - "Packages/com.darumappap.unity-agent/Editor/UnityAgentControlPlanePathResolver.cs"
+      - "Packages/com.darumappap.unity-agent/Editor/UnityAgentControlPlaneBootstrap.cs"
+      - "Packages/com.darumappap.unity-agent/Editor/UnityAgentSetupWindow.cs"
+      - ".github/workflows/windows-bootstrap-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap:
+    name: Published Installer Compatibility
+    runs-on: windows-latest
+    timeout-minutes: 15
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      PUBLISHED_SMOKE_TAG: v0.0.8-beta
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Bootstrap published release through UPM installer
+        shell: pwsh
+        run: |
+          & "Packages/com.darumappap.unity-agent/Editor/Bootstrap~/install-control-plane.ps1" -ReleaseTag $env:PUBLISHED_SMOKE_TAG
+          $controlPlane = [Environment]::GetEnvironmentVariable("UNITY_AGENT_CONTROL_PLANE", "User")
+          if (-not $controlPlane) { throw "UNITY_AGENT_CONTROL_PLANE was not persisted." }
+          $expectedRoot = Join-Path $env:LOCALAPPDATA "UnityAgent\ControlPlane\$($env:PUBLISHED_SMOKE_TAG.TrimStart('v'))\venv\Scripts"
+          if (-not $controlPlane.StartsWith($expectedRoot, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Control Plane was not installed into the managed LocalAppData runtime: $controlPlane"
+          }
+          if ($controlPlane -match 'AppData\\Roaming\\Python') { throw "Legacy pip --user path is still in use: $controlPlane" }
+          if (-not (Test-Path -LiteralPath $controlPlane)) { throw "Managed Control Plane executable is missing: $controlPlane" }
+          $shim = Join-Path $env:LOCALAPPDATA "UnityAgent\bin\unity-agent.cmd"
+          if (-not (Test-Path -LiteralPath $shim)) { throw "Stable unity-agent shim is missing: $shim" }
+          & $controlPlane --help | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "Managed Control Plane help verification failed." }
+
+      - name: Bootstrap published release through stable installer
+        shell: pwsh
+        env:
+          UNITY_AGENT_TAG: ${{ env.PUBLISHED_SMOKE_TAG }}
+        run: |
+          & "scripts/install.ps1"
+          $controlPlane = [Environment]::GetEnvironmentVariable("UNITY_AGENT_CONTROL_PLANE", "User")
+          if (-not $controlPlane) { throw "Stable installer did not persist UNITY_AGENT_CONTROL_PLANE." }
+          if ($controlPlane -match 'AppData\\Roaming\\Python') { throw "Stable installer regressed to pip --user: $controlPlane" }
+          & $controlPlane --help | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "Stable installer Control Plane verification failed." }
