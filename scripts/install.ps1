@@ -159,8 +159,20 @@ finally {
 if (-not (Test-Path -LiteralPath $controlPlanePath)) {
     throw "Control Plane was installed but unity-agent.exe could not be resolved at $controlPlanePath."
 }
-& $controlPlanePath --help | Out-Null
-if ($LASTEXITCODE -ne 0) { throw "Installed unity-agent failed its help verification." }
+$previousPythonIoEncoding = $env:PYTHONIOENCODING
+try {
+    $env:PYTHONIOENCODING = "utf-8"
+    & $controlPlanePath --help | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "Installed unity-agent failed its help verification." }
+}
+finally {
+    if ($null -eq $previousPythonIoEncoding) {
+        Remove-Item Env:PYTHONIOENCODING -ErrorAction SilentlyContinue
+    }
+    else {
+        $env:PYTHONIOENCODING = $previousPythonIoEncoding
+    }
+}
 
 New-Item -ItemType Directory -Path $binRoot -Force | Out-Null
 $shimContent = "@echo off`r`n`"$controlPlanePath`" %*`r`n"
