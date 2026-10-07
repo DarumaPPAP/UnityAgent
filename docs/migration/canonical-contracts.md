@@ -70,7 +70,7 @@ This adapter is temporary and is deleted only after native end-to-end canonical 
 - Operations contract test: structured trace/evidence linkage.
 - Eval/replay tests (7): infrastructure denominator exclusion, existing legacy protocol fixture normalization, structured metrics preservation, malformed metrics fail-closed behavior, structured failure fallback, conflicting typed failures fail-closed, and untyped legacy failure exclusion.
 
-CI entrypoint: `.github/workflows/validate-canonical-contracts.yml`.
+CI entrypoint: `.github/workflows/validate-agent-contracts.yml` via `Tools/validate_all.py`.
 
 ## Actual production artifact replay
 
