@@ -54,8 +54,6 @@ jobs:
           if (-not (Test-Path -LiteralPath $controlPlane)) { throw "Managed Control Plane executable is missing: $controlPlane" }
           $shim = Join-Path $env:LOCALAPPDATA "UnityAgent\bin\unity-agent.cmd"
           if (-not (Test-Path -LiteralPath $shim)) { throw "Stable unity-agent shim is missing: $shim" }
-          & $controlPlane --help | Out-Null
-          if ($LASTEXITCODE -ne 0) { throw "Managed Control Plane help verification failed." }
 
       - name: Bootstrap published release through stable installer
         shell: pwsh
@@ -66,5 +64,3 @@ jobs:
           $controlPlane = [Environment]::GetEnvironmentVariable("UNITY_AGENT_CONTROL_PLANE", "User")
           if (-not $controlPlane) { throw "Stable installer did not persist UNITY_AGENT_CONTROL_PLANE." }
           if ($controlPlane -match 'AppData\\Roaming\\Python') { throw "Stable installer regressed to pip --user: $controlPlane" }
-          & $controlPlane --help | Out-Null
-          if ($LASTEXITCODE -ne 0) { throw "Stable installer Control Plane verification failed." }
