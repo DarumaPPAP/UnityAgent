@@ -22,7 +22,6 @@ REFERENCE_EXEMPT_PREFIXES = (
 REFERENCE_EXEMPT_FILES = {
     "Context/Budget/_compat_engine.py",
     "Context/Budget/_compat_validation.py",
-    ".github/workflows/validate-policy-context.yml",
 }
 LEGACY_MARKER = "." + "ai/"
 LEGACY_WRITE_RE = re.compile(r"(write_text|write_bytes|open\s*\(|unlink|rename|replace)")

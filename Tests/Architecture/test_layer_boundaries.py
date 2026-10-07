@@ -25,17 +25,16 @@ class LayerBoundaryTests(unittest.TestCase):
         self.assertNotIn("migration/unity-artist-cli-v2", skill)
         self.assertNotIn("UNITY_AGENT_REF", skill)
 
-    def test_architecture_contract_changes_trigger_validation(self) -> None:
+    def test_canonical_ci_runs_for_all_pull_requests_and_main_pushes(self) -> None:
         workflow = yaml.load(
             (ROOT / ".github/workflows/validate-agent-contracts.yml").read_text(encoding="utf-8"),
             Loader=yaml.BaseLoader,
         )
         triggers = workflow["on"]
-        for event in ("pull_request", "push"):
-            paths = triggers[event]["paths"]
-            self.assertIn("Specs/**", paths)
-            self.assertIn("Tests/Architecture/**", paths)
-            self.assertIn("docs/architecture/**", paths)
+        self.assertIn("pull_request", triggers)
+        self.assertEqual(triggers["pull_request"], "")
+        self.assertEqual(triggers["push"]["branches"], ["main"])
+        self.assertNotIn("paths", triggers["push"])
 
     def test_catalog_import_gate_spec_reports_current_producer_contract(self) -> None:
         spec = (ROOT / "docs/superpowers/specs/2026-09-19-catalog-import-gate.md").read_text(encoding="utf-8")

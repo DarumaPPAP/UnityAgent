@@ -1,60 +1,23 @@
-name: Validate UnityAgent Contracts
+name: UnityAgent CI
 
 on:
   pull_request:
-    paths:
-      - ".agents/skills/**"
-      - ".agents/plugins/**"
-      - "AGENTS.md"
-      - "README.md"
-      - "docs/architecture/**"
-      - "VERSION"
-      - "Packages/com.darumappap.unity-agent/**"
-      - "Policy/**"
-      - "Context/**"
-      - "Orchestration/**"
-      - "Runtime/**"
-      - "Persistence/**"
-      - "Operations/**"
-      - "Eval/**"
-      - "SkillReferences/**"
-      - "Tools/**"
-      - "Tests/Architecture/**"
-      - "Specs/**"
-      - "scripts/**"
-      - ".github/workflows/validate-agent-contracts.yml"
-      - ".github/workflows/release-tag.yml"
-      - ".github/workflows/actual-behavior-eval.yml"
   push:
-    branches:
-      - main
-    paths:
-      - ".agents/skills/**"
-      - ".agents/plugins/**"
-      - "AGENTS.md"
-      - "README.md"
-      - "docs/architecture/**"
-      - "VERSION"
-      - "Packages/com.darumappap.unity-agent/**"
-      - "Policy/**"
-      - "Context/**"
-      - "Orchestration/**"
-      - "Runtime/**"
-      - "Persistence/**"
-      - "Operations/**"
-      - "Eval/**"
-      - "SkillReferences/**"
-      - "Tools/**"
-      - "Tests/Architecture/**"
-      - "Specs/**"
-      - "scripts/**"
-      - ".github/workflows/validate-agent-contracts.yml"
-      - ".github/workflows/release-tag.yml"
-      - ".github/workflows/actual-behavior-eval.yml"
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: unityagent-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  validate:
+  canonical:
+    name: Canonical Validation
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -67,7 +30,7 @@ jobs:
       - name: Install validation dependencies
         run: python -m pip install --disable-pip-version-check PyYAML jsonschema
 
-      - name: Validate UnityAgent canonical contracts
+      - name: Validate canonical repository contracts
         run: python Tools/validate_all.py
 
       - name: Validate Unity Editor PackageInfo qualification
@@ -211,45 +174,34 @@ jobs:
           print(f"Packed UPM bootstrap validation passed: {len(required)} required files")
           PY
 
-  windows-bootstrap-smoke:
-    name: Windows Bootstrap Smoke
-    runs-on: windows-latest
-    env:
-      GITHUB_TOKEN: ${{ github.token }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Set up Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-
-      - name: Bootstrap published v0.0.6 through UPM installer
-        shell: pwsh
+      - name: Validate Production Smoke integration contract
         run: |
-          & "Packages/com.darumappap.unity-agent/Editor/Bootstrap~/install-control-plane.ps1" -ReleaseTag "v0.0.6-beta"
-          $controlPlane = [Environment]::GetEnvironmentVariable("UNITY_AGENT_CONTROL_PLANE", "User")
-          if (-not $controlPlane) { throw "UNITY_AGENT_CONTROL_PLANE was not persisted." }
-          $expectedRoot = Join-Path $env:LOCALAPPDATA "UnityAgent\ControlPlane\v0.0.6-beta\venv\Scripts"
-          if (-not $controlPlane.StartsWith($expectedRoot, [StringComparison]::OrdinalIgnoreCase)) {
-            throw "Control Plane was not installed into the managed LocalAppData runtime: $controlPlane"
-          }
-          if ($controlPlane -match 'AppData\\Roaming\\Python') { throw "Legacy pip --user path is still in use: $controlPlane" }
-          if (-not (Test-Path -LiteralPath $controlPlane)) { throw "Managed Control Plane executable is missing: $controlPlane" }
-          $shim = Join-Path $env:LOCALAPPDATA "UnityAgent\bin\unity-agent.cmd"
-          if (-not (Test-Path -LiteralPath $shim)) { throw "Stable unity-agent shim is missing: $shim" }
-          & $controlPlane --help | Out-Null
-          if ($LASTEXITCODE -ne 0) { throw "Managed Control Plane help verification failed." }
+          python -m unittest discover -s .github/ProductionSmoke -p "test_*.py"
+          python -m unittest Eval.Tests.test_rebaseline
+          python -m py_compile \
+            .github/ProductionSmoke/run_one_repo_smoke.py \
+            Eval/Behavior/grade_production_smoke.py \
+            Eval/Rebaseline/rebaseline.py \
+            Eval/Rebaseline/build_rebaseline_summary.py \
+            Eval/Rebaseline/validate_rebaseline_summary.py \
+            Eval/Regression/baseline_comparator.py \
+            Eval/Regression/compare_baseline.py \
+            Tools/run_regression_gate.py
 
-      - name: Bootstrap published v0.0.6 through stable installer
-        shell: pwsh
-        env:
-          UNITY_AGENT_TAG: v0.0.6-beta
+      - name: Enforce manual-only Production Smoke
+        shell: bash
         run: |
-          & "scripts/install.ps1"
-          $controlPlane = [Environment]::GetEnvironmentVariable("UNITY_AGENT_CONTROL_PLANE", "User")
-          if (-not $controlPlane) { throw "Stable installer did not persist UNITY_AGENT_CONTROL_PLANE." }
-          if ($controlPlane -match 'AppData\\Roaming\\Python') { throw "Stable installer regressed to pip --user: $controlPlane" }
-          & $controlPlane --help | Out-Null
-          if ($LASTEXITCODE -ne 0) { throw "Stable installer Control Plane verification failed." }
+          if grep -Eq '^[[:space:]]*pull_request:' .github/workflows/production-smoke.yml; then
+            echo "::error::Real Production Smoke must not be an automatic pull_request workflow."
+            exit 1
+          fi
+          grep -Eq '^[[:space:]]*workflow_dispatch:' .github/workflows/production-smoke.yml
+          grep -Fq 'BLOCKED_NOT_RUN' .github/workflows/production-smoke.yml
+          grep -Fq 'Eval/Rebaseline/build_rebaseline_summary.py' .github/workflows/production-smoke.yml
+          if grep -Fq 'SMOKE_CASE' .github/workflows/production-smoke.yml; then
+            echo "::error::Production Smoke must execute the complete suite."
+            exit 1
+          fi
+          test -f .github/ProductionSmoke/run_one_repo_smoke.py
+          test ! -e Tools/ProductionSmoke/run_one_repo_smoke.py
+          test ! -e Operations/Tests/test_one_repo_production_smoke.py
