@@ -31,6 +31,7 @@ VALIDATORS = (
     Path("Tools/ProductionToolRuntime/validate_production_tool_runtime.py"),
     Path("Tools/LayerBoundaryValidator/validate_layer_boundaries.py"),
     Path("Tools/RepositoryAuthorityValidator/validate_repository_authority.py"),
+    Path("Tools/BranchPolicy/validate_branch_policy.py"),
     Path("Tools/DocumentationValidator/validate_documentation.py"),
     Path("Tools/ContextExplorer/validate.py"),
     Path("Tools/SkillValidator/validate_skills.py"),
