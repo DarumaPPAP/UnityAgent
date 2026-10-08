@@ -106,36 +106,10 @@ providers:
 
   myunitymcp:
     optional: true
-    surfaces: [editor, live_editor]
-    registry_potential_capabilities:
-      - project.inspect
-      - compile.observe
-      - scene.inspect
-      - scene.mutate
-      - profiler.observe
-      - visual.capture
-      - domain.workflow
-      - player.observe
-    concrete_read_capabilities:
-      - project.inspect
-      - scene.inspect
-      - profiler.observe
-      - visual.capture
-    concrete_guarded_mutation_capability:
-      - scene.mutate
-    concrete_not_generalized:
-      - domain.workflow
-    concrete_adapter_status: guarded_partial_relative_to_registry_potential
-    safety_contract:
-      - inspect
-      - prepare
-      - exact_diff
-      - revision
-      - unityagent_approval
-      - apply
-    notes:
-      - domain_workflow_one_shot_is_fail_closed_until_canonical_preapproval_provenance_is_expressible
-      - save_and_bake_are_separate_approval_boundaries
+    legacy_observation_only: true
+    production_provider: false
+    adapter_removed: true
+    note: retained temporarily in Environment Snapshot compatibility; never selected by Provider Registry
 
   coplay_mcp:
     optional: true
@@ -189,7 +163,7 @@ representative_profiles:
 resolution_examples:
   project.inspect:
     canonical_capability: project.inspect
-    likely_candidates: [file, myunitymcp, coplay_mcp, unity_cli]
+    likely_candidates: [file, coplay_mcp, unity_cli]
     minimum_evidence: project_fact
     note: final eligibility comes from Runtime Provider Registry and current Environment Snapshot
 
@@ -197,7 +171,7 @@ resolution_examples:
     canonical_capability: compile.observe
     likely_candidates: [unity_cli, native_unity_editor]
     minimum_evidence: compile_observation
-    note: do not infer executable MyUnityMCP compile support from registry potential alone
+    note: compile execution is resolved only from current registered providers
 
   project.test:
     canonical_capability: project.test
@@ -211,25 +185,25 @@ resolution_examples:
 
   scene.inspect:
     canonical_capability: scene.inspect
-    likely_candidates: [myunitymcp, unity_cli, coplay_mcp]
+    likely_candidates: [unity_cli, coplay_mcp]
     minimum_evidence: editor_observation
     note: candidate requires concrete adapter/current live surface before execution
 
   scene.mutate:
     canonical_capability: scene.mutate
-    likely_candidates: [myunitymcp]
+    likely_candidates: [unity_cli]
     minimum_evidence: [editor_observation, mutation_evidence]
     file_fallback: prohibited
-    note: lower-level provider paths are not automatically equivalent to MyUnityMCP guarded mutation
+    note: provider must satisfy current Policy, scope preservation, approval, Pipeline and evidence requirements
 
   profiler.observe:
     canonical_capability: profiler.observe
-    likely_candidates: [myunitymcp]
+    likely_candidates: [unity_cli]
     minimum_evidence: profiler_observation
 
   visual.capture:
     canonical_capability: visual.capture
-    likely_candidates: [myunitymcp]
+    likely_candidates: [unity_artist_cli]
     minimum_evidence: visual_capture
 
   player.observe:
@@ -254,7 +228,7 @@ fallback_rules:
     - evidence_strength_not_weaker
     - safety_contract_not_weaker
   prohibited_examples:
-    - from: myunitymcp_scene_mutation
+    - from: approved_scene_mutation
       to: raw_scene_yaml_edit
     - from: approved_domain_mutation
       to: arbitrary_eval
