@@ -56,14 +56,12 @@ flowchart TD
     D --> F[File Provider]
     D --> N[Native Unity Editor]
     D --> UC[Unity CLI]
-    D --> M[MyUnityMCP]
     D --> CM[Coplay MCP candidate]
     D --> PL[Player Runtime]
 
     F --> X[Structured ProviderResult]
     N --> X
     UC --> X
-    M --> X
     CM --> X
     PL --> X
 
@@ -352,33 +350,12 @@ Concrete adapterの中心Capability:
 
 RegistryのPotential SurfaceとConcrete adapterの実装範囲を混同しません。
 
-### 9.4 MyUnityMCP Provider
+### 9.4 Retired MyUnityMCP Adapter
 
-Domain-aware Editor Providerです。
+MyUnityMCP v1.1.1のRuntime Adapterは現行Provider Registryから削除済みです。
+旧Tool名、MCP transport、Prepare/Apply互換経路はProduction Runtimeへ復活させません。
 
-Concrete read surface:
-
-- `project.inspect`
-- `scene.inspect`
-- `profiler.observe`
-- `visual.capture`
-
-Mutationの中心Contract:
-
-```mermaid
-flowchart LR
-    I[Inspect] --> P[Prepare]
-    P --> D[Exact Diff]
-    D --> R[Revision]
-    R --> A[UnityAgent Approval]
-    A --> AP[Apply]
-```
-
-Production adapterはPrepare-before-Approvalを維持するため、pre-approval Prepareとapproved Applyを分離します。
-
-Save / BakeはScene Mutation Approvalへ畳みません。
-
-`domain.workflow`はPotential SurfaceとしてRegistryに存在しても、canonical pre-approval provenanceを安全に表現できないone-shot経路はfail-closedです。
+Legacy由来のSafety知識はPolicy / Runtime Guard / Evidence Contractへ必要な部分だけ残し、現行CapabilityはUnity CLI、UnityArtistCLI、File、Native Editor、Player Runtime等の現在登録済みProviderから解決します。
 
 ### 9.5 Coplay MCP
 
