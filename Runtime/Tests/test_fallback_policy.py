@@ -125,14 +125,14 @@ class FallbackPolicyTests(unittest.TestCase):
             "preferred_surface": None,
         }
 
-    def test_myunitymcp_unavailable_never_falls_back_to_raw_scene_file(self) -> None:
+    def test_unavailable_scene_mutation_provider_never_falls_back_to_raw_scene_file(self) -> None:
         request = self.request("scene.mutate", approval_ref="approval:scene")
         policy = FallbackPolicy()
         result = policy.after_failure(
             request,
             self.snapshot(cli=False, editor=False, myunity=False, coplay=False),
             context=ResolutionContext(policy_allowed=True, approval_complete=True),
-            previous_provider_id="myunitymcp",
+            previous_provider_id="unity_cli",
             provider_result={"status": "failed", "failure_class": "unavailable"},
         )
         self.assertEqual(result["status"], "unavailable")
