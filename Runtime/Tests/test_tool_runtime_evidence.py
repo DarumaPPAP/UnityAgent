@@ -318,17 +318,17 @@ class ToolRuntimeEvidenceTests(unittest.TestCase):
         self.assertNotIn("hidden", encoded)
         self.assertIn("access_token=***", evidence["raw_refs"][0])
 
-    def test_myunitymcp_mutation_preserves_approval_revision_and_exact_diff_without_token(self):
+    def test_mutation_evidence_preserves_approval_revision_and_exact_diff_without_token(self):
         evidence = self.normalize(
             self.request("scene.mutate"),
-            self.resolution("scene.mutate", "myunitymcp", "live_editor"),
+            self.resolution("scene.mutate", "unity_cli", "live_editor"),
             {
                 "status": "passed",
                 "failure_class": None,
-                "provider_ref": "myunitymcp",
+                "provider_ref": "unity_cli",
                 "evidence": ["editor_observation", "mutation_evidence"],
                 "redacted_provenance": {
-                    "instance_id": "mcp-1",
+                    "instance_id": "unity-cli-project",
                     "session_id": "session-1",
                     "plan_id": "plan-1",
                     "expected_revision": 7,
