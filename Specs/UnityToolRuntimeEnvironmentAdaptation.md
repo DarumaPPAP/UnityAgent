@@ -53,7 +53,7 @@ git
 unity_editor
 unity_cli
 pipeline
-myunitymcp
+myunitymcp  # temporary legacy observation field; not a Runtime Provider
 coplay_mcp
 test_framework
 build
@@ -137,24 +137,9 @@ Concrete adapterの中心:
 
 current CLI surfaceをRuntime discoveryします。
 
-### MyUnityMCP
+### MyUnityMCP legacy observation
 
-read系:
-
-- `project.inspect`
-- `scene.inspect`
-- `profiler.observe`
-- `visual.capture`
-
-Mutation:
-
-- Prepare-before-Approval
-- Exact Diff
-- Revision
-- Approval provenance
-- Apply
-
-`domain.workflow`はRegistry Potential SurfaceとConcrete executable stateを区別します。
+Runtime Adapterは削除済みです。`myunitymcp` Environment fieldは移行期間中の旧環境観測互換のためだけに残り、Provider resolutionの候補にはなりません。新規Capabilityはこのfieldを実行要件にしてはいけません。
 
 ### Coplay MCP
 
@@ -209,9 +194,9 @@ player.observe  -> Player providerが無ければunavailable
 
 ```text
 source.read      -> File
-scene.inspect    -> MyUnityMCP
-profiler.observe -> MyUnityMCP
-visual.capture   -> MyUnityMCP
+scene.inspect    -> Coplay MCPがCapabilityを証明できればCoplay MCP、なければunavailable
+profiler.observe -> Unity CLI / Pipelineが無いためunavailable
+visual.capture   -> UnityArtistCLIが無ければunavailable
 project.test     -> executable Providerが証明できなければunavailable
 ```
 
@@ -290,7 +275,7 @@ evidence equal or stronger
 禁止例:
 
 ```text
-MyUnityMCP scene.mutate unavailable
+typed scene.mutate provider unavailable
 -> raw .unity edit
 -> arbitrary eval
 ```
