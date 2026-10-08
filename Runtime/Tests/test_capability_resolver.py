@@ -189,7 +189,7 @@ class CapabilityResolverTests(unittest.TestCase):
             self.snapshot(),
             context=ResolutionContext(
                 policy_allowed=True,
-                provider_health={"myunitymcp": "unhealthy"},
+                provider_health={"coplay_mcp": "unhealthy"},
             ),
         )
         self.assertEqual(result["status"], "resolved")
