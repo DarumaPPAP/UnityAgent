@@ -190,7 +190,7 @@ flowchart LR
 - Editor Package
 - Visual / Cinematic Safety Contract
 
-旧 `myunitymcp` のSourceとMCP schemaは移行履歴とv1.1.1再現用に限り保持します。現行UnityAgent Registryではlegacy / production-disabledです。
+旧 `myunitymcp` Runtime Adapterは現行UnityAgent Registryから削除済みです。旧Sourceの履歴・知識はLegacy detachmentのためにGit tag / archiveへ移行し、現行実行Providerとして扱いません。
 
 UnityAgentは外部Providerの製品Sourceを複製して正本化しません。
 
