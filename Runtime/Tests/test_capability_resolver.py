@@ -166,22 +166,22 @@ class CapabilityResolverTests(unittest.TestCase):
             self.snapshot(),
             context=ResolutionContext(
                 policy_allowed=True,
-                provider_health={"myunitymcp": "unhealthy"},
+                provider_health={"coplay_mcp": "unhealthy"},
             ),
         )
         self.assertEqual(result["status"], "resolved")
         self.assertEqual(result["provider_ref"], "file")
 
-    def test_infrastructure_fallback_cannot_weaken_safety_or_evidence_strength(self):
+    def test_infrastructure_fallback_preserves_same_capability(self):
         broker = ToolBroker()
         result = broker.resolve_fallback(
             self.request("scene.inspect"),
-            self.snapshot(),
+            self.snapshot(cli=False, editor=False, myunity=False, coplay=True),
             context=ResolutionContext(policy_allowed=True),
-            previous_provider_id="myunitymcp",
+            previous_provider_id="unity_cli",
         )
-        self.assertEqual(result["status"], "unsupported")
-        self.assertIsNone(result["provider_ref"])
+        self.assertEqual(result["status"], "resolved")
+        self.assertEqual(result["provider_ref"], "coplay_mcp")
 
     def test_unhealthy_provider_is_removed_before_ranking(self):
         result = resolve_capability(
@@ -189,11 +189,11 @@ class CapabilityResolverTests(unittest.TestCase):
             self.snapshot(),
             context=ResolutionContext(
                 policy_allowed=True,
-                provider_health={"myunitymcp": "unhealthy"},
+                provider_health={"coplay_mcp": "unhealthy"},
             ),
         )
         self.assertEqual(result["status"], "resolved")
-        self.assertEqual(result["provider_ref"], "coplay_mcp")
+        self.assertEqual(result["provider_ref"], "unity_cli")
 
     def test_multi_instance_ambiguity_fails_closed(self):
         result = resolve_capability(

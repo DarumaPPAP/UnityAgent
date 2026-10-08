@@ -243,7 +243,7 @@ Provider Preference:
 
 ```text
 Provider Preference:
-Graphics inspectionでMyUnityMCPが安全に利用可能なら優先してよい。
+Graphics inspectionは現行Provider RegistryとGraphicsSubAgentの契約から解決し、retired MyUnityMCPを要求しない。
 ```
 
 ただしPreferenceは次を上書きしません。
@@ -297,7 +297,7 @@ Native Unity Editorで同じEvidenceを満たせる
 
 ```text
 scene.mutate
-MyUnityMCP unavailable
+typed mutation provider unavailable
 -> raw .unity edit
 -> arbitrary eval
 ```

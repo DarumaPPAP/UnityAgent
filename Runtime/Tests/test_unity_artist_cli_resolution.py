@@ -243,7 +243,7 @@ class UnityArtistCliResolutionTests(unittest.TestCase):
         self.assertNotEqual(result["provider_ref"], "unity_artist_cli")
         self.assertNotEqual(result.get("subagent_profile_id"), "artist_subagent")
 
-    def test_legacy_myunitymcp_is_not_selected_for_unqualified_scene_work(self) -> None:
+    def test_unqualified_scene_work_is_unavailable_without_editor_provider(self) -> None:
         request = {
             "schema_version": "1.0",
             "capability": "scene.inspect",
@@ -276,7 +276,6 @@ class UnityArtistCliResolutionTests(unittest.TestCase):
 
         self.assertEqual(result["status"], "unavailable")
         self.assertIsNone(result["provider_ref"])
-        self.assertIn("production-disabled", result["reason"])
 
     def test_nested_artist_evidence_is_preserved_as_semantic_tokens(self) -> None:
         result = normalize_artist_result(

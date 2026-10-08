@@ -125,14 +125,14 @@ class FallbackPolicyTests(unittest.TestCase):
             "preferred_surface": None,
         }
 
-    def test_myunitymcp_unavailable_never_falls_back_to_raw_scene_file(self) -> None:
+    def test_unavailable_scene_mutation_provider_never_falls_back_to_raw_scene_file(self) -> None:
         request = self.request("scene.mutate", approval_ref="approval:scene")
         policy = FallbackPolicy()
         result = policy.after_failure(
             request,
             self.snapshot(cli=False, editor=False, myunity=False, coplay=False),
             context=ResolutionContext(policy_allowed=True, approval_complete=True),
-            previous_provider_id="myunitymcp",
+            previous_provider_id="unity_cli",
             provider_result={"status": "failed", "failure_class": "unavailable"},
         )
         self.assertEqual(result["status"], "unavailable")
@@ -172,19 +172,19 @@ class FallbackPolicyTests(unittest.TestCase):
         self.assertEqual(result["unresolved_capability"], "project.test")
         self.assertNotIn("test_execution", result["evidence"])
 
-    def test_weaker_safety_or_evidence_fallback_is_rejected(self) -> None:
+    def test_equivalent_strength_fallback_preserves_scene_inspection(self) -> None:
         request = self.request("scene.inspect")
         policy = FallbackPolicy()
         result = policy.after_failure(
             request,
             self.snapshot(cli=False, editor=False, myunity=False, coplay=True),
             context=ResolutionContext(policy_allowed=True),
-            previous_provider_id="myunitymcp",
+            previous_provider_id="unity_cli",
             provider_result={"status": "failed", "failure_class": "unavailable"},
         )
-        self.assertEqual(result["status"], "unsupported")
-        self.assertIsNone(result["provider_ref"])
-        self.assertEqual(result["action"], "stop")
+        self.assertEqual(result["status"], "resolved")
+        self.assertEqual(result["provider_ref"], "coplay_mcp")
+        self.assertEqual(result["action"], "fallback")
 
     def test_scope_expansion_between_attempts_is_blocked_before_resolution(self) -> None:
         original = self.request("source.patch", allowed_paths=["Assets/Scripts/Broken.cs"])
