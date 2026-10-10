@@ -15,3 +15,7 @@
 Source Lock now pins Hub merged full SHA ccd6a21dee753c60211c1aa947f5220366cd7229, Hub/Tools/export_snapshot.py, Hub/Registry and Hub/SubAgents. Artist CLI remains src/UnityArtist.Cli until the producer move. Release resolves exact allowlisted source paths from the same lock; old/new Artist layouts are prepared BEFORE producer migration. Mixed Catalog layouts, wrong repository/full SHA/identity and unknown CLI project remain rejected. New source-layout tests RED→GREEN, actual Development/Pinned Snapshot both read-only no_op.
 
 P0 Inventory stays immutable historical evidence. Execution-file blocker resolved via Agent #174. Unity Editor/License/Player/Visual/device remain BLOCKED_NOT_RUN. Next: P3 CI Green/Squash Merge, Hub Artist move and final Agent re-pin. Confirm GitHub reality before resuming.
+
+## P4 Artist producer and Source Lock (2026-10-10)
+
+Hub #95 merged with all required and Artist host checks Green at `547007b11545d445d9e99a97c41a3d6f0a055d03`. Artist CLI project now resolves to `cli/artist/UnityArtist.Cli.csproj`; static verifiers resolve to `ci/verify`. This Agent change re-pins that full immutable SHA after consumer compatibility #176. Actual Development/Pinned imports both remain read-only `no_op`; Canonical validation passed locally. PR and required CI verification precede merge. P5/P6 implementation is separately under verification; P7/P8 are not yet merged. Editor/License/visual/device gates remain `BLOCKED_NOT_RUN`.
