@@ -90,7 +90,7 @@ jobs:
           fi
 
       - name: Install UnityAgent validation and build dependencies
-        run: python3 -m pip install --disable-pip-version-check -e . build
+        run: python3 -m pip install --disable-pip-version-check -e . build "setuptools>=68" wheel
 
       - name: Validate UnityAgent repository and regression contracts
         run: |
