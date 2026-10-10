@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace UnityAgent.unityagent.runtime.harnesses.unity.Editor
+namespace UnityAgent.Runtime.Harnesses.Unity.Editor
 {
     public sealed class UnityArtifactImpactAnalyzer
     {

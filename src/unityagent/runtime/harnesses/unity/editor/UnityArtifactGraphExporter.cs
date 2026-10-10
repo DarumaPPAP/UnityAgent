@@ -4,7 +4,7 @@ using System.Text;
 using UnityEditor;
 using UnityEngine;
 
-namespace UnityAgent.unityagent.runtime.harnesses.unity.Editor
+namespace UnityAgent.Runtime.Harnesses.Unity.Editor
 {
     public sealed class UnityArtifactGraphExporter
     {
