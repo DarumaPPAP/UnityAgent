@@ -2,7 +2,7 @@
 
 UnityAgentを初見の人が短時間で理解するための **Human-facing Mental Model** です。
 
-この文書はCanonical Architectureの代替Source of Truthではありません。Production Authorityは引き続き `Policy/`、`Orchestration/`、`Context/`、`Runtime/`、`Persistence/`、`Operations/`、`Eval/` にあります。
+この文書はCanonical Architectureの代替Source of Truthではありません。Production Authorityは引き続き `src/unityagent/policy/`、`src/unityagent/orchestration/`、`src/unityagent/context/`、`src/unityagent/runtime/`、`src/unityagent/persistence/`、`src/unityagent/operations/`、`eval/` にあります。
 
 ## 30秒版
 
@@ -19,13 +19,13 @@ MyResourceCenterはUnityAgent内部のRuntimeではなく、必要な知識をRe
 
 | Human Concept | 問い | Machine Mapping |
 | --- | --- | --- |
-| Rules | やっていい？ | `Policy/` |
-| Planner | どう進める？ | `Orchestration/`、必要時だけGraph / Loop |
-| Knowledge | 何を読む？ | `Context/`、`.agents/skills/`、MyResourceCenter Snapshot |
-| Executor | 何を実行する？ | `Runtime/`、Provider / Harness |
-| Evidence | 本当に起きた？ | `Runtime/EvidenceCapture/` |
-| Memory | 何を残す？ | `Persistence/` |
-| Quality | 悪化してない？ | `Eval/`、`Operations/` |
+| Rules | やっていい？ | `src/unityagent/policy/` |
+| Planner | どう進める？ | `src/unityagent/orchestration/`、必要時だけGraph / Loop |
+| Knowledge | 何を読む？ | `src/unityagent/context/`、`.agents/skills/`、MyResourceCenter Snapshot |
+| Executor | 何を実行する？ | `src/unityagent/runtime/`、Provider / Harness |
+| Evidence | 本当に起きた？ | `src/unityagent/runtime/evidence_capture/` |
+| Memory | 何を残す？ | `src/unityagent/persistence/` |
+| Quality | 悪化してない？ | `eval/`、`src/unityagent/operations/` |
 
 ```text
 Rules
@@ -82,10 +82,10 @@ Quality
 
 ## Context Explorer
 
-`Tools/ContextExplorer/` は、このMental ModelとCanonical Context Packを読み取り専用で表示するHuman Maintenance Viewerです。
+`tools/context_explorer/` は、このMental ModelとCanonical Context Packを読み取り専用で表示するHuman Maintenance Viewerです。
 
 ```powershell
-python .\Tools\ContextExplorer\build.py --bundle .\Artifacts\ContextExplorer\viewer
+python .\tools\ContextExplorer\build.py --bundle .\Artifacts\ContextExplorer\viewer
 ```
 
 生成Bundleは次の4段階で情報を開示します。

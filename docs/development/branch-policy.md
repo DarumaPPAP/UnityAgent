@@ -1,4 +1,4 @@
-# Branch Policy
+# Branch src/unityagent/policy
 
 UnityAgentのbranch運用は、長期branchを増やさず `main` を唯一の統合正本として維持する。
 
@@ -74,7 +74,7 @@ main
 
 - Repository設定はSquash Mergeのみを許可する。
 - Merge後のhead branchはGitHubが自動削除する。
-- `Tools/BranchPolicy/validate_branch_policy.py` がPolicy定義とbranch名を検証する。
+- `tools/branch_policy/validate_branch_policy.py` がPolicy定義とbranch名を検証する。
 - `UnityAgent CI / Canonical Validation` が全PRでbranch名を検証する。
 - Agent / Codexはbranch作成前に用途を分類し、このPolicyに従う。
 

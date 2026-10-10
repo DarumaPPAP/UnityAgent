@@ -33,17 +33,17 @@ Unity 6 URP、RenderGraph、RendererFeature、Shader/HLSLの作業へ、描画�
 
 1. Feature Spec / Plan / Task
 2. 対象Renderer、Shader、RendererFeature、Project Settings等の直接Sourceと検出済みProject Fact
-3. 必要なProject Factが未解決の場合だけ`Specs/ProjectProfile.md`をFallbackとして読む
-4. 美的成果を含む場合は承認済みVisual Intent Contractと`SkillReferences/BEAUTIFUL_DEFINITION_INTEGRATION.md`
-5. `SkillReferences/RENDERING_STANDARDS.md`
-6. `SkillReferences/SHADER_PERFORMANCE_STANDARDS.md`
-7. Shader変更時は`SkillReferences/ShaderPerformance/UNITY_URP_POLICY.md`
-8. Shaderに条件分岐、keyword、feature toggle、`clip` / `discard`が含まれる場合は`SkillReferences/ShaderPerformance/BRANCHING_POLICY.md`
+3. 必要なProject Factが未解決の場合だけ`docs/architecture/specifications/ProjectProfile.md`をFallbackとして読む
+4. 美的成果を含む場合は承認済みVisual Intent Contractと`docs/standards/BEAUTIFUL_DEFINITION_INTEGRATION.md`
+5. `docs/standards/RENDERING_STANDARDS.md`
+6. `docs/standards/SHADER_PERFORMANCE_STANDARDS.md`
+7. Shader変更時は`docs/standards/ShaderPerformance/UNITY_URP_POLICY.md`
+8. Shaderに条件分岐、keyword、feature toggle、`clip` / `discard`が含まれる場合は`docs/standards/ShaderPerformance/BRANCHING_POLICY.md`
 9. 監査時は`SHADER_REVIEW_GATE.md`と`RULE_CATALOG.md`
 10. 修正時は`REFACTOR_POLICY.md`
 11. Variant変更時は`VARIANT_POLICY.md`
 
-`Specs/ProjectProfile.md`はFallbackであり、対象Projectから検出したUnity/URP/Renderer/Platform Factや今回ユーザーが確認したFactを上書きしない。
+`docs/architecture/specifications/ProjectProfile.md`はFallbackであり、対象Projectから検出したUnity/URP/Renderer/Platform Factや今回ユーザーが確認したFactを上書きしない。
 
 ## Delegates to
 

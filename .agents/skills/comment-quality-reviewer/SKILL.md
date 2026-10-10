@@ -7,7 +7,7 @@ metadata:
   version: "2.1.0"
   kind: user-policy-operation
   policy_owner: user
-  policy_source: Policy/User/user-policy.yaml#comment_system
+  policy_source: src/unityagent/policy/user/user-policy.yaml#comment_system
   protected: true
   entrypoint: conditional
 ---
@@ -18,9 +18,9 @@ metadata:
 
 ## Required references
 
-1. `Policy/User/user-policy.yaml`
-2. `SkillReferences/JAPANESE_CODE_COMMENT_STANDARDS.md`
-3. `SkillReferences/COMMENT_REVIEW_CHECKLIST.md`
+1. `src/unityagent/policy/user/user-policy.yaml`
+2. `docs/standards/JAPANESE_CODE_COMMENT_STANDARDS.md`
+3. `docs/standards/COMMENT_REVIEW_CHECKLIST.md`
 4. 本番用なら`Production`、学習用なら`Learning`プロファイル
 5. 対象分野に応じた既存Standards
 
@@ -52,7 +52,7 @@ metadata:
 
 ## Checklist
 
-- [ ] `Policy/User/user-policy.yaml`のコメントPolicyを適用した
+- [ ] `src/unityagent/policy/user/user-policy.yaml`のコメントPolicyを適用した
 - [ ] Profileを確定した
 - [ ] コメントとコードを照合した
 - [ ] 不足と冗長を両方確認した

@@ -8,9 +8,9 @@
 
 ## Ownership
 
-UnityAgent owns semantic intent, Policy, Approval, Mutation Scope, SubAgent selection, loop/retry control and durable Evidence.
+UnityAgent owns semantic intent, src/unityagent/policy, Approval, Mutation Scope, SubAgent selection, loop/retry control and durable Evidence.
 
-ArtistSubAgent owns specialist reasoning and bounded visual-art / cinematic workflows. It does not own global routing, Policy, approval or persistence.
+ArtistSubAgent owns specialist reasoning and bounded visual-art / cinematic workflows. It does not own global routing, src/unityagent/policy, approval or persistence.
 
 The backend owns execution only.
 
@@ -40,7 +40,7 @@ ProviderResult -> Evidence
 
 ArtistSubAgent is optional. Registration in a catalog does not make it available.
 
-Before ArtistSubAgent can participate, every activation requirement in `Runtime/ReferenceImplementation/subagent-catalog.yaml` must be observed true. The current profile requires backend availability, an observed compatible support tier/backend, project binding, the Artist package and Pipeline reachability.
+Before ArtistSubAgent can participate, every activation requirement in `src/unityagent/runtime/reference_implementation/subagent-catalog.yaml` must be observed true. The current profile requires backend availability, an observed compatible support tier/backend, project binding, the Artist package and Pipeline reachability.
 
 False or unknown requirements exclude ArtistSubAgent before execution. UnityAgent must not auto-install a missing SubAgent just to satisfy a CapabilityRequest.
 
@@ -71,7 +71,7 @@ Capability resolution is separate from Installer Provider observations. False, u
 
 ## Distribution boundary
 
-UnityAgent is the only public release owner. ArtistSubAgent and UnitySubAgentHub do not publish independent GitHub releases or Marketplace entries. Each UnityAgent release pins an exact Hub commit in `Runtime/Distribution/subagent-sources.lock.json`, builds the Artist backend/package from that source, and publishes those bytes under the immutable UnityAgent tag. Development may inspect Hub `main`, but released UnityAgent versions never float with Hub `main`.
+UnityAgent is the only public release owner. ArtistSubAgent and UnitySubAgentHub do not publish independent GitHub releases or Marketplace entries. Each UnityAgent release pins an exact Hub commit in `src/unityagent/runtime/distribution/subagent-sources.lock.json`, builds the Artist backend/package from that source, and publishes those bytes under the immutable UnityAgent tag. Development may inspect Hub `main`, but released UnityAgent versions never float with Hub `main`.
 
 ## Codex surface
 
@@ -97,6 +97,6 @@ Strict Snapshot / identity / capability / Provider / activation / evidence check
 Added / Removed / Changed / No-op Import Plan
 ```
 
-`python Tools/import_subagent_catalog.py` is read-only. It does not download the Hub Artifact, observe the current Project, install a SubAgent, hot-reload the Runtime catalog, or write `Runtime/ReferenceImplementation/subagent-catalog.yaml`. `audience`、`goal_type`、`primary_capability`、Reference scope / approval、Evidence producerと既定ProfileはUnityAgentの現行Catalogから保持します。新しいSpecialistにこれらのConsumer Profile値がなければ明示的なCatalog Migrationを要求します。A non-no-op update remains a reviewed Git change; protected Field changes and deletions are blocked in the plan.
+`python tools/import_subagent_catalog.py` is read-only. It does not download the Hub Artifact, observe the current Project, install a SubAgent, hot-reload the Runtime catalog, or write `src/unityagent/runtime/reference_implementation/subagent-catalog.yaml`. `audience`、`goal_type`、`primary_capability`、Reference scope / approval、Evidence producerと既定ProfileはUnityAgentの現行Catalogから保持します。新しいSpecialistにこれらのConsumer Profile値がなければ明示的なCatalog Migrationを要求します。A non-no-op update remains a reviewed Git change; protected Field changes and deletions are blocked in the plan.
 
-The checked-in UnityAgent catalog and ReferenceImplementation durable Evidence currently use `UnityAgent.ReferenceImplementation.v1.1`. The neutral Hub Snapshot does not carry an Evidence producer. Legacy Profile-wire snapshots remain an explicit compatibility input; a producer mismatch there remains a protected-field change. The existing `runtime_profile_revision` fingerprint covers both `Runtime/Tooling/provider_registry.yaml` and the SubAgent catalog, so Resume continues to apply the existing in-flight-action block and Evidence keeps its existing profile binding digest.
+The checked-in UnityAgent catalog and ReferenceImplementation durable Evidence currently use `UnityAgent.ReferenceImplementation.v1.1`. The neutral Hub Snapshot does not carry an Evidence producer. Legacy Profile-wire snapshots remain an explicit compatibility input; a producer mismatch there remains a protected-field change. The existing `runtime_profile_revision` fingerprint covers both `src/unityagent/runtime/tooling/provider_registry.yaml` and the SubAgent catalog, so Resume continues to apply the existing in-flight-action block and Evidence keeps its existing profile binding digest.

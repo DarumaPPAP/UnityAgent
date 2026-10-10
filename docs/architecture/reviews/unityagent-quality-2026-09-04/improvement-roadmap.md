@@ -21,7 +21,7 @@
 **目的**：本番入口をPolicyからdurable Evidenceまで一つの経路へ統一する。
 
 - 厳格なRuntimeHandoff schemaにBudget decision、Mutation Scope、validation requirements、CapabilityRequestを必須化する。
-- Orchestrator → Context → Runtime Guard → ToolBroker → Resolver → Dispatcher → ProviderResult → Evidence Normalizer → Persistenceを接続するComposition Rootを一つ定義する。
+- Orchestrator → src/unityagent/context → Runtime Guard → ToolBroker → Resolver → Dispatcher → ProviderResult → Evidence Normalizer → Persistenceを接続するComposition Rootを一つ定義する。
 - Dispatcherでrequired/observed Evidence、capability固有の`not_applicable`、Provider identity、completionを検証する。
 - `unmeasured`/`compression_required` BudgetはMutation境界で停止する。
 - DefinitionFingerprintをcanonical bundle/file hashまたはVersionManifestから導出する。
@@ -64,7 +64,7 @@
 **目的**：実行後の失敗・Evidence不足・Provider劣化を継続観測できる状態にする。
 
 - Runtime Telemetry → Event Store → Detection → Incident/Runbookのread-only接続を作る。
-- ControlはPolicy/Approval済みの明示APIだけへ渡す。
+- Controlはsrc/unityagent/policy/approval済みの明示APIだけへ渡す。
 - Provider Support ManifestでPotential/Concrete/Live/Evidence対応を分離する。
 - Workflowの重複セットアップを共通Action/Scriptへ集約し、skill validatorの警告を優先度付きで解消する。
 - Issue [#32 ContextExplorer Full Refactor Migration](https://github.com/DarumaPPAP/UnityAgent/issues/32) の残課題を、現行GraphテストとCanonical relationの受入条件に結び付けて完了させる。

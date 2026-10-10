@@ -1,0 +1,9 @@
+recursive-include src/unityagent *.yaml *.yml *.json *.md *.txt *.cs
+recursive-include .agents *.yaml *.yml *.json *.md *.txt
+recursive-include docs/standards *.md *.yaml *.json
+recursive-include docs/templates *.md *.yaml *.json
+recursive-include docs/architecture/specifications *.md *.yaml *.json
+include VERSION
+include eval/datasets/behavior/production-tool-runtime-environment-matrix.yaml
+
+prune src/unityagent/_resources

@@ -7,16 +7,16 @@ Context ExplorerはProduction Execution、Route Selection、Policy編集、Regre
 ## 正本となる入力
 
 ```text
-Policy/
-Orchestration/
-Context/
-Runtime/
-Persistence/
-Operations/
-Eval/
+src/unityagent/policy/
+src/unityagent/orchestration/
+src/unityagent/context/
+src/unityagent/runtime/
+src/unityagent/persistence/
+src/unityagent/operations/
+eval/
         │
         ├─ Human Architecture Projection
-        └─ Context/Packs Metadata Parser
+        └─ src/unityagent/context/packs Metadata Parser
                 │
                 ▼
         read-only Derived Context Map
@@ -31,11 +31,11 @@ Human Architecture ProjectionはCanonical Repository Pathの存在を検証し�
 Rules -> Planner -> Knowledge -> Executor -> Evidence -> Memory / Quality
 ```
 
-Context Mapは `Context/Packs/*.yaml` のMetadataだけを読み取ります。Relationは `metadata.related` に明示された既存Context間の関係だけを表示し、欠落Relationを推測で補いません。
+Context Mapは `src/unityagent/context/packs/*.yaml` のMetadataだけを読み取ります。Relationは `metadata.related` に明示された既存Context間の関係だけを表示し、欠落Relationを推測で補いません。
 
 ## Context Metadata Schema
 
-生成物は [`../Tools/ContextExplorer/schema/context-map.schema.json`](../Tools/ContextExplorer/schema/context-map.schema.json) に従います。
+生成物は [`../Tools/ContextExplorer/schema/context-map.schema.json`](../tools/context_explorer/schema/context-map.schema.json) に従います。
 
 各Context Nodeは最低限次のProvenanceを保持します。
 
@@ -83,13 +83,13 @@ Relation projectionは `metadata.related` に明示されたEdgeだけを使い�
 Graph Visualizationの最終形は **Graph EngineではなくContext Map Projection** です。
 
 ```text
-Context/Packs metadata.related
+src/unityagent/context/packs metadata.related
           │
           ▼
    deterministic ContextMap
           │
           ▼
- selected Context + explicit 1-hop relations
+ selected src/unityagent/context + explicit 1-hop relations
           │
           ├─ ← incoming
           └─ → outgoing
@@ -109,19 +109,19 @@ Viewerが許可されるのはSelection、Filter、Navigation、Source Path Copy
 - Evidence write
 - Browser state persistence
 
-`Orchestration/Graph` はPlanner TopologyのCanonical実装として独立しており、Context Explorerはimport・execute・mutateしません。
+`src/unityagent/orchestration/graph` はPlanner TopologyのCanonical実装として独立しており、Context Explorerはimport・execute・mutateしません。
 
 ## Human Architecture Contract
 
 | Human Concept | Primary Machine Mapping |
 | --- | --- |
-| Rules | `Policy/` |
-| Planner | `Orchestration/`、必要時のみGraph / Loop |
-| Knowledge | `Context/`、`.agents/skills/`、MyResourceCenter Snapshot |
-| Executor | `Runtime/`、Provider / Harness |
-| Evidence | `Runtime/EvidenceCapture/` |
-| Memory | `Persistence/` |
-| Quality | `Eval/`、`Operations/` |
+| Rules | `src/unityagent/policy/` |
+| Planner | `src/unityagent/orchestration/`、必要時のみGraph / Loop |
+| Knowledge | `src/unityagent/context/`、`.agents/skills/`、MyResourceCenter Snapshot |
+| Executor | `src/unityagent/runtime/`、Provider / Harness |
+| Evidence | `src/unityagent/runtime/evidence_capture/` |
+| Memory | `src/unityagent/persistence/` |
+| Quality | `eval/`、`src/unityagent/operations/` |
 
 GraphはPlanner内部でTask complexityに応じて利用されるStrategyであり、UnityAgent全体のRuntime Engineではありません。
 
@@ -149,22 +149,22 @@ BundleはStatic / Offline / Read-onlyです。
 ## Build / Validation
 
 ```powershell
-python .\Tools\ContextExplorer\build.py --check
-python .\Tools\ContextExplorer\validate.py
-python .\Tools\validate_all.py
+python .\tools\ContextExplorer\build.py --check
+python .\tools\ContextExplorer\validate.py
+python .\tools\validate_all.py
 ```
 
 Bundle生成:
 
 ```powershell
-python .\Tools\ContextExplorer\build.py --bundle .\Artifacts\ContextExplorer\viewer
+python .\tools\ContextExplorer\build.py --bundle .\Artifacts\ContextExplorer\viewer
 ```
 
 ## #32 Migration Result
 
-旧`Tools/GraphObservatory/`にあったgeneric graph builder、generic projection runner、graph schema、expansion gateは削除しました。
+旧`tools/GraphObservatory/`にあったgeneric graph builder、generic projection runner、graph schema、expansion gateは削除しました。
 
-Context Explorerは `Context/Packs` -> `ContextMap` -> Static Viewer の一方向Projectionだけを所有します。Context / Harness / LoopのCanonical Authorityを奪いません。
+Context Explorerは `src/unityagent/context/packs` -> `ContextMap` -> Static Viewer の一方向Projectionだけを所有します。Context / Harness / LoopのCanonical Authorityを奪いません。
 
 ## #131 Final Visualization Result
 
@@ -174,7 +174,7 @@ Graph Visualizationの残存語彙をContext Mapへ統一し、Viewer上のRelat
 - generic `graph` runtime variableを廃止
 - incoming / outgoing relationを明示
 - runtime execution/routing/mutation authorityの再侵入をvalidator/testで禁止
-- `Orchestration/Graph` とViewerを明示分離
+- `src/unityagent/orchestration/graph` とViewerを明示分離
 
 ## 非目標
 

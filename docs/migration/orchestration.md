@@ -9,24 +9,24 @@ The current Orchestration layer is the canonical replacement for the semantic po
 ## Ownership
 
 ```text
-Policy
+src/unityagent/policy
   ↓ rules / approval / evidence requirements
-Orchestration
+src/unityagent/orchestration
   ├─ Routing      : choose route/profile/task semantics
   ├─ Graph        : topology only
   ├─ Loop         : semantic continue/replan/exit/TODO selection
   └─ Orchestrator : one semantic transition + Runtime handoff
         ↓
-Runtime
+src/unityagent/runtime
   └─ execute selected work + bounded infrastructure retry
         ↓
-Persistence
+src/unityagent/persistence
   └─ store workflow/loop state; never decide continuation
 ```
 
 ## Graph topology
 
-`Orchestration/Definitions/development-parent-graph.yaml` declares the Development ParentGraph with first-class Planning, Design Review, Investigation, Implementation, Validation, and Delivery SubGraphs.
+`src/unityagent/orchestration/definitions/development-parent-graph.yaml` declares the Development ParentGraph with first-class Planning, Design Review, Investigation, Implementation, Validation, and Delivery SubGraphs.
 
 Graph owns topology:
 
@@ -40,14 +40,14 @@ Graph does **not** own the semantic continuation implementation.
 
 ## Loop Engineering
 
-`Orchestration/Loop/` is the canonical semantic-loop owner.
+`src/unityagent/orchestration/loop/` is the canonical semantic-loop owner.
 
 - `semantic_loop.py` — validate loop declarations and decide `continue / replan / exit / blocked`
 - `todo_selector.py` — select the next dependency-ready semantic TODO
-- `state_mapping.py` — project a semantic decision into `Persistence/Contracts/LoopControlState` shape without writing it
+- `state_mapping.py` — project a semantic decision into `src/unityagent/persistence/contracts/loop_control_state` shape without writing it
 - `validate.py` — canonical boundary validation
 
-`Orchestration/Contracts/semantic-loop-decision.schema.yaml` is the explicit decision contract.
+`src/unityagent/orchestration/contracts/semantic-loop-decision.schema.yaml` is the explicit decision contract.
 
 A Local Loop is an **edge/cycle inside a SubGraph**, not a peer execution plane and not a long-lived controller object.
 
@@ -75,7 +75,7 @@ Runtime owns only bounded execution/infrastructure recovery such as:
 - hard retry ceiling
 - hard turn/cost safety limits
 
-Runtime may never change task semantics, route, mutation scope, required evidence, or approval reference as part of fallback. Semantic replan belongs to `Orchestration/Loop` / Routing.
+Runtime may never change task semantics, route, mutation scope, required evidence, or approval reference as part of fallback. Semantic replan belongs to `src/unityagent/orchestration/loop` / Routing.
 
 ## Forbidden Loop authority
 
@@ -91,7 +91,7 @@ Semantic Loop code must not own:
 - provider selection
 - durable Persistence writes
 - Runtime mutation enforcement
-- Eval grading
+- eval grading
 
 There is deliberately no `ContinuationController` class. Loop Engineering is a small set of deterministic functions, not a giant controller.
 
@@ -103,7 +103,7 @@ Invalid TODO identity or a dependency on an unknown TODO fails closed instead of
 
 ## Route ownership
 
-Task-fingerprint matching belongs to `Orchestration/Routing/task-routes.yaml`. `Context/Selection/context-catalog.yaml` consumes an explicit route and remains materialization-only.
+Task-fingerprint matching belongs to `src/unityagent/orchestration/routing/task-routes.yaml`. `src/unityagent/context/selection/context-catalog.yaml` consumes an explicit route and remains materialization-only.
 
 Unknown fingerprint dimensions are never guessed. Unmatched fingerprints fall back to bounded `generic-planning`; simple read-only tasks may use the fast path.
 
@@ -112,15 +112,15 @@ Unknown fingerprint dimensions are never guessed. Unmatched fingerprints fall ba
 Simple bounded tasks that do not require semantic replan may use:
 
 ```text
-Policy -> Orchestration route -> Context -> Runtime -> Verification -> Result
+src/unityagent/policy -> Orchestration route -> src/unityagent/context -> src/unityagent/runtime -> Verification -> Result
 ```
 
 The full ParentGraph is used only when semantic coordination adds value.
 
 ## State boundary
 
-- `Orchestration/Graph/state_mapping.py` projects `WorkflowState` only.
-- `Orchestration/Loop/state_mapping.py` projects `LoopControlState` only.
+- `src/unityagent/orchestration/graph/state_mapping.py` projects `WorkflowState` only.
+- `src/unityagent/orchestration/loop/state_mapping.py` projects `LoopControlState` only.
 - Neither module writes Persistence.
 - Persistence is the durable source of truth, but it never decides semantic continuation.
 
@@ -134,5 +134,5 @@ Health-check Nodes depend on Runtime health contracts. Orchestration interprets 
 - no Graph repository archive in this change
 - no durable state migration
 - no Memory/Evidence persistence migration
-- no Runtime enforcement moved into Orchestration
+- no Runtime enforcement moved into src/unityagent/orchestration
 - no hard semantic max-turn controller

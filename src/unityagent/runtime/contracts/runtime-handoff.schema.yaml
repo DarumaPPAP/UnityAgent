@@ -1,0 +1,51 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:runtime:runtime-handoff
+title: RuntimeHandoff
+type: object
+additionalProperties: false
+required: [schema_version, run_id, step_id, action_id, route_id, execution_profile, context_id, context_fingerprint, task_contract_runtime_projection, mutation_scope, validation_requirements, capability_contract_mode, capability_requests, runtime_action, definition_fingerprint]
+properties:
+  schema_version: {const: '1.0'}
+  run_id: {type: string, minLength: 1}
+  step_id: {type: string, minLength: 1}
+  action_id: {type: string, minLength: 1}
+  route_id: {type: string, minLength: 1}
+  execution_profile: {type: string, minLength: 1}
+  context_id: {type: string, minLength: 1}
+  context_fingerprint: {type: string, minLength: 1}
+  task_contract_runtime_projection: {type: object}
+  mutation_scope: {type: object}
+  validation_requirements:
+    type: array
+    items: {type: string, minLength: 1}
+  capability_contract_mode: {const: authoritative}
+  capability_requests: {type: array, items: {type: object}}
+  runtime_action:
+    oneOf:
+      - type: object
+        additionalProperties: false
+        required: [kind]
+        properties:
+          kind: {const: capability_dispatch}
+      - type: object
+        additionalProperties: false
+        required: [kind, profile_id, capability, execution_mode, provider_resolution, output_contract_ref, instructions_ref]
+        properties:
+          kind: {const: specialist_reasoning}
+          profile_id: {type: string, minLength: 1}
+          capability: {type: string, minLength: 1}
+          execution_mode: {enum: [planning_only, read_only_analysis]}
+          provider_resolution: {const: not_required}
+          output_contract_ref: {type: string, pattern: '^src/unityagent/runtime/contracts/[a-z0-9-]+\.schema\.json$'}
+          instructions_ref: {type: string, pattern: '^\.agents/skills/[a-z0-9-]+/SKILL\.md$'}
+  definition_fingerprint: {type: [object, 'null']}
+allOf:
+  - if:
+      properties:
+        runtime_action:
+          properties: {kind: {const: specialist_reasoning}}
+          required: [kind]
+    then:
+      properties:
+        mutation_scope: {maxProperties: 0}
+        definition_fingerprint: {type: object}

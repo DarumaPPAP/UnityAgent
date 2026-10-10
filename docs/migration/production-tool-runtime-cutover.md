@@ -18,7 +18,7 @@ Environment Discovery
 Provider Registry / Resolver
 Concrete Providers
 Safety / Recovery
-Player Runtime
+Player src/unityagent/runtime
 Evidence Integration
         ↓
 Production execution pathへ統合
@@ -32,7 +32,7 @@ Production execution pathへ統合
 
 ```mermaid
 flowchart LR
-    O[Orchestration] --> H[Runtime Handoff<br/>capability_contract_mode: shadow]
+    O[src/unityagent/orchestration] --> H[Runtime Handoff<br/>capability_contract_mode: shadow]
     H --> X[既存Runtime / Provider個別経路]
     B[ToolBroker] --> R[resolve only]
 ```
@@ -48,7 +48,7 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    O[Orchestration] -->|Provider-independent CapabilityRequest| H[authoritative Runtime Handoff]
+    O[src/unityagent/orchestration] -->|Provider-independent CapabilityRequest| H[authoritative Runtime Handoff]
     H --> G[Runtime Guard]
     G --> B[ToolBroker]
     B --> R[Capability Resolver]
@@ -64,7 +64,7 @@ flowchart TD
 
 ## 3. Authority Changes
 
-### Orchestration
+### src/unityagent/orchestration
 
 Before:
 
@@ -80,12 +80,12 @@ capability_contract_mode: authoritative
 
 さらにRuntime handoffに`provider` / `provider_ref`が混入した場合は拒否します。
 
-### Context
+### src/unityagent/context
 
 Before:
 
 ```text
-Context/Selection/mcp-selection.yaml
+src/unityagent/context/selection/mcp-selection.yaml
 ```
 
 がMCP selection artifactとして残っていました。
@@ -93,14 +93,14 @@ Context/Selection/mcp-selection.yaml
 After:
 
 ```text
-Context/Selection/tool-capability-catalog.yaml
+src/unityagent/context/selection/tool-capability-catalog.yaml
 ```
 
 でCapability descriptionだけを扱います。
 
 Provider resolutionはRuntime Authorityへ移します。
 
-### Runtime
+### src/unityagent/runtime
 
 Before:
 
@@ -115,7 +115,7 @@ ToolBroker
  + Capability Resolver
  + Production Dispatcher
  + Runtime Guard
- + Fallback Policy
+ + Fallback src/unityagent/policy
 ```
 
 でProduction execution boundaryを構成します。
@@ -153,14 +153,14 @@ backend_not_implemented
 削除:
 
 ```text
-Context/Selection/mcp-selection.yaml
+src/unityagent/context/selection/mcp-selection.yaml
 ```
 
 現在の分離:
 
 ```mermaid
 flowchart LR
-    O[Orchestration] --> C[Capability requirement]
+    O[src/unityagent/orchestration] --> C[Capability requirement]
     C --> CX[Context capability description]
     C --> R[Runtime Provider resolution]
     R --> D[Dispatch]
@@ -176,7 +176,7 @@ Historical migration文書に旧Pathが残る場合はHistorical literalとし�
 
 Production Dataset:
 
-`Eval/Datasets/Behavior/production-tool-runtime-environment-matrix.yaml`
+`eval/datasets/behavior/production-tool-runtime-environment-matrix.yaml`
 
 Profile:
 
@@ -247,16 +247,16 @@ Current Architecture / User Guideとして更新した文書:
 - `docs/architecture/unityagent-flow.mmd`
 - `docs/local-project-development.md`
 - `docs/unity-environment-adaptation.md`
-- `Templates/DevelopmentRequest.md`
+- `docs/templates/DevelopmentRequest.md`
 
 Production Runtimeのsupporting specとして整合させた文書:
 
-- `Specs/INDEX.md`
-- `Specs/UnityToolRuntime.md`
-- `Specs/UnityToolRuntimeEnvironmentAdaptation.md`
-- `Specs/UnityEnvironmentCapabilityMatrix.yaml`
-- `Specs/ProjectProfile.md`
-- `Specs/PlatformAndEnvironmentFallbackPolicy.md`
+- `docs/architecture/specifications/INDEX.md`
+- `docs/architecture/specifications/UnityToolRuntime.md`
+- `docs/architecture/specifications/UnityToolRuntimeEnvironmentAdaptation.md`
+- `src/unityagent/contracts/UnityEnvironmentCapabilityMatrix.yaml`
+- `docs/architecture/specifications/ProjectProfile.md`
+- `docs/architecture/specifications/PlatformAndEnvironmentFallbackPolicy.md`
 
 Historical扱いを明確化した文書:
 
@@ -266,13 +266,13 @@ Historical扱いを明確化した文書:
 
 Documentation regression guardとして更新した実装:
 
-- `Tools/DocumentationValidator/validate_documentation.py`
+- `tools/documentation_validator/validate_documentation.py`
 
 このValidatorはactive docs / Bootstrap / DevelopmentRequest / supporting specsについて、少なくとも次を再検出します。
 
 - 旧Capability名のcurrent use
 - Production Tool Runtimeを未実装Target Architectureとして説明する表現
-- 削除済み`Context/Selection/mcp-selection.yaml`のcurrent authority参照
+- 削除済み`src/unityagent/context/selection/mcp-selection.yaml`のcurrent authority参照
 - legacy compatibility pathのcurrent use
 - broken local Markdown link
 
@@ -287,7 +287,7 @@ Cutover後に次を復活させない:
 ```text
 capability_contract_mode: shadow
 Context provider selection
-Context/Selection/mcp-selection.yaml current authority
+src/unityagent/context/selection/mcp-selection.yaml current authority
 Root Catalog万能正本
 Orchestration provider selection
 silent weaker fallback
@@ -302,13 +302,13 @@ Baseline auto-update
 
 ## 11. Current Sources
 
-- `Runtime/Dispatcher/tool_runtime_dispatcher.py`
-- `Runtime/Tooling/tool_broker.py`
-- `Runtime/Tooling/capability_resolver.py`
-- `Runtime/Tooling/provider_registry.yaml`
-- `Runtime/Guardrails/tool_runtime_guard.py`
-- `Runtime/Tooling/fallback_policy.py`
-- `Runtime/EvidenceCapture/provider_evidence.py`
-- `Eval/Datasets/Behavior/production-tool-runtime-environment-matrix.yaml`
-- `Tools/ProductionToolRuntime/validate_production_tool_runtime.py`
-- `Tools/DocumentationValidator/validate_documentation.py`
+- `src/unityagent/runtime/dispatcher/tool_runtime_dispatcher.py`
+- `src/unityagent/runtime/tooling/tool_broker.py`
+- `src/unityagent/runtime/tooling/capability_resolver.py`
+- `src/unityagent/runtime/tooling/provider_registry.yaml`
+- `src/unityagent/runtime/guardrails/tool_runtime_guard.py`
+- `src/unityagent/runtime/tooling/fallback_policy.py`
+- `src/unityagent/runtime/evidence_capture/provider_evidence.py`
+- `eval/datasets/behavior/production-tool-runtime-environment-matrix.yaml`
+- `tools/production_tool_runtime/validate_production_tool_runtime.py`
+- `tools/documentation_validator/validate_documentation.py`

@@ -5,7 +5,7 @@ UnityAgent 0.0.8-beta promotes the current typed Control Plane and Specialist ar
 ## Entry v2 production boundary
 
 - Typed v2 intents are the production execution entry.
-- Caller-supplied Context identity, route, capability and runtime handoff are rejected instead of trusted.
+- Caller-supplied src/unityagent/context identity, route, capability and runtime handoff are rejected instead of trusted.
 - v1 remains an explicit validation-compatibility surface.
 
 ## Production Specialists

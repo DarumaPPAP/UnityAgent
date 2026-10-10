@@ -12,10 +12,10 @@ Codex Plugin相当のホストCLIから UnityAgent Control Plane、Tool Broker�
 ## 実行
 
 ```bash
-python Tools/unity_agent_cli.py e2e plan --project-path /path/to/UnityProject --state-root /path/to/UnityAgentState
-python Tools/unity_agent_cli.py e2e approve --project-path /path/to/UnityProject --state-root /path/to/UnityAgentState --plan-id PLAN_ID
-python Tools/unity_agent_cli.py e2e approve-save --project-path /path/to/UnityProject --state-root /path/to/UnityAgentState --plan-id PLAN_ID
-python Tools/unity_agent_cli.py e2e apply --project-path /path/to/UnityProject --state-root /path/to/UnityAgentState --plan-id PLAN_ID --approval-ref APPROVAL_REF --save-approval-ref SAVE_APPROVAL_REF
+python src/unityagent/cli.py e2e plan --project-path /path/to/UnityProject --state-root /path/to/UnityAgentState
+python src/unityagent/cli.py e2e approve --project-path /path/to/UnityProject --state-root /path/to/UnityAgentState --plan-id PLAN_ID
+python src/unityagent/cli.py e2e approve-save --project-path /path/to/UnityProject --state-root /path/to/UnityAgentState --plan-id PLAN_ID
+python src/unityagent/cli.py e2e apply --project-path /path/to/UnityProject --state-root /path/to/UnityAgentState --plan-id PLAN_ID --approval-ref APPROVAL_REF --save-approval-ref SAVE_APPROVAL_REF
 ```
 
 `plan` はUnity Projectを変更せず、作成予定のScene / Material / Script / `.meta` の `exact_diff`、Cubeの `scene_object_diff`、Material shaderの選択候補、生成Script全文 `script_preview` とSHA-256、未作成の対象状態、承認が必要なUndo手順を表示する。ShaderはEditor環境で候補の先頭から選び、実際の選択結果を署名付きResultに残す。内容を確認してから `approve` と `approve-save` を別々に実行する。各承認はPlan、Project、対象Path、期限に結び付く。`apply` は期限切れ、承認の取消、既存対象Asset、別Projectなどを拒否する。Editorの準備後にPlanが古くなった場合は新しく作成する。

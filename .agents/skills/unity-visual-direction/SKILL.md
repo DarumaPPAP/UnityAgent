@@ -30,13 +30,13 @@ Unity Sceneの美的方向性を、ユーザーの美的正本`DarumaPPAP/Beauti
 Visual taskでは次を必要な範囲だけ読みます。
 
 1. 現在のUser instruction
-2. `SkillReferences/BEAUTIFUL_DEFINITION_INTEGRATION.md`
+2. `docs/standards/BEAUTIFUL_DEFINITION_INTEGRATION.md`
 3. `DarumaPPAP/Beautiful-Definition/AGENTS.md`
 4. `DarumaPPAP/Beautiful-Definition/Catalog/definitions.yaml`
 5. Taskに一致するDefinition Profile
 6. `DarumaPPAP/Beautiful-Definition/Definitions/CORE_BEAUTY_PRINCIPLES.md`
-7. 生成前は`Templates/VISUAL_INTENT_TEMPLATE.md`
-8. Review時は`Templates/BEAUTY_REVIEW_TEMPLATE.md`
+7. 生成前は`docs/templates/VISUAL_INTENT_TEMPLATE.md`
+8. Review時は`docs/templates/BEAUTY_REVIEW_TEMPLATE.md`
 
 全Reference画像を無条件に読み込みません。Scene type、Mood、Time of day、Subject scale、Camera distanceが一致するDefinitionを選びます。
 

@@ -8,17 +8,17 @@ Deletion requires: migrated canonical owner, reference removal, regression parit
 
 | path/component | why temporary | prerequisites before delete | evidence required |
 |---|---|---|---|
-| `UnityAgent/.ai/` | legacy ownership root; Policy/Context/Harness/Eval are being reassigned to canonical modules | all reads/writes switched; stale-reference scan = 0; user-policy equivalence proven | full CI + policy/context/runtime/eval regressions |
-| `UnityAgent/.ai/integrations/unity-graph-engineering.yaml` | two-repo handoff definition | UnityAgent owns imported Runtime/Orchestration/Persistence contracts | cross-repo compatibility parity + one-repo smoke |
-| `UnityAgent/Tools/LoopIntegration/*` | compatibility bridge to old Graph execution ownership | canonical Orchestration/Runtime path active | handoff parity + artifact replay |
-| Graph `Tools/UnityAgentCompatibility/*` | reverse compatibility bridge | no active caller after UnityAgent cutover | stale-reference scan + compatibility suite migrated |
-| Graph `Tests/UnityAgentCompatibility/*` | bridge-specific tests | replacement canonical integration tests pass | new integration tests + CI |
+| `UnityAgent/.ai/` | legacy ownership root; src/unityagent/policy/context/harness/eval are being reassigned to canonical modules | all reads/writes switched; stale-reference scan = 0; user-policy equivalence proven | full CI + policy/context/runtime/eval regressions |
+| `UnityAgent/.ai/integrations/unity-graph-engineering.yaml` | two-repo handoff definition | UnityAgent owns imported src/unityagent/runtime/orchestration/persistence contracts | cross-repo compatibility parity + one-repo smoke |
+| `UnityAgent/Tools/LoopIntegration/*` | compatibility bridge to old Graph execution ownership | canonical src/unityagent/orchestration/runtime path active | handoff parity + artifact replay |
+| Graph `tools/UnityAgentCompatibility/*` | reverse compatibility bridge | no active caller after UnityAgent cutover | stale-reference scan + compatibility suite migrated |
+| Graph `tests/unity_agent_compatibility/*` | bridge-specific tests | replacement canonical integration tests pass | new integration tests + CI |
 | Graph `.github/workflows/validate-unityagent-compatibility.yml` | cross-repo compatibility CI | one-repo CI covers boundary contracts | UnityAgent CI green |
 | Graph `policies/unityagent-compatibility.yaml` | two-repo policy | no active Graph execution source of truth | stale-reference scan |
-| Graph `Tools/BehaviorEvalAdapter/*` | translation layer between mismatched Runtime/Eval contracts | Runtime/Persistence/Eval natively share canonical evidence/result contracts | ARCH/NAMING/MUTATION/EVIDENCE replay with zero fact loss |
+| Graph `tools/BehaviorEvalAdapter/*` | translation layer between mismatched src/unityagent/runtime/eval contracts | src/unityagent/runtime/persistence/eval natively share canonical evidence/result contracts | ARCH/NAMING/MUTATION/EVIDENCE replay with zero fact loss |
 | any legacy duplicate failure-taxonomy/evidence schema | duplicate canonical contract | one owning schema established; all consumers migrated | schema uniqueness CI |
 | any temporary `.ai` compatibility reader | migration-only fallback | new canonical paths stable; no fallback hit in controlled smoke | runtime telemetry proving no fallback use |
-| root `Tools/` ownership buckets after all content migrated | legacy form-based grouping | every implementation has an owning v3.1 module | root ownership validator |
+| root `tools/` ownership buckets after all content migrated | legacy form-based grouping | every implementation has an owning v3.1 module | root ownership validator |
 | root legacy `Schemas/`/Graph `schemas/` concepts after migration | catch-all schema placement | all schemas live near owner | duplicate/stale schema validator |
 
 ## Repository-level cutover
@@ -28,7 +28,7 @@ Deletion requires: migrated canonical owner, reference removal, regression parit
 1. all production execution/runtime code needed by UnityAgent is imported or intentionally retired;
 2. UnityAgent no longer reads Graph files at runtime/CI;
 3. all historical provenance links record the Graph base revisions;
-4. canonical Runtime/Orchestration/Persistence tests pass;
+4. canonical src/unityagent/runtime/orchestration/persistence tests pass;
 5. Behavior/Golden regressions pass;
 6. controlled Production Smoke passes on the one-repo path;
 7. artifact replay proves no evidence/failure-attribution loss;

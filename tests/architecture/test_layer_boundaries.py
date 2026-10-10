@@ -1,0 +1,84 @@
+from __future__ import annotations
+
+import copy
+import sys
+import unittest
+from pathlib import Path
+
+import yaml
+
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from tools.layer_boundary_validator.validate_layer_boundaries import EXPECTED_EDGES, EXPECTED_LAYERS, validate
+
+
+class LayerBoundaryTests(unittest.TestCase):
+    def test_setup_skill_points_to_current_control_plane_bootstrap(self) -> None:
+        skill = (ROOT / ".agents/plugins/unity-agent/skills/unity-agent-setup/SKILL.md").read_text(encoding="utf-8")
+        installer = (ROOT / "scripts/install.ps1").read_text(encoding="utf-8")
+        url = "https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/main/scripts/install.ps1"
+        self.assertIn(url, skill)
+        self.assertIn(url, installer)
+        self.assertIn("UNITY_AGENT_TAG", skill)
+        self.assertNotIn("migration/unity-artist-cli-v2", skill)
+        self.assertNotIn("UNITY_AGENT_REF", skill)
+
+    def test_canonical_ci_runs_for_all_pull_requests_and_main_pushes(self) -> None:
+        workflow = yaml.load(
+            (ROOT / ".github/workflows/validate-agent-contracts.yml").read_text(encoding="utf-8"),
+            Loader=yaml.BaseLoader,
+        )
+        triggers = workflow["on"]
+        self.assertIn("pull_request", triggers)
+        self.assertEqual(triggers["pull_request"], "")
+        self.assertEqual(triggers["push"]["branches"], ["main"])
+        self.assertNotIn("paths", triggers["push"])
+
+    def test_catalog_import_gate_spec_reports_current_producer_contract(self) -> None:
+        spec = (ROOT / "docs/superpowers/specs/2026-09-19-catalog-import-gate.md").read_text(encoding="utf-8")
+        self.assertIn(
+            "ManifestとUnityAgent Runtime Catalogはともに現在のproducerを "
+            "`UnityAgent.ReferenceImplementation.v1.1` としている。",
+            spec,
+        )
+        self.assertIn("producer差分は解消済み", spec)
+
+    def test_canonical_five_layer_contract_is_valid(self) -> None:
+        self.assertEqual(validate(ROOT), [])
+
+    def test_contract_has_no_entry_to_provider_edge(self) -> None:
+        contract = yaml.safe_load((ROOT / "src/unityagent/contracts/unityagent-layer-contract.yaml").read_text(encoding="utf-8"))
+        edges = {
+            (item["from"], item["to"], item["mode"])
+            for item in contract["dependency_graph"]
+        }
+        self.assertEqual(set(contract["layers"]), EXPECTED_LAYERS)
+        self.assertEqual(edges, EXPECTED_EDGES)
+        self.assertNotIn(("entry", "provider_layer", "direct"), edges)
+
+    def test_entry_request_rejects_provider_identity(self) -> None:
+        from unityagent.control_plane.unity_agent_control_plane import validate_entry_request
+
+        request = {
+            "schema_version": "1.0",
+            "request_id": "entry-1",
+            "entry_point": "codex_plugin",
+            "project_root": str(ROOT),
+            "intent": {"kind": "inspect"},
+            "route_id": "inspect_project",
+            "execution_profile": "generic_planning",
+            "context_id": "context-1",
+            "context_fingerprint": "context-hash",
+            "task_contract_runtime_projection": {},
+            "mutation_scope": {},
+            "validation_requirements": [],
+            "capability_requests": [{"provider_ref": "unity_cli"}],
+        }
+        with self.assertRaisesRegex(ValueError, "Provider identity"):
+            validate_entry_request(request)
+
+
+if __name__ == "__main__":
+    unittest.main()

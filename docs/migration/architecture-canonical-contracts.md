@@ -8,12 +8,12 @@ Status: Phase 0 proposal. Concrete schemas are implemented in Phase 1.
 2. Authority and enforcement are separate.
 3. Resumable/evaluable artifacts carry `schema_version` and definition revisions.
 4. Evidence is append-oriented and provenance-bound.
-5. Eval consumes Runtime/Persistence facts rather than creating a second execution truth.
+5. eval consumes src/unityagent/runtime/persistence facts rather than creating a second execution truth.
 6. Infrastructure failures are `not_observed` for Agent-quality scoring.
 
 ## DefinitionFingerprint
 
-Persist the deployed combination in Run, Checkpoint, Evidence and Eval artifacts:
+Persist the deployed combination in Run, Checkpoint, Evidence and eval artifacts:
 
 ```yaml
 architecture_version: v3.1
@@ -107,7 +107,7 @@ Evidence is immutable/append-oriented. Memory promotion references Evidence and 
 - `SessionRecord`: session continuity.
 - `MemoryRecord`: reusable cross-session knowledge with source Evidence refs.
 
-Hard timeout/retry ceilings do not belong in `LoopControlState`; they belong in Runtime/ExecutionControl.
+Hard timeout/retry ceilings do not belong in `LoopControlState`; they belong in src/unityagent/runtime/ExecutionControl.
 
 ## Context contracts
 
@@ -154,9 +154,9 @@ References the selected action, graph revision and workflow-state revision. Runt
 The boundary is deliberately split:
 
 ```text
-Policy/ApprovalRequirement
- -> Orchestration/GatePlacement
- -> Runtime/ApprovalDecision + checkpoint/resume enforcement
+src/unityagent/policy/approval_requirement
+ -> src/unityagent/orchestration/gate_placement
+ -> src/unityagent/runtime/approval_decision + checkpoint/resume enforcement
 ```
 
 Policy defines whether approval is required. Graph places the stop. Runtime performs pause, serialization, decision handling and resume/replan/stop.
@@ -174,7 +174,7 @@ Runtime owns health implementations and returns a structured result with:
 
 Orchestration HealthCheck Nodes only call this contract.
 
-## Eval contracts
+## eval contracts
 
 ### GoldenContract
 
@@ -212,9 +212,9 @@ Minimum failure classes:
 
 Infrastructure/evaluator/fixture/unavailable-required-evidence outcomes are not Agent-quality observations.
 
-## Eval deployment boundary
+## eval deployment boundary
 
-The only supported path from Eval feedback to production is:
+The only supported path from eval feedback to production is:
 
 ```text
 Attribution
@@ -222,11 +222,11 @@ Attribution
  -> Change Proposal
  -> Regression/Safety
  -> Approval
- -> Operations/ChangeManagement
+ -> src/unityagent/operations/change_management
  -> Versioned Deploy
 ```
 
-No direct `Eval -> Policy/Context/Orchestration/Runtime` write contract is created.
+No direct `eval -> src/unityagent/policy/context/orchestration/runtime` write contract is created.
 
 ## Migration compatibility rule
 

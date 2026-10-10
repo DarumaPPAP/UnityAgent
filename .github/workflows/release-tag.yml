@@ -67,8 +67,8 @@ jobs:
           codex_plugin = json.loads(pathlib.Path(".agents/plugins/unity-agent/.codex-plugin/plugin.json").read_text(encoding="utf-8"))
           marketplace = json.loads(pathlib.Path(".agents/plugins/marketplace.json").read_text(encoding="utf-8"))
           pyproject = tomllib.loads(pathlib.Path("pyproject.toml").read_text(encoding="utf-8"))
-          lock = json.loads(pathlib.Path("Runtime/Distribution/subagent-sources.lock.json").read_text(encoding="utf-8"))
-          installer = pathlib.Path("Runtime/Tooling/Providers/Installer/release_installer.py").read_text(encoding="utf-8")
+          lock = json.loads(pathlib.Path("src/unityagent/runtime/distribution/subagent-sources.lock.json").read_text(encoding="utf-8"))
+          installer = pathlib.Path("src/unityagent/runtime/tooling/providers/installer/release_installer.py").read_text(encoding="utf-8")
 
           assert upm["version"] == version
           assert plugin["version"] == version
@@ -90,24 +90,24 @@ jobs:
           fi
 
       - name: Install UnityAgent validation and build dependencies
-        run: python3 -m pip install --disable-pip-version-check -e . build
+        run: python3 -m pip install --disable-pip-version-check -e . build "setuptools>=68" wheel
 
       - name: Validate UnityAgent repository and regression contracts
         run: |
           set -euo pipefail
-          python3 Tools/validate_all.py
-          python3 Tools/ProductionToolRuntime/validate_production_tool_runtime.py
-          python3 Eval/Rebaseline/validate_baseline_freeze.py Eval/Rebaseline/Baselines/phase9-baseline-20260830-09.yaml
-          python3 -m unittest Eval.Tests.test_baseline_comparator Eval.Tests.test_local_regression_gate
+          python3 tools/validate_all.py
+          python3 tools/production_tool_runtime/validate_production_tool_runtime.py
+          python3 eval/rebaseline/validate_baseline_freeze.py eval/rebaseline/baselines/phase9-baseline-20260830-09.yaml
+          python3 -m unittest tests.eval.test_baseline_comparator tests.eval.test_local_regression_gate
           python3 -m py_compile \
-            Eval/Regression/baseline_comparator.py \
-            Eval/Regression/compare_baseline.py \
-            Tools/run_regression_gate.py
+            eval/regression/baseline_comparator.py \
+            eval/regression/compare_baseline.py \
+            tools/run_regression_gate.py
 
       - name: Resolve pinned Hub source
         id: hub-source
         run: |
-          python3 Tools/subagent_source_paths.py >> "$GITHUB_OUTPUT"
+          python3 tools/subagent_source_paths.py >> "$GITHUB_OUTPUT"
 
       - name: Checkout pinned UnitySubAgentHub source
         uses: actions/checkout@v7
@@ -163,7 +163,7 @@ jobs:
           import os
           import pathlib
 
-          lock = json.loads(pathlib.Path("Runtime/Distribution/subagent-sources.lock.json").read_text(encoding="utf-8"))
+          lock = json.loads(pathlib.Path("src/unityagent/runtime/distribution/subagent-sources.lock.json").read_text(encoding="utf-8"))
           hub = pathlib.Path(".release-sources/UnitySubAgentHub")
           package = json.loads((hub / "Packages/com.darumappap.artist-subagent/package.json").read_text(encoding="utf-8"))
           version = os.environ["RELEASE_VERSION"]
@@ -192,7 +192,7 @@ jobs:
           python3 - "$backend_version" <<'PY'
           import pathlib
           import sys
-          source = pathlib.Path("Runtime/Tooling/Providers/Installer/release_installer.py").read_text(encoding="utf-8")
+          source = pathlib.Path("src/unityagent/runtime/tooling/providers/installer/release_installer.py").read_text(encoding="utf-8")
           expected = sys.argv[1]
           token = f'BACKEND_VERSION = "{expected}"'
           if token not in source:

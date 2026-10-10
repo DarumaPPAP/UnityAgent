@@ -27,7 +27,7 @@ flowchart LR
     C[Unity CLI] --> E
     A[Artist Provider] --> E
     T[Test / Build Modules] --> E
-    R[Player Runtime] --> E
+    R[Player src/unityagent/runtime] --> E
     E --> B[Capability Resolver]
 ```
 
@@ -87,7 +87,7 @@ Player unavailable = false
 
 Canonical Schema:
 
-`Runtime/Contracts/environment-snapshot.schema.yaml`
+`src/unityagent/runtime/contracts/environment-snapshot.schema.yaml`
 
 ---
 
@@ -118,7 +118,7 @@ flowchart TD
     C1 --> P1[File / Unity CLI]
     C2 --> P2[Unity CLI / Native Editor]
     C3 --> P3[UnityArtistCLI / safe CLI surface]
-    C4 --> P4[Player Runtime]
+    C4 --> P4[Player src/unityagent/runtime]
 ```
 
 同じTask内でCapabilityごとにProviderが変わります。
@@ -133,7 +133,7 @@ flowchart TD
 project.inspect -> Unity CLI / File
 project.test    -> Unity CLI
 domain.workflow -> UnityArtistCLI when Artist facts are verified
-player.observe  -> Player Runtime
+player.observe  -> Player src/unityagent/runtime
 ```
 
 「全部あるから全部MCP」のようなGlobal Modeにはしません。
@@ -369,7 +369,7 @@ Production Cutoverでは代表EnvironmentをRegression Gateとして固定しま
 
 Canonical Dataset:
 
-`Eval/Datasets/Behavior/production-tool-runtime-environment-matrix.yaml`
+`eval/datasets/behavior/production-tool-runtime-environment-matrix.yaml`
 
 最低限確認するProfile:
 
@@ -409,5 +409,5 @@ Provider不足でSafety Contractを弱めない。
 
 - `docs/architecture/production-tool-runtime.md`
 - `docs/local-project-development.md`
-- `Specs/UnityToolRuntimeEnvironmentAdaptation.md`
-- `Specs/UnityEnvironmentCapabilityMatrix.yaml`
+- `docs/architecture/specifications/UnityToolRuntimeEnvironmentAdaptation.md`
+- `src/unityagent/contracts/UnityEnvironmentCapabilityMatrix.yaml`

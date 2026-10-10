@@ -6,9 +6,9 @@ Unity開発の依頼を、既存構造とユーザー固有契約を保ちなが
 
 ## Authority
 プラットフォームのSystem / Developer instructionと実行権限を上書きしない。
-Repository内の優先順位は `Policy/User/user-policy.yaml#instruction_priority` を正本とする。
+Repository内の優先順位は `src/unityagent/policy/user/user-policy.yaml#instruction_priority` を正本とする。
 現在の明示要求・対象Taskの指示をSkillの一般的手順で上書きしない。
-承認判断は `Policy/Approval/approval-policy.yaml` に従い、既に与えられた承認の範囲を確認する。
+承認判断は `src/unityagent/policy/approval/approval-policy.yaml` に従い、既に与えられた承認の範囲を確認する。
 
 ## Git workflow
 branch運用の正本は `.github/branch-policy.json`、説明は `docs/development/branch-policy.md` とする。
@@ -18,8 +18,8 @@ branch運用の正本は `.github/branch-policy.json`、説明は `docs/developm
 
 ## Execution
 1. User Policyを読み、Goal・対象範囲・完了条件を固定する。修正依頼は調査だけで終えず、変更・検証・必要な修復まで進む。
-2. `Orchestration/Routing/task-routes.yaml` で意図と範囲からRouteを選び、`Context/Selection/context-catalog.yaml` で必要なContext / Skill / Task Contractだけ解決する。選択Routeの`required_policy_clauses`をPolicy provenanceとして記録する。
-3. `Context/Assembly/materialize_context.py` でcurrent-call Contextを構築する。Context / Retrieval Budgetと圧縮時の必須制約保持は `Context/Budget/context-budget.yaml` に従う。
+2. `src/unityagent/orchestration/routing/task-routes.yaml` で意図と範囲からRouteを選び、`src/unityagent/context/selection/context-catalog.yaml` で必要なContext / Skill / Task Contractだけ解決する。選択Routeの`required_policy_clauses`をPolicy provenanceとして記録する。
+3. `src/unityagent/context/assembly/materialize_context.py` でcurrent-call Contextを構築する。Context / Retrieval Budgetと圧縮時の必須制約保持は `src/unityagent/context/budget/context-budget.yaml` に従う。
 4. bounded TaskはFast Pathを使う。Graph、Local Loop、SubAgentは分解・修復・独立並列作業が必要な場合にだけ利用する。
 5. Orchestrationは必要Capabilityを要求する。専門作業はSubAgent Definitionから適格なSubAgentを解決する。Provider-backed CapabilityはRuntime Tool Brokerが実行Backendを解決・実行し、Providerless reasoningはCanonical Runtime HandoffからCodexRunnerが実行する。SubAgent / Providerの直接呼出しでApproval / Scopeを迂回しない。
 6. 変更リスクと必須Gateに応じて検証する。新しい変更・失敗・未解決リスクがなければ同じPASS検証を反復しない。
@@ -31,24 +31,24 @@ Policy追加の前にKnowledge / Retrieval / Tool / Harness / Eval / Architectur
 ## Canonical map
 | 必要な情報 | 正本 / 入口 |
 |---|---|
-| Repository authority / mirrored declarations | `Specs/repository-authority-map.yaml` / `Tools/RepositoryAuthorityValidator/validate_repository_authority.py` |
-| Git branch policy | `.github/branch-policy.json` / `Tools/BranchPolicy/validate_branch_policy.py` |
-| User preferences / Comments | `Policy/User/user-policy.yaml` |
-| Risk / Approval / Evidence | `Policy/Risk/` / `Policy/Approval/` / `Policy/Evidence/` |
-| Route / Graph / Task boundary | `Orchestration/Routing/` / `Orchestration/Definitions/` / `Orchestration/Contracts/TaskContracts/` |
-| Context / Retrieval / Compression | `Context/Selection/` / `Context/Budget/` / `Context/Manifest/` |
-| Task workflow / Unity knowledge | `.agents/skills/` / `SkillReferences/` |
-| Naming contract / Golden checks | `SkillReferences/TYPE_NAMING_STANDARDS.md` / `Eval/Golden/validate_naming_grader.py` |
-| SubAgent identity / activation | `Runtime/ReferenceImplementation/subagent-catalog.yaml` |
-| Execution backend Provider | `Runtime/Tooling/provider_registry.yaml` / `Runtime/Tooling/Providers/` |
-| Execution / Tools / Validation | `Runtime/Runner/` / `Runtime/Tooling/` / `Runtime/Harnesses/` |
-| State / Resume / Evidence | `Persistence/State/` / `Persistence/Resume/` / `Persistence/Evidence/` |
-| Operations | `Operations/` |
-| Actual Behavior / Golden / Regression | `Eval/Behavior/` / `Eval/Golden/` / `Tools/run_regression_gate.py` |
-| Local repository validation | `Tools/validate_all.py` |
+| Repository authority / mirrored declarations | `src/unityagent/contracts/repository-authority-map.yaml` / `tools/repository_authority_validator/validate_repository_authority.py` |
+| Git branch policy | `.github/branch-policy.json` / `tools/branch_policy/validate_branch_policy.py` |
+| User preferences / Comments | `src/unityagent/policy/user/user-policy.yaml` |
+| Risk / Approval / Evidence | `src/unityagent/policy/risk/` / `src/unityagent/policy/approval/` / `src/unityagent/policy/evidence/` |
+| Route / Graph / Task boundary | `src/unityagent/orchestration/routing/` / `src/unityagent/orchestration/definitions/` / `src/unityagent/orchestration/contracts/task_contracts/` |
+| Context / Retrieval / Compression | `src/unityagent/context/selection/` / `src/unityagent/context/budget/` / `src/unityagent/context/manifest/` |
+| Task workflow / Unity knowledge | `.agents/skills/` / `docs/standards/` |
+| Naming contract / Golden checks | `docs/standards/TYPE_NAMING_STANDARDS.md` / `eval/golden/validate_naming_grader.py` |
+| SubAgent identity / activation | `src/unityagent/runtime/reference_implementation/subagent-catalog.yaml` |
+| Execution backend Provider | `src/unityagent/runtime/tooling/provider_registry.yaml` / `src/unityagent/runtime/tooling/providers/` |
+| Execution / Tools / Validation | `src/unityagent/runtime/runner/` / `src/unityagent/runtime/tooling/` / `src/unityagent/runtime/harnesses/` |
+| State / Resume / Evidence | `src/unityagent/persistence/state/` / `src/unityagent/persistence/resume/` / `src/unityagent/persistence/evidence/` |
+| Operations | `src/unityagent/operations/` |
+| Actual Behavior / Golden / Regression | `eval/behavior/` / `eval/golden/` / `tools/run_regression_gate.py` |
+| Local repository validation | `tools/validate_all.py` |
 | Architecture boundaries / handoff | `docs/architecture/architecture.md` |
-| Five-layer dependency contract | `Specs/unityagent-layer-contract.yaml` / `Tools/LayerBoundaryValidator/validate_layer_boundaries.py` |
-| Local Unity project use | `docs/local-project-development.md` / `Templates/DevelopmentRequest.md` |
+| Five-layer dependency contract | `src/unityagent/contracts/unityagent-layer-contract.yaml` / `tools/layer_boundary_validator/validate_layer_boundaries.py` |
+| Local Unity project use | `docs/local-project-development.md` / `docs/templates/DevelopmentRequest.md` |
 
 ## Completion and invariants
 - Policy defines; Orchestration decides; Context materializes; Runtime executes; Persistence remembers; Operations observes/controls; Eval measures/proposes.

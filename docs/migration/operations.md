@@ -6,10 +6,10 @@ Base: `cbbfb59c5877e43aec4a019aeeb911dd167455f0`
 
 ## Goal
 
-Close the operational loop without moving execution authority out of Runtime, semantic authority out of Orchestration, durable execution/evidence truth out of Persistence, or quality attribution out of Eval.
+Close the operational loop without moving execution authority out of src/unityagent/runtime, semantic authority out of src/unityagent/orchestration, durable execution/evidence truth out of src/unityagent/persistence, or quality attribution out of Eval.
 
 ```text
-Runtime / Eval structured facts
+Runtime / eval structured facts
         ↓
 Operations Observability
         ↓
@@ -31,7 +31,7 @@ Runtime / Orchestration / ChangeManagement approved API
 ## Canonical Operations ownership
 
 ```text
-Operations/
+src/unityagent/operations/
 ├─ Observability/
 │  ├─ TraceRecord
 │  ├─ MetricEvent
@@ -59,18 +59,18 @@ Operations/
 │  ├─ change-request.schema.yaml
 │  ├─ change_manager.py
 │  └─ operations_api.py
-└─ Tests/
+└─ tests/
 ```
 
 ## Runtime telemetry boundary
 
-Runtime remains the producer of execution telemetry. `Runtime/Telemetry/runtime_telemetry.py` emits contract-compatible trace spans, metrics, structured logs and audit events. Operations owns ingestion/search/dashboard/detection, not the production execution itself.
+Runtime remains the producer of execution telemetry. `src/unityagent/runtime/telemetry/runtime_telemetry.py` emits contract-compatible trace spans, metrics, structured logs and audit events. Operations owns ingestion/search/dashboard/detection, not the production execution itself.
 
-Telemetry may reference durable Evidence IDs but never becomes the canonical Evidence truth. That remains `Persistence/Evidence`.
+Telemetry may reference durable Evidence IDs but never becomes the canonical Evidence truth. That remains `src/unityagent/persistence/evidence`.
 
 ## RuntimeControl boundary
 
-`Operations/RuntimeControl` is external operational control and is not `Runtime/ExecutionControl`.
+`src/unityagent/operations/runtime_control` is external operational control and is not `src/unityagent/runtime/execution_control`.
 
 Supported Phase-7 actions:
 
@@ -94,17 +94,17 @@ Raw requests cannot be dispatched. An action becomes dispatchable only after:
 6. an authorization hash binds the approved command contents;
 7. dispatch uses only the target authority's approved operational API.
 
-R4 `always_required` approval is checked against `Policy/Approval/approval-policy.yaml` and cannot be downgraded by Operations.
+R4 `always_required` approval is checked against `src/unityagent/policy/approval/approval-policy.yaml` and cannot be downgraded by Operations.
 
 ## Approved authority APIs
 
-- `Runtime/Control/operations_api.py`: pause/resume/stop/quarantine/switch-model handoff only;
-- `Orchestration/Control/operations_api.py`: disable-route/force-HITL/replay-checkpoint semantic handoff only;
-- `Operations/ChangeManagement/operations_api.py`: approved rollback/config control only.
+- `src/unityagent/runtime/control/operations_api.py`: pause/resume/stop/quarantine/switch-model handoff only;
+- `src/unityagent/orchestration/control/operations_api.py`: disable-route/force-HITL/replay-checkpoint semantic handoff only;
+- `src/unityagent/operations/change_management/operations_api.py`: approved rollback/config control only.
 
-Operations never imports or calls `Runtime/ExecutionControl` internals. Runtime still owns timeout, hard retry ceiling, cancellation, process cleanup and emergency execution safety.
+Operations never imports or calls `src/unityagent/runtime/execution_control` internals. Runtime still owns timeout, hard retry ceiling, cancellation, process cleanup and emergency execution safety.
 
-Checkpoint replay requires both a checkpoint ID and a `Persistence/Resume` compatibility decision reference before the approved Orchestration API accepts the command.
+Checkpoint replay requires both a checkpoint ID and a `src/unityagent/persistence/resume` compatibility decision reference before the approved Orchestration API accepts the command.
 
 ## Detection and incidents
 
@@ -117,19 +117,19 @@ Phase 7 detects:
 - quality drift sourced from Eval-eligible observations;
 - correlated incidents when multiple signal kinds affect the same run.
 
-`not_observed` Eval records remain outside quality drift denominator because `quality_denominator_eligible=false` records are ignored.
+`not_observed` eval records remain outside quality drift denominator because `quality_denominator_eligible=false` records are ignored.
 
 Detection never mutates Runtime or Eval. It creates operational DetectionEvents, which may be correlated into Incident records and associated with explicit Runbooks.
 
-Runbook control steps declare `requires_human_gate: true` and still go through the same Policy/Approval control gateway.
+Runbook control steps declare `requires_human_gate: true` and still go through the same src/unityagent/policy/approval control gateway.
 
 ## ChangeManagement / VersionManifest
 
 `VersionManifest` extends the canonical DefinitionFingerprint revisions with `operations_revision` so rollout/rollback decisions can identify the exact operational configuration.
 
-ChangeRequests start as `proposed`. They may only transition to `authorized` after Policy/Approval decisions are supplied, and may only be applied through an injected ChangeManagement deployment port.
+ChangeRequests start as `proposed`. They may only transition to `authorized` after src/unityagent/policy/approval decisions are supplied, and may only be applied through an injected ChangeManagement deployment port.
 
-Eval ChangeProposals remain proposals. They do not bypass Policy/Approval or directly modify production definitions.
+eval ChangeProposals remain proposals. They do not bypass src/unityagent/policy/approval or directly modify production definitions.
 
 ## Observability backend contract
 
@@ -137,14 +137,14 @@ Operations owns append-oriented operational telemetry/search/dashboard contracts
 
 - Persistence ExecutionState / WorkflowState / LoopControlState;
 - Persistence Evidence truth;
-- Eval quality attribution;
+- eval quality attribution;
 - Runtime execution state/control internals.
 
 Dashboards and search are read-only surfaces.
 
 ## Validation
 
-`Validate Operations` covers:
+`Validate src/unityagent/operations` covers:
 
 - all four Runtime observability event contracts;
 - append/query/search backend behavior;
@@ -158,7 +158,7 @@ Dashboards and search are read-only surfaces.
 - R4 rollback approval requirement;
 - VersionManifest and approval-gated change application;
 - no Operations dependency on Runtime ExecutionControl internals;
-- previous Runtime/Orchestration/Persistence/Eval tests and `Tools/validate_all.py`.
+- previous src/unityagent/runtime/orchestration/persistence/eval tests and `tools/validate_all.py`.
 
 ## Non-goals / later Human Gates
 
@@ -168,7 +168,7 @@ Phase 7 does not:
 - delete compatibility shims;
 - archive `Unity-Graph-Engineering`;
 - re-baseline Production Smoke;
-- allow Eval to apply its own ChangeProposal;
+- allow eval to apply its own ChangeProposal;
 - move hard runtime safety controls into Operations;
 - perform destructive cutover.
 
@@ -182,7 +182,7 @@ Phase 7 is complete when:
 2. Operations can ingest/search those records without becoming Evidence or execution-state truth;
 3. asynchronous detection produces typed operational signals;
 4. Incident and Runbook contracts are validated;
-5. all control actions fail closed without Policy/Approval provenance;
+5. all control actions fail closed without src/unityagent/policy/approval provenance;
 6. approved commands dispatch only through explicit authority control APIs;
 7. rollback and replay cannot bypass approval or Resume compatibility;
 8. VersionManifest and ChangeManagement are tested;

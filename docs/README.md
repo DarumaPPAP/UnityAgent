@@ -7,7 +7,7 @@
 | Topic | Document |
 |---|---|
 | 製品境界・Authority・Execution flow | [Architecture](architecture/architecture.md) |
-| Production Tool Runtime | [Production Tool Runtime](architecture/production-tool-runtime.md) |
+| Production Tool src/unityagent/runtime | [Production Tool src/unityagent/runtime](architecture/production-tool-runtime.md) |
 | Specialist Context / Reasoning Handoff | [Specialist Context Assembly](architecture/specialist-context-assembly.md) |
 | ArtistSubAgent境界 | [ArtistSubAgent Boundary](architecture/artist-subagent-boundary.md) |
 | Full E2E固定Capability | [Full E2E Capability](architecture/full-e2e-capability.md) |
@@ -21,20 +21,20 @@
 - [Unity Environment Adaptation](unity-environment-adaptation.md)
 - [Context Explorer](context-explorer.md)
 - [Unity CLI Reference](references/unity-cli-reference.md)
-- [Specifications Index](../Specs/INDEX.md)
+- [Specifications Index](architecture/specifications/INDEX.md)
 
 ## Canonical machine-readable sources
 
 Current behaviorの最終AuthorityはDocumentationではなく以下です。
 
-- `Policy/`
-- `Orchestration/`
-- `Context/`
-- `Runtime/`
-- `Persistence/`
-- `Operations/`
-- `Eval/`
-- `Specs/unityagent-layer-contract.yaml`
+- `src/unityagent/policy/`
+- `src/unityagent/orchestration/`
+- `src/unityagent/context/`
+- `src/unityagent/runtime/`
+- `src/unityagent/persistence/`
+- `src/unityagent/operations/`
+- `eval/`
+- `src/unityagent/contracts/unityagent-layer-contract.yaml`
 
 Documentationと実装が競合した場合は、上記Canonical SourceとTestsを優先してDocumentationを修正します。
 

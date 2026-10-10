@@ -25,8 +25,8 @@ Unity変更を、仕様、互換性、実行条件、証拠からRead-onlyで審
 
 ## Inputs
 
-- `Policy/User/user-policy.yaml`と今回のユーザー指示
-- 対象Projectから検出したFact・Project固有Policy（`Specs/ProjectProfile.md`は未解決FactのFallbackのみ）
+- `src/unityagent/policy/user/user-policy.yaml`と今回のユーザー指示
+- 対象Projectから検出したFact・Project固有Policy（`docs/architecture/specifications/ProjectProfile.md`は未解決FactのFallbackのみ）
 - 対象Spec、Plan、Tasks、Task ID
 - Diffまたは変更ファイル
 - 実行ログ、Test、Profiler、GPU Capture

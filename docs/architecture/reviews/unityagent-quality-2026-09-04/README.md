@@ -9,7 +9,7 @@
 | 対象 | 当時の判定 | 対象Commitでの根拠 |
 |---|---|---|
 | Authority境界 | Strong | 文書・実装に責務境界が定義されていた |
-| Static Contract / Unit Test | Strong | 対象HEADの`Tools/validate_all.py`が成功 |
+| Static Contract / Unit Test | Strong | 対象HEADの`tools/validate_all.py`が成功 |
 | Production execution wiring | Rework | RuntimeからEvidence Persistenceまでの信頼できる結線を確認できなかった |
 | Mutation safety | Rework | Scope、Exact Diff、Approval照合に課題があった |
 | CI / Test trust | Partial | テスト収集や未接続Validatorなどが残っていた |
