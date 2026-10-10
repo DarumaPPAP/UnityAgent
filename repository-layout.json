@@ -1,0 +1,64 @@
+{
+  "schema_version": "1.0",
+  "repository": "DarumaPPAP/UnityAgent",
+  "authority_map": "src/unityagent/contracts/repository-authority-map.yaml",
+  "allowed_roots": {
+    ".agents": "authored skill/entry contracts",
+    ".github": "automation and branch contracts",
+    "src": "installed UnityAgent product",
+    "Packages": "UPM distribution",
+    "tests": "host and contract tests",
+    "eval": "behavior/golden evaluations",
+    "tools": "repository-only validation",
+    "docs": "human documentation/standards/templates",
+    "scripts": "bootstrap/installers",
+    ".devcontainer": "optional developer container",
+    ".gitattributes": "repository configuration",
+    ".gitignore": "repository configuration",
+    "AGENTS.md": "repository configuration",
+    "LICENSE": "repository configuration",
+    "MANIFEST.in": "repository configuration",
+    "README.md": "repository configuration",
+    "RELEASE_NOTES.md": "repository configuration",
+    "VERSION": "repository configuration",
+    "pyproject.toml": "repository configuration",
+    "setup.py": "repository configuration",
+    "repository-layout.json": "repository configuration"
+  },
+  "canonical_paths": {
+    "src/unityagent/cli.py": "product CLI",
+    "src/unityagent/contracts/repository-authority-map.yaml": "domain authority",
+    "src/unityagent/policy/user/user-policy.yaml": "User Policy",
+    "src/unityagent/policy/approval/approval-policy.yaml": "approval contract",
+    "src/unityagent/runtime/distribution/subagent-sources.lock.json": "pinned specialist source",
+    "src/unityagent/context/selection/context-catalog.yaml": "context catalog",
+    "tools/validate_all.py": "canonical validation",
+    "tools/validate_layout.py": "layout gate",
+    "Packages/com.darumappap.unity-agent/package.json": "UPM identity"
+  },
+  "forbidden_roots": [
+    "Context",
+    "ControlPlane",
+    "Operations",
+    "Orchestration",
+    "Persistence",
+    "Policy",
+    "Runtime",
+    "Eval",
+    "Tools",
+    "Tests",
+    "Specs",
+    "Design",
+    "Prompt",
+    "SkillReferences",
+    "Templates"
+  ],
+  "forbidden_directory_names": [
+    "backends"
+  ],
+  "intentional_exceptions": [
+    "Generated ignored wheel/build/evaluation state is not authored authority; tracked paths are always checked.",
+    ".devcontainer is allowed but is not created without actual configuration.",
+    "Explicit old/new Hub source read compatibility remains strict and allowlisted for historical pinned sources."
+  ]
+}

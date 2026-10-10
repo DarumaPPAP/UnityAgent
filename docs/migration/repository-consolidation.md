@@ -1,10 +1,42 @@
+# Repository Consolidation — final Agent implementation audit
+
+P1–P8 cloud-executable implementation is consolidated in this final Agent PR. [Execution ledger](repository-consolidation-progress.md) records the verified producer/consumer PRs and merge SHAs; this PR must pass the unchanged required Canonical Validation before merge. Immutable baseline sections below remain historical, not current completion claims.
+
+Final authored directory roots: `.agents/`, `.github/`, `src/`, `Packages/`, `tests/`, `eval/`, `tools/`, `docs/`, `scripts/`. Only necessary root configuration files exist. Optional `.devcontainer` is allowed without creating it; no empty ci directory was invented. `repository-layout.json` owns paths; `src/unityagent/contracts/repository-authority-map.yaml` separately owns domain authority. Strict all-PR layout validation rejects old roots and unknown roots, prohibited directories, missing/escaping canonical paths and external/dangling authored symlinks.
+
+| Baseline owner | Final owner |
+|---|---|
+| Context / ControlPlane / Operations / Orchestration / Persistence / Policy / Runtime | src/unityagent lowercase product namespaces |
+| Product CLI formerly Tools/unity_agent_cli.py | src/unityagent/cli.py, unity-agent = unityagent.cli:main |
+| Tools / distributed layer Tests / Eval | tools / tests/domain / eval |
+| Specs | machine contracts in product contracts, human documents in docs/architecture/specifications |
+| SkillReferences / Templates | docs/standards and docs/templates or owning skill references |
+| Duplicate Prompt copies | callers use src/unityagent/context/prompt/templates; duplicates deleted |
+| Hub Registry/Schemas/SubAgents | Hub/Registry, Hub/Schemas, Hub/SubAgents |
+| Hub validators/tests / Artist CLI | Hub/Tools, Hub/Tests / cli/artist |
+| Hub compatibility, project, measured records and frozen Legacy | ci/compatibility, ci/unity-projects, ci/evidence/artist/historical, tests/fixtures/legacy |
+
+Exact Agent551 source map: [python-src-path-map.json](python-src-path-map.json), [implementation decisions](python-src-migration.md). Hub117 map and historical hash indexes remain in its docs/migration/consolidation. No old authored Agent/Hub root remains. Product imports use unityagent.*; repository-only validators are outside the product. Runtime definitions are copied from one authored source at build, and installed resources never search for a checkout. Fresh installed-wheel verification exercises228 SHA-256 resources, help/doctor, policy/catalog/context commands, fingerprints and specialist schemas outside checkout. Resource copying is a generated distribution artifact, not a second authored authority.
+
+Final Hub source is a full immutable mergeSHA with Hub/Tools/export_snapshot.py, Hub/Registry/subagents.yaml, Hub/SubAgents/artist_subagent/manifest.yaml and cli/artist/UnityArtist.Cli.csproj. Both actual committed Development/Pinned imports return read-only no_op and snapshot SHA-256 ac62220716ac087327228dfc58e1d10db7dc7e438e1407e865d2d752242499a8. Consumer compatibility landed before each producer move; no unknown path/repository/identity/hash fallback was added.
+
+Capability, Provider, Profile, Policy/Approval/Evidence, optional-install/auto_install=false and public UPM IDs are preserved. All23 Agent UPM files retain baseline bytes, including .meta/GUID. Hub package code/meta/identity retains baseline bytes; its README paths changed. Frozen Legacy inventory77 tools and tagv1.1.1 object f74d6f86f65178492aee1eaac5c01acb7ba5514a remain unchanged. P0 inventories and historical evidence retain their original hashes. The orphan Hub specification meta was deleted only after GUID dependency search.
+
+Intentional old-path references: immutable P0 inventories/reports, migration maps and historical evidence; v1/v2/v3 source fixtures; strict old/new Hub source compatibility; Runtime/CodexRunner producer IDs (wire identifiers, not filesystem paths); external DarumaPPAP/MyUnityMCP specification references (owned by that separate historical repository); external Unity SRP package-internal Runtime paths. The active Artist external spec now points to Hub docs/architecture/artist-subagent-spec.md. EnvironmentSnapshot.myunitymcp remains a public observation field used by schema/probes/consumers; no retired Runtime adapter/Legacy50PORT was restored. Remove compatibility only through an explicit versioned consumer migration.
+
+Unity6000.6 full/minimal,6000.3.12f1 minimal, Built-in/URP/HDRP camera readback fixtures and dynamic next-stream Canary are implemented in Hub. Host/static PASS does not establish Editor compatibility. Actual Unity Editor/license, graphics/pipeline, Player/device and Windows Named Pipe remain BLOCKED_NOT_RUN. Hub run38066203244 uploaded blocked canonical/minimal evidence; IDs11674463178/11675213275/11674293315, expire2026-10-24. Cloud official Editor/UPM metadata calls returned proxy403. Provisioned replay commands, exact scopes and artifact requirements: Hub docs/migration/unity-ci-foundation.md. Artifact expiry never converts blocked evidence into PASS.
+
+No main direct push, force push, Release/tag publication, policy relaxation or new prohibited directory occurred. Actual final mergeSHAs are available through the phase PRs; a commit cannot include its own eventual squashSHA. The workspace final audit records both final mainSHAs after merge.
+
+---
+
 # Repository Consolidation P0 Audit
 
 ## Scope and authority
 
 User request: implement P0–P8 across DarumaPPAP/UnityAgent and DarumaPPAP/UnitySubAgentHub, verify each phase in a PR, then squash merge after required checks succeed. No direct main push, release/tag publication, new backends directory, policy relaxation, or automatic specialist installation.
 
-Implementation specification: UnityAgent_Repository_Consolidation_Spec_v1.md, SHA-256 `fb4744860b5fc0f44f01d1c31db8df867c789ea8dccdef983a3728d797174cee`. The two received attachments have identical bytes. The separately named execution file CodexCloud_UnityAgent_Complete_Goal.md has not yet been received; do not invent its contents. Current explicit user instructions take precedence over general skill approval handoffs.
+Implementation specification: UnityAgent_Repository_Consolidation_Spec_v1.md, SHA-256 `fb4744860b5fc0f44f01d1c31db8df867c789ea8dccdef983a3728d797174cee`. The two received attachments have identical bytes. The execution Goal was subsequently fetched directly from UnityAgent main; see the final execution ledger above. Current explicit user instructions take precedence over general skill approval handoffs.
 
 Historical baseline paths in this report and inventory are deliberately preserved for migration comparison. They are not declarations of the final layout. Inventory is not a replacement for repository authority or future layout contracts.
 
@@ -30,7 +62,7 @@ Route: architecture-design, using current-call Context Assembly; this route decl
 
 Both Development and Pinned snapshots pass the existing real Consumer Import Gate as read-only `no_op`. Their commits differ but snapshot SHA-256 is `b156ee93fab5abddc8a7785c8493b835ce3111eae80394f4e42f6f59f574e6d5`; catalog_write_performed=false. Hash is byte identity evidence, not a cryptographic signature. Saved import plans are in consolidation/.
 
-692 Agent and 199 Hub committed files are indexed with byte SHA-256, sizes, and root counts. The reference index contains 2142 Agent and 596 Hub path occurrences. Only frozen Legacy and 2022.3 fixture references are classified historical automatically; remaining entries require owning-caller review. Duplicate bytes alone never authorize removal. Four src/unityagent/context/prompt/templates files match src/unityagent/context/prompt/templates byte-for-byte; callers must migrate before removing them. No production file was deleted in P0.
+692 Agent and 199 Hub committed files are indexed with byte SHA-256, sizes, and root counts. The reference index contains 2142 Agent and 596 Hub path occurrences. Only frozen Legacy and 2022.3 fixture references are classified historical automatically; remaining entries require owning-caller review. Duplicate bytes alone never authorize removal. At P0, four Prompt files matched Context/Prompt/Templates byte-for-byte; P6 migrated callers and removed only the duplicate copies. No production file was deleted in P0.
 
 EnvironmentSnapshot.myunitymcp remains required in the environment schema, dataclass, discovery and fixtures after adapter retirement. It is an observation/wire compatibility surface; do not remove it as a directory cleanup without consumer migration evidence.
 
