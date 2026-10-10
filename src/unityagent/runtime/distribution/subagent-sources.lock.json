@@ -3,7 +3,7 @@
   "kind": "subagent_source_lock",
   "hub": {
     "repository": "DarumaPPAP/UnitySubAgentHub",
-    "commit": "7c67f71c7eebd38ca7d24d3bf9d3e7ca7bf48d50",
+    "commit": "17e60ce820164efc2cea59c415d29717ac6f103c",
     "snapshot_exporter": "Hub/Tools/export_snapshot.py",
     "registry": "Hub/Registry/subagents.yaml"
   },
