@@ -71,3 +71,7 @@ Execution Goal acquired directly from GitHub main via #174. P0 historical invent
 ## P3 Source Lock and P4 Consumer preparation
 
 Pinned Hub source moves to merged P2 commit ccd6a21dee753c60211c1aa947f5220366cd7229. Release uses one validated allowlist resolver for exporter, registry, validator, test runner and Artist CLI paths. This accepts only the known old/new directory pairs, not arbitrary lock-supplied commands, and keeps package/manifest identity checks. Artist new layout is prepared before Hub producer move. Release publication was not invoked.
+
+### P4 final Artist pin
+
+Hub Artist/Compatibility producer #95 merged at `547007b11545d445d9e99a97c41a3d6f0a055d03` after Agent #176 installed explicit new/old path validation. Lock uses new Artist project path, Hub catalog paths and that immutable producer SHA. Real read-only Development/Pinned imports are `no_op`; no release/tag publication occurred. Subsequent final pin follows P7/P8 Hub merges.
