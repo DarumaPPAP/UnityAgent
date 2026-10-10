@@ -30,7 +30,7 @@
         "properties": {
           "manifest_ref": {
             "type": "string",
-            "pattern": "^SubAgents/[a-z][a-z0-9_]*_subagent/manifest\\.yaml$"
+            "pattern": "^(?:Hub/)?SubAgents/[a-z][a-z0-9_]*_subagent/manifest\\.yaml$"
           },
           "manifest": {
             "type": "object"

@@ -63,3 +63,7 @@ Python 3.12.14, Node 24.19.0, Git and gh are present. PowerShell is unavailable 
 Preserve all P0 evidence. Receive/read the designated execution file and compare its instructions with the canonical spec and current code. Execute P1 Consumer dual-read first, then P2 Hub core move, P3 pin merged full SHA, P4 Artist consumer preparation → Hub move → final pin, P5 src packaging/wheel/installer migration, P6 caller-first cleanup/knowledge preservation, P7 version/pipeline/Canary CI, P8 layout contracts and final audits. Each phase requires green checks before squash merge. Do not disable a failing gate or replace immutable source references with HEAD/main.
 
 P1–P8 are not implemented by this P0 audit. No code/static migration completion or Editor success is claimed.
+
+## P1 execution-file blocker resolved
+
+Execution Goal acquired directly from GitHub main via #174. P0 historical inventory is preserved. P1 uses exact old/new manifest references and exporter paths rather than a permissive source fallback. Reasoning contract path relocation is compared only against the Consumer-owned original identity; execution kind, runtime, required observations and contract leaf stay protected. Old source pin continues to validate.

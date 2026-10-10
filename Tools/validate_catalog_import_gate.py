@@ -21,6 +21,7 @@ CATALOG_PATH = ROOT / "Runtime/ReferenceImplementation/subagent-catalog.yaml"
 LOCK_PATH = ROOT / "Runtime/Distribution/subagent-sources.lock.json"
 HUB_REPOSITORY = "DarumaPPAP/UnitySubAgentHub"
 EXPORTER = "Tests/Hub/export_agent_snapshot.py"
+EXPORTERS = ("Hub/Tools/export_snapshot.py", EXPORTER)
 
 
 def validate_hub_source(
@@ -40,6 +41,9 @@ def validate_hub_source(
     locked_commit = hub.get("commit")
     if not isinstance(locked_commit, str) or re.fullmatch(r"[0-9a-f]{40}", locked_commit) is None:
         raise ValueError("source lock must contain a full immutable Hub commit")
+    locked_exporter = hub.get("snapshot_exporter", EXPORTER)
+    if locked_exporter not in EXPORTERS:
+        raise ValueError("source lock contains an unknown Hub snapshot exporter")
     hub_root = hub_root.resolve()
 
     def git(*args: str) -> str:
@@ -68,9 +72,16 @@ def validate_hub_source(
             raise ValueError(f"Hub archive failed: {result.stderr.strip()}")
         with tarfile.open(archive) as tree:
             tree.extractall(source, filter="data")
+        # 移行中は既知の二配置だけを許可し、固定SourceではLockの配置を厳守する。
+        available = [path for path in EXPORTERS if (source / path).is_file()]
+        if len(available) != 1:
+            raise ValueError("Hub source must contain exactly one known snapshot exporter")
+        exporter = available[0]
+        if source_mode == "pinned" and exporter != locked_exporter:
+            raise ValueError("pinned Hub exporter differs from source lock")
         snapshot = temporary / "snapshot.yaml"
         result = subprocess.run(
-            [sys.executable, str(source / EXPORTER), "--repo-root", str(source), "--output", str(snapshot)],
+            [sys.executable, str(source / exporter), "--repo-root", str(source), "--output", str(snapshot)],
             cwd=source, capture_output=True, text=True,
         )
         if result.returncode:
@@ -78,7 +89,7 @@ def validate_hub_source(
         payload = snapshot.read_bytes()
     plan = build_import_plan(
         payload,
-        source_ref=f"github://{HUB_REPOSITORY}/{commit}/{EXPORTER}",
+        source_ref=f"github://{HUB_REPOSITORY}/{commit}/{exporter}",
         expected_sha256="sha256:" + hashlib.sha256(payload).hexdigest(),
         current_catalog=None,
         current_catalog_bytes=catalog_path.read_bytes(),
