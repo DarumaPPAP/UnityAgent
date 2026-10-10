@@ -1,14 +1,14 @@
-# Policy + Context Migration
+# src/unityagent/policy + Context Migration
 
 > **Historical Record**
 >
-> この文書は旧Architecture移行時点の記録です。本文に現れる `Context/Selection/mcp-selection.yaml`、`Context/Compatibility/`、`compatibility://` 等は当時の構造を示しており、現在のProduction Authorityではありません。
+> この文書は旧Architecture移行時点の記録です。本文に現れる `src/unityagent/context/selection/mcp-selection.yaml`、`src/unityagent/context/compatibility/`、`compatibility://` 等は当時の構造を示しており、現在のProduction Authorityではありません。
 >
-> Production Tool Runtime Cutover後、`Context/Selection/mcp-selection.yaml` は削除済みです。現在は:
+> Production Tool Runtime Cutover後、`src/unityagent/context/selection/mcp-selection.yaml` は削除済みです。現在は:
 >
-> - Capability description -> `Context/Selection/tool-capability-catalog.yaml`
-> - Provider resolution -> `Runtime/Tooling/provider_registry.yaml` + `Runtime/Tooling/capability_resolver.py`
-> - Production dispatch -> `Runtime/Dispatcher/tool_runtime_dispatcher.py`
+> - Capability description -> `src/unityagent/context/selection/tool-capability-catalog.yaml`
+> - Provider resolution -> `src/unityagent/runtime/tooling/provider_registry.yaml` + `src/unityagent/runtime/tooling/capability_resolver.py`
+> - Production dispatch -> `src/unityagent/runtime/dispatcher/tool_runtime_dispatcher.py`
 >
 > を使用します。
 
@@ -22,16 +22,16 @@ Base at the time: Phase 1 merge `e141bcf5c13d98f8caa7a203046670a73d28dbf9`
 
 ```mermaid
 flowchart LR
-    P[Policy] -->|permission / approval| R[Runtime]
-    C[Context] -->|description selection| R
+    P[src/unityagent/policy] -->|permission / approval| R[src/unityagent/runtime]
+    C[src/unityagent/context] -->|description selection| R
     R --> T[Tool exposure]
 ```
 
 当時はMCP activationを次のように分割しました。
 
-- context description/catalog loading -> `Context/Selection/mcp-selection.yaml`
-- permission/trust/approval requirements -> `Policy/`
-- actual tool exposure -> `Runtime/Permissions/mcp-activation.yaml`
+- context description/catalog loading -> `src/unityagent/context/selection/mcp-selection.yaml`
+- permission/trust/approval requirements -> `src/unityagent/policy/`
+- actual tool exposure -> `src/unityagent/runtime/permissions/mcp-activation.yaml`
 
 このうち`mcp-selection.yaml`は後のProduction Tool Runtime Cutoverで役割を終えています。
 
@@ -41,9 +41,9 @@ flowchart LR
 
 当時行った内容:
 
-- `.ai/user-policy.yaml` を `Policy/User/user-policy.yaml` へlossless移行。
-- `.ai/harness/risk-levels.yaml` を `Policy/Risk/risk-levels.yaml` へlossless移行。
-- repository / ownership factを `Policy/Contracts/repository-ownership.yaml` へ分離。
+- `.ai/user-policy.yaml` を `src/unityagent/policy/user/user-policy.yaml` へlossless移行。
+- `.ai/harness/risk-levels.yaml` を `src/unityagent/policy/risk/risk-levels.yaml` へlossless移行。
+- repository / ownership factを `src/unityagent/policy/contracts/repository-ownership.yaml` へ分離。
 - permission / trust / approvalをPolicy Authorityへ移行。
 - legacy sourceは当時まだCompatibilityのため残した。
 
@@ -55,13 +55,13 @@ flowchart LR
 
 当時行った内容:
 
-- Context Packsを `Context/Packs/` へ移行。
-- Knowledgeを `Context/Retrieval/Knowledge/` へ移行。
-- Context Budgetを `Context/Budget/context-budget.yaml` へ集約。
-- Prompt templatesを `Context/Prompt/Templates/` へ移行。
-- `Context/Selection/context-catalog.yaml` をmaterialization-only catalogとして整理。
+- Context Packsを `src/unityagent/context/packs/` へ移行。
+- Knowledgeを `src/unityagent/context/retrieval/knowledge/` へ移行。
+- Context Budgetを `src/unityagent/context/budget/context-budget.yaml` へ集約。
+- src/unityagent/context/prompt/templates templatesを `src/unityagent/context/prompt/templates/` へ移行。
+- `src/unityagent/context/selection/context-catalog.yaml` をmaterialization-only catalogとして整理。
 - `MaterializedContextView` / `ContextFingerprint` / `MemoryProjection`をfirst-class Context contract化。
-- `Context/Assembly/materialize_context.py` がexplicit Route IDからbounded current-call viewを生成する構造へ移行。
+- `src/unityagent/context/assembly/materialize_context.py` がexplicit Route IDからbounded current-call viewを生成する構造へ移行。
 
 Contextは当時から:
 
@@ -76,7 +76,7 @@ Contextは当時から:
 
 ## 当時のCompatibility Boundary
 
-当時は `Context/Compatibility/legacy-path-map.yaml` がread-only compatibility authorityでした。
+当時は `src/unityagent/context/compatibility/legacy-path-map.yaml` がread-only compatibility authorityでした。
 
 ```text
 legacy ref
@@ -105,7 +105,7 @@ write fallbackはfail-closedでした。
 このMigrationではContext-only manifestへ分離しました。
 
 ```text
-Context
+src/unityagent/context
 = current-call materialized context
 + context budget
 + unresolved bindings

@@ -1,0 +1,445 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+from unityagent.resources import resource_root
+import argparse
+import hashlib
+import importlib.util
+from pathlib import Path
+from typing import Any
+import re
+import yaml
+
+ROOT = resource_root()
+CATALOG = Path("src/unityagent/context/selection/context-catalog.yaml")
+
+
+from unityagent.context.selection import path_resolver as resolver
+from unityagent.context.budget import budget_runtime as budget
+from unityagent.context.selection import capability_selector, specialist_context as specialist_selector
+
+
+def _yaml(path: Path) -> dict[str, Any]:
+    value = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if not isinstance(value, dict):
+        raise ValueError(f"Expected YAML mapping: {path}")
+    return value
+
+
+def _revision(path: Path) -> tuple[str, int]:
+    data = path.read_bytes()
+    return f"sha256:{hashlib.sha256(data).hexdigest()}", len(data)
+
+
+def _selected_ref(logical_ref: str, role: str, root: Path) -> dict[str, Any]:
+    path = resolver.resolve_for_read(logical_ref, root)
+    if not path.is_file():
+        raise FileNotFoundError(f"selected context source does not exist: {logical_ref} -> {path}")
+    revision, size = _revision(path)
+    return {
+        "logical_ref": logical_ref,
+        "resolved_path": path.relative_to(root.resolve()).as_posix(),
+        "revision": revision,
+        "selected_utf8_bytes": size,
+        "role": role,
+    }
+
+
+def _append_unique(items: list[dict[str, Any]], value: dict[str, Any]) -> None:
+    key = value["resolved_path"]
+    if all(item["resolved_path"] != key for item in items):
+        items.append(value)
+
+
+def _process_entry(
+    entry: Any,
+    *,
+    requirement: str,
+    condition: str | None,
+    root: Path,
+    bindings: dict[str, Any],
+    required_context: list[dict[str, Any]],
+    conditional_context: list[dict[str, Any]],
+    context_includes: list[dict[str, Any]],
+    external_references: list[dict[str, Any]],
+    unresolved: list[str],
+    missing_observations: list[str],
+) -> None:
+    if not isinstance(entry, dict):
+        raise ValueError("Context Pack typed entries must be mappings")
+    if "required_when_active" in entry and type(entry["required_when_active"]) is not bool:
+        raise ValueError("required_when_active must be boolean")
+    if condition is not None and entry.get("required_when_active") is True:
+        requirement = "required"
+    kind = str(entry.get("type", "")).strip()
+    if kind == "binding":
+        name = str(entry.get("name", "")).strip()
+        if not name:
+            raise ValueError("binding entry requires name")
+        if name not in bindings:
+            if requirement == "required":
+                unresolved.append(f"binding:{name}")
+                missing_observations.append(f"binding:{name}")
+        else:
+            value = bindings[name]
+            if isinstance(value, str) and value:
+                candidate = Path(value)
+                if candidate.is_absolute():
+                    missing_observations.append(f"project:{name}")
+                else:
+                    local = (root / candidate).resolve()
+                    if local.is_file() and (local == root or root in local.parents):
+                        target = _selected_ref(candidate.as_posix(), "target_source", root)
+                        bucket = required_context if requirement == "required" else conditional_context
+                        _append_unique(bucket, target)
+                    else:
+                        missing_observations.append(f"project:{name}")
+        return
+    if kind == "repository_reference":
+        logical = str(entry.get("path", "")).strip()
+        if not logical:
+            raise ValueError("repository_reference requires path")
+        role = "required_context" if requirement == "required" else "conditional_context"
+        selected = _selected_ref(logical, role, root)
+        bucket = required_context if requirement == "required" else conditional_context
+        _append_unique(bucket, selected)
+        return
+    if kind == "external_reference":
+        repository = str(entry.get("repository", "")).strip()
+        path = str(entry.get("path", "")).strip()
+        if not repository or not path:
+            raise ValueError("external_reference requires repository and path")
+        external_references.append(
+            {"repository": repository, "path": path, "requirement": requirement, "condition": condition}
+        )
+        if requirement == "required":
+            missing_observations.append(f"external:{repository}:{path}")
+        return
+    if kind == "context_include":
+        context_id = str(entry.get("context_id", "")).strip()
+        if not context_id:
+            raise ValueError("context_include requires context_id")
+        logical = f"src/unityagent/context/packs/{context_id}.yaml"
+        path = root / logical
+        if path.is_file():
+            _append_unique(context_includes, _selected_ref(logical, "context_include", root))
+        elif requirement == "required":
+            unresolved.append(f"context_include:{context_id}")
+            missing_observations.append(f"context_include:{context_id}")
+        return
+    if kind == "route_handoff":
+        route_id = str(entry.get("route_id", "")).strip()
+        if not route_id:
+            raise ValueError("route_handoff requires route_id")
+        if requirement == "required":
+            unresolved.append(f"route_handoff:{route_id}")
+        return
+    raise ValueError(f"Unsupported Context Pack entry type: {kind}")
+
+
+def _policy_revision(policy_refs: list[dict[str, Any]]) -> str:
+    h = hashlib.sha256()
+    for item in sorted(policy_refs, key=lambda x: x["resolved_path"]):
+        h.update(item["resolved_path"].encode())
+        h.update(item["revision"].encode())
+    return f"sha256:{h.hexdigest()}"
+
+
+def materialize_context(
+    run_id: str,
+    route_id: str,
+    prompt_spec_ref: str | None = None,
+    bindings: dict[str, Any] | None = None,
+    active_conditions: set[str] | None = None,
+    knowledge_refs: list[str] | None = None,
+    memory_projection_refs: list[str] | None = None,
+    capability_ids: list[str] | None = None,
+    tool_schema_refs: list[str] | None = None,
+    root: Path = ROOT,
+    specialist_selection: dict[str, Any] | None = None,
+    specialist_items: list[dict[str, Any]] | None = None,
+    specialist_tags: set[str] | None = None,
+    required_specialist_keys: set[str] | None = None,
+    specialist_skill_ref: str | None = None,
+    attempt: int = 1,
+) -> dict[str, Any]:
+    root = root.resolve()
+    bindings = dict(bindings or {})
+    for name, observation in bindings.items():
+        if not isinstance(observation, dict):
+            continue
+        freshness = observation.get("freshness") or {}
+        if (observation.get("source_kind") not in {"user_request", "environment_snapshot", "orchestration_projection"}
+                or not isinstance(observation.get("value"), str) or not observation["value"]
+                or not isinstance(observation.get("revision"), str)
+                or not re.fullmatch(r"sha256:[0-9a-f]{64}", observation["revision"])
+                or not isinstance(freshness, dict) or freshness.get("status") != "current"
+                or freshness.get("checked_at_attempt") != attempt):
+            raise ValueError(f"verified binding is missing current provenance: {name}")
+    conditions = set(active_conditions or set())
+    catalog = _yaml(root / CATALOG)
+    routes = catalog.get("routes") or {}
+    if route_id not in routes:
+        raise ValueError(f"Unknown route id: {route_id}")
+    route = routes[route_id]
+    if not isinstance(route, dict):
+        raise ValueError(f"Invalid route materialization entry: {route_id}")
+
+    policy_refs = [_selected_ref(str(catalog["user_policy"]), "user_policy", root)]
+    capability_catalog = _selected_ref(str(catalog["capability_catalog"]), "capability_catalog", root)
+    pack = _selected_ref(str(route["context_pack"]), "context_pack", root)
+    skill = _selected_ref(str(route["primary_skill"]), "primary_skill", root)
+    task = _selected_ref(str(route["task_contract"]), "task_contract", root)
+    pack_document = _yaml(root / pack["resolved_path"])
+
+    prompt_ref = None
+    prompt_revision = "unbound"
+    if prompt_spec_ref:
+        prompt_ref = _selected_ref(prompt_spec_ref, "prompt_spec", root)
+        prompt_revision = prompt_ref["revision"]
+
+    required_context: list[dict[str, Any]] = []
+    conditional_context: list[dict[str, Any]] = []
+    context_includes: list[dict[str, Any]] = []
+    external_references: list[dict[str, Any]] = []
+    unresolved: list[str] = []
+    missing_observations: list[str] = []
+
+    for entry in pack_document.get("required", []) or []:
+        _process_entry(
+            entry,
+            requirement="required",
+            condition=None,
+            root=root,
+            bindings=bindings,
+            required_context=required_context,
+            conditional_context=conditional_context,
+            context_includes=context_includes,
+            external_references=external_references,
+            unresolved=unresolved,
+            missing_observations=missing_observations,
+        )
+    conditional = pack_document.get("conditional", {}) or {}
+    if not isinstance(conditional, dict):
+        raise ValueError("Context Pack conditional section must be a mapping")
+    for condition in sorted(conditions):
+        entries = conditional.get(condition, []) or []
+        if not isinstance(entries, list):
+            raise ValueError(f"Context Pack condition must contain a list: {condition}")
+        for entry in entries:
+            _process_entry(
+                entry,
+                requirement="conditional",
+                condition=condition,
+                root=root,
+                bindings=bindings,
+                required_context=required_context,
+                conditional_context=conditional_context,
+                context_includes=context_includes,
+                external_references=external_references,
+                unresolved=unresolved,
+                missing_observations=missing_observations,
+            )
+
+    knowledge: list[dict[str, Any]] = []
+    for logical in knowledge_refs or []:
+        _append_unique(knowledge, _selected_ref(logical, "knowledge", root))
+    if route.get("knowledge_selection") == "required_when_domain_matches" and not knowledge:
+        unresolved.append("knowledge_selection")
+        missing_observations.append("knowledge_selection")
+
+    capabilities = capability_selector.select_capability_context(capability_ids or [], root=root)
+    if route.get("capability_selection") == "required" and not capabilities:
+        unresolved.append("capability_selection")
+        missing_observations.append("capability_selection")
+
+    selected_tool_refs: list[str] = []
+    for logical in tool_schema_refs or []:
+        path = resolver.resolve_for_read(logical, root)
+        if not path.is_file():
+            unresolved.append(f"tool_schema:{logical}")
+            missing_observations.append(f"tool_schema:{logical}")
+        else:
+            selected_tool_refs.append(path.relative_to(root).as_posix())
+
+    specialist_context = None
+    specialist_skill = None
+    specialist_policies: list[dict[str, Any]] = []
+    specialist_sizes: list[int] = []
+    if specialist_selection is None and (specialist_items or specialist_skill_ref or required_specialist_keys):
+        raise ValueError("specialist context requires an Orchestration selection")
+    if specialist_selection is not None:
+        status = specialist_selection.get("status")
+        if status not in {"selected", "unavailable", "unsupported", "not_required"}:
+            raise ValueError("invalid Orchestration specialist decision")
+        if status == "selected":
+            profile_id = str(specialist_selection.get("profile_id") or "")
+            capability = str(specialist_selection.get("capability") or "")
+            required_evidence = specialist_selection.get("required_evidence")
+            if not capability or not isinstance(required_evidence, list) or not required_evidence or any(not isinstance(x, str) or not x for x in required_evidence):
+                raise ValueError("specialist selection requires capability and evidence")
+            routing = _yaml(root / "src/unityagent/orchestration/routing/task-routes.yaml")
+            route_definition = (routing.get("routes") or {}).get(route_id) or {}
+            if route_definition.get("specialist_profile") != profile_id:
+                raise ValueError("specialist selection does not match route")
+            for logical in route_definition.get("required_policy_clauses") or []:
+                if not isinstance(logical, str) or not logical.startswith("src/unityagent/policy/"):
+                    raise ValueError("specialist policy reference must be canonical")
+                specialist_policies.append(_selected_ref(logical, "required_context", root))
+            entries = specialist_selector.select_items(specialist_items or [], set(specialist_tags or set()),
+                                                       set(required_specialist_keys or set()), attempt)
+            if not entries:
+                raise ValueError("specialist selection requires relevant context")
+            if specialist_skill_ref:
+                if not specialist_skill_ref.startswith(".agents/skills/") or not specialist_skill_ref.endswith("/SKILL.md"):
+                    raise ValueError("specialist skill must reference an existing canonical Skill")
+                specialist_skill = _selected_ref(specialist_skill_ref, "specialist_skill", root)
+            specialist_context = {"profile_id": profile_id, "capability": capability,
+                                  "skill": specialist_skill, "policy": specialist_policies, "items": entries,
+                                  "required_evidence": list(required_evidence)}
+            if "execution_mode" in specialist_selection and "provider_resolution" in specialist_selection:
+                specialist_context["execution_mode"] = specialist_selection["execution_mode"]
+                specialist_context["provider_resolution"] = specialist_selection["provider_resolution"]
+            # One selected bundle is one retrieval artifact; account for all of its payload bytes.
+            specialist_sizes = [len(yaml.safe_dump(entries, allow_unicode=True, sort_keys=True).encode("utf-8"))]
+        elif specialist_items or specialist_skill_ref or required_specialist_keys:
+            raise ValueError("unavailable specialist cannot consume context")
+
+    local_refs: list[dict[str, Any]] = [
+        *policy_refs,
+        capability_catalog,
+        pack,
+        skill,
+        task,
+        *required_context,
+        *conditional_context,
+        *context_includes,
+        *knowledge,
+    ]
+    if prompt_ref is not None:
+        local_refs.append(prompt_ref)
+    if specialist_skill is not None:
+        local_refs.append(specialist_skill)
+    local_refs.extend(specialist_policies)
+
+    # A source can satisfy several semantic roles. Budget and source identity
+    # count its bytes once, while selected_refs retain every role for review.
+    unique_local_refs = list({(item["resolved_path"], item["revision"]): item for item in local_refs}.values())
+
+    expansion_hops = int((pack_document.get("limits") or {}).get("context_expansion_hops", 0) or 0)
+    budget_report = budget.evaluate(
+        route_id,
+        [int(item["selected_utf8_bytes"]) for item in unique_local_refs] + specialist_sizes
+        + ([len(yaml.safe_dump(bindings, sort_keys=True, allow_unicode=True).encode("utf-8"))] if bindings else []),
+        missing_observations=missing_observations,
+        external_fetches=len(external_references),
+        context_includes=len(context_includes),
+        expansion_hops=expansion_hops,
+        root=root,
+    )
+    if budget_report["decision"] == "blocked":
+        raise ValueError(f"Context budget blocked materialization for {route_id}: {budget_report}")
+
+    source_revisions = [{"ref": item["resolved_path"], "revision": item["revision"]} for item in unique_local_refs]
+    if specialist_context is not None:
+        source_revisions.extend({"ref": f"specialist:{item['type']}:{item['key']}:{item['source']}",
+                                 "revision": item["revision"]} for item in specialist_context["items"])
+    state_payload = {
+        "route_id": route_id,
+        "resolved_bindings": bindings,
+        "unresolved_bindings": sorted(set(unresolved)),
+        "active_conditions": sorted(conditions),
+        "external_references": external_references,
+        "memory_projection_refs": sorted(set(memory_projection_refs or [])),
+        "capability_ids": sorted({str(item["capability"]) for item in capabilities}),
+        "tool_schema_refs": sorted(set(selected_tool_refs)),
+        "specialist_context": specialist_context,
+        "specialist_status": specialist_selection.get("status") if specialist_selection else None,
+    }
+    hash_lines = [f'{x["ref"]}:{x["revision"]}' for x in sorted(source_revisions, key=lambda x: x["ref"])]
+    hash_lines.append(yaml.safe_dump(state_payload, sort_keys=True, allow_unicode=True))
+    context_hash = f"sha256:{hashlib.sha256(chr(10).join(hash_lines).encode()).hexdigest()}"
+    context_id = f"ctx-{context_hash.split(':', 1)[1][:16]}"
+
+    return {
+        "schema_version": "1.0",
+        "context_id": context_id,
+        "run_id": run_id,
+        "route_id": route_id,
+        "prompt_spec_ref": prompt_spec_ref,
+        "selected_refs": {
+            "policy": policy_refs,
+            "prompt_spec": prompt_ref,
+            "context_pack": pack,
+            "primary_skill": skill,
+            "task_contract": task,
+            "required_context": required_context,
+            "conditional_context": conditional_context,
+            "context_includes": context_includes,
+            "external_references": external_references,
+            "knowledge": knowledge,
+            "memory_projections": sorted(set(memory_projection_refs or [])),
+            "capabilities": capabilities,
+            "tool_schema_refs": sorted(set(selected_tool_refs)),
+        },
+        "resolved_bindings": bindings,
+        "unresolved_bindings": sorted(set(unresolved)),
+        "active_conditions": sorted(conditions),
+        "specialist_context": specialist_context,
+        "budget_report": budget_report,
+        "context_fingerprint": {
+            "schema_version": "1.0",
+            "algorithm": "sha256",
+            "value": context_hash,
+            "selected_source_revisions": sorted(source_revisions, key=lambda x: x["ref"]),
+        },
+        "definition_fingerprint": {
+            "schema_version": "1.0",
+            "architecture_version": "v4.0",
+            "policy_revision": _policy_revision(policy_refs),
+            "prompt_revision": prompt_revision,
+            "context_revision": context_hash,
+            "graph_revision": "development-graph-v1",
+            "runtime_profile_revision": "runtime-profiles-v1",
+            "tool_schema_revision": "production-tool-runtime-v1",
+            "checkpoint_schema_revision": "1.1",
+            "evidence_schema_revision": "1.2",
+            "eval_contract_revision": "1.2",
+        },
+    }
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--run-id", required=True)
+    parser.add_argument("--route", required=True)
+    parser.add_argument("--prompt-spec-ref")
+    parser.add_argument("--binding", action="append", default=[], help="name=value")
+    parser.add_argument("--condition", action="append", default=[])
+    parser.add_argument("--capability", action="append", default=[])
+    parser.add_argument("--output", type=Path)
+    args = parser.parse_args()
+    bindings: dict[str, str] = {}
+    for raw in args.binding:
+        if "=" not in raw:
+            raise SystemExit(f"invalid --binding (expected name=value): {raw}")
+        name, value = raw.split("=", 1)
+        bindings[name] = value
+    view = materialize_context(
+        args.run_id,
+        args.route,
+        args.prompt_spec_ref,
+        bindings=bindings,
+        active_conditions=set(args.condition),
+        capability_ids=list(args.capability),
+    )
+    text = yaml.safe_dump(view, sort_keys=False, allow_unicode=True)
+    if args.output:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(text, encoding="utf-8")
+    else:
+        print(text, end="")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -4,7 +4,7 @@
 
 <h1 align="center">UnityAgent</h1>
 
-<p align="center"><strong>Unity開発の要求を Policy → Capability → Provider → Evidence の一貫した経路で扱う Control Plane。</strong></p>
+<p align="center"><strong>Unity開発の要求を src/unityagent/policy → Capability → Provider → Evidence の一貫した経路で扱う Control Plane。</strong></p>
 
 <p align="center">
   <a href="VERSION"><img alt="Version" src="https://img.shields.io/badge/version-0.0.8--beta-blue"></a>
@@ -23,12 +23,12 @@
   <a href="docs/architecture/architecture.md">Architecture Docs</a> ·
   <a href="docs/README.md">Docs Index</a> ·
   <a href="docs/references/unity-cli-reference.md">Unity CLI Reference</a> ·
-  <a href="https://darumappap.github.io/UnityAgent/">Context Explorer</a> ·
+  <a href="https://darumappap.github.io/UnityAgent/">src/unityagent/context Explorer</a> ·
   <a href="https://github.com/DarumaPPAP/UnityAgent/releases">Releases</a>
 </p>
 
 > [!IMPORTANT]
-> **UnityAgentが唯一のControl Planeです。** Unity UI、Codex Plugin、Optional SubAgent、Providerは独自のPolicy Authorityや第二のControl Planeを持たず、実行要求はUnityAgentへ集約します。
+> **UnityAgentが唯一のControl Planeです。** Unity UI、Codex Plugin、Optional SubAgent、Providerは独自のsrc/unityagent/policy Authorityや第二のControl Planeを持たず、実行要求はUnityAgentへ集約します。
 
 ## What is UnityAgent?
 
@@ -40,7 +40,7 @@ UnityAgentは、Unity Editor、Codex Plugin、CLIを別々の実行主体とし�
 
 | Principle | Contract |
 |---|---|
-| Single Control Plane | Entry、SubAgent、Providerは独自のPolicy / Orchestration authorityを持たない |
+| Single Control Plane | Entry、SubAgent、Providerは独自のsrc/unityagent/policy / src/unityagent/orchestration authorityを持たない |
 | Capability before Provider | OrchestrationはProvider名ではなくCapabilityを要求する |
 | Fail-Closed | 必須条件がfalse / unknownなら候補から除外し、成功扱いしない |
 | Explicit Approval | 変更は対象・Scope・Revisionに結び付いたApprovalを要求する |
@@ -49,7 +49,7 @@ UnityAgentは、Unity Editor、Codex Plugin、CLIを別々の実行主体とし�
 
 ## Architecture
 
-UnityAgentの正式な製品境界は5層です。機械可読な正本は `Specs/unityagent-layer-contract.yaml` です。
+UnityAgentの正式な製品境界は5層です。機械可読な正本は `src/unityagent/contracts/unityagent-layer-contract.yaml` です。
 
 ```text
 Unity UI / Codex Plugin
@@ -60,7 +60,7 @@ Unity UI / Codex Plugin
 └──────────────────────────────┘
         │
         ▼
-Capability & Orchestration
+Capability & src/unityagent/orchestration
         │
         ├─ Optional SubAgent resolution
         ▼
@@ -74,13 +74,13 @@ Evidence & State
 |---|---|
 | Entry | Unity UI / Codex Pluginから要求、表示、明示承認を受け付ける |
 | Control Plane | Task、Policy、Approval、Environment、Project Binding、Run lifecycleを管理する |
-| Capability & Orchestration | 意味解決、Graph / Loop、Capability routing、必要時のOptional SubAgent候補解決を行う |
+| Capability & src/unityagent/orchestration | 意味解決、Graph / Loop、Capability routing、必要時のOptional SubAgent候補解決を行う |
 | Provider | 許可された具体的な操作だけを実行する |
 | Evidence & State | 実行結果、観測値、Run state、履歴を保存する |
 
 EntryからProviderを直接呼び出したり、ProviderがPolicyやdurable stateを所有したりする構成にはしません。
 
-詳細: [UnityAgent Architecture](docs/architecture/architecture.md) · [Specialist Context Assembly](docs/architecture/specialist-context-assembly.md) · [Production Tool Runtime](docs/architecture/production-tool-runtime.md)
+詳細: [UnityAgent Architecture](docs/architecture/architecture.md) · [Specialist src/unityagent/context Assembly](docs/architecture/specialist-context-assembly.md) · [Production Tool src/unityagent/runtime](docs/architecture/production-tool-runtime.md)
 
 ## Responsibility Boundaries
 
@@ -90,10 +90,10 @@ EntryからProviderを直接呼び出したり、ProviderがPolicyやdurable sta
 
 | UnityAgent owns | UnitySubAgentHub owns |
 |---|---|
-| Request interpretation / Policy / Approval | Registry index |
+| Request interpretation / src/unityagent/policy / Approval | Registry index |
 | Environment / Project Binding | Canonical SubAgent manifests |
 | Eligibility / Capability resolution | Shared schemas |
-| Runtime execution / Retry / Fallback | Fail-Closed validation |
+| src/unityagent/runtime execution / Retry / Fallback | Fail-Closed validation |
 | Evidence normalization | Data-only catalog snapshot generation |
 
 - Specialist identity: **`artist_subagent`**
@@ -104,13 +104,13 @@ EntryからProviderを直接呼び出したり、ProviderがPolicyやdurable sta
 <details>
 <summary><strong>Current Hub snapshot integration</strong></summary>
 
-Hub CIは登録Manifestからconsumer-neutralな `Hub-SubAgent-Catalog-Snapshot` Artifactを生成します。Snapshotは静的Identity、Lifecycle、Capability、Activation、BackendとEvidenceの契約を含み、Runtime Profileの`goal_type`や既定Profileを含めません。
+Hub CIは登録Manifestからconsumer-neutralな `Hub-SubAgent-Catalog-Snapshot` Artifactを生成します。Snapshotは静的Identity、Lifecycle、Capability、Activation、BackendとEvidenceの契約を含み、src/unityagent/runtime Profileの`goal_type`や既定Profileを含めません。
 
-UnityAgentのReferenceImplementationは、現在もRepository内の `Runtime/ReferenceImplementation/subagent-catalog.yaml` を `SubAgentProfileCatalog` で読み込みます。Hub CI Artifactを自動取得・同期する経路は現行コードにはありません。
+UnityAgentのReferenceImplementationは、現在もRepository内の `src/unityagent/runtime/reference_implementation/subagent-catalog.yaml` を `SubAgentProfileCatalog` で読み込みます。Hub CI Artifactを自動取得・同期する経路は現行コードにはありません。
 
 そのため、**HubでSnapshotが公開されたことと、UnityAgent Runtimeへ同期済みであることは別です。**
 
-Offline Snapshotを反映候補として確認するときは、`python Tools/import_subagent_catalog.py` へSnapshotの取得元と完全なSHA-256を渡します。UnityAgent側Adapterがconsumer-owned Profile値を保持してImport Planを作ります。Planは `Added` / `Removed` / `Changed` / `No-op`、protected Field、Riskを出力しますが、Catalogへ書き込みません。RuntimeのEligibilityは反映後も現在のEnvironment Factで再判定され、Catalog更新は通常のGit Pull Requestとしてレビューします。
+Offline Snapshotを反映候補として確認するときは、`python tools/import_subagent_catalog.py` へSnapshotの取得元と完全なSHA-256を渡します。UnityAgent側Adapterがconsumer-owned Profile値を保持してImport Planを作ります。Planは `Added` / `Removed` / `Changed` / `No-op`、protected Field、Riskを出力しますが、Catalogへ書き込みません。RuntimeのEligibilityは反映後も現在のEnvironment Factで再判定され、Catalog更新は通常のGit Pull Requestとしてレビューします。
 
 </details>
 
@@ -124,7 +124,7 @@ Offline Snapshotを反映候補として確認するときは、`python Tools/im
 
 | Surface | Current contract |
 |---|---|
-| Entry | `entry-request.v2` のTyped IntentをProduction入口とする。v1はValidation互換用で、Production Control Planeではcaller-owned Context / Route / Capabilityを拒否する |
+| Entry | `entry-request.v2` のTyped IntentをProduction入口とする。v1はValidation互換用で、Production Control Planeではcaller-owned src/unityagent/context / Route / Capabilityを拒否する |
 | Provider-backed Specialist | `artist_subagent` → `unity_artist_cli`。Eligibilityは現在のEnvironment FactでFail-Closed判定する |
 | Reasoning Specialists | `graphics_subagent`、`world_creator_subagent`、`performance_subagent` をConsumer Catalog v3へ登録済み。Tool Providerを偽装せずCodexRunnerのReasoning Handoffを使う |
 | Full E2E | 固定Typed Intent `fixed_full_e2e_probe` をControl Plane → ToolBroker → Unity Editor → PlayModeまで検証する |
@@ -216,17 +216,17 @@ UnityAgentのLocal Reference Navigatorは、取得済みReference Snapshotをロ
 
 開発branchは `main` から作成し、`feature/*`、`fix/*`、`chore/*`、必要時のみ `release/*` を使用します。通常PRは `main` をbaseにし、Squash Merge後の短命branchは自動削除します。
 
-詳細と機械可読な契約は [Branch Policy](docs/development/branch-policy.md) を参照してください。
+詳細と機械可読な契約は [Branch src/unityagent/policy](docs/development/branch-policy.md) を参照してください。
 
 ## Validation
 
 Repositoryの基本検証:
 
 ```powershell
-python .\Tools\validate_all.py
-python .\Tools\SkillValidator\validate_skills.py --strict
-python .\Tools\ProductionToolRuntime\validate_production_tool_runtime.py
-python .\Tools\run_regression_gate.py
+python .\tools\validate_all.py
+python .\tools\SkillValidator\validate_skills.py --strict
+python .\tools\ProductionToolRuntime\validate_production_tool_runtime.py
+python .\tools\run_regression_gate.py
 ```
 
 Local Regression Gateの一部はローカルCodex CLIや認証済み環境を必要とします。GitHub-hosted Release Workflowの検証結果と混同しないでください。
@@ -235,21 +235,21 @@ Local Regression Gateの一部はローカルCodex CLIや認証済み環境を�
 
 | Concern | Source |
 |---|---|
-| Repository authority / mirrored declarations | `Specs/repository-authority-map.yaml` |
-| Layer boundary | `Specs/unityagent-layer-contract.yaml` |
-| Policy / Approval | `Policy/` |
-| Routing / Orchestration | `Orchestration/` |
-| Runtime / Provider Registry / Resolution | `Runtime/` |
-| Durable Evidence | `Persistence/` |
-| Regression / Eval | `Eval/` |
+| Repository authority / mirrored declarations | `src/unityagent/contracts/repository-authority-map.yaml` |
+| Layer boundary | `src/unityagent/contracts/unityagent-layer-contract.yaml` |
+| src/unityagent/policy / Approval | `src/unityagent/policy/` |
+| Routing / src/unityagent/orchestration | `src/unityagent/orchestration/` |
+| src/unityagent/runtime / Provider Registry / Resolution | `src/unityagent/runtime/` |
+| Durable Evidence | `src/unityagent/persistence/` |
+| Regression / eval | `eval/` |
 | Optional SubAgent metadata | [UnitySubAgentHub](https://github.com/DarumaPPAP/UnitySubAgentHub) |
 
-詳細は [Architecture](docs/architecture/architecture.md) と [Production Tool Runtime](docs/architecture/production-tool-runtime.md) を参照してください。
+詳細は [Architecture](docs/architecture/architecture.md) と [Production Tool src/unityagent/runtime](docs/architecture/production-tool-runtime.md) を参照してください。
 
 ## Status & License
 
 UnityAgentは **Beta** です。
 
-Release Workflowは `main/VERSION` をSource of Truthとしてcanonical tagを生成します。さらに `Runtime/Distribution/subagent-sources.lock.json` の固定Hub commitを取得・検証し、Artist backend / package / Hub Snapshotを同じUnityAgent Releaseへ同梱します。Hub `main` や個別SubAgent Releaseを実行時DistributionのSource of Truthにはしません。
+Release Workflowは `main/VERSION` をSource of Truthとしてcanonical tagを生成します。さらに `src/unityagent/runtime/distribution/subagent-sources.lock.json` の固定Hub commitを取得・検証し、Artist backend / package / Hub Snapshotを同じUnityAgent Releaseへ同梱します。Hub `main` や個別SubAgent Releaseを実行時DistributionのSource of Truthにはしません。
 
 UnityAgentは [MIT License](LICENSE) で提供されます。

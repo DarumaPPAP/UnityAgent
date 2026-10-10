@@ -9,11 +9,11 @@ UnityAgentのHarnessは、**Orchestrationが選び、Runtimeが執行する**構
 ```text
 Task Fingerprint
     ↓
-Orchestration/Routing
+src/unityagent/orchestration/routing
     ↓ explicit selection
 route_id + task_contract + execution_profile
     ↓
-Runtime/Harnesses/effective_harness.py
+src/unityagent/runtime/harnesses/effective_harness.py
     ↓ enforcement projection
 Mutation / Verification / Dispatcher / Runner
 ```
@@ -29,7 +29,7 @@ Authorityは次のとおり固定します。
 
 ## Effective Harness
 
-`Runtime/Harnesses/effective_harness.py` は、選択済みTask ContractをRuntimeの実行制約へ投影します。
+`src/unityagent/runtime/harnesses/effective_harness.py` は、選択済みTask ContractをRuntimeの実行制約へ投影します。
 
 入力は必ず明示します。
 
@@ -40,7 +40,7 @@ Authorityは次のとおり固定します。
 
 Runtimeは次を**行いません**。
 
-- `Context/Selection/context-catalog.yaml`からRouteを逆引きする
+- `src/unityagent/context/selection/context-catalog.yaml`からRouteを逆引きする
 - Task Contract IDからRouteやMutation Channelを推測する
 - Execution Profileを自動選択する
 - Contract名からHuman Gateを暗黙追加する
@@ -52,18 +52,18 @@ Runtimeは次を**行いません**。
 
 Effective Harnessが参照する正本は以下です。
 
-- `Runtime/Profiles/runtime-profiles.yaml` — supplied profileの実行能力
-- `Policy/Risk/risk-levels.yaml` — Risk / Human Approval rule
-- `Policy/Evidence/quality-gates.yaml` — Gate catalog
-- `Runtime/Guardrails/mutation-channels.yaml` — authoritative mutation channel
-- `Runtime/Permissions/mcp-activation.yaml` — tool exposure / access boundary
-- `Orchestration/Contracts/TaskContracts/*.yaml` — Orchestrationから選択済みのTask Contract
+- `src/unityagent/runtime/profiles/runtime-profiles.yaml` — supplied profileの実行能力
+- `src/unityagent/policy/risk/risk-levels.yaml` — Risk / Human Approval rule
+- `src/unityagent/policy/evidence/quality-gates.yaml` — Gate catalog
+- `src/unityagent/runtime/guardrails/mutation-channels.yaml` — authoritative mutation channel
+- `src/unityagent/runtime/permissions/mcp-activation.yaml` — tool exposure / access boundary
+- `src/unityagent/orchestration/contracts/task_contracts/*.yaml` — Orchestrationから選択済みのTask Contract
 
-`Context/Selection` と `Orchestration/Routing` はRuntime enforcementの探索対象ではありません。
+`src/unityagent/context/selection` と `src/unityagent/orchestration/routing` はRuntime enforcementの探索対象ではありません。
 
 ## Runtime Harness surfaces
 
-`Runtime/Harnesses/harness-registry.yaml` がRuntime harnessの入口を列挙します。
+`src/unityagent/runtime/harnesses/harness-registry.yaml` がRuntime harnessの入口を列挙します。
 
 - `effective_harness` — selected task/profileのenforcement projection
 - `codex` — agent runner
@@ -87,9 +87,9 @@ Effective Harnessが参照する正本は以下です。
 
 ## Validation
 
-Harness invariant testは `Runtime/Tests/test_effective_harness.py` に集約します。
+Harness invariant testは `tests/runtime/test_effective_harness.py` に集約します。
 
-`Tools/validate_all.py` は既存の `Runtime/Tests` suiteを通じてHarness contractを検証します。旧 `Tools/HarnessProjection` / `Tests/HarnessProjection` はcanonical authorityではなく、Issue #126で削除します。
+`tools/validate_all.py` は既存の `tests/runtime` suiteを通じてHarness contractを検証します。旧 `tools/HarnessProjection` / `tests/harness_projection` はcanonical authorityではなく、Issue #126で削除します。
 
 ## Non-goals
 
@@ -100,7 +100,7 @@ Runtime Harnessは次を所有しません。
 - semantic retry / replan
 - durable checkpoint / workflow state
 - long-term memory truth
-- Eval grading / Golden expectations
+- eval grading / Golden expectations
 - human visual acceptanceそのもの
 
 この境界により、Harnessは巨大なControllerではなく、**明示的に選ばれた実行を安全に通すExecution Harness Plane**として維持します。

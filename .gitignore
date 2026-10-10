@@ -159,3 +159,9 @@ credentials/
 **/*.mdb
 **/*.opendb
 **/*.VC.db
+
+# Exact generated wheel resources; authored sources remain canonical.
+src/unityagent/_resources/
+
+# Python distribution build output
+/build/

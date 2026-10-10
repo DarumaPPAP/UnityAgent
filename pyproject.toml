@@ -11,12 +11,17 @@ dependencies = ["PyYAML>=6.0", "jsonschema>=4.0"]
 license = { text = "MIT" }
 
 [project.scripts]
-unity-agent = "Tools.unity_agent_cli:main"
+unity-agent = "unityagent.cli:main"
+
+[tool.setuptools]
+include-package-data = false
 
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["ControlPlane*", "Runtime*", "Persistence*", "Orchestration*", "Tools*", "Policy*", "Context*"]
-namespaces = true
+where = ["src"]
+include = ["unityagent*"]
+exclude = ["unityagent._resources*"]
+namespaces = false
 
 [tool.setuptools.package-data]
-"*" = ["*.yaml", "*.yml", "*.json", "*.md", "*.txt"]
+"*" = ["*.yaml", "*.yml", "*.json", "*.md", "*.txt", "*.cs"]
+"unityagent" = ["**/*.yaml", "**/*.yml", "**/*.json", "**/*.md", "**/*.txt", "**/*.cs", "_resources/**/*", "_resources/.agents/**/*"]

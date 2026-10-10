@@ -11,7 +11,7 @@ Status: **Canonical Architecture Contract / Production Tool Runtime integrated**
 ## 0. 製品境界としての5層（正式契約）
 
 UnityAgentを利用する入口は、必ず次の5層を通ります。機械可読な正本は
-`Specs/unityagent-layer-contract.yaml` です。
+`src/unityagent/contracts/unityagent-layer-contract.yaml` です。
 
 ```text
 ① Entry Layer
@@ -22,7 +22,7 @@ UnityAgentを利用する入口は、必ず次の5層を通ります。機械可
    UnityAgent
         │ run ownership / long-lived state
         ▼
-③ Capability & Orchestration
+③ Capability & src/unityagent/orchestration
    semantic intent / Graph / Loop / Policy / Resolver
         │ provider-independent CapabilityRequest
         ▼
@@ -47,29 +47,29 @@ UnityAgentを利用する入口は、必ず次の5層を通ります。機械可
 ```text
 Entry → Control Plane
 Entry → Evidence & State（read only / presentation）
-Control Plane → Capability & Orchestration
+Control Plane → Capability & src/unityagent/orchestration
 Control Plane → Evidence & State
-Capability & Orchestration → Provider Layer
-Capability & Orchestration → Evidence & State
+Capability & src/unityagent/orchestration → Provider Layer
+Capability & src/unityagent/orchestration → Evidence & State
 Provider Layer → Evidence & State
 ```
 
 禁止事項は、EntryからProviderへの直接依存、semantic routeでのProvider選択、ProviderからのPolicy変更、EntryまたはProviderによるdurable stateの直接書込みです。レビューでは変更元Layerと変更先Layerの辺を
-`Specs/unityagent-layer-contract.yaml` と照合し、未定義の辺を拒否します。
+`src/unityagent/contracts/unityagent-layer-contract.yaml` と照合し、未定義の辺を拒否します。
 
 ### Cross-layer contract
 
-- Entry → Control Plane: `Runtime/Contracts/entry-request.v2.schema.yaml` (production execution)
-- Legacy v1: `Runtime/Contracts/entry-request.schema.yaml` remains unchanged for validation; its caller supplied Context identity is rejected by `UnityAgentControlPlane.execute`. Migrate callers to v2 by removing Entry-owned Context / Route / Capability / Handoff values and supplying a typed `project_inspection` or `visual_capture` intent. Orchestration projects the Pilot Task Fingerprint deterministically. Orchestration selects the Route, generates provider-independent CapabilityRequests from the canonical routing catalog, and hands the Context Assembly-generated identity to Runtime. The Project access dimension comes from observed binding and Policy, never from Entry.
+- Entry → Control Plane: `src/unityagent/runtime/contracts/entry-request.v2.schema.yaml` (production execution)
+- Legacy v1: `src/unityagent/runtime/contracts/entry-request.schema.yaml` remains unchanged for validation; its caller supplied Context identity is rejected by `UnityAgentControlPlane.execute`. Migrate callers to v2 by removing Entry-owned Context / Route / Capability / Handoff values and supplying a typed `project_inspection` or `visual_capture` intent. Orchestration projects the Pilot Task Fingerprint deterministically. Orchestration selects the Route, generates provider-independent CapabilityRequests from the canonical routing catalog, and hands the Context Assembly-generated identity to Runtime. The Project access dimension comes from observed binding and src/unityagent/policy, never from Entry.
 - CapabilityRequest / Resolution: 既存のRuntime契約
 - ProviderResult: 既存Dispatcher契約とProvider adapter
-- Toolchain setup: `Runtime/Contracts/toolchain-setup-request.schema.yaml`
-- InstallReceipt: `Runtime/Contracts/install-receipt.schema.yaml`
-- Durable Evidence: `Persistence/Contracts/evidence-record.schema.yaml`
+- Toolchain setup: `src/unityagent/runtime/contracts/toolchain-setup-request.schema.yaml`
+- InstallReceipt: `src/unityagent/runtime/contracts/install-receipt.schema.yaml`
+- Durable Evidence: `src/unityagent/persistence/contracts/evidence-record.schema.yaml`
 
 UI / Codexから実行する場合は、必ずEntryからUnityAgent Control Plane、Orchestration、Context、Runtime、Persistenceを通る。Tool Capabilityは既存のCapability → Provider Registry → Resolver → Dispatcher → Provider Adapter → Evidenceを再利用する。Reasoning Capabilityは下記のCodexRunner経路を使う。第二のPlayer FrameworkやProvider Registryは作らない。
 
-Providerless Specialist reasoningでは同じControl Planeから別のRuntime Actionを選ぶ。`Runtime/Contracts/runtime-handoff.schema.yaml`が`capability_dispatch`と`specialist_reasoning`を区別し、後者は既存CodexRunnerでModel reasoningを行う。ToolBroker Providerへの`provider_ref`を付けず、Materialized Contextから構造化Artifactを作り、Schema・意味・Context identity・変更観測を通した後にPersistenceへ記録する。
+Providerless Specialist reasoningでは同じControl Planeから別のRuntime Actionを選ぶ。`src/unityagent/runtime/contracts/runtime-handoff.schema.yaml`が`capability_dispatch`と`specialist_reasoning`を区別し、後者は既存CodexRunnerでModel reasoningを行う。ToolBroker Providerへの`provider_ref`を付けず、Materialized Contextから構造化Artifactを作り、Schema・意味・Context identity・変更観測を通した後にPersistenceへ記録する。
 
 ```text
                   UnityAgent
@@ -83,7 +83,7 @@ Providerless Specialist reasoningでは同じControl Planeから別のRuntime Ac
  Structured Artifact          Provider
 ```
 
-Graphics / WorldCreator / PerformanceはConsumer Catalog v3のProduction Reasoning Profileとして登録済みです。Graphicsは`project.inspect` / `source.read`、Performanceは`profiler.observe`の検証済みObservationをReasoning前に要求し、WorldCreatorは`world.plan`のplanning-only Handoffを使います。Reasoning ProfileはTool Providerを持たず、既存CodexRunnerで構造化Artifactを生成します。登録済みであることとLive ProjectでProduction Verifiedであることは別であり、未観測Evidenceを成功へ昇格しません。Policy defines; Orchestration decides; Context materializes; Runtime executes; Persistence remembers; Eval measures、という責務境界を維持します。
+Graphics / WorldCreator / PerformanceはConsumer Catalog v3のProduction Reasoning Profileとして登録済みです。Graphicsは`project.inspect` / `source.read`、Performanceは`profiler.observe`の検証済みObservationをReasoning前に要求し、WorldCreatorは`world.plan`のplanning-only Handoffを使います。Reasoning ProfileはTool Providerを持たず、既存CodexRunnerで構造化Artifactを生成します。登録済みであることとLive ProjectでProduction Verifiedであることは別であり、未観測Evidenceを成功へ昇格しません。Policy defines; Orchestration decides; Context materializes; Runtime executes; Persistence remembers; eval measures、という責務境界を維持します。
 
 ---
 
@@ -92,17 +92,17 @@ Graphics / WorldCreator / PerformanceはConsumer Catalog v3のProduction Reasoni
 ```text
 UnityAgent/
 ├─ AGENTS.md
-├─ Policy/
-├─ Orchestration/
-├─ Context/
-├─ Runtime/
-├─ Persistence/
-├─ Operations/
-├─ Eval/
+├─ src/unityagent/policy/
+├─ src/unityagent/orchestration/
+├─ src/unityagent/context/
+├─ src/unityagent/runtime/
+├─ src/unityagent/persistence/
+├─ src/unityagent/operations/
+├─ eval/
 ├─ .agents/
-├─ SkillReferences/
-├─ Specs/
-├─ Tools/
+├─ docs/standards/
+├─ docs/architecture/specifications/
+├─ tools/
 └─ docs/
 ```
 
@@ -131,16 +131,16 @@ Context materializes
 Runtime executes
 Persistence remembers
 Operations observes / controls
-Eval measures / proposes
+eval measures / proposes
 ```
 
 近くに実装できることと、そのAreaがAuthorityを持つことは同義ではありません。
 
-### Policy
+### src/unityagent/policy
 
 所有:
 
-- User Policy
+- User src/unityagent/policy
 - Risk
 - Security
 - Approval requirement
@@ -153,7 +153,7 @@ Eval measures / proposes
 - Graph scheduling
 - quality grading
 
-### Orchestration
+### src/unityagent/orchestration
 
 所有:
 
@@ -172,7 +172,7 @@ Eval measures / proposes
 - hard timeout / process kill
 - durable State write
 
-### Context
+### src/unityagent/context
 
 所有:
 
@@ -189,7 +189,7 @@ Eval measures / proposes
 - Provider selection
 - durable Memory / Evidence / Checkpoint
 
-### Runtime
+### src/unityagent/runtime
 
 所有:
 
@@ -208,7 +208,7 @@ Eval measures / proposes
 - durable Evidence truth
 - Agent quality grading
 
-### Persistence
+### src/unityagent/persistence
 
 所有:
 
@@ -224,7 +224,7 @@ Eval measures / proposes
 Checkpoint != Memory != Evidence
 ```
 
-### Operations
+### src/unityagent/operations
 
 所有:
 
@@ -234,11 +234,11 @@ Checkpoint != Memory != Evidence
 - approved Runtime Control
 - Change Management / rollout / rollback
 
-### Eval
+### eval
 
 所有:
 
-- Golden / Behavior Eval
+- Golden / Behavior eval
 - Attribution
 - Historical Replay
 - Rebaseline
@@ -255,7 +255,7 @@ bounded TaskではFast Pathを優先します。
 
 ```mermaid
 flowchart TD
-    U[User Request] --> P[Policy]
+    U[User Request] --> P[src/unityagent/policy]
     P --> T[Task Fingerprint]
     T --> R[Primary Route]
     R --> C[Context Materialization]
@@ -266,18 +266,18 @@ flowchart TD
     H -->|reject| O[Result]
     D -->|no| X
     X --> V[Verification / Evidence]
-    V --> S[Persistence]
-    S --> E[Eval when required]
+    V --> S[src/unityagent/persistence]
+    S --> E[eval when required]
     E --> O
 ```
 
-Semantic coordinationが必要な場合だけ `Orchestration/Definitions/development-parent-graph.yaml` を使います。
+Semantic coordinationが必要な場合だけ `src/unityagent/orchestration/definitions/development-parent-graph.yaml` を使います。
 
 Local Loopは独立したtop-level control planeではなく、SubGraph内部の限定されたcycleです。
 
 ---
 
-## 4. Production Tool Runtime
+## 4. Production Tool src/unityagent/runtime
 
 Production Cutover後、Unity Editor / Build / Test / MCP / Player等の具体的実行先はRuntime Toolingへ集約します。
 
@@ -318,7 +318,7 @@ flowchart TD
 - executor未登録は`backend_not_implemented`であり成功ではない。
 - Fallbackは同一CapabilityかつSafety / Evidenceが同等以上の場合だけ。
 
-詳細は [Production Tool Runtime](production-tool-runtime.md) を参照してください。
+詳細は [Production Tool src/unityagent/runtime](production-tool-runtime.md) を参照してください。
 
 ---
 
@@ -344,9 +344,9 @@ player.observe
 player.mutate
 ```
 
-Capability Request / ResolutionのSchemaは `Runtime/Contracts/` が正本です。
+Capability Request / ResolutionのSchemaは `src/unityagent/runtime/contracts/` が正本です。
 
-Semantic capability requirementは `Orchestration/ToolRouting/capability-routing.yaml`、説明用Contextは `Context/Selection/tool-capability-catalog.yaml` が担当します。
+Semantic capability requirementは `src/unityagent/orchestration/tool_routing/capability-routing.yaml`、説明用Contextは `src/unityagent/context/selection/tool-capability-catalog.yaml` が担当します。
 
 ---
 
@@ -383,9 +383,9 @@ Playerなし
 ## 7. Safety / Recovery Ownership
 
 ```text
-Semantic Recovery    -> Orchestration
-Execution Recovery   -> Runtime
-Operational Recovery -> Operations
+Semantic Recovery    -> src/unityagent/orchestration
+Execution Recovery   -> src/unityagent/runtime
+Operational Recovery -> src/unityagent/operations
 ```
 
 ### Runtime fallbackで変えてはいけないもの
@@ -436,7 +436,7 @@ Compile PASS
 != Performance PASS
 ```
 
-RuntimeでcaptureしたEvidenceは `Persistence/Evidence/` にappendされて初めてhistorical durable Evidenceになります。
+RuntimeでcaptureしたEvidenceは `src/unityagent/persistence/evidence/` にappendされて初めてhistorical durable Evidenceになります。
 
 `not_observed`をAgent品質denominatorへ入れません。
 
@@ -474,25 +474,25 @@ Regression decision:
 
 | Area | Canonical Source |
 | --- | --- |
-| User Policy | `Policy/User/user-policy.yaml` |
-| Capability Policy | `Policy/Security/tool-capability-policy.yaml` |
-| Route | `Orchestration/Routing/task-routes.yaml` |
-| Capability routing | `Orchestration/ToolRouting/capability-routing.yaml` |
-| Context catalog | `Context/Selection/context-catalog.yaml` |
-| Capability descriptions | `Context/Selection/tool-capability-catalog.yaml` |
-| Runtime contracts | `Runtime/Contracts/` |
-| Environment discovery | `Runtime/Tooling/Environment/` |
-| Provider Registry | `Runtime/Tooling/provider_registry.yaml` |
-| Resolver | `Runtime/Tooling/capability_resolver.py` |
-| Tool Broker | `Runtime/Tooling/tool_broker.py` |
-| Production Dispatcher | `Runtime/Dispatcher/tool_runtime_dispatcher.py` |
-| Runtime Guard | `Runtime/Guardrails/tool_runtime_guard.py` |
-| Fallback | `Runtime/Tooling/fallback_policy.py` |
-| Providers | `Runtime/Tooling/Providers/` |
-| Evidence normalization | `Runtime/EvidenceCapture/provider_evidence.py` |
-| Durable Evidence | `Persistence/Evidence/` |
-| Regression | `Eval/Regression/` |
-| Production Runtime validator | `Tools/ProductionToolRuntime/validate_production_tool_runtime.py` |
+| User src/unityagent/policy | `src/unityagent/policy/user/user-policy.yaml` |
+| Capability src/unityagent/policy | `src/unityagent/policy/security/tool-capability-policy.yaml` |
+| Route | `src/unityagent/orchestration/routing/task-routes.yaml` |
+| Capability routing | `src/unityagent/orchestration/tool_routing/capability-routing.yaml` |
+| Context catalog | `src/unityagent/context/selection/context-catalog.yaml` |
+| Capability descriptions | `src/unityagent/context/selection/tool-capability-catalog.yaml` |
+| Runtime contracts | `src/unityagent/runtime/contracts/` |
+| Environment discovery | `src/unityagent/runtime/tooling/environment/` |
+| Provider Registry | `src/unityagent/runtime/tooling/provider_registry.yaml` |
+| Resolver | `src/unityagent/runtime/tooling/capability_resolver.py` |
+| Tool Broker | `src/unityagent/runtime/tooling/tool_broker.py` |
+| Production Dispatcher | `src/unityagent/runtime/dispatcher/tool_runtime_dispatcher.py` |
+| Runtime Guard | `src/unityagent/runtime/guardrails/tool_runtime_guard.py` |
+| Fallback | `src/unityagent/runtime/tooling/fallback_policy.py` |
+| Providers | `src/unityagent/runtime/tooling/providers/` |
+| Evidence normalization | `src/unityagent/runtime/evidence_capture/provider_evidence.py` |
+| Durable Evidence | `src/unityagent/persistence/evidence/` |
+| Regression | `eval/regression/` |
+| Production Runtime validator | `tools/production_tool_runtime/validate_production_tool_runtime.py` |
 
 ---
 
@@ -508,7 +508,7 @@ Historical文書に現れる旧PathやPhase名をcurrent Production contractと�
 2. Canonical source files
 3. この文書
 4. `docs/architecture/production-tool-runtime.md`
-5. Supporting `Specs/`
+5. Supporting `docs/architecture/specifications/`
 
 
 ## Bootstrap ownership details
@@ -522,8 +522,8 @@ Historical文書に現れる旧PathやPhase名をcurrent Production contractと�
 - OrchestrationはPersistence-compatible state projectionだけを返す。Stateのdurable commitはPersistenceが行う。
 - Runtime EvidenceはPersistence append後にdurable truthとなる。Checkpoint restoreはStateだけを復元し、Memory/Evidenceを巻き戻さない。
 - ResumeはDefinitionFingerprintでcompatible / migration / replan / Human Reviewを決める。Operationsのcheckpoint replayもこのdecision refを必要とする。
-- Operationsのraw control requestはdispatchせず、Policy/Approval済みcommandをauthority別control APIへ渡す。Detection / Incident / Runbookはproduction mutation authorityを持たない。
+- Operationsのraw control requestはdispatchせず、src/unityagent/policy/approval済みcommandをauthority別control APIへ渡す。Detection / Incident / Runbookはproduction mutation authorityを持たない。
 - EvalはRuntime structured factsを利用し、lossy text/diffから再構築しない。`not_observed`は品質denominatorから除外し、ChangeProposalはnon-applyingとする。
 - Capability unavailableだけを理由にSafety Contractを緩和しない。承認付きMyUnityMCP Mutationを接続失敗だけでraw evalへ迂回しない。
 - Unity RuntimeのArtifact GraphはAsset dependency graphでありAgent ParentGraph/SubGraphではない。
-- Historical migration / Eval provenanceは監査用途のみとし、legacy path fallbackや旧control planeをProductionへ戻さない。
+- Historical migration / eval provenanceは監査用途のみとし、legacy path fallbackや旧control planeをProductionへ戻さない。

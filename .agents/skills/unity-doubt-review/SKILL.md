@@ -7,7 +7,7 @@ metadata:
   version: "1.0.0"
   kind: evidence-gate
   entrypoint: false
-  user_policy: Policy/User/user-policy.yaml
+  user_policy: src/unityagent/policy/user/user-policy.yaml
 ---
 
 # Unity Doubt Review

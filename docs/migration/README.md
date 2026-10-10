@@ -7,10 +7,10 @@
 現在のUnityAgent behaviorは次を優先してください。
 
 1. `AGENTS.md`
-2. `Policy/`、`Orchestration/`、`Context/`、`Runtime/`、`Persistence/`、`Operations/`、`Eval/`のCanonical Source
+2. `src/unityagent/policy/`、`src/unityagent/orchestration/`、`src/unityagent/context/`、`src/unityagent/runtime/`、`src/unityagent/persistence/`、`src/unityagent/operations/`、`eval/`のCanonical Source
 3. [Architecture](../architecture/architecture.md)
-4. [Production Tool Runtime](../architecture/production-tool-runtime.md)
-5. 関連する`Specs/`
+4. [Production Tool src/unityagent/runtime](../architecture/production-tool-runtime.md)
+5. 関連する`docs/architecture/specifications/`
 
 このDirectoryはRouting、Context Materialization、Runtime Execution、Policy判断にCurrent Stateとして使いません。UnitySubAgentHubは別RepositoryにあるSubAgent metadata contractの所有者です。現在のHub SnapshotはUnityAgent Runtimeへ自動取込されないため、Migration Recordをその代替として使わないでください。
 
@@ -24,6 +24,6 @@
 
 ## Historical Pathと名前
 
-過去のBranch、Run ID、Artifact、Baseline、旧Path、旧Contract名は、Historical Evidenceとの対応を保つため原文のまま残せます。`.ai/**`、`Context/Selection/mcp-selection.yaml`、`compatibility://...`などを現在のAuthorityとして復活させません。
+過去のBranch、Run ID、Artifact、Baseline、旧Path、旧Contract名は、Historical Evidenceとの対応を保つため原文のまま残せます。`.ai/**`、`src/unityagent/context/selection/mcp-selection.yaml`、`compatibility://...`などを現在のAuthorityとして復活させません。
 
 ファイル名はPhase番号より責務を表す名前にします。Migration文書とCurrent Canonical Sourceが競合した場合は、Current Canonical Sourceを優先します。

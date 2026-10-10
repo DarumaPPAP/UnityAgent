@@ -7,20 +7,20 @@ Status: Phase 0.
 Runtime owns the actual environment/tool/Unity health implementations. Orchestration may own graph Nodes that request those Runtime contracts.
 
 ```text
-Orchestration/Graph/HealthChecks/
+src/unityagent/orchestration/graph/health_checks/
 ├─ EnvironmentCheck/
 ├─ UnityAvailabilityCheck/
 └─ ToolHealthCheck/
           │
           │ request only
           ▼
-Runtime/Health/
+src/unityagent/runtime/health/
 ├─ EnvironmentHealthProbe
 ├─ UnityHealthProbe
 └─ ToolHealthProbe
           │
           ▼
-Runtime/Contracts/HealthCheckResult
+src/unityagent/runtime/contracts/health_check_result
           │
           ├─> Orchestration Gate/Route decision
           ├─> Runtime Telemetry
@@ -151,27 +151,27 @@ Do not conflate Runtime health probes with Operations failure detection.
 
 | concern | owner |
 |---|---|
-| immediate executable/Unity/tool availability for current Run | Runtime/Health |
-| Graph decision after current health result | Orchestration/HealthCheck Node |
-| retry storm, latency anomaly, cost drift, repeated tool degradation across runs | Operations/FailureDetection |
-| quarantine/rollback/force HITL | Operations/RuntimeControl through Policy/Approval |
+| immediate executable/Unity/tool availability for current Run | src/unityagent/runtime/health |
+| Graph decision after current health result | src/unityagent/orchestration/health_check Node |
+| retry storm, latency anomaly, cost drift, repeated tool degradation across runs | src/unityagent/operations/failure_detection |
+| quarantine/rollback/force HITL | src/unityagent/operations/runtime_control through src/unityagent/policy/approval |
 
 ## Evidence policy
 
 Health evidence is required when the health result controls a required quality gate, mutation permission, production smoke validity, or resume decision. The health result references canonical EvidenceRecords; it does not embed unverifiable self-claims as proof.
 
-## Tests
+## tests
 
 Required contract/integration coverage:
 
 1. Environment healthy/unavailable/failed branches.
 2. Unity unavailable does not become Compile/Editor PASS.
-3. Tool timeout is handled by Runtime/ExecutionControl, not a Local Loop.
+3. Tool timeout is handled by src/unityagent/runtime/execution_control, not a Local Loop.
 4. Optional provider fallback requires an Orchestration decision.
-5. Required provider unavailable blocks/replans according to Policy/Graph requirement.
+5. Required provider unavailable blocks/replans according to src/unityagent/policy/graph requirement.
 6. Health Node contains no direct subprocess/Unity/tool implementation.
-7. Health evidence refs survive Runtime -> Persistence -> Eval without re-parsing.
-8. Operations anomaly detection cannot directly mutate Runtime/Graph without Policy/Approval.
+7. Health evidence refs survive src/unityagent/runtime -> src/unityagent/persistence -> eval without re-parsing.
+8. Operations anomaly detection cannot directly mutate src/unityagent/runtime/graph without src/unityagent/policy/Approval.
 
 ## Acceptance invariant
 
@@ -180,5 +180,5 @@ Graph knows whether it may/should continue.
 Runtime knows how to check and execute safely.
 Persistence knows what actually happened.
 Operations knows whether the system is drifting.
-Eval knows how to measure the recorded behavior.
+eval knows how to measure the recorded behavior.
 ```

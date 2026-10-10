@@ -24,13 +24,13 @@ Required checks: UnityAgent `Canonical Validation`; Hub `Validate Branch Name` a
 
 ## Contract and source audit
 
-AGENTS.md, User/Approval/Evidence Policy, branch policy, repository authority maps, Source Lock, and current workflows were read. UnityAgent is the sole Control Plane; Hub is static metadata. Profile ID / provider ID separation, optional required=false/auto_install=false specialists, fail-closed activation, hashes/provenance, UPM names and asset GUIDs remain protected.
+AGENTS.md, User/Approval/Evidence src/unityagent/policy, branch policy, repository authority maps, Source Lock, and current workflows were read. UnityAgent is the sole Control Plane; Hub is static metadata. Profile ID / provider ID separation, optional required=false/auto_install=false specialists, fail-closed activation, hashes/provenance, UPM names and asset GUIDs remain protected.
 
 Route: architecture-design, using current-call Context Assembly; this route declares no required_policy_clauses. User, Approval and Evidence policies were additionally reviewed for this cross-repository task. The existing unrelated checkout fixture newline difference is preserved in the original checkout; worktrees isolate this audit.
 
 Both Development and Pinned snapshots pass the existing real Consumer Import Gate as read-only `no_op`. Their commits differ but snapshot SHA-256 is `b156ee93fab5abddc8a7785c8493b835ce3111eae80394f4e42f6f59f574e6d5`; catalog_write_performed=false. Hash is byte identity evidence, not a cryptographic signature. Saved import plans are in consolidation/.
 
-692 Agent and 199 Hub committed files are indexed with byte SHA-256, sizes, and root counts. The reference index contains 2142 Agent and 596 Hub path occurrences. Only frozen Legacy and 2022.3 fixture references are classified historical automatically; remaining entries require owning-caller review. Duplicate bytes alone never authorize removal. Four Prompt files match Context/Prompt/Templates byte-for-byte; callers must migrate before removing them. No production file was deleted in P0.
+692 Agent and 199 Hub committed files are indexed with byte SHA-256, sizes, and root counts. The reference index contains 2142 Agent and 596 Hub path occurrences. Only frozen Legacy and 2022.3 fixture references are classified historical automatically; remaining entries require owning-caller review. Duplicate bytes alone never authorize removal. Four src/unityagent/context/prompt/templates files match src/unityagent/context/prompt/templates byte-for-byte; callers must migrate before removing them. No production file was deleted in P0.
 
 EnvironmentSnapshot.myunitymcp remains required in the environment schema, dataclass, discovery and fixtures after adapter retirement. It is an observation/wire compatibility surface; do not remove it as a directory cleanup without consumer migration evidence.
 
@@ -47,7 +47,7 @@ EnvironmentSnapshot.myunitymcp remains required in the environment schema, datac
 
 | Gate | Result |
 |---|---|
-| Agent canonical python Tools/validate_all.py | PASS: 574 unittest cases across 10 suites, plus canonical validators |
+| Agent canonical python tools/validate_all.py | PASS: 574 unittest cases across 10 suites, plus canonical validators |
 | Hub authority / registry / snapshot export | PASS: 0 errors |
 | Hub unittest discovery | PASS: 32 tests |
 | Artist backend / Unity API / portable-path static validators | PASS |

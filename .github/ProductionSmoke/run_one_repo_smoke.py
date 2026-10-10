@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Execute Phase 8 one-repo Production Smoke through canonical UnityAgent authorities.
 
-This integration harness coordinates the test only. Orchestration selects Route/Profile,
-Context materializes input, Runtime owns the Codex process and hard enforcement,
-Persistence stores immutable execution evidence, and Eval grades afterward in a
+This integration harness coordinates the test only. src/unityagent/orchestration selects Route/Profile,
+src/unityagent/context materializes input, src/unityagent/runtime owns the Codex process and hard enforcement,
+src/unityagent/persistence stores immutable execution evidence, and eval grades afterward in a
 separate step.
 """
 from __future__ import annotations
@@ -27,16 +27,16 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from Context.Assembly.materialize_context import materialize_context
-from Eval.Datasets.paths import canonicalize_repo_path
-from Orchestration.Routing.route_selector import load_routes, select_route
-from Persistence.Evidence.evidence_store import EvidenceStore
-from Persistence.Evidence.runtime_adapter import from_runtime_execution_evidence
+from unityagent.context.assembly.materialize_context import materialize_context
+from eval.datasets.paths import canonicalize_repo_path
+from unityagent.orchestration.routing.route_selector import load_routes, select_route
+from unityagent.persistence.evidence.evidence_store import EvidenceStore
+from unityagent.persistence.evidence.runtime_adapter import from_runtime_execution_evidence
 
-SUITES = ROOT / "Eval/Datasets/Behavior/suites.yaml"
-CONTRACTS = ROOT / "Eval/Datasets/Behavior/production-smoke-contracts.yaml"
-ROUTES = ROOT / "Orchestration/Routing/task-routes.yaml"
-RUNTIME = ROOT / "Runtime/Runner/Codex/codex_runner.py"
+SUITES = ROOT / "eval/datasets/behavior/suites.yaml"
+CONTRACTS = ROOT / "eval/datasets/behavior/production-smoke-contracts.yaml"
+ROUTES = ROOT / "src/unityagent/orchestration/routing/task-routes.yaml"
+RUNTIME = ROOT / "src/unityagent/runtime/runner/codex/codex_runner.py"
 DEFAULT_ROOT = ROOT / "Artifacts/ProductionSmoke"
 FAKE_MARKERS = ("fake_codex_cli.py", "fake_production_agent.py")
 
@@ -64,7 +64,7 @@ def _runtime_work_kind(eval_work_kind: str) -> str:
     try:
         return mapping[eval_work_kind]
     except KeyError as exc:
-        raise ProductionSmokeError(f"unsupported Eval work_kind: {eval_work_kind}") from exc
+        raise ProductionSmokeError(f"unsupported eval work_kind: {eval_work_kind}") from exc
 
 
 def _fingerprint(prompt: str, eval_work_kind: str, allowed_paths: list[str], observed: list[dict[str, Any]]) -> dict[str, str]:
@@ -156,7 +156,7 @@ Return only one JSON object in the final response:
 {{
   "answer": "<Japanese task answer>",
   "loaded_policies": [
-    {{"id": "<leaf clause id>", "source_path": "Policy/User/user-policy.yaml#<exact dotted fragment>", "reason": "<why it was applied>"}}
+    {{"id": "<leaf clause id>", "source_path": "src/unityagent/policy/user/user-policy.yaml#<exact dotted fragment>", "reason": "<why it was applied>"}}
   ],
   "quality_gates": [
     {{"id": "<gate id>", "status": "passed|failed|unavailable", "evidence": "<specific evidence>"}}
@@ -167,7 +167,7 @@ Return only one JSON object in the final response:
 Rules:
 - Report only policy clauses actually applied.
 - Never invent a passed gate. Use unavailable when the evidence or tool is unavailable.
-- Do not claim Unity Editor, Runtime, Player, target-device, visual, or performance verification unless it actually occurred.
+- Do not claim Unity Editor, src/unityagent/runtime, Player, target-device, visual, or performance verification unless it actually occurred.
 - Keep all mutation inside the provided workspace and only inside allowed paths.
 - The final response must not mention Golden expectations, expected route, hidden graders, or test answers.
 """
@@ -204,7 +204,7 @@ def _resolve_fragment(data: Any, fragment: str) -> bool:
 
 
 def _validated_policies(structured: dict[str, Any]) -> list[dict[str, str]]:
-    policy = _yaml(ROOT / "Policy/User/user-policy.yaml")
+    policy = _yaml(ROOT / "src/unityagent/policy/user/user-policy.yaml")
     output: list[dict[str, str]] = []
     for item in structured.get("loaded_policies") or []:
         if not isinstance(item, dict):
@@ -212,7 +212,7 @@ def _validated_policies(structured: dict[str, Any]) -> list[dict[str, str]]:
         policy_id = str(item.get("id") or "").strip()
         source = str(item.get("source_path") or "").strip()
         reason = str(item.get("reason") or "").strip()
-        prefix = "Policy/User/user-policy.yaml#"
+        prefix = "src/unityagent/policy/user/user-policy.yaml#"
         if not policy_id or not source.startswith(prefix) or not reason:
             raise ProductionSmokeError("loaded policy must use canonical user-policy source with exact fragment")
         fragment = source[len(prefix):]
@@ -223,7 +223,7 @@ def _validated_policies(structured: dict[str, Any]) -> list[dict[str, str]]:
 
 
 def _gate_outcomes(route_id: str, work_kind: str, structured: dict[str, Any], observed: list[dict[str, Any]]) -> list[dict[str, str]]:
-    contract = _yaml(ROOT / f"Orchestration/Contracts/TaskContracts/{route_id}.yaml")
+    contract = _yaml(ROOT / f"src/unityagent/orchestration/contracts/task_contracts/{route_id}.yaml")
     required = {str(item) for item in contract.get("required_quality_gates") or []}
     conditional = {str(item) for item in contract.get("conditional_quality_gates") or []}
     trusted: dict[str, dict[str, str]] = {}
@@ -292,9 +292,9 @@ def _deterministic_mutation_evidence(workspace: Path, case_dir: Path, changed: l
             "id": "runtime-mutation-scope",
             "gate": "static_review",
             "status": "passed",
-            "source": "Runtime/Guardrails/mutation_guard.py",
+            "source": "src/unityagent/runtime/guardrails/mutation_guard.py",
             "scope": ",".join(changed),
-            "statement": "Runtime mutation guard observed only explicitly allowed changed paths.",
+            "statement": "src/unityagent/runtime mutation guard observed only explicitly allowed changed paths.",
         })
     dotnet = shutil.which("dotnet")
     if not dotnet:
@@ -378,13 +378,13 @@ def _persist_execution(case_dir: Path, result: dict[str, Any]) -> str:
         "evidence_id": f"{result['run_id']}-execution-result",
         "run_id": result["run_id"],
         "step_id": result["step_id"],
-        "producer": "Runtime/Runner/Codex/codex_runner.py",
+        "producer": "src/unityagent/runtime/runner/codex/codex_runner.py",
         "source_type": "runtime_execution_result",
         "source_ref": source.relative_to(case_dir).as_posix(),
         "payload_ref": source.relative_to(case_dir).as_posix(),
         "hash": digest,
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "provenance": ["Runtime/Runner/Codex/codex_runner.py", "Operations/ProductionSmoke/run_one_repo_smoke.py"],
+        "provenance": ["src/unityagent/runtime/runner/codex/codex_runner.py", "src/unityagent/operations/ProductionSmoke/run_one_repo_smoke.py"],
         "definition_fingerprint": result["definition_fingerprint"],
         "status": "passed" if result.get("status") == "passed" else "failed",
     }
@@ -436,7 +436,7 @@ def _envelope(case_run_id: str, task_id: str, runtime_result: dict[str, Any], ga
         "status": status,
         "failure_class": failure_class,
         "attempt": {"agent_attempt": 1},
-        "execution_owner": {"repository": "DarumaPPAP/UnityAgent", "component": "Runtime/Runner/Codex"},
+        "execution_owner": {"repository": "DarumaPPAP/UnityAgent", "component": "src/unityagent/runtime/runner/codex"},
         "runtime": runtime_result.get("tool_identity") or {},
         "execution_fingerprint": runtime_result.get("definition_fingerprint") or {},
         "evidence": {
@@ -529,7 +529,7 @@ def run_case(base_run_id: str, suite_case: dict[str, Any], contract: dict[str, A
     completed = subprocess.run(command, cwd=ROOT, check=False)
     result_path = runtime_dir / "execution-result.yaml"
     if not result_path.is_file():
-        raise ProductionSmokeError(f"Runtime did not produce execution-result.yaml for {task_id}")
+        raise ProductionSmokeError(f"src/unityagent/runtime did not produce execution-result.yaml for {task_id}")
     runtime_result = _yaml(result_path)
     evidence_id = _persist_execution(case_dir, runtime_result)
 

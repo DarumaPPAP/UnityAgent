@@ -10,7 +10,7 @@ ArtistSubAgent is the specialist identity. `unity_artist_cli` is only its curren
 ## Resolution
 
 1. Build a provider-independent CapabilityRequest from user intent.
-2. Resolve the matching SubAgent profile from `Runtime/ReferenceImplementation/subagent-catalog.yaml`.
+2. Resolve the matching SubAgent profile from `src/unityagent/runtime/reference_implementation/subagent-catalog.yaml`.
 3. Check the profile activation contract before planning or dispatch.
 4. If any required environment fact is false or unknown, treat ArtistSubAgent as unavailable and exclude it. Do not auto-install it.
 5. Only after the SubAgent is eligible may Runtime resolve `profile.provider_id` as the backend Provider.

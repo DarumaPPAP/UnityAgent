@@ -1,0 +1,97 @@
+schema_version: "1.0"
+kind: materialization_catalog
+authority: Context
+route_authority: src/unityagent/orchestration/routing
+materializer_requires_explicit_route_id: true
+user_policy: src/unityagent/policy/user/user-policy.yaml
+risk_policy: src/unityagent/policy/risk/risk-levels.yaml
+context_budget: src/unityagent/context/budget/context-budget.yaml
+capability_catalog: src/unityagent/context/selection/tool-capability-catalog.yaml
+routes:
+  generic-planning:
+    context_pack: src/unityagent/context/packs/generic-planning.yaml
+    primary_skill: .agents/skills/unity-doubt-review/SKILL.md
+    task_contract: src/unityagent/orchestration/contracts/task_contracts/generic-planning.yaml
+  architecture-design:
+    context_pack: src/unityagent/context/packs/architecture-design.yaml
+    primary_skill: .agents/skills/unity-architecture-design/SKILL.md
+    task_contract: src/unityagent/orchestration/contracts/task_contracts/architecture-design.yaml
+    knowledge_selection: optional
+    reference_selection: local_snapshot_when_relevant
+  graphics-mcp:
+    context_pack: src/unityagent/context/packs/graphics-mcp.yaml
+    primary_skill: .agents/skills/unity-architecture-design/SKILL.md
+    task_contract: src/unityagent/orchestration/contracts/task_contracts/graphics-mcp.yaml
+    knowledge_selection: required_when_domain_matches
+    reference_selection: local_snapshot_when_relevant
+    capability_selection: required
+  csharp-local-fix:
+    context_pack: src/unityagent/context/packs/csharp-local-fix.yaml
+    primary_skill: .agents/skills/csharp-safe-patch/SKILL.md
+    task_contract: src/unityagent/orchestration/contracts/task_contracts/csharp-local-fix.yaml
+  rendering-incident:
+    context_pack: src/unityagent/context/packs/rendering-incident.yaml
+    primary_skill: .agents/skills/unity-incident-investigation/SKILL.md
+    task_contract: src/unityagent/orchestration/contracts/task_contracts/rendering-incident.yaml
+    reference_selection: incident_plan_first
+  shader-change:
+    context_pack: src/unityagent/context/packs/shader-change.yaml
+    primary_skill: .agents/skills/unity-rendering/SKILL.md
+    task_contract: src/unityagent/orchestration/contracts/task_contracts/shader-change.yaml
+    knowledge_selection: required_when_domain_matches
+    reference_selection: local_snapshot_when_relevant
+  renderer-feature-change:
+    context_pack: src/unityagent/context/packs/renderer-feature-change.yaml
+    primary_skill: .agents/skills/unity-rendering/SKILL.md
+    task_contract: src/unityagent/orchestration/contracts/task_contracts/renderer-feature-change.yaml
+    knowledge_selection: required_when_domain_matches
+    reference_selection: local_snapshot_when_relevant
+  performance-experiment:
+    context_pack: src/unityagent/context/packs/performance.yaml
+    primary_skill: .agents/skills/unity-runtime-evidence/SKILL.md
+    task_contract: src/unityagent/orchestration/contracts/task_contracts/performance-experiment.yaml
+  world-creation:
+    context_pack: src/unityagent/context/packs/world-creation.yaml
+    primary_skill: .agents/skills/unity-architecture-design/SKILL.md
+    task_contract: src/unityagent/orchestration/contracts/task_contracts/world-creation.yaml
+  asset-data-change:
+    context_pack: src/unityagent/context/packs/asset-data-change.yaml
+    primary_skill: .agents/skills/csharp-safe-patch/SKILL.md
+    task_contract: src/unityagent/orchestration/contracts/task_contracts/asset-data-change.yaml
+  portable-feature:
+    context_pack: src/unityagent/context/packs/portable-feature.yaml
+    primary_skill: .agents/skills/unity-architecture-design/SKILL.md
+    task_contract: src/unityagent/orchestration/contracts/task_contracts/portable-feature.yaml
+    knowledge_selection: required_when_domain_matches
+    reference_selection: local_snapshot_when_relevant
+    forced_profile: generic_planning
+  safe-import-integration:
+    context_pack: src/unityagent/context/packs/asset-data-change.yaml
+    primary_skill: .agents/skills/csharp-safe-patch/SKILL.md
+    task_contract: src/unityagent/orchestration/contracts/task_contracts/safe-import-integration.yaml
+    forced_profile: team_safe_import
+  visual-direction:
+    context_pack: src/unityagent/context/packs/visual-direction.yaml
+    primary_skill: .agents/skills/unity-visual-direction/SKILL.md
+    task_contract: src/unityagent/orchestration/contracts/task_contracts/visual-direction.yaml
+    knowledge_selection: optional
+  artist-lookdev:
+    context_pack: src/unityagent/context/packs/artist-lookdev.yaml
+    primary_skill: .agents/plugins/unity-agent/skills/artist-subagent-routing/SKILL.md
+    task_contract: src/unityagent/orchestration/contracts/task_contracts/artist-lookdev.yaml
+    knowledge_selection: optional
+    reference_selection: local_snapshot_when_relevant
+    capability_selection: required
+  artist-cinematic:
+    context_pack: src/unityagent/context/packs/artist-cinematic.yaml
+    primary_skill: .agents/plugins/unity-agent/skills/artist-subagent-routing/SKILL.md
+    task_contract: src/unityagent/orchestration/contracts/task_contracts/artist-cinematic.yaml
+    knowledge_selection: optional
+    reference_selection: local_snapshot_when_relevant
+    capability_selection: required
+rules:
+  context_catalog_does_not_select_route: true
+  technology_keyword_is_not_route_authority: true
+  materialization_is_bounded_to_selected_route: true
+  compatibility_uri_is_forbidden_after_canonical_cutover: true
+  context_does_not_select_provider: true

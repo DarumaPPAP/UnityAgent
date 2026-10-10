@@ -17,9 +17,9 @@
 
 ### Clean tracked snapshot
 
-- 一時的なclean checkoutへtracked sourceを展開し、`python Tools/validate_all.py` を実行。
-- 結果：成功。Policy 2、Context 11、Runtime 173（symlink unavailableによる2 skip）、Orchestration 15、Persistence 34、Eval 57、Operations 19、HarnessProjection 9を含む計320テストと関連Validatorが通過。
-- `Tools/DocumentationValidator/validate_documentation.py` は、この資料追加後に再実行する。
+- 一時的なclean checkoutへtracked sourceを展開し、`python tools/validate_all.py` を実行。
+- 結果：成功。src/unityagent/policy 2、src/unityagent/context 11、src/unityagent/runtime 173（symlink unavailableによる2 skip）、src/unityagent/orchestration 15、src/unityagent/persistence 34、eval 57、src/unityagent/operations 19、HarnessProjection 9を含む計320テストと関連Validatorが通過。
+- `tools/documentation_validator/validate_documentation.py` は、この資料追加後に再実行する。
 
 ### 通常Workspaceとの差
 
@@ -28,12 +28,12 @@
 
 ### 収集外・Workflow
 
-- tracked test methodは約345件だが、`Tools/validate_all.py` の標準収集は320件。
+- tracked test methodは約345件だが、`tools/validate_all.py` の標準収集は320件。
 - `.github/ProductionSmoke`の追加11件は個別実行では成功したが、標準Gateへ統合されていない。
-- `Tests/GraphObservatory`は14件中1件が失敗。Foundation testが`Tools/validate_all.py`で`graph.schema.json`を検証することを要求するが、現行validatorはContext Explorer検証のみを呼ぶ。
+- `tests/graph_observatory`は14件中1件が失敗。Foundation testが`tools/validate_all.py`で`graph.schema.json`を検証することを要求するが、現行validatorはContext Explorer検証のみを呼ぶ。
 - `.github/workflows/validate-eval.yml`はContext Explorer投影テストだけを実行する。
 - `.github/workflows/actual-behavior-eval.yml`の`test_phase6_eval.py`指定は現行テスト構成と一致せず、`Ran 0 tests / NO TESTS RAN`（exit 5）を再現した。
-- `Tools/RouteGraphValidator/validate_route_graph.py`は旧Compatibility実装をimportし、単独実行でFileNotFoundErrorになる。標準Gateからも呼ばれていない。
+- `tools/route_graph_validator/validate_route_graph.py`は旧Compatibility実装をimportし、単独実行でFileNotFoundErrorになる。標準Gateからも呼ばれていない。
 
 ## GitHub履歴
 
@@ -43,19 +43,19 @@
 
 ## 実装上の根拠
 
-- Runner：`Runtime/Runner/Codex/codex_runner.py:130-159`。
-- Orchestrator Handoff：`Orchestration/Orchestrator/orchestrator.py:43-69`。
-- Dispatcher：`Runtime/Dispatcher/tool_runtime_dispatcher.py:85-215`。
-- MyUnityMCP Scope：`Runtime/Tooling/Providers/MyUnityMcp/myunitymcp_provider.py:370-479`。
-- Approval Guard：`Runtime/Guardrails/tool_runtime_guard.py:96-154`。
-- Evidence append：`Persistence/Evidence/runtime_adapter.py:105-170`、`Persistence/Evidence/evidence_store.py:64-100`。
-- Context Budget/Fingerprint：`Context/Assembly/materialize_context.py:252-337`。
+- Runner：`src/unityagent/runtime/runner/codex/codex_runner.py:130-159`。
+- Orchestrator Handoff：`src/unityagent/orchestration/orchestrator/orchestrator.py:43-69`。
+- Dispatcher：`src/unityagent/runtime/dispatcher/tool_runtime_dispatcher.py:85-215`。
+- MyUnityMCP Scope：`src/unityagent/runtime/tooling/providers/my_unity_mcp/myunitymcp_provider.py:370-479`。
+- Approval Guard：`src/unityagent/runtime/guardrails/tool_runtime_guard.py:96-154`。
+- Evidence append：`src/unityagent/persistence/evidence/runtime_adapter.py:105-170`、`src/unityagent/persistence/evidence/evidence_store.py:64-100`。
+- Context Budget/Fingerprint：`src/unityagent/context/assembly/materialize_context.py:252-337`。
 
 ## 未観測・未承認
 
 - Unity Editor上のScene状態、MyUnityMCPの実際の変更対象、Unity CLIのBuild/Test、Player起動、Windows固有挙動。
 - 対象GPU/CPUでのProfiler、GC、Build時間、Shader variant、描画品質のBefore/After。
-- Runtime実行からPersistence Evidence、Eval Attribution、Operations DetectionまでのライブRun ID付きE2E。
+- Runtime実行からPersistence Evidence、eval Attribution、Operations DetectionまでのライブRun ID付きE2E。
 - 現行v4.0と旧v3.1 Baselineの同一条件比較。旧Baselineを現行品質の証明には使わない。
 
 ## 証拠の扱い

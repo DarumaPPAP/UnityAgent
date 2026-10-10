@@ -1,8 +1,8 @@
-# Production Tool Runtime
+# Production Tool src/unityagent/runtime
 
 > **目的**: UnityAgentが「特定のTool製品を使うAgent」ではなく、Taskが必要とするCapabilityを現在のUnity環境に合わせて安全に実行するProduction Runtimeとして動く仕組みを説明します。
 >
-> この文書は人間向けのArchitecture Guideです。実行Authorityの正本は `Policy/`、`Orchestration/`、`Runtime/`、`Persistence/`、`Eval/` にあります。
+> この文書は人間向けのArchitecture Guideです。実行Authorityの正本は `src/unityagent/policy/`、`src/unityagent/orchestration/`、`src/unityagent/runtime/`、`src/unityagent/persistence/`、`eval/` にあります。
 
 ## 1. 一番重要な考え方
 
@@ -43,8 +43,8 @@ preferred_surface: live_editor
 
 ```mermaid
 flowchart TD
-    U[User Request] --> P[Policy]
-    P --> O[Orchestration]
+    U[User Request] --> P[src/unityagent/policy]
+    P --> O[src/unityagent/orchestration]
     O -->|CapabilityRequest| C[Context Materialization]
     C --> H[Runtime Handoff<br/>authoritative]
 
@@ -98,12 +98,12 @@ flowchart LR
 
 | Area | 所有するもの | 所有しないもの |
 | --- | --- | --- |
-| Policy | Risk / permission / approval / evidence requirement | Provider選択、Tool実行 |
-| Orchestration | semantic route / graph / task contract / replan | subprocess、Provider dispatch |
-| Context | current-call materialization | Route authority、Provider selection |
-| Runtime | Environment discovery / resolution / dispatch / timeout / fallback / guard | semantic replan、durable truth、Agent採点 |
-| Persistence | durable State / Checkpoint / Memory / Evidence | Provider selection |
-| Eval | quality / regression / attribution | Production execution |
+| src/unityagent/policy | Risk / permission / approval / evidence requirement | Provider選択、Tool実行 |
+| src/unityagent/orchestration | semantic route / graph / task contract / replan | subprocess、Provider dispatch |
+| src/unityagent/context | current-call materialization | Route authority、Provider selection |
+| src/unityagent/runtime | Environment discovery / resolution / dispatch / timeout / fallback / guard | semantic replan、durable truth、Agent採点 |
+| src/unityagent/persistence | durable State / Checkpoint / Memory / Evidence | Provider selection |
+| eval | quality / regression / attribution | Production execution |
 
 ## 4. Canonical Capability語彙
 
@@ -269,7 +269,7 @@ RuntimeはProviderを選ぶ前にEnvironment Factを観測します。
 - legacy bridge binding（移行互換のみ）
 - Test Framework
 - Build target module
-- Player Runtime
+- Player src/unityagent/runtime
 
 `true / false / unknown`を区別し、`unknown`を勝手に`false`へ潰しません。
 
@@ -302,7 +302,7 @@ flowchart LR
     A --> PF[File / Unity CLI]
     B --> CLI[Unity CLI / Native Editor]
     C --> ART[UnityArtistCLI / safe CLI surface]
-    D --> PR[Player Runtime]
+    D --> PR[Player src/unityagent/runtime]
 ```
 
 ## 9. Fallbackの境界
@@ -397,20 +397,20 @@ Baselineを自動更新して差を隠すことは禁止です。
 
 | 内容 | Canonical Source |
 | --- | --- |
-| Capability Request / Resolution schema | `Runtime/Contracts/` |
-| Capability Policy | `Policy/Security/tool-capability-policy.yaml` |
-| Semantic Capability routing | `Orchestration/ToolRouting/capability-routing.yaml` |
-| Context capability descriptions | `Context/Selection/tool-capability-catalog.yaml` |
-| Environment Snapshot | `Runtime/Contracts/environment-snapshot.schema.yaml` + `Runtime/Tooling/Environment/` |
-| Provider Registry | `Runtime/Tooling/provider_registry.yaml` |
-| Provider Resolution | `Runtime/Tooling/capability_resolver.py` |
-| Production Dispatch | `Runtime/Dispatcher/tool_runtime_dispatcher.py` |
-| Last-mile Guard | `Runtime/Guardrails/tool_runtime_guard.py` |
-| Infrastructure fallback | `Runtime/Tooling/fallback_policy.py` |
-| Provider adapters | `Runtime/Tooling/Providers/` |
-| Evidence normalization | `Runtime/EvidenceCapture/provider_evidence.py` |
-| Environment Regression Matrix | `Eval/Datasets/Behavior/production-tool-runtime-environment-matrix.yaml` |
-| Production validation | `Tools/ProductionToolRuntime/validate_production_tool_runtime.py` |
+| Capability Request / Resolution schema | `src/unityagent/runtime/contracts/` |
+| Capability src/unityagent/policy | `src/unityagent/policy/security/tool-capability-policy.yaml` |
+| Semantic Capability routing | `src/unityagent/orchestration/tool_routing/capability-routing.yaml` |
+| Context capability descriptions | `src/unityagent/context/selection/tool-capability-catalog.yaml` |
+| Environment Snapshot | `src/unityagent/runtime/contracts/environment-snapshot.schema.yaml` + `src/unityagent/runtime/tooling/environment/` |
+| Provider Registry | `src/unityagent/runtime/tooling/provider_registry.yaml` |
+| Provider Resolution | `src/unityagent/runtime/tooling/capability_resolver.py` |
+| Production Dispatch | `src/unityagent/runtime/dispatcher/tool_runtime_dispatcher.py` |
+| Last-mile Guard | `src/unityagent/runtime/guardrails/tool_runtime_guard.py` |
+| Infrastructure fallback | `src/unityagent/runtime/tooling/fallback_policy.py` |
+| Provider adapters | `src/unityagent/runtime/tooling/providers/` |
+| Evidence normalization | `src/unityagent/runtime/evidence_capture/provider_evidence.py` |
+| Environment Regression Matrix | `eval/datasets/behavior/production-tool-runtime-environment-matrix.yaml` |
+| Production validation | `tools/production_tool_runtime/validate_production_tool_runtime.py` |
 
 ## 14. Anti-regression Checklist
 
@@ -419,7 +419,7 @@ Production Cutover後に次が復活したらRegressionです。
 - `capability_contract_mode: shadow`
 - Orchestrationから`provider` / `provider_ref`を指定する
 - ContextがProviderを選択する
-- `Context/Selection/mcp-selection.yaml`をcurrent authorityとして復活する
+- `src/unityagent/context/selection/mcp-selection.yaml`をcurrent authorityとして復活する
 - 存在しないRoot `Catalog/*.yaml`をcurrent Contextから参照する
 - Provider unavailableを理由にMutation Scopeを広げる
 - Required Evidenceを弱めてFallbackする
@@ -434,6 +434,6 @@ Production Cutover後に次が復活したらRegressionです。
 - [UnityAgent Architecture](architecture.md)
 - [Unity環境への適応](../unity-environment-adaptation.md)
 - [ローカルUnity Project開発](../local-project-development.md)
-- [Unity Tool Runtime Supporting Spec](../../Specs/UnityToolRuntime.md)
-- [Environment Adaptation Supporting Spec](../../Specs/UnityToolRuntimeEnvironmentAdaptation.md)
-- [Development Request Template](../../Templates/DevelopmentRequest.md)
+- [Unity Tool Runtime Supporting Spec](specifications/UnityToolRuntime.md)
+- [Environment Adaptation Supporting Spec](specifications/UnityToolRuntimeEnvironmentAdaptation.md)
+- [Development Request Template](../templates/DevelopmentRequest.md)

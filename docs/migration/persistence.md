@@ -7,7 +7,7 @@ Status: implemented on `refactor/architecture-phase5-persistence`.
 - UnityAgent base: `1b885fb58bc8a662166b176c1db2c30fb20931c1`
 - Unity-Graph-Engineering compatibility reference: `b8dc31470f757d87f5d5c45264592ff00ef1e061`
 - Split references:
-  - `Tools/LayeredMemoryController/layered_memory_controller.py`
+  - `tools/LayeredMemoryController/layered_memory_controller.py`
   - `policies/memory-layering.yaml`
   - `schemas/run-state.schema.json`
   - `schemas/continuation-state.schema.yaml`
@@ -75,28 +75,28 @@ Historical checkpoint schema `1.0` is read through compatibility logic. Migratio
 
 ## Resume compatibility
 
-`Persistence/Resume/resume.py` implements the Phase 0 resume matrix:
+`src/unityagent/persistence/resume/resume.py` implements the Phase 0 resume matrix:
 
 - identical fingerprint -> resume;
-- Policy change -> fail closed unless explicitly declared compatible, then re-evaluate Policy/Approval;
-- Prompt/Context change before an action is issued -> re-materialize Context;
-- Prompt/Context change after action issue -> do not reuse the action; return to a safe semantic boundary;
+- Policy change -> fail closed unless explicitly declared compatible, then re-evaluate src/unityagent/policy/approval;
+- src/unityagent/context/prompt/templates/context change before an action is issued -> re-materialize Context;
+- src/unityagent/context/prompt/templates/context change after action issue -> do not reuse the action; return to a safe semantic boundary;
 - active Graph revision mismatch -> require an exact node mapping;
-- Runtime/tool schema change before execution -> revalidate Runtime;
-- possible in-flight external action + Runtime/tool change -> block and reconcile side effects;
+- src/unityagent/runtime/tool schema change before execution -> revalidate Runtime;
+- possible in-flight external action + src/unityagent/runtime/tool change -> block and reconcile side effects;
 - checkpoint schema change -> require a tested migration;
 - Evidence schema change -> keep historical Evidence immutable and use a versioned reader;
 - architecture boundary change -> Human review.
 
 ## Evidence
 
-Runtime capture is not durable truth until appended to `Persistence/Evidence`.
+Runtime capture is not durable truth until appended to `src/unityagent/persistence/evidence`.
 
 Evidence is append/immutable-oriented:
 
 - same `evidence_id` + same record is idempotent;
 - same `evidence_id` + different record is rejected;
-- Runtime `ExecutionEvidence.status` is mapped losslessly to durable `verification_status`;
+- src/unityagent/runtime `ExecutionEvidence.status` is mapped losslessly to durable `verification_status`;
 - `gate_outcome`, payload/hash, provenance, and full DefinitionFingerprint are retained;
 - historical Evidence is never rewritten merely to resume a run.
 
@@ -116,7 +116,7 @@ Persistence Memory
         └─ durable record / promotion gate
         │
         ▼
-Context Retrieval/Memory
+Context Retrieval/memory
         └─ read-only bounded projection
 ```
 
@@ -156,8 +156,8 @@ Phase 5 tests cover:
 - Session/Checkpoint separation;
 - legacy Graph state normalization;
 - legacy layered Memory split;
-- no Runtime/Orchestration implementation import into Persistence.
+- no src/unityagent/runtime/orchestration implementation import into Persistence.
 
 ## Non-goals
 
-Phase 5 does not delete compatibility sources, remove legacy source trees, archive Unity-Graph-Engineering, consolidate Eval, or implement Operations control. Those remain later-phase responsibilities.
+Phase 5 does not delete compatibility sources, remove legacy source trees, archive Unity-Graph-Engineering, consolidate eval, or implement Operations control. Those remain later-phase responsibilities.

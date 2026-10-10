@@ -10,44 +10,44 @@ Phase 1 establishes canonical structured boundary facts before moving production
 
 ## Canonical contract owners
 
-### Runtime
+### src/unityagent/runtime
 
-- `Runtime/Contracts/execution-result.schema.yaml`
-- `Runtime/Contracts/execution-evidence.schema.yaml`
-- `Runtime/Contracts/mutation-evidence.schema.yaml`
-- `Runtime/Contracts/runtime-failure.schema.yaml`
+- `src/unityagent/runtime/contracts/execution-result.schema.yaml`
+- `src/unityagent/runtime/contracts/execution-evidence.schema.yaml`
+- `src/unityagent/runtime/contracts/mutation-evidence.schema.yaml`
+- `src/unityagent/runtime/contracts/runtime-failure.schema.yaml`
 
 `ExecutionResult` owns the canonical structured representation of `changed_paths`, gate outcomes, and tool identity. `changed_paths` carries `observation_state`; `not_observed + []` is not a mutation no-op.
 
-### Persistence
+### src/unityagent/persistence
 
-- `Persistence/Contracts/definition-fingerprint.schema.yaml`
-- `Persistence/Contracts/evidence-record.schema.yaml`
-- `Persistence/Contracts/execution-state.schema.yaml`
-- `Persistence/Contracts/workflow-state.schema.yaml`
-- `Persistence/Contracts/loop-control-state.schema.yaml`
-- `Persistence/Contracts/run-checkpoint.schema.yaml`
-- `Persistence/Contracts/session-record.schema.yaml`
-- `Persistence/Contracts/memory-record.schema.yaml`
+- `src/unityagent/persistence/contracts/definition-fingerprint.schema.yaml`
+- `src/unityagent/persistence/contracts/evidence-record.schema.yaml`
+- `src/unityagent/persistence/contracts/execution-state.schema.yaml`
+- `src/unityagent/persistence/contracts/workflow-state.schema.yaml`
+- `src/unityagent/persistence/contracts/loop-control-state.schema.yaml`
+- `src/unityagent/persistence/contracts/run-checkpoint.schema.yaml`
+- `src/unityagent/persistence/contracts/session-record.schema.yaml`
+- `src/unityagent/persistence/contracts/memory-record.schema.yaml`
 
 `LoopControlState` contains semantic loop progress only. Hard timeout/retry/turn/cost controls are intentionally absent and remain Runtime responsibilities. Memory requires source Evidence references. Checkpoint, Memory, and Evidence remain separate contracts.
 
-### Operations
+### src/unityagent/operations
 
-- `Operations/Observability/trace-record.schema.yaml`
+- `src/unityagent/operations/observability/trace-record.schema.yaml`
 
 Trace events are structured and evidence-linkable. This contract does not grant Operations authority to bypass Policy or Runtime enforcement.
 
-### Eval
+### eval
 
-- `Eval/Attribution/eval-record.schema.yaml`
-- `Eval/GoldenContracts/golden-contract.schema.yaml`
+- `eval/attribution/eval-record.schema.yaml`
+- `eval/golden_contracts/golden-contract.schema.yaml`
 
 Infrastructure/evaluator/fixture/unavailable-evidence failures are `not_observed` and are excluded from the Agent-quality denominator. `agent_behavior_regression` is an observed Agent-quality result.
 
 ## Legacy normalization
 
-`Eval/Replay/legacy_bundle_normalizer.py` is a migration-only adapter. It:
+`eval/replay/legacy_bundle_normalizer.py` is a migration-only adapter. It:
 
 - consumes the existing BehaviorEval `execution-envelope.yaml` shape;
 - uses structured `metrics.json.changed_paths` when present;
@@ -68,9 +68,9 @@ This adapter is temporary and is deleted only after native end-to-end canonical 
 - Runtime contract tests: canonical changed-path observation and mutation-scope invariant.
 - Persistence contract tests: semantic-loop/runtime-control separation and Memory evidence provenance.
 - Operations contract test: structured trace/evidence linkage.
-- Eval/replay tests (7): infrastructure denominator exclusion, existing legacy protocol fixture normalization, structured metrics preservation, malformed metrics fail-closed behavior, structured failure fallback, conflicting typed failures fail-closed, and untyped legacy failure exclusion.
+- eval/replay tests (7): infrastructure denominator exclusion, existing legacy protocol fixture normalization, structured metrics preservation, malformed metrics fail-closed behavior, structured failure fallback, conflicting typed failures fail-closed, and untyped legacy failure exclusion.
 
-CI entrypoint: `.github/workflows/validate-agent-contracts.yml` via `Tools/validate_all.py`.
+CI entrypoint: `.github/workflows/validate-agent-contracts.yml` via `tools/validate_all.py`.
 
 ## Actual production artifact replay
 

@@ -73,7 +73,7 @@ metadata:
 2. Core logic
 3. Unity boundary integration
 4. Migration
-5. Tests
+5. tests
 6. Player / platform validation
 7. Performance evidence
 
@@ -116,7 +116,7 @@ Done criteriaは「コードを書いた」ではなく、観測可能な状態�
 
 ### Step 6 — Save
 
-`Specs/<FeatureName>/tasks.md`へ保存する。
+`docs/architecture/specifications/<FeatureName>/tasks.md`へ保存する。
 Task IDは後続の追加でも既存IDを振り直さない。
 
 ## Recommended task format

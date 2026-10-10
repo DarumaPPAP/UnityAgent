@@ -17,9 +17,9 @@ Production Smoke cases
   ├─ MUTATION
   └─ EVIDENCE
         ↓
-Orchestration → Context → Runtime → Persistence
+src/unityagent/orchestration → src/unityagent/context → src/unityagent/runtime → src/unityagent/persistence
         ↓
-Eval normalization / grading
+eval normalization / grading
         ↓
 Unified Failure Taxonomy
         ↓
@@ -41,7 +41,7 @@ Do not run four separate taxonomy pipelines.
       ↓
 one candidate-results document
       ↓
-one Behavior Eval
+one Behavior eval
       ↓
 one taxonomy aggregation
       ↓
@@ -59,7 +59,7 @@ The canonical Production Smoke suite remains:
 - `GOLDEN-MUTATION-001`
 - `GOLDEN-EVIDENCE-001`
 
-The suite must use real Runtime execution. Fake Runtime, fake Codex, replay-only evidence, or Golden-derived answers cannot satisfy production observation.
+The suite must use real Runtime execution. Fake src/unityagent/runtime, fake Codex, replay-only evidence, or Golden-derived answers cannot satisfy production observation.
 
 ### ARCH
 
@@ -75,7 +75,7 @@ Measures bounded source mutation, structured `changed_paths`, compile evidence a
 
 ### EVIDENCE
 
-Measures evidence honesty. Compile evidence must not be expanded into claims about Unity Editor, Runtime, Player, target device, visual quality or performance unless those facts were actually observed.
+Measures evidence honesty. Compile evidence must not be expanded into claims about Unity Editor, src/unityagent/runtime, Player, target device, visual quality or performance unless those facts were actually observed.
 
 ## Execution ownership
 
@@ -86,10 +86,10 @@ Orchestration selects semantic route/profile
 Context materializes current-call input
 Runtime executes and hard-enforces
 Persistence stores durable evidence
-Eval grades, attributes and reports
+eval grades, attributes and reports
 ```
 
-Eval must never invoke Codex or become a second Runtime.
+eval must never invoke Codex or become a second Runtime.
 
 ## Golden isolation
 
@@ -105,7 +105,7 @@ Production prompts remain user-realistic. Golden content enters only after execu
 
 ## Unified taxonomy
 
-`Eval/Attribution/failure-taxonomy.yaml` remains the taxonomy authority.
+`eval/attribution/failure-taxonomy.yaml` remains the taxonomy authority.
 
 The rebaseline distinguishes two layers:
 
@@ -163,7 +163,7 @@ Infrastructure defects must never silently reduce Agent quality metrics.
 
 The migration introduces one canonical aggregate artifact:
 
-`Eval/Rebaseline/rebaseline-summary.schema.yaml`
+`eval/rebaseline/rebaseline-summary.schema.yaml`
 
 Generated run artifact:
 
@@ -193,7 +193,7 @@ The final baseline requires replay coverage for:
 - MUTATION
 - EVIDENCE
 
-`Eval/Replay/historical_replay.py` remains the replay authority.
+`eval/replay/historical_replay.py` remains the replay authority.
 
 A Production Smoke run may first produce:
 
@@ -238,7 +238,7 @@ A run that is not observed is not a failed baseline; it is not a baseline candid
 After a `baseline_ready` summary is produced:
 
 1. review the summary and retained run evidence;
-2. verify the source revision and Runtime/model identity;
+2. verify the source revision and src/unityagent/runtime/model identity;
 3. freeze the accepted baseline through a dedicated PR;
 4. never rewrite old baseline evidence in place;
 5. future definition/model changes compare against the frozen baseline by recorded fingerprints and typed metrics.
@@ -250,14 +250,14 @@ Do not retry until a convenient result appears and then call that the baseline. 
 Stop and review before baseline freeze if:
 
 - an unexplained Agent regression appears;
-- any Golden expectation reaches Runtime/Context;
+- any Golden expectation reaches src/unityagent/runtime/context;
 - changed paths are reconstructed from lossy prose rather than canonical Runtime facts;
 - a `not_observed` run lacks a typed non-Agent attribution;
 - historical replay loses canonical facts;
 - mutation exceeds allowed scope;
 - evidence claims exceed observed evidence;
 - source revision, model identity or DefinitionFingerprint is missing;
-- Eval attempts to apply production changes directly.
+- eval attempts to apply production changes directly.
 
 ## Definition of Done
 

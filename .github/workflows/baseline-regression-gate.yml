@@ -18,7 +18,7 @@ on:
           - high
           - xhigh
       timeout_seconds:
-        description: Per-case Runtime timeout
+        description: Per-case src/unityagent/runtime timeout
         required: true
         default: 600
         type: number
@@ -36,7 +36,7 @@ jobs:
       CANDIDATE_MODEL: ${{ inputs.model }}
       CANDIDATE_REASONING_EFFORT: ${{ inputs.reasoning_effort }}
       CANDIDATE_TIMEOUT_SECONDS: ${{ inputs.timeout_seconds }}
-      FROZEN_BASELINE: Eval/Rebaseline/Baselines/phase9-baseline-20260830-09.yaml
+      FROZEN_BASELINE: eval/rebaseline/baselines/phase9-baseline-20260830-09.yaml
     steps:
       - name: Checkout candidate revision
         uses: actions/checkout@v7
@@ -57,17 +57,17 @@ jobs:
           dotnet-version: "8.0.x"
 
       - name: Install Python validation dependencies
-        run: python -m pip install --disable-pip-version-check PyYAML jsonschema
+        run: python -m pip install --disable-pip-version-check -e . build
 
       - name: Validate frozen baseline and regression contracts
         shell: bash
         run: |
-          python Eval/Rebaseline/validate_baseline_freeze.py "$FROZEN_BASELINE"
-          python -m unittest Eval.Tests.test_baseline_comparator Eval.Tests.test_local_regression_gate
+          python eval/rebaseline/validate_baseline_freeze.py "$FROZEN_BASELINE"
+          python -m unittest tests.eval.test_baseline_comparator tests.eval.test_local_regression_gate
           python -m py_compile \
-            Eval/Regression/baseline_comparator.py \
-            Eval/Regression/compare_baseline.py \
-            Tools/run_regression_gate.py
+            eval/regression/baseline_comparator.py \
+            eval/regression/compare_baseline.py \
+            tools/run_regression_gate.py
 
       - name: Optional CI credential preflight
         shell: bash
@@ -82,7 +82,7 @@ jobs:
             "production_execution_observed": false
           }
           JSON
-            echo "::error::Optional GitHub-hosted regression gate requires OPENAI_API_KEY. Use Tools/run_regression_gate.py for the standard local ChatGPT-authenticated path."
+            echo "::error::Optional GitHub-hosted regression gate requires OPENAI_API_KEY. Use tools/run_regression_gate.py for the standard local ChatGPT-authenticated path."
             exit 1
           fi
 
@@ -110,10 +110,10 @@ jobs:
             --timeout-seconds "$CANDIDATE_TIMEOUT_SECONDS"
           execution_code=$?
 
-          python Eval/Behavior/grade_production_smoke.py --run-id "$CANDIDATE_RUN_ID"
+          python eval/behavior/grade_production_smoke.py --run-id "$CANDIDATE_RUN_ID"
           grade_code=$?
 
-          python Eval/Rebaseline/build_rebaseline_summary.py \
+          python eval/rebaseline/build_rebaseline_summary.py \
             --run-id "$CANDIDATE_RUN_ID" \
             --source-revision "$GITHUB_SHA" \
             --model "$CANDIDATE_MODEL" \
@@ -121,7 +121,7 @@ jobs:
             --codex-version "$CODEX_VERSION"
           rebaseline_code=$?
 
-          python Eval/Regression/compare_baseline.py \
+          python eval/regression/compare_baseline.py \
             --baseline "$FROZEN_BASELINE" \
             --candidate "Artifacts/ProductionSmoke/$CANDIDATE_RUN_ID/rebaseline-summary.json" \
             --output "Artifacts/ProductionSmoke/$CANDIDATE_RUN_ID/baseline-comparison.json" \

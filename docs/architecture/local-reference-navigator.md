@@ -20,7 +20,7 @@ UnityAgent candidate selection
 answer / evidence / approved change
 ```
 
-`Context/Retrieval/Reference/reference_navigator.py` はネットワークアクセスを持ちません。タイトル、要約、Topics、Tags、Collections、Relations、短いEvidence factを正規化して検索します。日本語は短い文字n-gramも使います。
+`src/unityagent/context/retrieval/reference/reference_navigator.py` はネットワークアクセスを持ちません。タイトル、要約、Topics、Tags、Collections、Relations、短いEvidence factを正規化して検索します。日本語は短い文字n-gramも使います。
 
 ## Two operating modes
 
@@ -46,13 +46,13 @@ answer / evidence / approved change
 ## CLI examples
 
 ```powershell
-python Tools/run_reference_navigator.py `
+python tools/run_reference_navigator.py `
   --snapshot ..\MyResourceCenter\catalog\reference-snapshot.json `
   --question "URP TAA MotionVector" `
   --tier default `
   --output work\reference-selection.json
 
-python Tools/run_reference_navigator.py `
+python tools/run_reference_navigator.py `
   --snapshot ..\MyResourceCenter\catalog\reference-snapshot.json `
   --symptom "画面がちらつく" `
   --environment "Unity URP" `

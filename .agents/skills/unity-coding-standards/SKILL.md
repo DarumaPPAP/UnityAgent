@@ -5,11 +5,11 @@ description: Use when implementing or reviewing Unity C# where naming, formattin
 
 # Unity Coding Standards
 
-Read `SkillReferences/CODING_STANDARDS.md`, `SkillReferences/CODE_FORMATTING_STANDARDS.md`, `SkillReferences/ARCHITECTURE_STANDARDS.md` and C# anti-pattern policy before implementation or review.
+Read `docs/standards/CODING_STANDARDS.md`, `docs/standards/CODE_FORMATTING_STANDARDS.md`, `docs/standards/ARCHITECTURE_STANDARDS.md` and C# anti-pattern policy before implementation or review.
 
-新規Type、Architecture Proposal上のPlanned Type、または明示的Type Renameがある場合は`SkillReferences/TYPE_NAMING_STANDARDS.md`も読み、Case Conventionとは別にSemantic Type Naming Reviewを行う。既存Typeを触るだけのLocal FixへNaming Reviewを無条件に適用しない。
+新規Type、Architecture Proposal上のPlanned Type、または明示的Type Renameがある場合は`docs/standards/TYPE_NAMING_STANDARDS.md`も読み、Case Conventionとは別にSemantic Type Naming Reviewを行う。既存Typeを触るだけのLocal FixへNaming Reviewを無条件に適用しない。
 
-新規Feature、System、ファイル構成、MonoBehaviour / Plain C# / ScriptableObject / ECSの境界が未確定な場合は、`SkillReferences/ARCHITECTURE_DECISION_POLICY.md`と`unity-architecture-design`を使用する。
+新規Feature、System、ファイル構成、MonoBehaviour / Plain C# / ScriptableObject / ECSの境界が未確定な場合は、`docs/standards/ARCHITECTURE_DECISION_POLICY.md`と`unity-architecture-design`を使用する。
 
 Local Behaviorでは、System級Architecture分析より先にUnity Lifecycle、既存Component、既存Callbackで直接解決できるかを確認する。
 

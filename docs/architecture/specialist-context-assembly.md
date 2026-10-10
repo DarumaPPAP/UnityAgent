@@ -13,7 +13,7 @@ Entry
   ↓
 UnityAgent Control Plane
   ↓
-Orchestration
+src/unityagent/orchestration
   ↓
 Context Assembly
   ↓
@@ -24,18 +24,18 @@ Runtime Handoff
 Persistence / Evidence
 ```
 
-- Policy: Risk / Approval / Evidence requirementを定義する
-- Orchestration: Route、Specialist selection、Capability、Reasoning phaseを決める
-- Context: 必要なFact / Decision / Skill / Observationだけを選別しFingerprintする
-- Runtime: Tool ProviderまたはCodexRunnerを実行する
-- Persistence: Run state、Observation、Reasoning Artifact、Evidenceをdurableに保存する
-- Eval: 品質とRegressionを測定する
+- src/unityagent/policy: Risk / Approval / Evidence requirementを定義する
+- src/unityagent/orchestration: Route、Specialist selection、Capability、Reasoning phaseを決める
+- src/unityagent/context: 必要なFact / Decision / Skill / Observationだけを選別しFingerprintする
+- src/unityagent/runtime: Tool ProviderまたはCodexRunnerを実行する
+- src/unityagent/persistence: Run state、Observation、Reasoning Artifact、Evidenceをdurableに保存する
+- eval: 品質とRegressionを測定する
 
 Entry、SubAgent、ProviderはこのAuthorityを迂回しません。
 
 ## 2. Production Specialist
 
-現行Consumer Catalogは `Runtime/ReferenceImplementation/subagent-catalog.yaml`、Hub側の静的正本はUnitySubAgentHubの `SubAgents/<id>/manifest.yaml` です。
+現行Consumer Catalogは `src/unityagent/runtime/reference_implementation/subagent-catalog.yaml`、Hub側の静的正本はUnitySubAgentHubの `SubAgents/<id>/manifest.yaml` です。
 
 | Specialist | Execution | Semantic capability | Required observations |
 |---|---|---|---|
@@ -52,7 +52,7 @@ Graphics / WorldCreator / PerformanceはConsumer Catalog v3へ登録済みです
 
 Provider-backed CapabilityはToolBrokerがEnvironment、Policy、Capability、Provider Registryを使って実行Backendを解決します。
 
-Reasoning Capabilityは `Runtime/Contracts/runtime-handoff.schema.yaml` の `specialist_reasoning` を使い、Provider IDを付けません。CodexRunnerがMaterialized ContextからSchema付きArtifactを生成し、次を検証した後にPersistenceへ記録します。
+Reasoning Capabilityは `src/unityagent/runtime/contracts/runtime-handoff.schema.yaml` の `specialist_reasoning` を使い、Provider IDを付けません。CodexRunnerがMaterialized ContextからSchema付きArtifactを生成し、次を検証した後にPersistenceへ記録します。
 
 - profile / capability identity
 - source `context_id`
@@ -95,7 +95,7 @@ durable Evidence validation
   ↓
 Observation → typed Fact
   ↓
-re-materialize Context
+re-materialize src/unityagent/context
   ↓
 select
   ↓
@@ -120,7 +120,7 @@ World Plan内の `domain_hint` はRoute決定ではありません。Plan生成�
 
 ## 7. Entry v2 boundary
 
-Production Control Planeは `Runtime/Contracts/entry-request.v2.schema.yaml` を入口にします。
+Production Control Planeは `src/unityagent/runtime/contracts/entry-request.v2.schema.yaml` を入口にします。
 
 Entryは次を所有しません。
 
@@ -149,7 +149,7 @@ Consumer Catalog v3
 
 Import AdapterはSnapshotを検証し、UnityAgent所有のProfile値と照合します。Artifact公開だけでRuntime Catalogを自動更新しません。Hub SnapshotとConsumer Catalogの差分は通常のGit変更としてレビューします。
 
-Candidate用 `Runtime/ReferenceImplementation/candidate-specialists.yaml` と各 `*-pilot-profile.yaml` は過去のPilot / Evaluation baselineとして残っています。Current Production selectionの正本は `subagent-catalog.yaml` です。
+Candidate用 `src/unityagent/runtime/reference_implementation/candidate-specialists.yaml` と各 `*-pilot-profile.yaml` は過去のPilot / Evaluation baselineとして残っています。Current Production selectionの正本は `subagent-catalog.yaml` です。
 
 ## 9. Supported baseline
 
@@ -181,12 +181,12 @@ Static PASS
 Canonical references:
 
 - `AGENTS.md`
-- `Orchestration/Routing/task-routes.yaml`
-- `Context/Selection/context-catalog.yaml`
-- `Context/Assembly/materialize_context.py`
-- `Runtime/ReferenceImplementation/subagent-catalog.yaml`
-- `Runtime/Handoff/reasoning_runtime.py`
-- `Runtime/Runner/Codex/codex_runner.py`
-- `Runtime/Contracts/runtime-handoff.schema.yaml`
-- `Persistence/`
+- `src/unityagent/orchestration/routing/task-routes.yaml`
+- `src/unityagent/context/selection/context-catalog.yaml`
+- `src/unityagent/context/assembly/materialize_context.py`
+- `src/unityagent/runtime/reference_implementation/subagent-catalog.yaml`
+- `src/unityagent/runtime/handoff/reasoning_runtime.py`
+- `src/unityagent/runtime/runner/codex/codex_runner.py`
+- `src/unityagent/runtime/contracts/runtime-handoff.schema.yaml`
+- `src/unityagent/persistence/`
 - `docs/architecture/architecture.md`

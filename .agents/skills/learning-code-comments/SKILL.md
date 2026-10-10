@@ -9,7 +9,7 @@ metadata:
   version: "2.1.0"
   kind: user-policy-operation
   policy_owner: user
-  policy_source: Policy/User/user-policy.yaml#comment_system
+  policy_source: src/unityagent/policy/user/user-policy.yaml#comment_system
   protected: true
   entrypoint: conditional
 ---
@@ -20,9 +20,9 @@ Unityコードを学習・コードリーディング向けに解説する日本
 
 ## Required references
 
-1. `Policy/User/user-policy.yaml`
-2. `SkillReferences/JAPANESE_CODE_COMMENT_STANDARDS.md`
-3. `SkillReferences/COMMENT_REVIEW_CHECKLIST.md`
+1. `src/unityagent/policy/user/user-policy.yaml`
+2. `docs/standards/JAPANESE_CODE_COMMENT_STANDARDS.md`
+3. `docs/standards/COMMENT_REVIEW_CHECKLIST.md`
 4. 対象分野に応じた既存Standards
 
 `Learning`プロファイルを使用する。
@@ -56,7 +56,7 @@ Unityコードを学習・コードリーディング向けに解説する日本
 
 ## Checklist
 
-- [ ] `Policy/User/user-policy.yaml`のコメントPolicyを適用した
+- [ ] `src/unityagent/policy/user/user-policy.yaml`のコメントPolicyを適用した
 - [ ] 対象読者が明確
 - [ ] SDS / CRFを理解単位で使った
 - [ ] 処理順とデータフローを説明した

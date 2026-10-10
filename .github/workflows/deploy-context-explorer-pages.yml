@@ -1,4 +1,4 @@
-name: Deploy Context Explorer Pages
+name: Deploy src/unityagent/context Explorer Pages
 
 on:
   push:
@@ -28,13 +28,13 @@ jobs:
           python-version: "3.12"
 
       - name: Install build dependency
-        run: python -m pip install --disable-pip-version-check PyYAML
+        run: python -m pip install --disable-pip-version-check -e .
 
-      - name: Validate Context Explorer
-        run: python Tools/ContextExplorer/validate.py
+      - name: Validate src/unityagent/context Explorer
+        run: python tools/context_explorer/validate.py
 
-      - name: Build static Context Explorer bundle
-        run: python Tools/ContextExplorer/build.py --bundle _site
+      - name: Build static src/unityagent/context Explorer bundle
+        run: python tools/context_explorer/build.py --bundle _site
 
       - name: Disable Jekyll processing
         run: touch _site/.nojekyll

@@ -42,12 +42,12 @@ Evidence   = 実際に何を観測したか
 D:\
 ├─ UnityAgent\
 │  ├─ AGENTS.md
-│  ├─ Policy\
-│  ├─ Orchestration\
-│  ├─ Context\
-│  ├─ Runtime\
-│  ├─ Persistence\
-│  └─ Eval\
+│  ├─ src/unityagent/policy\
+│  ├─ src/unityagent/orchestration\
+│  ├─ src/unityagent/context\
+│  ├─ src/unityagent/runtime\
+│  ├─ src/unityagent/persistence\
+│  └─ eval\
 │
 └─ Projects\
    └─ MyGame\
@@ -157,13 +157,13 @@ flowchart LR
 
 ### UnityAgentが所有
 
-- User Policy
+- User src/unityagent/policy
 - Risk / Security / Approval
 - Route / Graph / Task Contract
 - Context selection
 - Runtime execution rule
 - Evidence contract
-- Eval / Regression
+- eval / Regression
 
 ### Target Projectが所有
 
@@ -239,7 +239,7 @@ scene.inspect が必要
 project.test が必要
 ```
 
-Runtime:
+src/unityagent/runtime:
 
 ```mermaid
 flowchart TD
@@ -250,7 +250,7 @@ flowchart TD
     P --> N[Native Unity Editor]
     P --> U[Unity CLI]
     P --> A[UnityArtistCLI]
-    P --> R[Player Runtime]
+    P --> R[Player src/unityagent/runtime]
 ```
 
 ユーザーは通常Providerを固定する必要はありません。
@@ -333,7 +333,7 @@ Inspect
 
 Registryに記述されていても、Concrete Production executorと現在Tool exposureが証明できなければ実行可能扱いしません。
 
-### Player Runtime
+### Player src/unityagent/runtime
 
 Development / QA Buildのallowlisted commandだけを扱います。
 
@@ -467,7 +467,7 @@ Provider discovery
 
 ```text
 Compile
-!= Editor Runtime
+!= Editor src/unityagent/runtime
 != Player
 != Switch / Console / Mobile実機
 ```
@@ -573,7 +573,7 @@ Providerは固定せず、RuntimeのEnvironment / Safety Contractから解決し
 未観測のVerificationをPASS扱いしないでください。
 ```
 
-詳しいTemplateは `Templates/DevelopmentRequest.md` を使用してください。
+詳しいTemplateは `docs/templates/DevelopmentRequest.md` を使用してください。
 
 ---
 
@@ -623,7 +623,7 @@ Providerは固定せず、RuntimeのEnvironment / Safety Contractから解決し
 - `docs/architecture/architecture.md`
 - `docs/architecture/production-tool-runtime.md`
 - `docs/unity-environment-adaptation.md`
-- `Templates/DevelopmentRequest.md`
-- `Specs/UnityToolRuntime.md`
+- `docs/templates/DevelopmentRequest.md`
+- `docs/architecture/specifications/UnityToolRuntime.md`
 
 `docs/migration/`はHistorical recordであり、現在のRuntime契約の正本ではありません。

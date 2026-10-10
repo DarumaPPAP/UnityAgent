@@ -56,7 +56,7 @@
 - [ ] Environment discovery、利用可能なCompile / Editor / Player / Device / Reasoning / Performance / Visualを検証。
 - [ ] Graphics 6領域、Performance 6領域、WorldCreator 5領域のA/B/Cと全metricsを記録。未評価は明記。
 - [ ] Architecture / README / specialist / migration文書を更新しdead contractを検索。
-- [ ] `Tools/validate_all.py`、Hub registry / unit tests / snapshot、clean checkoutを実行。
+- [ ] `tools/validate_all.py`、Hub registry / unit tests / snapshot、clean checkoutを実行。
 - [ ] 少数PRへまとめ、CIとReviewを確認して依存順にMerge。mainの最終状態を指示全項目と照合。
 
 ## 実装チェックポイント（2026-09-27）
@@ -66,12 +66,12 @@ Phase 0/1とvNext契約基盤を実装済み。Production CatalogのArtist以外
 - UnityAgent base: `e388f19011d432513daed8d25b394a4e3019b27a`
 - Hub base: `67e8aa10b89fe587476e9091cd7e5139449ca2cf`
 - 両方 `feat/specialist-productionization`。既存checkoutを再利用。
-- `Tools/validate_all.py`: PASS、Runtime 329 tests（2 skips）。Hub registry PASS、Hub 31 tests PASS。
+- `tools/validate_all.py`: PASS、src/unityagent/runtime 329 tests（2 skips）。Hub registry PASS、Hub 31 tests PASS。
 - `profiler.observe` の唯一の宣言はProduction無効の `myunitymcp`。Admissionの `production_observation_gaps` に記録。要件削減やLegacy再有効化は禁止。
 - Profile v3のreasoningはexecutionとselectionを明示。Hub instruction/output参照とローカル参照は `hub_contract_refs` で対応付け、Import Gateで照合。
 - Candidate契約は維持。Production Resolverは同じ検証済みContext判定を利用し、Control Planeは選出結果から汎用reasoning Handoffを作る。
 - 2026-09-28: 読取観測payloadのimmutable保存、durable EvidenceのRun / Project / Capability / digest照合、既存Context AssemblyによるBudget / Fingerprint更新、Reasoning Handoff再生成を実装。実ToolBrokerとcontrolled Codex processのfixtureで接続を検証。必須観測の欠落とBudget超過を遮断。
-- 同変更の `Tools/validate_all.py`: PASS、Runtime 333 tests（2 skips）、Context 34、Orchestration 35、Eval 74、Persistence 19。Live Runtimeの検証ではない。
+- 同変更の `tools/validate_all.py`: PASS、src/unityagent/runtime 333 tests（2 skips）、src/unityagent/context 34、src/unityagent/orchestration 35、eval 74、src/unityagent/persistence 19。Live Runtimeの検証ではない。
 - 次の必須実装: Graphics / PerformanceのInstructions・Output Contract・validatorとProduction Profile、Hub Manifest登録。Performanceの `profiler.observe` Production観測Surface不足は引き続き未解決。
 - 現在のProduction catalogはv1のArtistのみであり、Profile v3対応を追加しただけ。3体の登録完了・Production Verifiedは宣言しない。
 
@@ -79,7 +79,7 @@ Phase 0/1とvNext契約基盤を実装済み。Production CatalogのArtist以外
 
 - Graphics / WorldCreatorのHub Manifest v5、Consumer Catalog v3、Production route bindingを作業ブランチに追加。PerformanceはProductionのprofiler.observe不足のため未登録。
 - Graphics / PerformanceのInstructions、Output schema、allowlisted domain validatorを追加。WorldCreatorの既存Artifact validatorを維持。
-- 観測前Activation `activated` と観測後Context `selected` を分離。Graphicsの本番Catalogから実ToolBroker・Source FileProvider・Persistence・Context再構築・controlled Codex processまでのfixtureを追加。unknown PipelineはReasoning前に停止。
+- 観測前Activation `activated` と観測後src/unityagent/context `selected` を分離。Graphicsの本番Catalogから実ToolBroker・Source FileProvider・Persistence・Context再構築・controlled Codex processまでのfixtureを追加。unknown PipelineはReasoning前に停止。
 - Rendering初期分析と再現検証/ApplyのContext要求を分離。条件付き `required_when_active` で従来の追加Bindingを必須化。
 - Hub Production Snapshotを固定fixtureへexportし、現行Consumerとのno-op importと観測要件drift拒否をテスト。
 - 未完了: 実Projectのdeterministic project.inspect/Render Pipeline観測とHost executor接続の確認、Live環境調査、Content、Legacy実回収、A/B/C、最終docs、PR/CI/Merge。現在のfixtureはLive ReasoningやProduction Verifiedの証拠ではない。

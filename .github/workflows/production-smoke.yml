@@ -4,12 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       model:
-        description: Codex model used by the canonical Runtime runner
+        description: Codex model used by the canonical src/unityagent/runtime runner
         required: true
         default: gpt-5.6-sol
         type: string
       reasoning_effort:
-        description: Runtime reasoning effort
+        description: src/unityagent/runtime reasoning effort
         required: true
         default: high
         type: choice
@@ -50,17 +50,17 @@ jobs:
           dotnet-version: "8.0.x"
 
       - name: Install Python validation dependencies
-        run: python -m pip install --disable-pip-version-check PyYAML jsonschema
+        run: python -m pip install --disable-pip-version-check -e . build
 
       - name: Validate smoke and re-baseline integration boundaries
         run: |
           python -m unittest discover -s .github/ProductionSmoke -p "test_*.py"
-          python -m unittest Eval.Tests.test_rebaseline
+          python -m unittest tests.eval.test_rebaseline
           python -m py_compile \
             .github/ProductionSmoke/run_one_repo_smoke.py \
-            Eval/Behavior/grade_production_smoke.py \
-            Eval/Rebaseline/rebaseline.py \
-            Eval/Rebaseline/build_rebaseline_summary.py
+            eval/behavior/grade_production_smoke.py \
+            eval/rebaseline/rebaseline.py \
+            eval/rebaseline/build_rebaseline_summary.py
 
       - name: Production credential preflight
         shell: bash
@@ -110,10 +110,10 @@ jobs:
             --timeout-seconds 240
           execution_code=$?
 
-          python Eval/Behavior/grade_production_smoke.py --run-id "$SMOKE_RUN_ID"
+          python eval/behavior/grade_production_smoke.py --run-id "$SMOKE_RUN_ID"
           grade_code=$?
 
-          python Eval/Rebaseline/build_rebaseline_summary.py \
+          python eval/rebaseline/build_rebaseline_summary.py \
             --run-id "$SMOKE_RUN_ID" \
             --source-revision "$GITHUB_SHA" \
             --model "$SMOKE_MODEL" \

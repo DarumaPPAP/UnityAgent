@@ -32,12 +32,12 @@ Unityの設計をPattern名から決めず、最初に問題規模とExisting Ow
 
 ## Required references
 
-1. `SkillReferences/ENGINEERING_DESIGN_PRINCIPLES.md`
-2. `SkillReferences/ARCHITECTURE_DECISION_POLICY.md`
-3. `SkillReferences/ARCHITECTURE_STANDARDS.md`
-4. `SkillReferences/CODING_STANDARDS.md`
-5. `SkillReferences/TYPE_NAMING_STANDARDS.md` when new or renamed Types are planned, or when the user explicitly requests Type Naming Review
-6. `SkillReferences/CODE_FORMATTING_STANDARDS.md` when C# output is produced
+1. `docs/standards/ENGINEERING_DESIGN_PRINCIPLES.md`
+2. `docs/standards/ARCHITECTURE_DECISION_POLICY.md`
+3. `docs/standards/ARCHITECTURE_STANDARDS.md`
+4. `docs/standards/CODING_STANDARDS.md`
+5. `docs/standards/TYPE_NAMING_STANDARDS.md` when new or renamed Types are planned, or when the user explicitly requests Type Naming Review
+6. `docs/standards/CODE_FORMATTING_STANDARDS.md` when C# output is produced
 7. 対象Sourceと直接依存
 8. ECS、Rendering、UI等の条件付きReference
 
@@ -154,7 +154,7 @@ Feature / System以上、またはResource寿命が実際に問題になる場�
 - Stage
 - UI framework
 - GameObject / ECS execution model
-- Authoring / Runtime
+- Authoring / src/unityagent/runtime
 - Editor / Player
 
 「将来変わるかもしれない」はVariation Axisにしない。
@@ -308,7 +308,7 @@ Feature / System以上では必要に応じて次を返す。
 
 1. Goal
 2. Scope
-3. Confirmed Context
+3. Confirmed src/unityagent/context
 4. Engineering Principles Review
 5. Ownership and Lifetime
 6. Change Axes / Proven Duplication

@@ -1,0 +1,6 @@
+schema_version: '1.0'
+kind: candidate_specialist_catalog
+profiles:
+  graphics_subagent: src/unityagent/runtime/reference_implementation/graphics-pilot-profile.yaml
+  performance_subagent: src/unityagent/runtime/reference_implementation/performance-pilot-profile.yaml
+  world_creator_subagent: src/unityagent/runtime/reference_implementation/world-creator-pilot-profile.yaml

@@ -70,7 +70,7 @@ metadata:
 - Compatibility contracts: public API、Serialized Data、Prefab/Scene、Shader契約
 - Success condition: 何が再現しなくなれば解決か
 
-長期保存が必要な障害だけ、`Specs/<FeatureName>/incidents/<IncidentId>.md`へ記録する。単発の局所修正へ不要な文書を増やさない。
+長期保存が必要な障害だけ、`docs/architecture/specifications/<FeatureName>/incidents/<IncidentId>.md`へ記録する。単発の局所修正へ不要な文書を増やさない。
 
 ## Step 3 — Build a ranked hypothesis ledger
 

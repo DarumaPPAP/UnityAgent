@@ -1,0 +1,43 @@
+schema_version: "1.1"
+harnesses:
+  effective_harness:
+    owner: src/unityagent/runtime/harnesses/effective_harness.py
+    kind: enforcement_projection
+    execution: deterministic
+    selection: supplied_by_orchestration
+  codex:
+    owner: src/unityagent/runtime/runner/codex
+    kind: agent_runner
+    execution: implemented
+  unity_editor_artifact_graph:
+    owner: src/unityagent/runtime/harnesses/unity/editor
+    kind: unity_editor
+    execution: implemented
+    graph_semantics: asset_dependency_only
+  native_unity_editor:
+    owner: src/unityagent/runtime/harnesses/unity/native_editor_adapter.py
+    kind: unity_editor_provider_adapter
+    execution: implemented
+    capabilities: [compile.observe, project.test, project.build]
+  test:
+    owner: src/unityagent/runtime/harnesses/command_harness.py
+    kind: test
+    execution: configured_command
+  performance:
+    owner: src/unityagent/runtime/harnesses/command_harness.py
+    kind: performance
+    execution: configured_command
+  scm:
+    owner: src/unityagent/runtime/harnesses/command_harness.py
+    kind: scm
+    execution: configured_command
+  ix:
+    owner: src/unityagent/runtime/dispatcher
+    kind: code_intelligence_transport
+    execution: configured_command
+rules:
+  no_semantic_fallback_inside_runtime: true
+  unavailable_is_not_pass: true
+  graph_selection_is_not_runtime_authority: true
+  route_selection_is_orchestration_owned: true
+  runtime_does_not_reverse_lookup_context_routes: true

@@ -1,0 +1,30 @@
+schema_version: "1.0"
+kind: repository_authority_map
+repository: DarumaPPAP/UnityAgent
+
+authorities:
+  product_version:
+    source: VERSION
+    mirrors:
+      python_project: pyproject.toml
+      upm_package: Packages/com.darumappap.unity-agent/package.json
+      codex_plugin: .agents/plugins/unity-agent/plugin.json
+      codex_plugin_marketplace_manifest: .agents/plugins/unity-agent/.codex-plugin/plugin.json
+      readme: README.md
+  architecture_boundary: src/unityagent/contracts/unityagent-layer-contract.yaml
+  policy: src/unityagent/policy
+  routing_and_orchestration: src/unityagent/orchestration
+  runtime_provider_registry: src/unityagent/runtime/tooling/provider_registry.yaml
+  consumer_subagent_catalog: src/unityagent/runtime/reference_implementation/subagent-catalog.yaml
+  subagent_source_lock: src/unityagent/runtime/distribution/subagent-sources.lock.json
+  durable_state_and_evidence: src/unityagent/persistence
+  evaluation: eval
+
+external_authorities:
+  optional_subagent_metadata:
+    repository: DarumaPPAP/UnitySubAgentHub
+    pinned_by: src/unityagent/runtime/distribution/subagent-sources.lock.json
+
+notes:
+  - This file maps authority; it does not duplicate the canonical values stored at the referenced sources.
+  - Generated artifacts, historical reviews, fixtures, and release notes are not current authority unless referenced above.

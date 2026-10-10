@@ -9,7 +9,7 @@ Texture、Audio、Addressablesの観測値から、Project固有の判断に従�
 
 ## Input boundary
 
-Unity Projectと対象Assetを特定し、ImporterやAddressablesの現在値を実際のProjectから観測する。`Tools/ContentPilot/content_analysis.py`へ渡す辞書は観測入力であり、`evidence_ref`が含まれていても同Toolはその参照を検証しない。結果の`evidence_level: input_observation_only`をEditor検証済みと扱わない。
+Unity Projectと対象Assetを特定し、ImporterやAddressablesの現在値を実際のProjectから観測する。`tools/content_pilot/content_analysis.py`へ渡す辞書は観測入力であり、`evidence_ref`が含まれていても同Toolはその参照を検証しない。結果の`evidence_level: input_observation_only`をEditor検証済みと扱わない。
 
 Textureの圧縮形式とFlat Normalの閾値はProject Decisionから受け取る。未決定の値は補完しない。Max Size未指定なら変更しない。Normal分類には明示された閾値、最小サンプル数、flat sample fractionを使う。このfractionは統計的信頼度ではない。サンプル採取方法と対象範囲も記録する。現在のImporter formatが未観測なら`candidate_only`で止め、変更Planと呼ばない。
 

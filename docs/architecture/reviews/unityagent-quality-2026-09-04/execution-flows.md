@@ -6,7 +6,7 @@
 
 ```mermaid
 flowchart LR
-    U[User Request] --> P[Policy]
+    U[User Request] --> P[src/unityagent/policy]
     P --> O[Orchestration Route / Graph / Task Contract]
     O --> C[Context Materialization]
     C --> H[Authoritative Runtime Handoff]
@@ -17,7 +17,7 @@ flowchart LR
     D --> PR[ProviderResult]
     PR --> N[Evidence Normalizer]
     N --> S[Persistence Evidence]
-    S --> E[Eval]
+    S --> E[eval]
     S --> OP[Operations Telemetry / Detection]
 ```
 
@@ -34,7 +34,7 @@ flowchart TD
     WR --> DS[Post-run Diff / Mutation Evidence]
     DS --> PB[Legacy-style Evidence Bridge]
     PB --> PS[Persistence Adapter]
-    PS --> EV[Eval Envelope]
+    PS --> EV[eval Envelope]
     RS -. bypass .-> OG[Orchestrator / ParentGraph]
     CR -. bypass .-> CB[CapabilityRequestBuilder / ToolBroker]
     WR -. bypass .-> TD[Production Dispatcher]
@@ -46,13 +46,13 @@ flowchart TD
 
 ```mermaid
 sequenceDiagram
-    participant O as Orchestration
+    participant O as src/unityagent/orchestration
     participant G as Runtime Guard
     participant A as Approval Store
     participant B as ToolBroker/Dispatcher
     participant P as Provider
     participant N as Evidence Normalizer
-    participant S as Persistence
+    participant S as src/unityagent/persistence
 
     O->>G: RuntimeHandoff (Budget, Scope, required Evidence)
     G->>A: immutable ApprovalDecision lookup
@@ -75,12 +75,12 @@ sequenceDiagram
 ```mermaid
 flowchart LR
     X[Runtime execution] --> CE[Current-run Evidence Capture]
-    CE --> PE[Persistence/Evidence append]
-    PE --> AT[Eval Attribution / Regression]
+    CE --> PE[src/unityagent/persistence/evidence append]
+    PE --> AT[eval Attribution / Regression]
     PE --> OT[Runtime Telemetry]
     OT --> OD[Operations Detection]
     OD --> IN[Incident / Runbook]
-    IN --> AC[Policy/Approval-gated Control API]
+    IN --> AC[src/unityagent/policy/approval-gated Control API]
 ```
 
 現状はEvidenceの個別部品とEvalのデータセットは存在しますが、Production実行から永続Evidence、Eval、Operationsまでをライブに確認できるRun ID・Artifact Digest付きの証跡が不足しています。

@@ -22,7 +22,7 @@ Frozen baseline
 Candidate Production Smoke
         │
         ▼
-Actual Behavior Eval
+Actual Behavior eval
         │
         ▼
 Candidate RebaselineSummary
@@ -76,7 +76,7 @@ The comparator does not create a second baseline.
 
 The only baseline authority remains:
 
-`Eval/Rebaseline/Baselines/phase9-baseline-20260830-09.yaml`
+`eval/rebaseline/baselines/phase9-baseline-20260830-09.yaml`
 
 The comparator validates that freeze through the existing `BaselineFreeze` contract before comparing anything.
 
@@ -94,7 +94,7 @@ Production observation
 
 Canonical entry point:
 
-`Tools/run_regression_gate.py`
+`tools/run_regression_gate.py`
 
 Default runtime identity intentionally matches the frozen baseline:
 
@@ -105,13 +105,13 @@ Default runtime identity intentionally matches the frozen baseline:
 Normal PowerShell invocation from the UnityAgent repository root:
 
 ```powershell
-python .\Tools\run_regression_gate.py
+python .\tools\run_regression_gate.py
 ```
 
 An explicit immutable run ID may be supplied when desired:
 
 ```powershell
-python .\Tools\run_regression_gate.py `
+python .\tools\run_regression_gate.py `
   --run-id regression-local-20260830-01 `
   --model gpt-5.6-luna `
   --reasoning-effort xhigh `
@@ -133,7 +133,7 @@ Remove OPENAI_API_KEY from child environment
         ↓
 Production Smoke (4 canonical cases)
         ↓
-Behavior Eval
+Behavior eval
         ↓
 Candidate RebaselineSummary
         ↓
@@ -181,11 +181,11 @@ The comparator consumes the existing `RebaselineSummary` generated from a new Pr
 The regression layer does not introduce a second grading pipeline. It reuses the canonical facts already produced by:
 
 ```text
-Orchestration
-  → Context
-  → Runtime
-  → Persistence
-  → Behavior Eval
+src/unityagent/orchestration
+  → src/unityagent/context
+  → src/unityagent/runtime
+  → src/unityagent/persistence
+  → Behavior eval
   → RebaselineSummary
 ```
 
@@ -319,7 +319,7 @@ Each local run retains the ordinary regression evidence under:
 including:
 
 - `execution-summary.json`;
-- per-case Runtime/Persistence/Eval evidence;
+- per-case src/unityagent/runtime/persistence/eval evidence;
 - `eval-summary.json`;
 - `rebaseline-summary.json`;
 - `baseline-comparison.json`;
@@ -336,8 +336,8 @@ Get-Content ".\Artifacts\ProductionSmoke\<run-id>\baseline-comparison.json" -Raw
 If a candidate RebaselineSummary already exists, no LLM execution is required to compare it:
 
 ```powershell
-python .\Eval\Regression\compare_baseline.py `
-  --baseline ".\Eval\Rebaseline\Baselines\phase9-baseline-20260830-09.yaml" `
+python .\eval\Regression\compare_baseline.py `
+  --baseline ".\eval\Rebaseline\Baselines\phase9-baseline-20260830-09.yaml" `
   --candidate ".\Artifacts\ProductionSmoke\<run-id>\rebaseline-summary.json" `
   --output ".\Artifacts\ProductionSmoke\<run-id>\baseline-comparison.json" `
   --require-pass
@@ -372,9 +372,9 @@ The failed run `33301195983` is therefore retained as infrastructure evidence an
 The regression gate adds no new execution authority.
 
 ```text
-Runtime        executes and enforces
-Persistence    stores evidence
-Eval           grades current behavior
+src/unityagent/runtime        executes and enforces
+src/unityagent/persistence    stores evidence
+eval           grades current behavior
 Rebaseline     aggregates candidate facts
 Regression     compares already-produced facts
 Local runner   orchestrates existing authorities only

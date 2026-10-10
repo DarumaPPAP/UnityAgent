@@ -28,10 +28,10 @@
 
 ## ファイル単位の確認範囲
 
-- 固定 Plan と入口: `ControlPlane/full_e2e.py`、`ControlPlane/unity_agent_control_plane.py`、`Tools/unity_agent_cli.py`、`ControlPlane/Resources/FullE2EProbe.txt`。
-- Editor 実行: `Runtime/Tooling/Providers/UnityAgentEditor/full_e2e_provider.py`、`Packages/com.darumappap.unity-agent/Editor/FullE2EBridge.cs` と `.meta`、Editor 側の `FullE2EProbe.txt` と `.meta`。
-- 契約と解決: `Policy/Security/capability_policy.py`、`Runtime/Tooling/capability_resolver.py`、`Runtime/Tooling/provider_contract.py`、`Runtime/Tooling/provider_registry.yaml`、`Runtime/Tests/test_provider_registry.py`。
-- 検証と公開: `Runtime/Tests/test_full_e2e.py`、`.agents/plugins/unity-agent/skills/unity-agent-full-e2e/SKILL.md`、`docs/architecture/full-e2e-capability.md`、`README.md`、`pyproject.toml`。
+- 固定 Plan と入口: `src/unityagent/control_plane/full_e2e.py`、`src/unityagent/control_plane/unity_agent_control_plane.py`、`src/unityagent/cli.py`、`src/unityagent/control_plane/resources/FullE2EProbe.txt`。
+- Editor 実行: `src/unityagent/runtime/tooling/providers/unity_agent_editor/full_e2e_provider.py`、`Packages/com.darumappap.unity-agent/Editor/FullE2EBridge.cs` と `.meta`、Editor 側の `FullE2EProbe.txt` と `.meta`。
+- 契約と解決: `src/unityagent/policy/security/capability_policy.py`、`src/unityagent/runtime/tooling/capability_resolver.py`、`src/unityagent/runtime/tooling/provider_contract.py`、`src/unityagent/runtime/tooling/provider_registry.yaml`、`tests/runtime/test_provider_registry.py`。
+- 検証と公開: `tests/runtime/test_full_e2e.py`、`.agents/plugins/unity-agent/skills/unity-agent-full-e2e/SKILL.md`、`docs/architecture/full-e2e-capability.md`、`README.md`、`pyproject.toml`。
 
 ## 回収方針と終了条件
 
@@ -47,7 +47,7 @@ PR #158 `PR #148のFull E2E固有機能をEntry v2へ回収` では、初回監�
 | 初回固有挙動 | 現行回収先 / 状態 |
 |---|---|
 | Scene / GameObject / Material / Script作成 | 固定Full E2E Editor Bridge + `unity_agent_editor` Production Provider |
-| Plan / script preview | `ControlPlane/full_e2e.py` のcreate-only immutable Plan |
+| Plan / script preview | `src/unityagent/control_plane/full_e2e.py` のcreate-only immutable Plan |
 | exact diff | 固定Asset/.meta inventoryをPlanと署名Resultで照合 |
 | Approval / revocation | 既存Approval StoreへPlan/Project/Scope/期限をbindし、dispatch中にも再確認 |
 | mutation / separate save | Mutation承認とScene Save承認を分離 |

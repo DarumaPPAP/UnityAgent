@@ -39,7 +39,7 @@ metadata:
 
 fast pathの停止は、その推測Patchの停止を意味する。依頼で許可された調査は継続し、調査Skillへ引き継ぐ。範囲拡張や契約変更が必要なら具体的な証拠と差分案を示して該当Gateで止める。
 
-両Entry pathで `SkillReferences/CODING_STANDARDS.md` と `SkillReferences/CODE_FORMATTING_STANDARDS.md` を使用する。
+両Entry pathで `docs/standards/CODING_STANDARDS.md` と `docs/standards/CODE_FORMATTING_STANDARDS.md` を使用する。
 
 ## Workflow
 

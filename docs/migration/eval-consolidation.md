@@ -1,4 +1,4 @@
-# Eval Consolidation
+# eval Consolidation
 
 Status: implemented on `refactor/architecture-phase6-eval`
 
@@ -6,37 +6,37 @@ Base: Phase 5 merge `1fa6f9fa3101d099845b66f7a4b5b2917dcb097f`
 
 ## Goal
 
-Make `Eval/` the single authority for quality measurement, failure attribution, Golden/Actual Behavior grading, regression datasets, reports, and historical replay without moving execution back out of `Runtime/` or durable truth out of `Persistence/`.
+Make `eval/` the single authority for quality measurement, failure attribution, Golden/Actual Behavior grading, regression datasets, reports, and historical replay without moving execution back out of `src/unityagent/runtime/` or durable truth out of `src/unityagent/persistence/`.
 
 ```text
 Runtime executes
     ↓ structured facts
 Persistence preserves durable facts
     ↓ read-only facts / refs
-Eval measures, attributes, reports, proposes
+eval measures, attributes, reports, proposes
 ```
 
-Eval never becomes a second Runtime and never edits production Policy, Context, Orchestration, Runtime, Persistence, or Operations definitions.
+eval never becomes a second Runtime and never edits production src/unityagent/policy, src/unityagent/context, src/unityagent/orchestration, src/unityagent/runtime, src/unityagent/persistence, or Operations definitions.
 
 ## Source inventory
 
 Before Phase 6 the evaluation plane was split across:
 
-- `Eval/Attribution/` and `Eval/GoldenContracts/` — canonical Phase 1 schemas only;
-- `Eval/Replay/legacy_bundle_normalizer.py` — Phase 1 migration replay;
-- `Tools/BehaviorEval/` — Actual Behavior normalization, graders and protocol validators;
-- `Tools/GoldenEval/` — Golden grader, naming grader and regression validators;
-- `Tests/BehaviorEval/` — Behavior suites, protocol schemas and fixtures;
-- `Tests/GoldenTasks/` — Golden cases, schemas and naming fixtures;
+- `eval/attribution/` and `eval/golden_contracts/` — canonical Phase 1 schemas only;
+- `eval/replay/legacy_bundle_normalizer.py` — Phase 1 migration replay;
+- `tools/BehaviorEval/` — Actual Behavior normalization, graders and protocol validators;
+- `tools/GoldenEval/` — Golden grader, naming grader and regression validators;
+- `tests/behavior_eval/` — Behavior suites, protocol schemas and fixtures;
+- `tests/golden_tasks/` — Golden cases, schemas and naming fixtures;
 - `.ai/eval/` — legacy contracts/taxonomy;
 - Unity-Graph-Engineering `BehaviorEvalAdapter` — legacy execution-to-envelope bridge.
 
-This meant the schemas were canonical under `Eval/`, but production-quality grading logic and datasets still had competing locations.
+This meant the schemas were canonical under `eval/`, but production-quality grading logic and datasets still had competing locations.
 
 ## Canonical Phase 6 layout
 
 ```text
-Eval/
+eval/
 ├─ Attribution/
 │  ├─ eval-record.schema.yaml
 │  ├─ failure-taxonomy.yaml
@@ -67,12 +67,12 @@ Eval/
 │  └─ change_proposal.py
 ├─ Compatibility/
 │  └─ legacy contracts / old execution runner
-└─ Tests/
+└─ tests/
 ```
 
 ## Responsibility split
 
-### Eval owns
+### eval owns
 
 - Golden contract construction;
 - Golden/Behavior grading;
@@ -83,7 +83,7 @@ Eval/
 - historical bundle normalization/replay;
 - non-applying `ChangeProposal` generation.
 
-### Eval does not own
+### eval does not own
 
 - process/subprocess execution;
 - Codex invocation;
@@ -95,23 +95,23 @@ Eval/
 - Route/Graph/semantic retry decisions;
 - production-definition mutation.
 
-## Behavior Eval execution split
+## Behavior eval execution split
 
-The pre-Phase-6 `Tools/BehaviorEval/run_behavior_eval.py` could launch an external Production adapter with `subprocess`. That behavior cannot be canonical after Phase 3 because actual execution is owned by `Runtime/`.
+The pre-Phase-6 `tools/BehaviorEval/run_behavior_eval.py` could launch an external Production adapter with `subprocess`. That behavior cannot be canonical after Phase 3 because actual execution is owned by `src/unityagent/runtime/`.
 
 Phase 6 therefore separates:
 
 ```text
 legacy compatibility runner
-Eval/Compatibility/BehaviorEval/run_behavior_eval.py
+eval/compatibility/behavior_eval/run_behavior_eval.py
     └─ retained read-only for migration/audit only
 
 canonical Behavior evaluator
-Eval/Behavior/run_behavior_eval.py
+eval/behavior/run_behavior_eval.py
     └─ grades already-observed candidate/Runtime facts only
 ```
 
-A new native adapter, `Eval/Behavior/runtime_adapter.py`, projects canonical `Runtime/Contracts/ExecutionResult` facts into Eval. It does not invoke Runtime.
+A new native adapter, `eval/behavior/runtime_adapter.py`, projects canonical `src/unityagent/runtime/contracts/execution_result` facts into Eval. It does not invoke Runtime.
 
 `changed_paths` is copied structurally from `ExecutionResult.changed_paths`; it is never recreated by parsing diff text. An observed empty changed-path set becomes an Agent behavior regression only when the Golden case explicitly expects mutation.
 
@@ -119,16 +119,16 @@ A new native adapter, `Eval/Behavior/runtime_adapter.py`, projects canonical `Ru
 
 The Phase-5 datasets are copied byte-equivalent into:
 
-- `Eval/Datasets/Behavior/`
-- `Eval/Datasets/Golden/`
+- `eval/datasets/behavior/`
+- `eval/datasets/golden/`
 
-Phase 6 tests assert byte parity with the legacy `Tests/BehaviorEval` and `Tests/GoldenTasks` trees while those compatibility copies remain.
+Phase 6 tests assert byte parity with the legacy `tests/behavior_eval` and `tests/golden_tasks` trees while those compatibility copies remain.
 
-Legacy dataset path strings are projected in-memory to canonical `Eval/Datasets/...` paths. The old source trees are not deleted in this phase; deletion remains a Phase 8 Human Gate.
+Legacy dataset path strings are projected in-memory to canonical `eval/datasets/...` paths. The old source trees are not deleted in this phase; deletion remains a Phase 8 Human Gate.
 
 ## Golden Contract
 
-`Eval/GoldenContracts/build_contract.py` projects each legacy GoldenTask into the canonical contract families required by the architecture:
+`eval/golden_contracts/build_contract.py` projects each legacy GoldenTask into the canonical contract families required by the architecture:
 
 - expected result;
 - invariants;
@@ -142,7 +142,7 @@ Golden expected content remains evaluator-only and is never injected into Produc
 
 ## Failure attribution and denominator
 
-`Eval/Attribution/eval-record.schema.yaml` now supports schema `1.1` while remaining backward compatible with Phase-1 `1.0` replay records.
+`eval/attribution/eval-record.schema.yaml` now supports schema `1.1` while remaining backward compatible with Phase-1 `1.0` replay records.
 
 Phase-6 attribution uses typed facts only:
 
@@ -170,18 +170,18 @@ The legacy Graph `BehaviorEvalAdapter` mixed two concerns:
 1. launch/bridge Production execution;
 2. normalize/attribute evaluation facts.
 
-Phase 6 keeps only evaluator-side behavior in Eval:
+Phase 6 keeps only evaluator-side behavior in eval:
 
 - structured changed paths are preserved directly;
 - typed Runtime failure is attributed by Eval;
 - observed mutation no-op can be classified as Agent behavior regression;
 - no process runtime or Graph execution implementation is imported.
 
-Execution remains UnityAgent `Runtime/` authority.
+Execution remains UnityAgent `src/unityagent/runtime/` authority.
 
 ## Historical Production replay
 
-`Eval/Replay/historical-replay-manifest.yaml` records the external archives already replayed during Phase 1:
+`eval/replay/historical-replay-manifest.yaml` records the external archives already replayed during Phase 1:
 
 - `phase11-naming-04.zip`
 - `phase11-mutation-03.zip`
@@ -189,20 +189,20 @@ Execution remains UnityAgent `Runtime/` authority.
 
 Phase 1 records six case directories across these archives. Raw archive contents remain external and are not committed.
 
-`Eval/Replay/historical_replay.py` accepts supplied bundle directories or ZIP archives and:
+`eval/replay/historical_replay.py` accepts supplied bundle directories or ZIP archives and:
 
 - safely rejects archive path traversal;
 - runs the existing canonical legacy normalizer;
 - preserves structured `metrics.json.changed_paths`;
 - does not infer typed failure from prose;
-- upgrades compatible Eval records to attribution schema 1.1;
+- upgrades compatible eval records to attribution schema 1.1;
 - can require coverage of ARCH / NAMING / MUTATION / EVIDENCE namespaces.
 
 The CI regression uses deterministic local protocol bundles to prove all four namespace paths. Real historical archives remain replayable when supplied without duplicating their raw content in Git.
 
 ## ChangeProposal boundary
 
-Eval can emit `Eval/ChangeProposals/ChangeProposal` only.
+eval can emit `eval/change_proposals/change_proposal` only.
 
 Every ChangeProposal has:
 
@@ -210,27 +210,27 @@ Every ChangeProposal has:
 - `applies_change: false`;
 - `requires_human_review: true`.
 
-It cannot directly edit Policy, Context, Orchestration, Runtime, Persistence, Operations, or even Eval production definitions.
+It cannot directly edit src/unityagent/policy, src/unityagent/context, src/unityagent/orchestration, src/unityagent/runtime, src/unityagent/persistence, src/unityagent/operations, or even eval production definitions.
 
 ## Compatibility
 
-`Tools/BehaviorEval/*.py` and `Tools/GoldenEval/*.py` become thin shims that forward to same-name canonical `Eval/Behavior` and `Eval/Golden` modules.
+`tools/BehaviorEval/*.py` and `tools/GoldenEval/*.py` become thin shims that forward to same-name canonical `eval/behavior` and `eval/golden` modules.
 
-The old subprocess-capable Behavior runner is retained only under `Eval/Compatibility/BehaviorEval/` for migration/audit. It is not the canonical Phase-6 entrypoint.
+The old subprocess-capable Behavior runner is retained only under `eval/compatibility/behavior_eval/` for migration/audit. It is not the canonical Phase-6 entrypoint.
 
-`.ai/eval` contracts are copied under `Eval/Compatibility/` for provenance and remain read-only until Phase 8.
+`.ai/eval` contracts are copied under `eval/compatibility/` for provenance and remain read-only until Phase 8.
 
 ## CI
 
-``.github/workflows/validate-agent-contracts.yml` is the canonical PR CI entrypoint. It runs `Tools/validate_all.py`, which covers the Eval validators and Eval / Persistence / Orchestration / Runtime regression suites described above.
+``.github/workflows/validate-agent-contracts.yml` is the canonical PR CI entrypoint. It runs `tools/validate_all.py`, which covers the eval validators and eval / Persistence / Orchestration / Runtime regression suites described above.
 
-The former Eval-specific and Actual Behavior workflows were removed during CI consolidation because they repeated the same canonical validation and created duplicate PR checks. Real Production execution remains a separate manual-only workflow in `.github/workflows/production-smoke.yml`; Eval remains post-execution measurement authority.
+The former Eval-specific and Actual Behavior workflows were removed during CI consolidation because they repeated the same canonical validation and created duplicate PR checks. Real Production execution remains a separate manual-only workflow in `.github/workflows/production-smoke.yml`; eval remains post-execution measurement authority.
 
 ## Non-goals
 
 Phase 6 does not:
 
-- delete `Tests/BehaviorEval` or `Tests/GoldenTasks`;
+- delete `tests/behavior_eval` or `tests/golden_tasks`;
 - delete `.ai/eval`;
 - delete compatibility shims;
 - archive Unity-Graph-Engineering;
@@ -244,12 +244,12 @@ Those remain later phases.
 
 Phase 6 is complete when:
 
-- grading/data/report authority is canonical under `Eval/`;
-- Runtime execution is not implemented inside canonical Eval control modules;
+- grading/data/report authority is canonical under `eval/`;
+- Runtime execution is not implemented inside canonical eval control modules;
 - native Runtime facts preserve structured changed paths with no diff reparse;
 - `not_observed` infrastructure runs are excluded from Agent-quality denominator;
 - Golden expectations cannot enter Runtime task projection;
 - ARCH/NAMING/MUTATION/EVIDENCE historical replay path is testable;
-- Eval can propose but cannot apply production changes;
-- legacy Tools paths are compatibility shims only;
-- existing Runtime/Orchestration/Persistence boundaries remain green.
+- eval can propose but cannot apply production changes;
+- legacy tools paths are compatibility shims only;
+- existing src/unityagent/runtime/orchestration/persistence boundaries remain green.

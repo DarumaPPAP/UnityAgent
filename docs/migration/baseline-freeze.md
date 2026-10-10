@@ -23,7 +23,7 @@ future comparison anchor
 
 The dedicated freeze manifest is:
 
-`Eval/Rebaseline/Baselines/phase9-baseline-20260830-09.yaml`
+`eval/rebaseline/baselines/phase9-baseline-20260830-09.yaml`
 
 It records:
 
@@ -76,7 +76,7 @@ The BaselineFreeze contract requires:
 7. Execution evidence remains immutable.
 8. Freeze is performed only as a reviewed repository change.
 
-`Eval/Rebaseline/validate_baseline_freeze.py` and `Eval/Tests/test_baseline_freeze.py` enforce these invariants.
+`eval/rebaseline/validate_baseline_freeze.py` and `tests/eval/test_baseline_freeze.py` enforce these invariants.
 
 ## Evidence boundary
 

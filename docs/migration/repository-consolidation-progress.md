@@ -19,3 +19,34 @@ P0 Inventory stays immutable historical evidence. Execution-file blocker resolve
 ## P4 Artist producer and Source Lock (2026-10-10)
 
 Hub #95 merged with all required and Artist host checks Green at `547007b11545d445d9e99a97c41a3d6f0a055d03`. Artist CLI project now resolves to `cli/artist/UnityArtist.Cli.csproj`; static verifiers resolve to `ci/verify`. This Agent change re-pins that full immutable SHA after consumer compatibility #176. Actual Development/Pinned imports both remain read-only `no_op`; Canonical validation passed locally. PR and required CI verification precede merge. P5/P6 implementation is separately under verification; P7/P8 are not yet merged. Editor/License/visual/device gates remain `BLOCKED_NOT_RUN`.
+
+## P5 / Agent P6 implementation worktree
+
+- Branch: `chore/repository-consolidation-p5`, based on P1 implementation `b200c6f`.
+- Product namespace, CLI, resources, repository tools/eval/tests and owning docs migrated;
+  exact map and decisions: `docs/migration/python-src-migration.md` and
+  `docs/migration/python-src-path-map.json`.
+- Latest P4 Source Lock was integrated on the owning branch; it pins Hub
+  `547007b11545d445d9e99a97c41a3d6f0a055d03` with the new Artist project path.
+- Canonical validation PASS: 28 validators, graph check, original 10 suites plus
+  packaging and nested reference suite; 622 tests, one Windows-specific skip.
+- Additional root discovery 23 tests PASS and ProductionSmoke contract 11 tests PASS.
+- Build sdist/wheel and clean installed-wheel proof PASS outside checkout, including
+  doctor (unavailable external tools reported honestly), policy/catalog/context loads,
+  resource SHA-256 manifest, complete fingerprints and specialist schema bindings.
+- UPM npm pack PASS (23 archive entries); all original UPM .meta/GUID bytes and
+  VERSION/UPM/Plugin/Python mirrors unchanged.
+- Fresh review fixes: authored-root capability foundation (temporary mutation regression
+  RED→GREEN), exact original-case path-map keys, VERSION resource inclusion, and
+  host-state GoldenTaskRunner default (RED→GREEN).
+- Local PowerShell/Windows specialist execution, Unity Editor/license/Player/Visual:
+  BLOCKED_NOT_RUN. Parent owns PR/merge, latest lock integration and P8 layout enforcement.
+
+- Full local evidence: `/workspace/p5-logs/canonical-verified.log`,
+  `editable-clean.log`, `build-complete.log`, `wheel-proof-complete.log`,
+  `root-tests.log`, and `production-smoke-contract-second.log`.
+  Earlier failure logs remain alongside these; `canonical-complete.log` records an
+  invalid concurrent resource regeneration run, superseded by the sequential run.
+- Built artifacts: `dist/unityagent_control_plane-0.0.8b0-py3-none-any.whl` and
+  `.tar.gz`; wheel contains 228 verified resource hashes and no repository validators.
+

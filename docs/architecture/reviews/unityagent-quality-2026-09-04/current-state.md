@@ -4,19 +4,19 @@
 
 ## リポジトリ規模
 
-対象は `main@e8988ca7b8c656b6c3b6bc7ae592a9925d674d51` です。追跡ファイルは約502、Pythonは約212ファイル・約29.6k行、テストPythonは約7.3k行、Workflowは13本です。テストメソッドは約345件ありますが、標準の `Tools/validate_all.py` が収集するのは320件です。
+対象は `main@e8988ca7b8c656b6c3b6bc7ae592a9925d674d51` です。追跡ファイルは約502、Pythonは約212ファイル・約29.6k行、テストPythonは約7.3k行、Workflowは13本です。テストメソッドは約345件ありますが、標準の `tools/validate_all.py` が収集するのは320件です。
 
 ## 責務と依存方向
 
 | Area | 現在の責務 | 依存・境界 |
 | --- | --- | --- |
-| Policy | User Policy、Risk、Security、Approval、Evidence条件 | Provider選択・Tool実行・品質採点を持たない |
-| Orchestration | Route、Parent/SubGraph、Task Contract、semantic replan、Runtime Handoff | subprocess、Provider dispatch、durable writeを持たない |
-| Context | Context Pack、Retrieval、Knowledge、Budget、current-call materialization | Route authority、durable Memory/Evidenceを持たない |
-| Runtime | Environment、Provider resolution、dispatch、timeout、retry、Scope、current-run Evidence | semantic replan、durable truth、Agent採点を持たない |
-| Persistence | Execution/Workflow/Loop state、Checkpoint/Resume、Memory、durable Evidence | Provider選択・Runtime実行を持たない |
-| Operations | Telemetry観測、Detection、Incident/Runbook、承認済みControl、Change Management | Policy/Approvalを迂回したMutationを行わない |
-| Eval | Golden/Behavior、Attribution、Replay、Rebaseline、Regression、ChangeProposal | Production execution・definition変更を行わない |
+| src/unityagent/policy | User Policy、Risk、Security、Approval、Evidence条件 | Provider選択・Tool実行・品質採点を持たない |
+| src/unityagent/orchestration | Route、Parent/SubGraph、Task Contract、semantic replan、Runtime Handoff | subprocess、Provider dispatch、durable writeを持たない |
+| src/unityagent/context | Context Pack、Retrieval、Knowledge、Budget、current-call materialization | Route authority、durable Memory/Evidenceを持たない |
+| src/unityagent/runtime | Environment、Provider resolution、dispatch、timeout、retry、Scope、current-run Evidence | semantic replan、durable truth、Agent採点を持たない |
+| src/unityagent/persistence | Execution/Workflow/Loop state、Checkpoint/Resume、Memory、durable Evidence | Provider選択・Runtime実行を持たない |
+| src/unityagent/operations | Telemetry観測、Detection、Incident/Runbook、承認済みControl、Change Management | src/unityagent/policy/approvalを迂回したMutationを行わない |
+| eval | Golden/Behavior、Attribution、Replay、Rebaseline、Regression、ChangeProposal | Production execution・definition変更を行わない |
 
 Canonicalな依存方向は次の通りです。
 
@@ -26,7 +26,7 @@ Policy defines
   → Context materializes
   → Runtime executes
   → Persistence remembers
-  → Operations observes/controls、Eval measures/proposes
+  → Operations observes/controls、eval measures/proposes
 ```
 
 ## 宣言された構成と確認できた構成

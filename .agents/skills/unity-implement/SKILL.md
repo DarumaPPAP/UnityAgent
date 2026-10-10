@@ -10,14 +10,14 @@ metadata:
   version: "2.4.1"
   kind: operation
   entrypoint: false
-  user_policy: Policy/User/user-policy.yaml
+  user_policy: src/unityagent/policy/user/user-policy.yaml
 ---
 
 # Unity Implement
 
 承認済みTask、Confirmed Incident、または依頼文で完全に境界づけられた局所変更を、最小差分で実装する。
 このSkillは「選択された一件の実装」を所有する。
-Primary Domain Routeは`Orchestration/Routing/task-routes.yaml`で選択済みであることを前提とし、このSkill自身をRouting入口にしない。
+Primary Domain Routeは`src/unityagent/orchestration/routing/task-routes.yaml`で選択済みであることを前提とし、このSkill自身をRouting入口にしない。
 
 ## When to use
 
@@ -34,15 +34,15 @@ Read-only監査には対応Audit Skillを使う。
 優先順に読む。
 
 1. ユーザーが指定したTask ID、ファイル、禁止事項
-2. `Policy/User/user-policy.yaml`
+2. `src/unityagent/policy/user/user-policy.yaml`
 3. 選択済みContext PackとTask Contract
 4. Feature `spec.md`、`plan.md`、`tasks.md`
 5. 対象コード、直接依存、対象Projectから検出したFact
-6. 必要なProject Factが未解決の場合だけ`Specs/ProjectProfile.md`をFallbackとして読む
-7. `SkillReferences/ENGINEERING_DESIGN_PRINCIPLES.md`と適用されるCoding / Architecture / Rendering standards
-8. `SkillReferences/TYPE_NAMING_STANDARDS.md` when a new Type or explicit Type rename is part of the Task
+6. 必要なProject Factが未解決の場合だけ`docs/architecture/specifications/ProjectProfile.md`をFallbackとして読む
+7. `docs/standards/ENGINEERING_DESIGN_PRINCIPLES.md`と適用されるCoding / Architecture / Rendering standards
+8. `docs/standards/TYPE_NAMING_STANDARDS.md` when a new Type or explicit Type rename is part of the Task
 
-`Specs/ProjectProfile.md`はProject未接続または必要Factが取得できない場合のFallbackであり、検出済みProject Factや今回ユーザーが確認したFactを上書きしない。
+`docs/architecture/specifications/ProjectProfile.md`はProject未接続または必要Factが取得できない場合のFallbackであり、検出済みProject Factや今回ユーザーが確認したFactを上書きしない。
 古いPolicy文書を現在のUser Policyへ上書き統合しない。
 全Referenceを無条件に読まない。対象変更に必要なものだけを読む。
 
@@ -81,7 +81,7 @@ Read-only監査には対応Audit Skillを使う。
 - 既存コードのnamespace
 - asmdefの`name`、`rootNamespace`、Assembly参照
 - 対象Projectから検出したUnity Version、Pipeline、Platform、Namespace等のFact
-- 必要Factが未解決の場合だけ`Specs/ProjectProfile.md`の対応項目
+- 必要Factが未解決の場合だけ`docs/architecture/specifications/ProjectProfile.md`の対応項目
 - Shader Property、Keyword、Pass、LightMode、RenderState
 - Platform / IL2CPP / Burst / Jobs条件
 
@@ -123,10 +123,10 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - 既存コードを変更する場合は既存namespaceを保持する。
 - `Namespace`、`RootNamespace`、`<RootNamespace>`、`CHANGE_ME`をC# namespace、asmdef名、`rootNamespace`、Assembly参照へ出力しない。
 - 先頭または末尾が`.`のnamespaceを生成しない。
-- コメントは`Policy/User/user-policy.yaml`のコメント体系に従い、日本語で意図、制約、所有権、寿命、危険箇所を必要な密度で書く。
+- コメントは`src/unityagent/policy/user/user-policy.yaml`のコメント体系に従い、日本語で意図、制約、所有権、寿命、危険箇所を必要な密度で書く。
 - Type / Responsibility / File Structureを確定してから命名を評価する。長いType名を短縮するためだけに追加Typeを作らない。
 
-新規Typeまたは明示Renameがある場合のみ `SkillReferences/TYPE_NAMING_STANDARDS.md` のSemantic Type Naming Contractを適用する。既存Typeへの局所修正だけではNaming Reviewを発火させない。
+新規Typeまたは明示Renameがある場合のみ `docs/standards/TYPE_NAMING_STANDARDS.md` のSemantic Type Naming Contractを適用する。既存Typeへの局所修正だけではNaming Reviewを発火させない。
 
 ### Step 5 — Self-review the diff
 
@@ -165,7 +165,7 @@ Static / Compile / Editor / Player / 実機 / Performance / Visualの実施状�
 
 選択Taskの完了後、現在のユーザー依頼に含まれる後続Taskは継続する。「このTaskだけ」の依頼ではそこで完了する。
 依頼外の追加作業はFindingとして報告する。
-承認・停止判断は `Policy/Approval/approval-policy.yaml` を参照する。Skillが停止を生む場合はpath、該当instruction、effect、判断理由を報告し、Silent Stopしない。
+承認・停止判断は `src/unityagent/policy/approval/approval-policy.yaml` を参照する。Skillが停止を生む場合はpath、該当instruction、effect、判断理由を報告し、Silent Stopしない。
 
 ## Output contract
 
