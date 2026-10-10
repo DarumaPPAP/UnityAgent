@@ -115,7 +115,7 @@ def main(argv: list[str] | None = None) -> int:
         payload = CATALOG_PATH.read_bytes()
         plan = build_import_plan(
             payload,
-            source_ref="checked-in://Runtime/ReferenceImplementation/subagent-catalog.yaml",
+            source_ref="checked-in://src/unityagent/runtime/reference_implementation/subagent-catalog.yaml",
             expected_sha256="sha256:" + hashlib.sha256(payload).hexdigest(),
             current_catalog=None,
             current_catalog_bytes=payload,

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace UnityAgent.unityagent.runtime.harnesses.unity.Editor
+namespace UnityAgent.Runtime.Harnesses.Unity.Editor
 {
     public enum UnityArtifactKind
     {

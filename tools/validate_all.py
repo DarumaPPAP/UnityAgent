@@ -23,6 +23,7 @@ YAML_ROOTS = (
 )
 
 VALIDATORS = (
+    Path("tools/validate_layout.py"),
     Path("tools/policy_validator/validate_user_policy_integrity.py"),
     Path("tools/context_validator/validate_stale_paths.py"),
     Path("tools/orchestration_validator/validate_loops.py"),
