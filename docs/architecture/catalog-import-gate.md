@@ -9,7 +9,7 @@ Hubのconsumer-neutral SnapshotをUnityAgent所有の `SubAgentProfileCatalog` �
 ```bash
 python Tools/import_subagent_catalog.py \
   --snapshot /path/to/subagent-catalog.yaml \
-  --source-ref 'github://DarumaPPAP/UnitySubAgentHub/refs/heads/main/catalog.yaml' \
+  --source-ref 'github://DarumaPPAP/UnitySubAgentHub/<full-commit-sha>/Tests/Hub/export_agent_snapshot.py' \
   --expected-sha256 'sha256:<64 lowercase hex characters>'
 ```
 
@@ -18,6 +18,23 @@ python Tools/import_subagent_catalog.py \
 Current Hub contractはSnapshot v3 / Manifest v5です。Import Gateは明示的な互換入力としてSnapshot v1 / Manifest v3とSnapshot v2 / Manifest v4も受け入れますが、旧版をCurrent契約へ暗黙変換しません。v3では`execution.kind`を含むExecution Contractを検証し、Provider-backed SpecialistはBackend宣言を要求し、Reasoning SpecialistはSemantic Tool Backendを持たないことを要求します。v3 Snapshotを取り込むConsumer CatalogはProfile v3でなければ`consumer_migration_required`で停止します。
 
 AdapterはHub Schemaの固定コピーを`Runtime/ReferenceImplementation/Schemas/`からオフラインで検証し、active SpecialistのIdentity、Capability、Activation、Execution、Compatibility、Backend / Reasoning参照、Evidence requirementsを読みます。Hub Schemaが更新される場合はこのコピーとImport Testを同じUnityAgent PRで更新します。`audience`、`goal_type`、`primary_capability`、既定Profile、Reference scope / approval、Evidence producerなどConsumer所有値はUnityAgentの現行Catalogから保持します。HubがこれらのRuntime値を決めません。新しいSpecialistにUnityAgent側Profileがなければ`consumer_profile_required`で停止し、明示的なCatalog Migrationを要求します。複数のactive Specialistが同じCapabilityを宣言し、現行Consumerが一意に扱えない場合もImport Gateで拒否します。
+
+## Development / Pinned互換性検証
+
+Python 3.12+で、同じローカルHub Git Repositoryに対して両モードを独立して実行します。
+
+```bash
+python Tools/validate_catalog_import_gate.py --hub-root /path/to/UnitySubAgentHub --source-mode development
+python Tools/validate_catalog_import_gate.py --hub-root /path/to/UnitySubAgentHub --source-mode pinned
+```
+
+DevelopmentはHubの`HEAD`、Pinnedは`Runtime/Distribution/subagent-sources.lock.json`の完全なCommit SHAを使います。必要なCommitは事前にGitで取得してください。Validatorはnetwork fetchもcheckoutも行わず、各Commitを一時ディレクトリへ`git archive`で隔離展開し、そのCommitの既存Exporterを実行します。未Commit変更は検証対象に含まれません。Hub作業ツリー、Catalog、Source Lockは変更しません。固定Commitが取得できなければHEADへfallbackせず失敗します。
+
+JSON Planには`source.mode`、`source.commit`、`source.locked_commit`、完全なCommitを含む`source.ref`、Snapshot SHA-256と既存Import Planを記録します。SHA-256はその実行で生成したバイト列の同一性を記録するもので、署名や事前に承認されたdigestとの照合ではありません。
+
+CI互換性Gateは読取専用`no_op`だけを成功とし、`blocked`、`requires_pull_request`、不正入力、Export失敗は失敗とします。表示名変更など低リスク差分もレビューが必要です。正当な契約変更ではConsumer Profile / Schemaの明示Migrationをレビューし、両RepositoryのGateを再実行します。Source Lock更新は別途明示的に判断し、自動更新しません。
+
+UnityAgent CIはHub mainのDevelopment HEADとPinned Sourceを検証し、それぞれのPlanをCI Evidence Artifactへ保存します。Hub CIは当該Hub Commitから生成したSnapshotをUnityAgent mainの既存Import CLIで検証します。相手Repositoryのmainは実行開始時に解決するため、横断契約変更のMerge後にも両Gateを再実行してください。これらのArtifactは検証記録であり、Hub ReleaseやRuntime同期を行いません。
 
 ## Planの扱い
 

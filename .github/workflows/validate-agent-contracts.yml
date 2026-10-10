@@ -118,6 +118,36 @@ jobs:
       - name: Enforce Skill authoring quality
         run: python Tools/SkillValidator/validate_skills.py --strict
 
+      - name: Checkout Hub source history for contract validation
+        uses: actions/checkout@v7
+        with:
+          repository: DarumaPPAP/UnitySubAgentHub
+          ref: main
+          fetch-depth: 0
+          path: .tmp-hub-source
+          persist-credentials: false
+
+      - name: Validate Development HEAD compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          python Tools/validate_catalog_import_gate.py --hub-root .tmp-hub-source --source-mode development > "$RUNNER_TEMP/hub-development-import-plan.json"
+
+      - name: Validate Source Lock compatibility independently
+        if: success() || failure()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python Tools/validate_catalog_import_gate.py --hub-root .tmp-hub-source --source-mode pinned > "$RUNNER_TEMP/hub-pinned-import-plan.json"
+
+      - name: Upload read-only Hub import plans
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: hub-import-plans
+          path: ${{ runner.temp }}/hub-*-import-plan.json
+          if-no-files-found: ignore
+
       - name: Validate PowerShell installer syntax
         shell: pwsh
         run: |
