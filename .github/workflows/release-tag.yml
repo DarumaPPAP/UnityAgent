@@ -107,12 +107,7 @@ jobs:
       - name: Resolve pinned Hub source
         id: hub-source
         run: |
-          python3 - <<'PY' >> "$GITHUB_OUTPUT"
-          import json
-          lock = json.load(open("Runtime/Distribution/subagent-sources.lock.json", encoding="utf-8"))
-          print(f"repository={lock['hub']['repository']}")
-          print(f"commit={lock['hub']['commit']}")
-          PY
+          python3 Tools/subagent_source_paths.py >> "$GITHUB_OUTPUT"
 
       - name: Checkout pinned UnitySubAgentHub source
         uses: actions/checkout@v7
@@ -130,10 +125,10 @@ jobs:
           expected="${{ steps.hub-source.outputs.commit }}"
           actual="$(git -C .release-sources/UnitySubAgentHub rev-parse HEAD)"
           test "$actual" = "$expected"
-          python3 .release-sources/UnitySubAgentHub/Tests/Hub/validate_registry.py
-          python3 -m unittest discover -s .release-sources/UnitySubAgentHub/Tests/Hub -p 'test_*.py' -v
-          python3 .release-sources/UnitySubAgentHub/Tests/Backend/verify_artist_backend_contract.py
-          python3 .release-sources/UnitySubAgentHub/Tests/Compatibility/verify-unity-api-compatibility.py
+          python3 .release-sources/UnitySubAgentHub/${{ steps.hub-source.outputs.hub_validator }}
+          python3 -m unittest discover -s .release-sources/UnitySubAgentHub/${{ steps.hub-source.outputs.hub_tests }} -p 'test_*.py' -v
+          python3 .release-sources/UnitySubAgentHub/${{ steps.hub-source.outputs.artist_contract_verifier }}
+          python3 .release-sources/UnitySubAgentHub/${{ steps.hub-source.outputs.unity_api_verifier }}
 
       - name: Build pinned SubAgent distribution
         run: |
@@ -141,7 +136,7 @@ jobs:
           hub=".release-sources/UnitySubAgentHub"
           mkdir -p artifacts .release-build/artist-host-windows-x64
 
-          dotnet publish "$hub/src/UnityArtist.Cli/UnityArtist.Cli.csproj" \
+          dotnet publish "$hub/${{ steps.hub-source.outputs.artist_cli_project }}" \
             --configuration Release \
             --runtime win-x64 \
             --self-contained true \
@@ -159,9 +154,9 @@ jobs:
           test -n "$artist_upm_source"
           mv "$artist_upm_source" "artifacts/UnityAgent-ArtistSubAgent-UPM-$RELEASE_VERSION.tgz"
 
-          python3 "$hub/Tests/Hub/export_agent_snapshot.py" \
+          python3 "$hub/${{ steps.hub-source.outputs.hub_exporter }}" \
             --output "artifacts/UnityAgent-SubAgent-Catalog-$RELEASE_VERSION.yaml"
-          cp "$hub/Registry/subagents.yaml" "artifacts/UnityAgent-SubAgent-Registry-$RELEASE_VERSION.yaml"
+          cp "$hub/${{ steps.hub-source.outputs.hub_registry }}" "artifacts/UnityAgent-SubAgent-Registry-$RELEASE_VERSION.yaml"
 
           python3 - <<'PY'
           import json
