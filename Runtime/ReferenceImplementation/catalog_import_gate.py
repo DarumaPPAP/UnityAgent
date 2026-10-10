@@ -89,7 +89,7 @@ def _expected_digest(value: str) -> str:
 
 
 HUB_MANIFEST_KEYS = frozenset({"schema_version", "kind", "identity", "lifecycle", "installation", "activation", "capabilities", "capability_contract_ref", "compatibility", "dependencies", "backends", "evidence"})
-HUB_MANIFEST_REF = re.compile(r"^SubAgents/([a-z][a-z0-9_]*_subagent)/manifest\.yaml$")
+HUB_MANIFEST_REF = re.compile(r"^(?:Hub/)?SubAgents/([a-z][a-z0-9_]*_subagent)/manifest\.yaml$")
 HUB_SNAPSHOT_SCHEMA_PATH = ROOT / "Runtime/ReferenceImplementation/Schemas/hub-snapshot-v1.schema.json"
 HUB_MANIFEST_SCHEMA_PATH = ROOT / "Runtime/ReferenceImplementation/Schemas/hub-manifest-v3.schema.json"
 HUB_V2_SNAPSHOT_SCHEMA_PATH = ROOT / "Runtime/ReferenceImplementation/Schemas/hub-snapshot-v2.schema.json"
@@ -125,6 +125,17 @@ def _exact_mapping(value: Any, expected: frozenset[str], location: str) -> Mappi
     if not isinstance(value, Mapping) or set(value) != expected:
         raise CatalogImportError("hub_snapshot_schema", f"{location} must contain exactly {sorted(expected)}")
     return value
+
+
+def _same_hub_contract_ref(candidate: str, expected: str) -> bool:
+    """Consumerが固定した契約だけに、既知のHub移設を対応付ける。"""
+    if candidate == expected:
+        return True
+    if expected.startswith("SubAgents/"):
+        return candidate == "Hub/" + expected
+    if expected.startswith("Hub/SubAgents/"):
+        return candidate == expected.removeprefix("Hub/")
+    return False
 
 
 def _hub_profile_catalog(snapshot: Mapping[str, Any], consumer_catalog: SubAgentProfileCatalog) -> SubAgentProfileCatalog:
@@ -186,7 +197,7 @@ def _hub_profile_catalog(snapshot: Mapping[str, Any], consumer_catalog: SubAgent
                 if current.selection["supported_targets"] != targets:
                     raise CatalogImportError("compatibility_contract_mismatch", f"{profile_id}: supported targets differ from Consumer Profile")
                 shared = ("reasoning_runtime", "execution_mode", "source_context_binding", "required_observation_capabilities")
-                if any(current.execution[key] != declared[key] for key in shared) or any(current.execution["hub_contract_refs"][key] != declared[key] for key in ("instructions_ref", "output_contract_ref")):
+                if any(current.execution[key] != declared[key] for key in shared) or any(not _same_hub_contract_ref(declared[key], current.execution["hub_contract_refs"][key]) for key in ("instructions_ref", "output_contract_ref")):
                     raise CatalogImportError("execution_contract_mismatch", f"{profile_id}: reasoning contracts differ from Consumer Profile")
         installation = _exact_mapping(manifest["installation"], frozenset({"mode", "required", "auto_install"}), f"{profile_id}.installation")
         activation = _exact_mapping(manifest["activation"], frozenset({"required_before_resolution", "false_behavior", "unknown_behavior"}), f"{profile_id}.activation")
