@@ -18,7 +18,7 @@ namespace UnityAgent.unityagent.runtime.harnesses.unity.Editor
         private UnityArtifactGraphExporter _exporter;
         private UnityArtifactImpactAnalyzer _analyzer;
 
-        [MenuItem("tools/UnityAgent/Runtime/Artifact Dependency Graph")]
+        [MenuItem("Tools/UnityAgent/Runtime/Artifact Dependency Graph")]
         private static void Open() => GetWindow<UnityRuntimeHarnessWindow>("Runtime Artifact Graph");
 
         private void OnEnable()
