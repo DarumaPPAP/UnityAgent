@@ -10,7 +10,7 @@ import sys
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-ARTIST_DEFAULT = ROOT.parent / "MyUnityMCP"
+ARTIST_DEFAULT = ROOT.parent / "UnitySubAgentHub"
 LIVE_PROJECT_DEFAULT = Path("D:/ProjectAI")
 LIVE_SCENE_DEFAULT = "Assets/Scenes/SampleScene.unity"
 LIVE_EXPECTED_BEFORE_FOV_DEFAULT = 60.0
@@ -88,7 +88,7 @@ def _reference_tests(env: dict[str, str]) -> tuple[bool, str]:
 
 def _namespace_check(artist_root: Path) -> tuple[bool, str]:
     violations: list[str] = []
-    roots = [artist_root / "Packages" / "com.darumappap.artist-subagent", artist_root / "src" / "UnityArtist.Cli"]
+    roots = [artist_root / "Packages" / "com.darumappap.artist-subagent", artist_root / "cli" / "artist"]
     for root in roots:
         if not root.is_dir():
             violations.append(f"missing namespace root: {root}")
@@ -154,12 +154,12 @@ def main() -> int:
         failures.append("UnityArtist namespace migration")
 
     static_commands = {
-        "artist_contract": [sys.executable, "Tests/Release/verify_unity_artist_contract.py"],
-        "artist_api_compatibility": [sys.executable, "Tests/Compatibility/verify-unity-api-compatibility.py"],
-        "artist_cli_pipeline_gate": [sys.executable, "Tests/Compatibility/verify-cli-pipeline-gate-evidence.py"],
-        "artist_2022_bounded_fallback": [sys.executable, "Tests/Compatibility/verify-2022-3-bounded-fallback-evidence.py"],
-        "artist_semantic_names": [sys.executable, "Tests/Compatibility/verify-semantic-names.py"],
-        "artist_portable_paths": [sys.executable, "Tests/Release/verify_portable_paths.py"],
+        "artist_contract": [sys.executable, "ci/verify/verify_artist_backend_contract.py"],
+        "artist_api_compatibility": [sys.executable, "ci/verify/verify-unity-api-compatibility.py"],
+        "artist_cli_pipeline_gate": [sys.executable, "ci/verify/verify-cli-pipeline-gate-evidence.py"],
+        "artist_2022_bounded_fallback": [sys.executable, "ci/verify/verify-2022-3-bounded-fallback-evidence.py"],
+        "artist_semantic_names": [sys.executable, "ci/verify/verify-semantic-names.py"],
+        "artist_portable_paths": [sys.executable, "ci/verify/verify_portable_paths.py"],
     }
     for name, command in static_commands.items():
         ok, output = _run(command, cwd=artist_root, env=env, timeout=300)
@@ -174,12 +174,12 @@ def main() -> int:
     env["DOTNET_CLI_HOME"] = str(dotnet_home)
     env["NUGET_PACKAGES"] = str(nuget)
     env["DOTNET_SKIP_FIRST_TIME_EXPERIENCE"] = "1"
-    restore_command = ["dotnet", "restore", "src/UnityArtist.Cli/UnityArtist.Cli.csproj"]
+    restore_command = ["dotnet", "restore", "cli/artist/UnityArtist.Cli.csproj"]
     restore_ok, restore_output = _run(restore_command, cwd=artist_root, env=env, timeout=300)
     checks["artist_cli_restore"] = {"passed": restore_ok, "command": restore_command, "tail": restore_output[-5000:]}
     if not restore_ok:
         failures.append("UnityArtistCLI clean-checkout restore")
-    build_command = ["dotnet", "build", "src/UnityArtist.Cli/UnityArtist.Cli.csproj", "--no-restore"]
+    build_command = ["dotnet", "build", "cli/artist/UnityArtist.Cli.csproj", "--no-restore"]
     ok, output = (False, "restore failed; build was not attempted") if not restore_ok else _run(build_command, cwd=artist_root, env=env, timeout=300)
     checks["artist_cli_build"] = {"passed": ok, "command": build_command, "tail": output[-5000:]}
     if not ok:
@@ -210,7 +210,7 @@ def main() -> int:
     if live_report and live_report.get("status") == "blocked_external":
         external_blockers.append("real Unity 6000.6.0f1 E2E: " + str(live_report.get("error")))
     elif live_code != 0 or not live_report or live_report.get("status") != "passed":
-        failures.append("real Unity src/unityagent/control_plane/named Pipe E2E")
+        failures.append("real Unity Control Plane/named Pipe E2E")
 
     terminal = "GOAL_COMPLETE"
     if failures:

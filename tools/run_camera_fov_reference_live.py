@@ -25,8 +25,8 @@ import uuid
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_ARTIST_ROOT = ROOT.parent / "MyUnityMCP"
-DEFAULT_PROJECT = DEFAULT_ARTIST_ROOT / "TestProjects" / "UnityArtistVerification"
+DEFAULT_ARTIST_ROOT = ROOT.parent / "UnitySubAgentHub"
+DEFAULT_PROJECT = DEFAULT_ARTIST_ROOT / "ci" / "unity-projects" / "artist-e2e"
 DEFAULT_SCENE_PATH = "Assets/ReferenceCameraFovGolden.unity"
 UNITY_VERSION = "6000.6.0f1"
 DEFAULT_EDITOR = Path("C:/Program Files/Unity/Hub/Editor/6000.6.0f1/Editor/Unity.exe")
@@ -216,14 +216,14 @@ def _publish_or_resolve_artist_cli(artist_root: Path) -> Path:
     candidates = [
         Path(explicit).expanduser().resolve() if explicit else None,
         artist_root / "Artifacts" / "reference-live" / "publish" / "unity-artist.exe",
-        artist_root / "src" / "UnityArtist.Cli" / "bin" / "Debug" / "net8.0" / "unity-artist.exe",
-        artist_root / "src" / "UnityArtist.Cli" / "bin" / "Release" / "net8.0" / "unity-artist.exe",
+        artist_root / "cli" / "artist" / "bin" / "Debug" / "net8.0" / "unity-artist.exe",
+        artist_root / "cli" / "artist" / "bin" / "Release" / "net8.0" / "unity-artist.exe",
     ]
     for candidate in candidates:
         if candidate is not None and candidate.is_file():
             return candidate.resolve()
 
-    project = artist_root / "src" / "UnityArtist.Cli" / "UnityArtist.Cli.csproj"
+    project = artist_root / "cli" / "artist" / "UnityArtist.Cli.csproj"
     if not project.is_file():
         raise LiveFailure(f"UnityArtistCLI project was not found: {project}")
     output = artist_root / "Artifacts" / "reference-live" / "publish"

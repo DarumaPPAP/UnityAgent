@@ -726,7 +726,7 @@ class Issue136HardeningTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             artist_root = Path(directory)
-            project_file = artist_root / "src" / "UnityArtist.Cli" / "UnityArtist.Cli.csproj"
+            project_file = artist_root / "cli" / "artist" / "UnityArtist.Cli.csproj"
             project_file.parent.mkdir(parents=True)
             project_file.write_text("<Project />", encoding="utf-8")
             commands: list[list[str]] = []

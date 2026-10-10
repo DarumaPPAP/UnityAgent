@@ -50,3 +50,5 @@ Hub #95 merged with all required and Artist host checks Green at `547007b11545d4
 - Built artifacts: `dist/unityagent_control_plane-0.0.8b0-py3-none-any.whl` and
   `.tar.gz`; wheel contains 228 verified resource hashes and no repository validators.
 
+
+P5 integration rebased onto verified P4 Agent main `ef6b409fab5ec5fde89ea291df1a72bb2c468f10`. P3's source-path resolver and tests were relocated into tools/tests; Release uses the validated resolver. Live camera and final-gate repository helpers now use the consolidated Hub Artist project/verifier paths and UnitySubAgentHub default checkout. Their restore-before-publish regression passed; the integrated full Canonical validation passed. Actual Development/Pinned imports remain read-only no_op. This is implementation/host verification; live Windows/Unity/visual execution remains BLOCKED_NOT_RUN.
