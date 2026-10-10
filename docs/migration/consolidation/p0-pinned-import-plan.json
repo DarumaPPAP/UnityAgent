@@ -1,0 +1,65 @@
+{
+  "kind": "subagent_catalog_import_plan",
+  "schema_version": "1.0",
+  "status": "no_op",
+  "risk": "none",
+  "source": {
+    "ref": "github://DarumaPPAP/UnitySubAgentHub/61d3fad2e0aef50b69fc76fbbd839aca076de19f/Tests/Hub/export_agent_snapshot.py",
+    "sha256": "sha256:b156ee93fab5abddc8a7785c8493b835ce3111eae80394f4e42f6f59f574e6d5",
+    "mode": "pinned",
+    "repository": "DarumaPPAP/UnitySubAgentHub",
+    "commit": "61d3fad2e0aef50b69fc76fbbd839aca076de19f",
+    "locked_commit": "61d3fad2e0aef50b69fc76fbbd839aca076de19f"
+  },
+  "current_catalog": {
+    "ref": "Runtime/ReferenceImplementation/subagent-catalog.yaml",
+    "sha256": "sha256:e61d9bf0721d6512cf918e649c69b671902a7864bd737d82c46c1e49dee3b238"
+  },
+  "catalog": {
+    "current_default_profile": "artist_subagent",
+    "incoming_default_profile": "artist_subagent",
+    "default_profile_changed": false
+  },
+  "validation": {
+    "syntax": "passed",
+    "strict_schema": "passed",
+    "semantic": "passed"
+  },
+  "changes": [
+    {
+      "profile_id": "artist_subagent",
+      "classification": "No-op",
+      "changed_fields": [],
+      "protected_fields_changed": [],
+      "risk": "none"
+    },
+    {
+      "profile_id": "graphics_subagent",
+      "classification": "No-op",
+      "changed_fields": [],
+      "protected_fields_changed": [],
+      "risk": "none"
+    },
+    {
+      "profile_id": "performance_subagent",
+      "classification": "No-op",
+      "changed_fields": [],
+      "protected_fields_changed": [],
+      "risk": "none"
+    },
+    {
+      "profile_id": "world_creator_subagent",
+      "classification": "No-op",
+      "changed_fields": [],
+      "protected_fields_changed": [],
+      "risk": "none"
+    }
+  ],
+  "blocking_reasons": [],
+  "apply": {
+    "mode": "read_only",
+    "catalog_write_performed": false,
+    "requires_pull_request": false,
+    "apply_allowed": false
+  }
+}
