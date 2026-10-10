@@ -67,3 +67,7 @@ P1–P8 are not implemented by this P0 audit. No code/static migration completio
 ## P1 execution-file blocker resolved
 
 Execution Goal acquired directly from GitHub main via #174. P0 historical inventory is preserved. P1 uses exact old/new manifest references and exporter paths rather than a permissive source fallback. Reasoning contract path relocation is compared only against the Consumer-owned original identity; execution kind, runtime, required observations and contract leaf stay protected. Old source pin continues to validate.
+
+## P3 Source Lock and P4 Consumer preparation
+
+Pinned Hub source moves to merged P2 commit ccd6a21dee753c60211c1aa947f5220366cd7229. Release uses one validated allowlist resolver for exporter, registry, validator, test runner and Artist CLI paths. This accepts only the known old/new directory pairs, not arbitrary lock-supplied commands, and keeps package/manifest identity checks. Artist new layout is prepared before Hub producer move. Release publication was not invoked.

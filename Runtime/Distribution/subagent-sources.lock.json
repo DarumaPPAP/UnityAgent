@@ -3,13 +3,13 @@
   "kind": "subagent_source_lock",
   "hub": {
     "repository": "DarumaPPAP/UnitySubAgentHub",
-    "commit": "61d3fad2e0aef50b69fc76fbbd839aca076de19f",
-    "snapshot_exporter": "Tests/Hub/export_agent_snapshot.py",
-    "registry": "Registry/subagents.yaml"
+    "commit": "ccd6a21dee753c60211c1aa947f5220366cd7229",
+    "snapshot_exporter": "Hub/Tools/export_snapshot.py",
+    "registry": "Hub/Registry/subagents.yaml"
   },
   "specialist_sources": {
     "artist_subagent": {
-      "manifest": "SubAgents/artist_subagent/manifest.yaml",
+      "manifest": "Hub/SubAgents/artist_subagent/manifest.yaml",
       "backend_package": "Packages/com.darumappap.artist-subagent",
       "backend_cli_project": "src/UnityArtist.Cli/UnityArtist.Cli.csproj"
     }
