@@ -1,0 +1,97 @@
+schema_version: "2.0"
+product: UnityArtistCLI
+release_version: "0.0.1-beta"
+case: unity-6-builtin
+status: passed
+fixture: TestProjects/UnityArtistVerification
+editor:
+  version: "6000.6.0f1"
+  open_status: passed
+  transport: official_unity_cli_pipeline
+  pipeline_server:
+    host: 127.0.0.1
+    port: 7800
+    status: reachable
+  compile:
+    status: passed
+    artist_assembly: DarumaPPAP.UnityArtist.Editor.dll
+pipeline:
+  install_status: passed
+  package: com.unity.pipeline
+  version: "0.6.0-exp.1"
+  command_discovery_status: passed
+  artist_command_count: 9
+  artist_commands:
+    - artist.inspect
+    - artist.plan
+    - artist.preview
+    - artist.apply
+    - artist.capture
+    - artist.evaluate
+    - artist.refine
+    - artist.history
+    - artist.cinematic
+artist_lifecycle:
+  inspect:
+    status: passed
+    verified: true
+    support_tier: primary
+    render_pipeline: builtin
+  plan_preview:
+    status: passed
+    read_only: true
+    approval_required: true
+    exact_diff: RenderSettings.fogDensity
+  approval_guard:
+    status: passed
+    rejected_without_token: true
+    rejection_surface: official_pipeline_parameter_validation
+  approved_apply:
+    status: passed
+    verified: true
+    save_performed: false
+    undo_available: true
+    evidence:
+      - mutation_evidence
+      - undo_registration
+      - save_not_performed
+  capture:
+    status: passed
+    verified: true
+    camera: Main Camera
+    png_relative_path: TestProjects/UnityArtistVerification/Library/UnityArtist/Captures/<capture-id>/color.png
+    png_bytes: 276044
+    png_sha256: a5a90872f481672fe1fb474e4c5ab51005cb1feed085dcc6671a29a2b4a7556d
+    resolution: 1920x1080
+  visual_review:
+    status: passed
+    decision: needs_refine
+    human_review: true
+  refine:
+    status: passed
+    approval_required: true
+    evaluation_reference: true
+  stale_revision_guard:
+    status: passed
+    result: blocked
+    error_code: STALE_REVISION
+  editor_close:
+    status: passed
+    method: graceful
+    save_performed: false
+unityagent_provider_e2e:
+  status: passed
+  route: ToolBroker -> Resolver -> Dispatcher -> unity_artist_cli Provider -> unity-artist -> official unity command -> Pipeline -> Editor
+  resolved_provider: unity_artist_cli
+  inspect_status: completed
+  plan_status: completed
+  apply_status: completed
+  mapped_evidence:
+    - domain_result
+    - mutation_evidence
+    - undo_registration
+    - save_not_performed
+  redacted_provenance_plan_id: observed
+notes:
+  - This is a Unity 6 Built-in live fixture result; URP/HDRP and 2022.3 remain separate matrix cases.
+  - The capture implementation synchronously renders to a temporary RenderTexture and verifies the PNG before returning passed.

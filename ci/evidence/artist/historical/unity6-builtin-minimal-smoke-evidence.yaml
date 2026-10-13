@@ -1,0 +1,43 @@
+schema_version: "2.0"
+product: UnityArtistCLI
+release_version: "0.0.1-beta"
+case: unity-6-builtin-minimal-smoke
+status: passed
+fixture: TestProjects/UnityArtistVerification
+scene: Assets/MinimalSmoke.unity
+editor:
+  version: "6000.6.0f1"
+  transport: official_unity_cli_pipeline
+  pipeline_version: "0.6.0-exp.1"
+  pipeline_server: reachable
+  safe_mode: false
+setup:
+  scene_creation: official_pipeline_create_scene
+  geometry: one_cube
+  camera: Main Camera
+artist_lifecycle:
+  inspect: passed
+  plan: passed
+  preview: passed
+  approval_guard: passed
+  approved_apply: passed
+  apply_evidence:
+    - mutation_evidence
+    - undo_registration
+    - save_not_performed
+  capture: passed
+  evaluate: passed
+  refine: passed
+  history: passed
+capture:
+  png_relative_path: TestProjects/UnityArtistVerification/Library/UnityArtist/Captures/<capture-id>/color.png
+  png_bytes: 277820
+  png_sha256: 37c6cef1a00fda7168676ceed37b266039821472e6cd8e6c78907644cbe9a7c1
+  resolution: 1920x1080
+static_contract:
+  test: Tests/Minimal/test_minimal_smoke_contract.py
+  status: passed
+  tests: 2
+notes:
+  - This is the minimal transport and safety smoke test; it does not replace the four-row release matrix.
+  - The Editor mutation is intentionally not saved by artist.apply; scene setup is saved by the Official Pipeline create_scene command.

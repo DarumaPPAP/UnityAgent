@@ -51,6 +51,11 @@ jobs:
           dotnet build cli/artist/UnityArtist.Cli.csproj --configuration Release
           python -m unittest discover -s cli/artist/tests -p "test_*.py" -v
 
+      - name: Validate migrated Unity P9 fixtures and host runner
+        run: |
+          python ci/verify/validate_unity_fixtures.py
+          python -m unittest discover -s ci/verify -p "test_unity_ci*.py" -v
+
       - name: Validate Unity Editor PackageInfo qualification
         run: |
           python3 - <<'PY'

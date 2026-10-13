@@ -1,0 +1,118 @@
+{
+  "schema_version": "1.0",
+  "kind": "artist_historical_evidence_index",
+  "current_editor_status": "BLOCKED_NOT_RUN",
+  "current_observation": "not_observed",
+  "records": [
+    {
+      "original_path": "Tests/Compatibility/2026-09-10-final-acceptance-audit.md",
+      "path": "ci/evidence/artist/historical/2026-09-10-final-acceptance-audit.md",
+      "sha256": "46c1ea2a623e384caddfd48c449086b4d2f8bd0a3fa9a96ea2081dc48f59bd53",
+      "classification": "historical",
+      "current_observation": "not_observed"
+    },
+    {
+      "original_path": "Tests/Compatibility/cli-pipeline-gate-evidence.yaml",
+      "path": "ci/evidence/artist/historical/cli-pipeline-gate-evidence.yaml",
+      "sha256": "921f50899b2724169fe786f19c9da4b5925ec1b10093deb0feba0016b85145f7",
+      "classification": "historical",
+      "current_observation": "not_observed"
+    },
+    {
+      "original_path": "Tests/Compatibility/production-editor-acceptance.yaml",
+      "path": "ci/evidence/artist/historical/production-editor-acceptance.yaml",
+      "sha256": "755b577a1d87213e791de4aea7a9450c45b7f311b7541b39953e98e6629e0d24",
+      "classification": "historical",
+      "current_observation": "not_observed"
+    },
+    {
+      "original_path": "Tests/Compatibility/production-validation-evidence.yaml",
+      "path": "ci/evidence/artist/historical/production-validation-evidence.yaml",
+      "sha256": "e7fb3b33c30ce6c0c84ad7e70c9e7c8b33712cf2c98895bf6b0249cdd24551cd",
+      "classification": "historical",
+      "current_observation": "not_observed"
+    },
+    {
+      "original_path": "Tests/Compatibility/release-verification.yaml",
+      "path": "ci/evidence/artist/historical/release-verification.yaml",
+      "sha256": "04cece6a0c4dd768bdc9af2896a79fcd1b988ef8cde95805f6e2e64004803ddf",
+      "classification": "historical",
+      "current_observation": "not_observed"
+    },
+    {
+      "original_path": "Tests/Compatibility/unity-cli-reference-audit.yaml",
+      "path": "ci/evidence/artist/historical/unity-cli-reference-audit.yaml",
+      "sha256": "6efb190b17abf36d43a30e296890c9c53595202493aa89e4390af0728e05769e",
+      "classification": "historical",
+      "current_observation": "not_observed"
+    },
+    {
+      "original_path": "Tests/Compatibility/unity2022-3-builtin-bounded-fallback-evidence.yaml",
+      "path": "ci/evidence/artist/historical/unity2022-3-builtin-bounded-fallback-evidence.yaml",
+      "sha256": "29bf0398c5ffe76e66cf0a999f32ef44cdaf85eab4b261e0194e8a8e440da508",
+      "classification": "historical",
+      "current_observation": "not_observed"
+    },
+    {
+      "original_path": "Tests/Compatibility/unity6-builtin-e2e-evidence.yaml",
+      "path": "ci/evidence/artist/historical/unity6-builtin-e2e-evidence.yaml",
+      "sha256": "6c0c41723348582e6979850f6fd5a04be1ac994c41b1b7ee9ddb9a38f3490d75",
+      "classification": "historical",
+      "current_observation": "not_observed"
+    },
+    {
+      "original_path": "Tests/Compatibility/unity6-builtin-minimal-smoke-evidence.yaml",
+      "path": "ci/evidence/artist/historical/unity6-builtin-minimal-smoke-evidence.yaml",
+      "sha256": "4c698dfe55fd92f5d3a2ceb0f4953bedc8e6851bd8aab0fba0ca25493c002709",
+      "classification": "historical",
+      "current_observation": "not_observed"
+    },
+    {
+      "original_path": "Tests/Compatibility/unity6-hdrp-cinematic-evidence.yaml",
+      "path": "ci/evidence/artist/historical/unity6-hdrp-cinematic-evidence.yaml",
+      "sha256": "75cf7459f3c8f412a9255ad1cd4ae1f420d2b56c805b8586b221ee28c426c606",
+      "classification": "historical",
+      "current_observation": "not_observed"
+    },
+    {
+      "original_path": "Tests/Compatibility/unity6-hdrp-minimal-smoke-evidence.yaml",
+      "path": "ci/evidence/artist/historical/unity6-hdrp-minimal-smoke-evidence.yaml",
+      "sha256": "e43063570d4b78d5ffb633b71b8a21c28d12b4cdfd9a8cc5bb703008a15bf2b9",
+      "classification": "historical",
+      "current_observation": "not_observed"
+    },
+    {
+      "original_path": "Tests/Compatibility/unity6-hdrp-primary-visual-evidence.yaml",
+      "path": "ci/evidence/artist/historical/unity6-hdrp-primary-visual-evidence.yaml",
+      "sha256": "2721c0447faddc04afe3c7eb14e93eaec3a9ec1f9528c938f72d61fb2dd46726",
+      "classification": "historical",
+      "current_observation": "not_observed"
+    },
+    {
+      "original_path": "Tests/Compatibility/unity6-urp-cinematic-evidence.yaml",
+      "path": "ci/evidence/artist/historical/unity6-urp-cinematic-evidence.yaml",
+      "sha256": "48005434f09cfd432c5ec6f4f1486c2f91b95a9ffc42ffc5888c0bbfcd47d969",
+      "classification": "historical",
+      "current_observation": "not_observed"
+    },
+    {
+      "original_path": "Tests/Compatibility/unity6-urp-minimal-smoke-evidence.yaml",
+      "path": "ci/evidence/artist/historical/unity6-urp-minimal-smoke-evidence.yaml",
+      "sha256": "93ed086f2b6b6e54a65ed9f275e21bc70355572f3a33bfb1d86d077aeffd98f7",
+      "classification": "historical",
+      "current_observation": "not_observed"
+    },
+    {
+      "original_path": "Tests/Compatibility/unity6-urp-primary-visual-evidence.yaml",
+      "path": "ci/evidence/artist/historical/unity6-urp-primary-visual-evidence.yaml",
+      "sha256": "0f6e53c95ecfd99262ae5e3398d96c53d2fe54a11fb83fef9681fc91a9cf8030",
+      "classification": "historical",
+      "current_observation": "not_observed"
+    }
+  ],
+  "notes": [
+    "Record bytes and original status fields are preserved. Historical passed values describe earlier recorded sessions only, never current validation.",
+    "Original URP/HDRP fixture paths are absent from the baseline checkout. Historical records cannot establish present Editor, Pipeline, capture or visual success.",
+    "Original embedded paths are historical observations; resolve archived evidence links through original_path in this index."
+  ]
+}

@@ -1,0 +1,164 @@
+schema_version: "2.0"
+product: UnityArtistCLI
+release_version: "0.0.1-beta"
+case: unity-6-hdrp-cinematic-timeline
+status: passed
+fixture: TestProjects/UnityArtistVerification-HDRP
+scene: Assets/Scenes/ArtistVerification.unity
+timeline_asset: Assets/Cinematic/ThreeShot.playable
+editor:
+  version: "6000.6.0f1"
+  transport: official_unity_cli_pipeline
+  pipeline_server:
+    host: 127.0.0.1
+    port: 7801
+    status: reachable
+  safe_mode: false
+support:
+  tier: primary
+  render_pipeline: hdrp
+  compatibility_backend: hdrp_native_api
+timeline:
+  frame_rate: 24
+  duration_seconds: 1.5
+  director: ArtistCinematicDirector
+  tracks:
+    - name: CinemachineShot01
+      type: Cinemachine
+      binding: Main Camera
+      shot_camera: ShotCamera01
+      clip_start: 0.0
+      clip_duration: 0.5
+    - name: CinemachineShot02
+      type: Cinemachine
+      binding: Main Camera
+      shot_camera: ShotCamera02
+      clip_start: 0.5
+      clip_duration: 0.5
+    - name: CinemachineShot03
+      type: Cinemachine
+      binding: Main Camera
+      shot_camera: ShotCamera03
+      clip_start: 1.0
+      clip_duration: 0.5
+  marker_track: Markers
+  marker_apply:
+    plan_id: artist-cinematic-plan-811ed85303884fc8ba833d452ebb2a05
+    marker_time_seconds: 1.5
+    status: passed
+    evidence:
+      - timeline_evidence
+      - timeline_marker
+      - mutation_evidence
+      - undo_registration
+      - save_not_performed
+operations:
+  inspect:
+    status: passed
+    evidence:
+      - playable_asset:ThreeShot
+      - timeline_evidence
+      - binding:CinemachineShot01->Main Camera
+      - binding:CinemachineShot02->Main Camera
+      - binding:CinemachineShot03->Main Camera
+      - cinemachine_clip:CinemachineShot01@0+0.5
+      - cinemachine_clip:CinemachineShot02@0.5+0.5
+      - cinemachine_clip:CinemachineShot03@1+0.5
+      - camera_reference:CinemachineShot01->ShotCamera01
+      - camera_reference:CinemachineShot02->ShotCamera02
+      - camera_reference:CinemachineShot03->ShotCamera03
+  shot_clips:
+    - track: CinemachineShot01
+      target: ShotCamera01
+      clip_start: 0.0
+      clip_duration: 0.5
+      plan_id: artist-cinematic-plan-03fd19e5a4224af1923f926cc3ff5b0c
+      preview: passed
+      approval_guard: passed
+      apply: passed
+      evidence:
+        - timeline_evidence
+        - cinemachine_shot
+        - cinemachine_clip
+        - camera_reference:CinemachineShot01->ShotCamera01
+        - mutation_evidence
+        - undo_registration
+        - save_not_performed
+    - track: CinemachineShot02
+      target: ShotCamera02
+      clip_start: 0.5
+      clip_duration: 0.5
+      plan_id: artist-cinematic-plan-41b48167c8a24702bfba1a6f01eb7f2c
+      preview: passed
+      approval_guard: passed
+      apply: passed
+      evidence:
+        - timeline_evidence
+        - cinemachine_shot
+        - cinemachine_clip
+        - camera_reference:CinemachineShot02->ShotCamera02
+        - mutation_evidence
+        - undo_registration
+        - save_not_performed
+    - track: CinemachineShot03
+      target: ShotCamera03
+      clip_start: 1.0
+      clip_duration: 0.5
+      plan_id: artist-cinematic-plan-06f28e8c81a6475d81956b531dbef533
+      preview: passed
+      approval_guard: passed
+      apply: passed
+      evidence:
+        - timeline_evidence
+        - cinemachine_shot
+        - cinemachine_clip
+        - camera_reference:CinemachineShot03->ShotCamera03
+        - mutation_evidence
+        - undo_registration
+        - save_not_performed
+  brain_bindings:
+    - track: CinemachineShot01
+      target: Main Camera
+      plan_id: artist-cinematic-plan-28fc4695d53b448d9f17c2cec67e94c1
+      preview: passed
+      approval_guard: passed
+      apply: passed
+      evidence:
+        - camera_binding
+        - mutation_evidence
+        - undo_registration
+        - save_not_performed
+    - track: CinemachineShot02
+      target: Main Camera
+      plan_id: artist-cinematic-plan-477b8f86fb644f4eb02fab666b8a785d
+      preview: passed
+      approval_guard: passed
+      apply: passed
+      evidence:
+        - camera_binding
+        - mutation_evidence
+        - undo_registration
+        - save_not_performed
+    - track: CinemachineShot03
+      target: Main Camera
+      plan_id: artist-cinematic-plan-b2329bdcdf1e43bca7dfab30f2916ce9
+      preview: passed
+      approval_guard: passed
+      apply: passed
+      evidence:
+        - camera_binding
+        - mutation_evidence
+        - undo_registration
+        - save_not_performed
+persistence:
+  fixture_save_command: save_all
+  status: passed
+  saved_scene: Assets/Scenes/ArtistVerification.unity
+  note: Product applies remain unsaved until fixture persistence; the scene was persisted with the official Pipeline command.
+static_contract:
+  test: Tests/Compatibility/verify-hdrp-cinematic-evidence.py
+  status: passed
+notes:
+  - Cinemachine 6.6 native types were resolved from the Unity.Cinemachine assembly in the Unity 6 HDRP fixture.
+  - CinemachineTrack bindings target the Main Camera's CinemachineBrain; each CinemachineShot clip references its own virtual camera.
+  - The marker track is created and persisted by the bounded UnityArtistCLI cinematic capability.

@@ -1,0 +1,32 @@
+schema_version: "1.0"
+reference_id: unity-cli-official
+last_reviewed: "2026-09-21"
+documented_release: "1.0.0-beta.10"
+runtime_observation:
+  status: not_observed
+  reason: "The release number was confirmed from Unity documentation; no beta.10 runtime execution was performed by this repository audit."
+  historical_evidence_preserved: true
+sources:
+  - id: cli
+    url: https://docs.unity.com/en-us/unity-cli
+  - id: reference
+    url: https://docs.unity.com/en-us/unity-cli/unity-cli-reference
+  - id: release_notes
+    url: https://docs.unity.com/en-us/unity-cli/release-notes
+  - id: pipeline
+    url: https://docs.unity.com/en-us/unity-production-pipeline/local-tools-cli/unity-pipeline-package
+audit_scope:
+  hub_owns:
+    - registry
+    - manifest
+    - schema
+    - validation
+    - snapshot
+  hub_does_not_own:
+    - runtime_execution
+    - resolver
+    - installer
+    - environment_observation
+    - automatic_installation
+  historical_versions_to_preserve:
+    - "1.0.0-beta.8"
