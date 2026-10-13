@@ -227,6 +227,10 @@ jobs:
               "package/Editor/ControlPlaneBootstrap.cs.meta",
               "package/Editor/ControlPlaneClient.cs.meta",
               "package/Editor/SetupWindow.cs.meta",
+              "package/Editor/SetupVerificationPanel.cs.meta",
+              "package/Editor/VerificationHubSource.cs",
+              "package/Editor/VerificationHubSource.cs.meta",
+              "package/Editor/Verification~/subagent-sources.lock.json",
               "package/Editor/Bootstrap~/install-control-plane.ps1",
           }
           with tarfile.open(archive, "r:gz") as package:
