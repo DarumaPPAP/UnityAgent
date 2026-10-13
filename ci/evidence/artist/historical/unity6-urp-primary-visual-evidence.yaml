@@ -1,0 +1,173 @@
+schema_version: "2.0"
+product: UnityArtistCLI
+release_version: "0.0.1-beta"
+case: unity-6-urp-primary-visual
+status: passed
+fixture: TestProjects/UnityArtistVerification-URP
+scene: Assets/Scenes/ArtistVerification.unity
+editor:
+  version: "6000.6.0f1"
+  transport: official_unity_cli_pipeline
+  pipeline_server:
+    host: 127.0.0.1
+    port: 7800
+    status: reachable
+  safe_mode: false
+support:
+  tier: primary
+  render_pipeline: urp
+  compatibility_backend: urp_native_api
+fixture_authoring:
+  transport: official_unity_cli_pipeline
+  no_yaml_edit: true
+  scene_save_command: save_all
+  scene_save_status: passed
+  objects:
+    - ArtistCourtyardGround
+    - ArtistCourtyardWall1
+    - ArtistCourtyardWall2
+    - ArtistCourtyardWall3
+    - ArtistCourtyardPillar1
+    - ArtistCourtyardPillar2
+    - ArtistCourtyardBeam1
+    - ArtistCourtyardBeam2
+    - ArtistCourtyardLantern
+    - ArtistPlayerProxy
+    - ArtistGoalProxy
+    - ArtistCourtyardReflectionProbe
+    - ArtistCourtyardVolume
+  materials:
+    - path: Assets/Materials/ArtistCourtyardGround.mat
+      shader: Universal Render Pipeline/Lit
+      base_color: "#455264FF"
+    - path: Assets/Materials/ArtistCourtyardStone.mat
+      shader: Universal Render Pipeline/Lit
+      base_color: "#776A5AFF"
+    - path: Assets/Materials/ArtistCourtyardMetal.mat
+      shader: Universal Render Pipeline/Lit
+      base_color: "#B17B3FFF"
+artist_flow:
+  inspect:
+    status: passed
+    verified: true
+    evidence:
+      - visual_art_inspection
+      - pipeline_support_fact
+      - urp_volume_inspection
+      - urp_color_adjustments
+      - camera:Main Camera
+      - light:Directional Light
+      - reflection_probe:ArtistCourtyardReflectionProbe
+      - director:ArtistCinematicDirector
+  initial_capture:
+    status: passed
+    verified: true
+    capture_id: artist-capture-e5b0190bc1fe46aca17de3873062e981
+    camera: Main Camera
+    png_relative_path: TestProjects/UnityArtistVerification-URP/Library/UnityArtist/Captures/artist-capture-e5b0190bc1fe46aca17de3873062e981/color.png
+    png_bytes: 284787
+    png_sha256: 4c8f29ae99a69322eaeb92644210a8bb6a475b96efaa3c2c8a0d3f492bc5ad28
+    resolution: 1920x1080
+  before_capture:
+    status: passed
+    verified: true
+    capture_id: artist-capture-decc5d940bea4b5898dc67554846bc0b
+    camera: Main Camera
+    png_relative_path: TestProjects/UnityArtistVerification-URP/Library/UnityArtist/Captures/artist-capture-decc5d940bea4b5898dc67554846bc0b/color.png
+    png_bytes: 264021
+    png_sha256: 00903b12789762374f35568ddc72fd92e41621d6878ad6d6f8af921eb6193fc5
+    resolution: 1920x1080
+  direction:
+    plan_id: artist-plan-dcdd23ab9fc34c2ab0b7eac7647f1d16
+    plan_status: passed
+    preview_status: passed
+    approval_guard: passed
+    applied_status: passed
+    applied_verified: true
+    exact_diff:
+      - { target: RenderSettings, property: fogDensity, before: "0.02", after: "0.035" }
+      - { target: Directional Light, property: intensity, before: "1", after: "1.2" }
+    evidence:
+      - visual_direction_plan
+      - exact_diff
+      - expected_revision
+      - mutation_evidence
+      - undo_registration
+      - save_not_performed
+  volume_lookdev:
+    plan_id: artist-plan-4dd8131443f54333ade3d6a3c63b0089
+    plan_status: passed
+    preview_status: passed
+    approval_guard: passed
+    applied_status: passed
+    applied_verified: true
+    exact_diff:
+      - { target: ArtistCourtyardVolume, property: URP.ColorAdjustments.postExposure, before: absent, after: "-0.6" }
+      - { target: ArtistCourtyardVolume, property: URP.ColorAdjustments.contrast, before: absent, after: "15" }
+    evidence:
+      - urp_volume_plan
+      - urp_native_volume
+      - urp_color_adjustments
+      - mutation_evidence
+      - undo_registration
+      - save_not_performed
+    profile_inspection:
+      command: get_serialized_fields
+      asset: Assets/Volumes/ArtistCourtyardProfile.asset
+      component_type: ColorAdjustments
+      component_count: 1
+      status: passed
+  intermediate_review:
+    status: passed
+    capture_id: artist-capture-b7516187ac324181bdb4a8d6d59ef940
+    decision: needs_refine
+    human_review: true
+    reason: composition_too_wide
+  refine:
+    evaluation_id: artist-evaluation-704a8f872b8d4e52a8e86ca22958ce96
+    plan_id: artist-plan-6c2427a4e8f34e1496645fa1542ad772
+    plan_status: passed
+    preview_status: passed
+    approval_guard: passed
+    applied_status: passed
+    exact_diff:
+      target: Main Camera
+      property: fieldOfView
+      before: "60"
+      after: "50"
+    evidence:
+      - refinement_plan
+      - evaluation_reference
+      - mutation_evidence
+      - undo_registration
+      - save_not_performed
+  final_capture:
+    status: passed
+    verified: true
+    capture_id: artist-capture-3e1c74af2a2349cb83a192387c7e2332
+    camera: Main Camera
+    png_relative_path: TestProjects/UnityArtistVerification-URP/Library/UnityArtist/Captures/artist-capture-3e1c74af2a2349cb83a192387c7e2332/color.png
+    png_bytes: 264021
+    png_sha256: 00903b12789762374f35568ddc72fd92e41621d6878ad6d6f8af921eb6193fc5
+    resolution: 1920x1080
+  final_review:
+    status: passed
+    evaluation_id: artist-evaluation-5765cea1dc3c426a95a980a87f7a6338
+    decision: accepted
+    human_review: true
+    technical_result: structured_capture_verified
+  timeline:
+    evidence: Tests/Compatibility/unity6-urp-cinematic-evidence.yaml
+    status: passed
+    tracks: 3
+    marker: passed
+    brain_bindings: 3
+    virtual_camera_references: 3
+persistence:
+  status: passed
+  command: save_all
+  saved_scene: Assets/Scenes/ArtistVerification.unity
+notes:
+  - The scene was authored through official Unity CLI/Pipeline commands; no Unity YAML was edited.
+  - The visual review is an explicit human decision and is not inferred from image metrics alone.
+  - Unity 6 URP primary visual evidence is complete, including the native Volume transaction; the separate 2022.3 official Pipeline gate is retained as the concrete reason the bounded Built-in fallback is selected.

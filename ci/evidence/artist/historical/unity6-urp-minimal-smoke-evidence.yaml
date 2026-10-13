@@ -1,0 +1,65 @@
+schema_version: "2.0"
+product: UnityArtistCLI
+release_version: "0.0.1-beta"
+case: unity-6-urp-minimal-smoke
+status: passed
+fixture: TestProjects/UnityArtistVerification-URP
+scene: Assets/Scenes/ArtistVerification.unity
+editor:
+  version: "6000.6.0f1"
+  transport: official_unity_cli_pipeline
+  pipeline_server:
+    host: 127.0.0.1
+    port: 7800
+    status: reachable
+  safe_mode: false
+setup:
+  fixture_mode: reuse_scene
+  camera: Main Camera
+  geometry: SmokeSubject
+support:
+  tier: primary
+  render_pipeline: urp
+  compatibility_backend: urp_native_api
+artist_lifecycle:
+  inspect: passed
+  plan: passed
+  preview: passed
+  approval_guard: passed
+  approved_apply:
+    status: passed
+    save_performed: false
+    undo_available: true
+    evidence:
+      - mutation_evidence
+      - undo_registration
+      - save_not_performed
+    exact_diff:
+      target: RenderSettings
+      property: fogDensity
+      before: "0.02"
+      after: "0.02"
+  capture:
+    status: passed
+    verified: true
+    camera: Main Camera
+    png_relative_path: TestProjects/UnityArtistVerification-URP/Library/UnityArtist/Captures/<capture-id>/color.png
+    png_bytes: 275986
+    png_sha256: 9e1191a4d110746b18ad88e1ce5c53a04b66eb200547c83fd5e46936af2ca9d5
+    resolution: 1920x1080
+  evaluate:
+    status: passed
+    decision: needs_refine
+    human_review: true
+  refine:
+    status: passed
+    approval_required: true
+    evaluation_reference: true
+  history: passed
+static_contract:
+  test: Tests/Minimal/test_minimal_smoke_contract.py
+  status: passed
+  tests: 2
+notes:
+  - This is a reduced Unity 6 URP adapter smoke fixture; it does not replace the primary cinematic acceptance scenario.
+  - The runner uses Official Unity CLI/Pipeline commands and never uses eval or edits Unity YAML.
