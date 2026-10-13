@@ -23,7 +23,8 @@
     "VERSION": "repository configuration",
     "pyproject.toml": "repository configuration",
     "setup.py": "repository configuration",
-    "repository-layout.json": "repository configuration"
+    "repository-layout.json": "repository configuration",
+    "subagent": "co-located canonical SubAgent contracts, instructions, tests and validators"
   },
   "canonical_paths": {
     "src/unityagent/cli.py": "product CLI",
@@ -34,7 +35,10 @@
     "src/unityagent/context/selection/context-catalog.yaml": "context catalog",
     "tools/validate_all.py": "canonical validation",
     "tools/validate_layout.py": "layout gate",
-    "Packages/com.darumappap.unity-agent/package.json": "UPM identity"
+    "Packages/com.darumappap.unity-agent/package.json": "UPM identity",
+    "subagent/registry.yaml": "canonical integrated SubAgent registry",
+    "subagent/schemas": "canonical SubAgent static schemas",
+    "subagent/tools/validate_registry.py": "in-repository SubAgent contract validator"
   },
   "forbidden_roots": [
     "Context",

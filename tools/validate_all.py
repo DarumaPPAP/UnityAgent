@@ -20,10 +20,12 @@ YAML_ROOTS = (
     Path("src/unityagent/operations"),
     Path("eval"),
     Path(".agents"),
+    Path("subagent"),
 )
 
 VALIDATORS = (
     Path("tools/validate_layout.py"),
+    Path("subagent/tools/validate_registry.py"),
     Path("tools/policy_validator/validate_user_policy_integrity.py"),
     Path("tools/context_validator/validate_stale_paths.py"),
     Path("tools/orchestration_validator/validate_loops.py"),
@@ -73,6 +75,7 @@ TEST_SUITES = (
     Path("tests/operations"),
     Path("tests/context_explorer"),
     Path("tests/architecture"),
+    Path("subagent/tests"),
     Path("tests/content_pilot"),
 )
 
