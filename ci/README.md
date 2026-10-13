@@ -1,7 +1,7 @@
 # Unity CIをWindows / Linuxで実行する（P9）
 
-既存の [Fixture一覧](unity-matrix.yaml) と `ci/verify/unity_ci.py` を共通Runnerとして使用します。
-Windows開発PCでもLinux CIでも同じEditModeテスト・証跡判定です。HubのRuntime機能ではなく、
+統合済みの [Fixture一覧](unity-matrix.yaml) と `ci/verify/unity_ci.py` を共通Runnerとして使用します。
+Windows開発PCでもLinux CIでも同じEditModeテスト・証跡判定です。UnityAgentのRuntime機能ではなく、
 Repositoryの開発用CIです。UnityAgentのSource Lock、UPM、Fixture、Historical Evidenceは変更しません。
 
 ## 準備
