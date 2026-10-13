@@ -37,23 +37,16 @@ Doctorはoptional SubAgentのInstalled/Bind/Compatibilityを別途評価しま�
 
 ## 3. P9 Unity検証の実行
 
-`5. Unity Verification` で別途クローンした**正規の** `UnitySubAgentHub` を選び、
-任意のFixtureを選択します。認証済みライセンス（描画時はGPU/Display/Driver）
-の確認をチェックし、実行確認ダイアログで承認すると、
-Hub既存の `ci/scripts/run-unity-tests.ps1` を起動します。
+`5. Unity Verification` に、手動Hub checkoutを指定する欄はありません。
+`検証環境を取得・更新` を押し、Source Lockに固定された `DarumaPPAP/UnitySubAgentHub` の
+正確なCommitを承認して取得します。取得はUnityAgent管理のユーザーキャッシュ
+`%LOCALAPPDATA%/UnityAgent/VerificationHub/<commit>/` に限定されます。
+Gitが使用できない、通信失敗、Pin不一致、キャッシュ汚染の場合はBLOCKED_NOT_RUNです。
+Hubの現在のmainや、ユーザー選択の未検証コードを実行しません。
 
-対象: `minimal-6000.6`, `canonical-full`, `builtin-smoke`, `urp-smoke`,
-`hdrp-smoke`, `minimal-6000.3`。
-
-検証は独立した一時Unity Projectを使用し、手元で開いているゲームProjectを上書きしません。
-Hub checkoutは**ユーザーが選択して確認した開発用ソース**です。
-UnityAgent RuntimeのSource LockのPinやSubAgentの導入・実行許可とは別です。
-そのためSource Lock、UPM ID、Registry、プロジェクトのPackage設定を自動変更しません。
-
-Windows上で必要なUnity Editorを検出します。現在のUnity Editorが要求される
-`6000.6.0f1` なら実行ファイルを明示指定し、
-`minimal-6000.3` は別途インストールした完全一致の `6000.3.12f1` をP9に探索させます。
-`Python 3.12+` も必要です。
+取得完了後、Fixtureを選択してEditor内で実行してください。認証済みライセンス、
+必要に応じGPU/Displayの確認を行い、別Unity Editorのプロセスで実行します。
+Control PlaneやProviderのInstallは行いません。
 
 ## 4. Evidenceと制約
 
