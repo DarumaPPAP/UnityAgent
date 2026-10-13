@@ -348,7 +348,8 @@ namespace DarumaPPAP.UnityAgent.Editor
                 {
                     GUILayout.Label("Control Plane detected", cardSubtitleStyle);
                     GUILayout.FlexibleSpace();
-                    using (new EditorGUI.DisabledScope(running || Application.platform != RuntimePlatform.WindowsEditor))
+                    using (new EditorGUI.DisabledScope(running || Application.platform != RuntimePlatform.WindowsEditor ||
+                        UnityAgentControlPlanePathResolver.HasOverride || versionState == "NEWER VERSION"))
                     {
                         if (GUILayout.Button(versionState == "STALE" ? "更新 / 修復" : "再インストール / 修復",
                             secondaryButtonStyle, GUILayout.Width(150f)))
@@ -386,8 +387,15 @@ namespace DarumaPPAP.UnityAgent.Editor
             {
                 DrawHint(versionState == "STALE"
                     ? "旧バージョンのControl Planeを検出しました。更新には明示的な承認が必要です。"
-                    : "Control Planeの実バージョンは未確認です。Doctorで確認してください。",
+                    : versionState == "NEWER VERSION"
+                        ? "現在のUPMより新しいControl Planeです。自動ダウングレードしません。"
+                        : "Control Planeの実バージョンは未確認です。Doctorで確認してください。",
                     WarningColor);
+                if (UnityAgentControlPlanePathResolver.HasOverride)
+                {
+                    DrawHint("手動Overrideは変更しません。更新前に必要ならOverride解除を行ってください。",
+                        WarningColor);
+                }
             }
             if (!ready && !running && !string.IsNullOrWhiteSpace(controlPlanePathDiagnostic))
             {
@@ -488,7 +496,18 @@ namespace DarumaPPAP.UnityAgent.Editor
                 return "VERSION UNKNOWN";
             }
 
-            return string.Equals(version, CHANNEL, StringComparison.OrdinalIgnoreCase) ? "READY" : "STALE";
+            if (string.Equals(version, CHANNEL, StringComparison.OrdinalIgnoreCase))
+            {
+                return "READY";
+            }
+            // 新しいControl Planeを、古いUPMのBootstrapでダウングレードしない。
+            if (Version.TryParse(version.Split('-')[0], out var installed) &&
+                Version.TryParse(CHANNEL.Split('-')[0], out var expected) &&
+                installed.CompareTo(expected) > 0)
+            {
+                return "NEWER VERSION";
+            }
+            return "STALE";
         }
 
         private static string GetManagedControlPlaneVersion(string path)
