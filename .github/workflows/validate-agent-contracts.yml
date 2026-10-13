@@ -41,6 +41,16 @@ jobs:
           python -m build
           python tools/verify_installed_wheel.py --wheel "$(find dist -maxdepth 1 -name '*.whl' -print -quit)"
 
+      - name: Set up .NET for co-located Artist CLI
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Compile co-located Artist CLI and validate contracts
+        run: |
+          dotnet build cli/artist/UnityArtist.Cli.csproj --configuration Release
+          python -m unittest discover -s cli/artist/tests -p "test_*.py" -v
+
       - name: Validate Unity Editor PackageInfo qualification
         run: |
           python3 - <<'PY'

@@ -24,7 +24,8 @@
     "pyproject.toml": "repository configuration",
     "setup.py": "repository configuration",
     "repository-layout.json": "repository configuration",
-    "subagent": "co-located canonical SubAgent contracts, instructions, tests and validators"
+    "subagent": "co-located canonical SubAgent contracts, instructions, tests and validators",
+    "cli": "ArtistSubAgent CLI sources and tests (optional backend)"
   },
   "canonical_paths": {
     "src/unityagent/cli.py": "product CLI",
@@ -38,7 +39,10 @@
     "Packages/com.darumappap.unity-agent/package.json": "UPM identity",
     "subagent/registry.yaml": "canonical integrated SubAgent registry",
     "subagent/schemas": "canonical SubAgent static schemas",
-    "subagent/tools/validate_registry.py": "in-repository SubAgent contract validator"
+    "subagent/tools/validate_registry.py": "in-repository SubAgent contract validator",
+    "Packages/com.darumappap.artist-subagent/package.json": "Artist optional UPM backend identity",
+    "cli/artist/UnityArtist.Cli.csproj": "Artist CLI independent build",
+    "subagent/artist_subagent/manifest.yaml": "Artist semantic identity and version"
   },
   "forbidden_roots": [
     "Context",
