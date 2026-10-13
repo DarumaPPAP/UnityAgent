@@ -1,0 +1,80 @@
+schema_version: "2.0"
+product: UnityArtistCLI
+release_version: "0.0.1-beta"
+case: unity-2022.3-builtin
+status: passed_with_bounded_fallback
+official_first_candidate:
+  transport: official_unity_cli_pipeline
+  cli:
+    executable: "unity"
+    executable_resolution: "PATH"
+    version: "1.0.0-beta.8"
+    identify_editors_command: "unity editors --format json --non-interactive"
+    identify_editors_status: passed
+    identified_editor: "2022.3.22f1"
+  pipeline:
+    available_versions_command: "unity pipeline list-versions --format json --no-pager"
+    available_versions_status: passed
+    available_versions:
+      - "0.6.0-exp.1"
+      - "0.5.0-exp.1"
+      - "0.4.0-exp.1"
+      - "0.3.1-exp.1"
+      - "0.3.0-exp.1"
+      - "0.2.0-exp.2"
+    install_command: "unity pipeline install --project-path <2022.3 Built-in fixture> --format json --non-interactive"
+    status: failed
+    exit_code: 1
+    error_code: COMMAND_FAILED
+    failure_class: concrete_cli_pipeline_gate_failure
+    message: "The installed official Unity Pipeline package reports that Unity 6.0 or later is required for the 2022.3 fixture."
+    exhaustive_version_probe:
+      fixture: TestProjects/UnityArtistVerification-2022.3
+      project_version: "2022.3.22f1"
+      status: all_available_versions_failed
+      results:
+        - { package_version: "0.6.0-exp.1", status: failed, error: "Pipeline package requires Unity 6.0 or later" }
+        - { package_version: "0.5.0-exp.1", status: failed, error: "Pipeline package requires Unity 6.0 or later" }
+        - { package_version: "0.4.0-exp.1", status: failed, error: "Pipeline package requires Unity 6.0 or later" }
+        - { package_version: "0.3.1-exp.1", status: failed, error: "Pipeline package requires Unity 6.0 or later" }
+        - { package_version: "0.3.0-exp.1", status: failed, error: "Pipeline package requires Unity 6.0 or later" }
+        - { package_version: "0.2.0-exp.2", status: failed, error: "Pipeline package requires Unity 6.0 or later" }
+  connected_command_discovery:
+    command: "unity list --project-path <2022.3 Built-in fixture> --format json --non-interactive"
+    status: blocked_by_pipeline_gate
+    reason: "The official Pipeline install gate failed before a connected Pipeline instance could exist."
+  bounded_fallback_command_discovery:
+    command: "unity run <2022.3 Built-in fixture> --editor-version 2022.3.22f1 -- -executeMethod UnityArtist.UnityArtistBatchCommands.Dispatch"
+    status: passed
+    evidence: Tests/Compatibility/unity2022-3-builtin-bounded-fallback-evidence.yaml
+artist_plugin:
+  version_command: "unity artist version --format json --non-interactive"
+  version_status: passed
+  help_command: "unity artist help --format json --non-interactive"
+  help_status: passed
+  standalone_help_command: "unity-artist --help --format json --non-interactive"
+  standalone_help_status: passed
+  global_help_command: "unity artist --help --format json --non-interactive"
+  global_help_status: blocked_by_official_cli_global_parser
+  global_help_reason: "The installed Unity CLI beta returns its top-level help before dispatching the artist plugin command."
+additional_verified_fixtures:
+  unity-6-builtin:
+    evidence_file: Tests/Compatibility/unity6-builtin-e2e-evidence.yaml
+    editor_version: "6000.6.0f1"
+    pipeline_version: "0.6.0-exp.1"
+    pipeline_install_status: passed
+    connected_command_discovery_status: passed
+    artist_command_count: 9
+    unityagent_provider_e2e_status: passed
+    terminal_state: verified_for_fixture
+fallback_evaluation:
+  candidate: unity-cli-loop
+  selected: true
+  status: verified_bounded_non_mcp
+  transport: official_unity_cli_bounded_batch_fallback
+  rejected_candidate_reason: "The candidate's documented execute-dynamic-code surface would violate UnityArtistCLI's no-arbitrary-eval Artist contract."
+  entrypoint: UnityArtist.UnityArtistBatchCommands.Dispatch
+  evidence: Tests/Compatibility/unity2022-3-builtin-bounded-fallback-evidence.yaml
+  selection_condition: "Only after the concrete Official Unity CLI/Pipeline compatibility gate failure above."
+decision: "Keep Official Unity CLI + Unity Pipeline as the formal primary transport. For the observed 2022.3 gate failure only, use the fixed Official Unity CLI batch entrypoint with the shared ArtistSession safety contract; reject dynamic-code and MCP fallbacks."
+terminal_state: verified_for_fixture

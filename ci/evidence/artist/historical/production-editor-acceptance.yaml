@@ -1,0 +1,59 @@
+schema_version: '2.0'
+product: UnityArtistCLI
+release_version: 0.0.1-beta
+verification_status: verified
+authority: direct_unity_editor
+matrix:
+- unity_version: Unity 6.x+
+  render_pipeline: builtin
+  status: passed
+  evidence: Tests/Compatibility/unity6-builtin-e2e-evidence.yaml
+- unity_version: Unity 6.x+
+  render_pipeline: urp
+  status: passed
+  evidence:
+  - Tests/Compatibility/unity6-urp-primary-visual-evidence.yaml
+  - Tests/Compatibility/unity6-urp-cinematic-evidence.yaml
+- unity_version: Unity 6.x+
+  render_pipeline: hdrp
+  status: passed
+  evidence:
+  - Tests/Compatibility/unity6-hdrp-primary-visual-evidence.yaml
+  - Tests/Compatibility/unity6-hdrp-cinematic-evidence.yaml
+direct_unity6_builtin_fixture:
+  status: passed
+  evidence: Tests/Compatibility/unity6-builtin-e2e-evidence.yaml
+direct_unity6_urp_fixture:
+  status: passed
+  evidence:
+  - Tests/Compatibility/unity6-urp-primary-visual-evidence.yaml
+  - Tests/Compatibility/unity6-urp-cinematic-evidence.yaml
+direct_unity6_hdrp_fixture:
+  status: passed
+  evidence:
+  - Tests/Compatibility/unity6-hdrp-primary-visual-evidence.yaml
+  - Tests/Compatibility/unity6-hdrp-cinematic-evidence.yaml
+required_evidence:
+  compile_error_count: passed_for_unity6_builtin_and_2022_3_bounded_batch
+  pipeline_command_discovery: passed_for_unity6_builtin
+  exact_diff_apply_undo: passed_for_unity6_builtin_and_2022_3_bounded_batch
+  capture_evaluate_refine: passed_for_unity6_builtin_and_2022_3_bounded_batch
+  timeline_binding_e2e: passed_for_unity6_urp
+  hdrp_primary_visual: passed_for_unity6_hdrp
+  hdrp_cinematic: passed_for_unity6_hdrp
+historical_2022_3_evidence:
+  current_support: false
+  matrix_row:
+    unity_version: 2022.3 LTS
+    render_pipeline: builtin
+    status: passed
+    evidence: Tests/Compatibility/unity2022-3-builtin-bounded-fallback-evidence.yaml
+  pipeline_gate_and_bounded_batch:
+    status: failed_concrete_gate_then_bounded_fallback
+    observed_installed_editor: 2022.3.22f1
+    observed_cli: 1.0.0-beta.8
+    reason: Official Pipeline install returned that the installed Pipeline package
+      requires Unity 6.0 or later; the fixed Official Unity CLI batch fallback was
+      selected only after this concrete gate failure.
+    fallback_transport: official_unity_cli_bounded_batch_fallback
+    fallback_evidence: Tests/Compatibility/unity2022-3-builtin-bounded-fallback-evidence.yaml
