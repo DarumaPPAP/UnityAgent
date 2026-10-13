@@ -26,8 +26,8 @@ class ExecutionAdmissionTests(unittest.TestCase):
             self.assertTrue(row["known_limitations"])
 
     def test_runtime_authority_is_not_an_active_undefined_blocker(self) -> None:
-        text = (ROOT / "docs/architecture/specialist-expansion-architecture.md").read_text(encoding="utf-8")
-        self.assertIn("CodexRunner", text)
+        text = (ROOT / "src/unityagent/runtime/reference_implementation/subagent-catalog.yaml").read_text(encoding="utf-8")
+        self.assertIn("reasoning_runtime: codex_runner", text)
         self.assertNotIn("実行Authority未定義", text)
         self.assertNotIn("Planner execution authorityを先に定義", text)
 

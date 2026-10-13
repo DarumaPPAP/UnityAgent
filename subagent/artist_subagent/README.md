@@ -22,7 +22,7 @@ ArtistSubAgentはUnityのVisual Art、LookDev、Lighting、Environment、Camera�
 - `artist.camera.refine`
 - `visual.capture`
 
-Backend内部のコマンド一覧はResolver-visible Capabilityを増やしません。Hubは[Capability contract](contracts/capability-contracts.yaml)と[Backend interface](contracts/backend-surface-contract.yaml)を所有します。コマンドと安全性のRelease確認は[Backend release contract](../../../cli/artist/artist-backend-contract.yaml)で行います。
+Backend内部のコマンド一覧はResolver-visible Capabilityを増やしません。Hubは[Capability contract](contracts/capability-contracts.yaml)と[Backend interface](contracts/backend-surface-contract.yaml)を所有します。コマンドと安全性のRelease確認は[Backend release contract](https://github.com/DarumaPPAP/UnitySubAgentHub/blob/c5a593dfcaeea0f902999e91a97b620214db063f/cli/artist/artist-backend-contract.yaml)で行います。
 
 | Unity | Render Pipeline |
 |---|---|
@@ -36,12 +36,12 @@ Unity 2022.3は現行Production対象外です。過去の実測はHistorical Ev
 
 ManifestはBackend availability、Compatibility、Project binding、Package installation、Pipeline reachabilityを必要なEnvironment factsとして宣言します。UnityAgentが現在値を観測し、falseまたはunknownを候補から除外します。Capability解決時の自動Installは行いません。SetupはUnityAgentの`doctor → setup plan → approval → setup apply → doctor`による明示的な別操作です。
 
-ManifestはEvidence types、required artifacts、terminal statesのみを宣言します。[Release verification](../../../ci/evidence/artist/historical/release-verification.yaml)はBackend側の検証記録であり、Hub Manifestの参照先ではありません。Runtime Evidence producer、正規化、永続化はUnityAgentの責務です。`blocked_by_environment`は成功ではありません。
+ManifestはEvidence types、required artifacts、terminal statesのみを宣言します。[Release verification](https://github.com/DarumaPPAP/UnitySubAgentHub/blob/c5a593dfcaeea0f902999e91a97b620214db063f/ci/evidence/artist/historical/release-verification.yaml)はBackend側の検証記録であり、Hub Manifestの参照先ではありません。Runtime Evidence producer、正規化、永続化はUnityAgentの責務です。`blocked_by_environment`は成功ではありません。
 
 ## UnityAgent import boundary
 
 Hubは静的Snapshotを公開します。UnityAgentは`Runtime/ReferenceImplementation/subagent-catalog.yaml`を自分のRuntime Catalogとして所有し、Offline Import AdapterでSnapshotの差分を検証します。Hubの登録やArtifact公開だけでRuntime Catalogを同期・Hot Reloadしません。
 
-Artist Package、CLI、Installer、Backend Tests、Releaseは現在同じRepository内のArtist Backend Productに属します。詳細は[Hub Architecture](../../../docs/architecture/subagent-hub-architecture.md)と[Ownership audit](../../../docs/architecture/authority-cleanup-audit.md)を参照してください。
+Artist Package、CLI、Installer、Backend TestsはStage 1では引き続き旧Hub Repositoryに属します。詳細は[Hub Architecture](https://github.com/DarumaPPAP/UnitySubAgentHub/blob/c5a593dfcaeea0f902999e91a97b620214db063f/docs/architecture/subagent-hub-architecture.md)と[Ownership audit](https://github.com/DarumaPPAP/UnitySubAgentHub/blob/c5a593dfcaeea0f902999e91a97b620214db063f/docs/architecture/authority-cleanup-audit.md)を参照してください。
 
 Compatibility records linked here are preserved historical sessions. Current Unity Editor / Pipeline / visual validation is `BLOCKED_NOT_RUN` / `not_observed`; static archive checks do not establish activation readiness.
