@@ -229,6 +229,10 @@ namespace DarumaPPAP.UnityAgent.Editor
                         s_outputDirectory = result.Output;
                         s_standardOutput = result.StandardOutput ?? string.Empty;
                         s_standardError = result.StandardError ?? string.Empty;
+                        foreach (var window in Resources.FindObjectsOfTypeAll<UnityAgentSetupWindow>())
+                        {
+                            window.Repaint();
+                        }
                     };
                 });
         }
@@ -288,6 +292,19 @@ namespace DarumaPPAP.UnityAgent.Editor
                     var evidencePath = Path.Combine(output, "evidence.json");
                     if (!File.Exists(evidencePath))
                     {
+                        // P9は事前条件不足やPython不在をExitCode=2で返し、Evidenceなしの場合がある。
+                        // いずれも観測PASSではない。ExitCodeだけからPASSには昇格させない。
+                        if (process.ExitCode == 2)
+                        {
+                            return new Result
+                            {
+                                Status = "BLOCKED_NOT_RUN",
+                                Message = "実行前の条件不足（Evidence未生成）。ログを確認してください。",
+                                Output = output,
+                                StandardOutput = stdout.ToString(),
+                                StandardError = stderr.ToString(),
+                            };
+                        }
                         return Failure(output, "Evidenceが生成されていません。ExitCode=" + process.ExitCode,
                             stdout.ToString(), stderr.ToString());
                     }
