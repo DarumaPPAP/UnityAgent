@@ -40,6 +40,10 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Test managed runtime cleanup safety on Windows
+        shell: pwsh
+        run: ./tests/packaging/test-managed-runtime-cleanup.ps1
+
       - name: Bootstrap published release through UPM installer
         shell: pwsh
         run: |
