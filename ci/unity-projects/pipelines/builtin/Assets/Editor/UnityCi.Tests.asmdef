@@ -1,0 +1,12 @@
+{
+  "name": "UnityCi.Tests",
+  "references": [
+    "DarumaPPAP.UnityArtist.Editor"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
