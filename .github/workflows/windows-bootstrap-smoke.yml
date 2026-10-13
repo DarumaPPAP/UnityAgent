@@ -40,10 +40,24 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Test managed runtime cleanup safety on Windows
+        shell: pwsh
+        run: ./tests/packaging/test-managed-runtime-cleanup.ps1
+
       - name: Bootstrap published release through UPM installer
         shell: pwsh
         run: |
+          # Simulate a legitimate obsolete managed runtime in this ephemeral CI user profile.
+          $oldRuntime = Join-Path $env:LOCALAPPDATA "UnityAgent\ControlPlane\v0.0.6-beta"
+          if (Test-Path -LiteralPath $oldRuntime) { throw "Unexpected preexisting managed runtime: $oldRuntime" }
+          $oldScripts = Join-Path $oldRuntime 'venv\Scripts'
+          New-Item -ItemType Directory -Path $oldScripts -Force | Out-Null
+          Set-Content -LiteralPath (Join-Path $oldRuntime 'venv\pyvenv.cfg') -Value 'home = CI synthetic fixture'
+          Set-Content -LiteralPath (Join-Path $oldScripts 'unity-agent.exe') -Value 'CI synthetic fixture'
           & "Packages/com.darumappap.unity-agent/Editor/Bootstrap~/install-control-plane.ps1" -ReleaseTag $env:PUBLISHED_SMOKE_TAG
+          if (Test-Path -LiteralPath $oldRuntime) {
+            throw "UPM installer failed to clean up obsolete managed runtime: $oldRuntime"
+          }
           $controlPlane = [Environment]::GetEnvironmentVariable("UNITY_AGENT_CONTROL_PLANE", "User")
           if (-not $controlPlane) { throw "UNITY_AGENT_CONTROL_PLANE was not persisted." }
           $expectedRoot = Join-Path $env:LOCALAPPDATA "UnityAgent\ControlPlane\$env:PUBLISHED_SMOKE_TAG\venv\Scripts"
@@ -60,7 +74,16 @@ jobs:
         env:
           UNITY_AGENT_TAG: ${{ env.PUBLISHED_SMOKE_TAG }}
         run: |
+          $oldRuntime = Join-Path $env:LOCALAPPDATA "UnityAgent\ControlPlane\v0.0.7-beta"
+          if (Test-Path -LiteralPath $oldRuntime) { throw "Unexpected preexisting managed runtime: $oldRuntime" }
+          $oldScripts = Join-Path $oldRuntime 'venv\Scripts'
+          New-Item -ItemType Directory -Path $oldScripts -Force | Out-Null
+          Set-Content -LiteralPath (Join-Path $oldRuntime 'venv\pyvenv.cfg') -Value 'home = CI synthetic fixture'
+          Set-Content -LiteralPath (Join-Path $oldScripts 'unity-agent.exe') -Value 'CI synthetic fixture'
           & "scripts/install.ps1"
+          if (Test-Path -LiteralPath $oldRuntime) {
+            throw "Stable installer failed to clean up obsolete managed runtime: $oldRuntime"
+          }
           $controlPlane = [Environment]::GetEnvironmentVariable("UNITY_AGENT_CONTROL_PLANE", "User")
           if (-not $controlPlane) { throw "Stable installer did not persist UNITY_AGENT_CONTROL_PLANE." }
           if ($controlPlane -match 'AppData\\Roaming\\Python') { throw "Stable installer regressed to pip --user: $controlPlane" }

@@ -80,6 +80,134 @@ function Add-UserPathEntry {
     }
 }
 
+function Remove-OldManagedControlPlanes {
+    param(
+        [Parameter(Mandatory = $true)][string]$ManagedRoot,
+        [Parameter(Mandatory = $true)][string]$ActiveTag
+    )
+
+    # Cleanup is best-effort and must never revert a verified/activated install.
+    # Limit deletions to strictly recognized, older, managed Control Plane venvs.
+    $pattern = '^v(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)(?:-(?<stage>alpha|beta|rc)(?<index>\d*))?$'
+    $activeMatch = [regex]::Match($ActiveTag, $pattern, [Text.RegularExpressions.RegexOptions]::IgnoreCase)
+    if (-not $activeMatch.Success) {
+        Write-Warning "Managed cleanup skipped: unsupported active release tag $ActiveTag"
+        return
+    }
+
+    $activeCore = [Version]::new([int]$activeMatch.Groups['major'].Value,
+        [int]$activeMatch.Groups['minor'].Value, [int]$activeMatch.Groups['patch'].Value)
+    $phaseRank = @{ alpha = 0; beta = 1; rc = 2; stable = 3 }
+    $activePhase = if ($activeMatch.Groups['stage'].Success) {
+        $activeMatch.Groups['stage'].Value.ToLowerInvariant()
+    } else { 'stable' }
+    $activeIndex = if ($activeMatch.Groups['index'].Success -and $activeMatch.Groups['index'].Value) {
+        [int]$activeMatch.Groups['index'].Value
+    } else { 0 }
+
+    if (-not (Test-Path -LiteralPath $ManagedRoot -PathType Container)) {
+        Write-Host "Managed cleanup: no previous installations."
+        return
+    }
+
+    try {
+        $rootInfo = Get-Item -LiteralPath $ManagedRoot -Force -ErrorAction Stop
+        if (($rootInfo.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+            Write-Warning "Managed cleanup skipped: runtime root is a reparse point."
+            return
+        }
+        $running = @(Get-CimInstance -ClassName Win32_Process -Filter "Name='unity-agent.exe' OR Name='python.exe' OR Name='pythonw.exe'" -ErrorAction Stop)
+        if (@($running | Where-Object { [string]::IsNullOrWhiteSpace($_.ExecutablePath) }).Count -ne 0) {
+            Write-Warning "Managed cleanup skipped: some running Python/Control Plane process paths are inaccessible."
+            return
+        }
+    }
+    catch {
+        Write-Warning "Managed cleanup skipped: process or root safety check failed: $($_.Exception.Message)"
+        return
+    }
+
+    $removed = 0
+    $skipped = 0
+    foreach ($candidate in @(Get-ChildItem -LiteralPath $ManagedRoot -Directory -Force -ErrorAction Stop)) {
+        $match = [regex]::Match($candidate.Name, $pattern, [Text.RegularExpressions.RegexOptions]::IgnoreCase)
+        if (-not $match.Success) {
+            continue
+        }
+
+        $core = [Version]::new([int]$match.Groups['major'].Value,
+            [int]$match.Groups['minor'].Value, [int]$match.Groups['patch'].Value)
+        $phase = if ($match.Groups['stage'].Success) {
+            $match.Groups['stage'].Value.ToLowerInvariant()
+        } else { 'stable' }
+        $index = if ($match.Groups['index'].Success -and $match.Groups['index'].Value) {
+            [int]$match.Groups['index'].Value
+        } else { 0 }
+        $comparison = $core.CompareTo($activeCore)
+        $older = ($comparison -lt 0) -or ($comparison -eq 0 -and
+            (($phaseRank[$phase] -lt $phaseRank[$activePhase]) -or
+             ($phaseRank[$phase] -eq $phaseRank[$activePhase] -and $index -lt $activeIndex)))
+        if (-not $older) {
+            continue
+        }
+
+        try {
+            $venv = Join-Path $candidate.FullName 'venv'
+            if (-not (Test-Path -LiteralPath (Join-Path $venv 'pyvenv.cfg') -PathType Leaf) -or
+                -not (Test-Path -LiteralPath (Join-Path $venv 'Scripts\unity-agent.exe') -PathType Leaf)) {
+                Write-Warning "Managed cleanup skipped $($candidate.Name): unrecognized runtime contents."
+                $skipped++
+                continue
+            }
+
+            # Do not traverse or delete a junction/symlink, including nested links.
+            $pending = New-Object System.Collections.Queue
+            $pending.Enqueue($candidate)
+            $unsafe = $false
+            while ($pending.Count -gt 0) {
+                $directory = $pending.Dequeue()
+                if (($directory.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+                    $unsafe = $true
+                    break
+                }
+                foreach ($child in @(Get-ChildItem -LiteralPath $directory.FullName -Force -ErrorAction Stop)) {
+                    if (($child.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+                        $unsafe = $true
+                        break
+                    }
+                    if ($child.PSIsContainer) {
+                        $pending.Enqueue($child)
+                    }
+                }
+                if ($unsafe) { break }
+            }
+            if ($unsafe) {
+                Write-Warning "Managed cleanup skipped $($candidate.Name): reparse point detected."
+                $skipped++
+                continue
+            }
+
+            $candidatePrefix = $candidate.FullName.TrimEnd('\') + '\'
+            if (@($running | Where-Object {
+                $_.ExecutablePath.StartsWith($candidatePrefix, [StringComparison]::OrdinalIgnoreCase)
+            }).Count -gt 0) {
+                Write-Warning "Managed cleanup skipped $($candidate.Name): Control Plane/Python process is running."
+                $skipped++
+                continue
+            }
+
+            Remove-Item -LiteralPath $candidate.FullName -Recurse -Force -ErrorAction Stop
+            Write-Host "Managed cleanup: removed $($candidate.Name)"
+            $removed++
+        }
+        catch {
+            Write-Warning "Managed cleanup skipped $($candidate.Name): $($_.Exception.Message)"
+            $skipped++
+        }
+    }
+    Write-Host "Managed cleanup summary: removed=$removed skipped=$skipped"
+}
+
 $python = Resolve-Python
 & $python.Command @($python.Prefix + @("-c", "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)"))
 if ($LASTEXITCODE -ne 0) { throw "Python 3.10 or newer is required." }
@@ -168,3 +296,13 @@ Write-Host "UnityAgent $ReleaseTag Control Plane installed successfully."
 Write-Host "Control Plane: $controlPlanePath"
 Write-Host "Stable command shim: $shimPath"
 Write-Host "Runtime root: $controlPlaneRoot"
+
+# Only after the new runtime is verified and all active references have switched.
+# Cleanup warnings do not turn a successful installation into failure.
+try {
+    Remove-OldManagedControlPlanes -ManagedRoot (Join-Path $localAppData 'UnityAgent\ControlPlane') -ActiveTag $ReleaseTag
+}
+catch {
+    Write-Warning "Managed cleanup skipped unexpectedly: $($_.Exception.Message)"
+}
+

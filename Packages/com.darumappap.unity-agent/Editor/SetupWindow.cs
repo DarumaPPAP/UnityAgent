@@ -644,7 +644,9 @@ namespace DarumaPPAP.UnityAgent.Editor
                     "Install UnityAgent Control Plane",
                     "UnityAgent Control Plane v" + CHANNEL + " をユーザースコープへインストールします。\n\n" +
                     "BootstrapはControl Plane本体だけを導入します。Codex PluginやProviderは直接変更しません。\n" +
-                    "Release wheelはSHA-256検証後に専用LocalAppData runtimeへインストールされます。",
+                    "Release wheelはSHA-256検証後に専用LocalAppData runtimeへインストールされます。\n" +
+                    "新バージョンの導入・動作確認後、使用中でない旧管理Runtimeを削除します。\n" +
+                    "削除できない旧Runtimeや別管理のPython環境は残します。",
                     "インストール",
                     "キャンセル"))
             {
@@ -693,6 +695,24 @@ namespace DarumaPPAP.UnityAgent.Editor
                     : "Control Planeの導入には成功しましたが、現在の参照先は " + activeState +
                       " です。Manual overrideと実行環境変数を確認してください。";
                 statusType = activeState == "READY" ? MessageType.Info : MessageType.Warning;
+                var cleanup = Regex.Match(output,
+                    @"Managed cleanup summary:\s*removed=(?<removed>\d+)\s+skipped=(?<skipped>\d+)");
+                if (cleanup.Success)
+                {
+                    statusMessage += "\n旧管理Runtime削除: " + cleanup.Groups["removed"].Value +
+                                     " 件。保留: " + cleanup.Groups["skipped"].Value + " 件。";
+                    if (cleanup.Groups["skipped"].Value != "0")
+                    {
+                        statusType = MessageType.Warning;
+                        showDiagnostics = true;
+                    }
+                }
+                else if (output.IndexOf("Managed cleanup skipped", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    statusMessage += "\n旧管理Runtimeの削除を保留しました。Diagnosticsを確認してください。";
+                    statusType = MessageType.Warning;
+                    showDiagnostics = true;
+                }
             }
             else
             {
