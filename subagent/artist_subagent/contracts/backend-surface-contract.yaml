@@ -1,0 +1,22 @@
+schema_version: '2.0'
+kind: specialist_backend_interface
+backend_identity: unity_artist_cli
+execution_boundary: unity_agent_tool_broker
+input_contract:
+  - capability_request
+  - context_receipt
+  - approval_decision_when_mutating
+output_contract:
+  - provider_result
+  - evidence_artifacts
+context_receipt:
+  - generated
+  - transported
+  - received
+forbidden_authority:
+  - global_routing
+  - policy
+  - approval
+  - provider_resolution
+  - retry_control
+  - persistence

@@ -1,0 +1,24 @@
+schema_version: "1.0"
+kind: performance_read_only_candidate_contract
+status: pilot_unregistered
+identity: performance_subagent
+compatibility:
+  unity_version: Unity 6.x+
+capabilities:
+  performance.analyze:
+    mode: read_only
+    requires: [bound_project_identity, observed_unity_version, performance_symptom, requested_scope, target_platform, context_receipt]
+    returns: [confirmed_facts, measurement_summary, bottleneck_classification, hypotheses, rejected_hypotheses, required_observations, recommendations, performance_analysis]
+boundaries:
+  route_reuse: [performance-experiment]
+  excludes: [shader_semantic_correctness, render_graph_correctness, art_direction, measurement_backend, project_orchestration, provider_selection]
+  mutation: prohibited_during_pilot
+  provider_resolution: unity_agent_tool_broker_only
+  unsupported_behavior: explicit_unsupported
+  unavailable_behavior: explicit_unavailable_no_fallback
+evidence:
+  required_type: performance_analysis
+  observations: [cpu_timing, gpu_timing, gc_allocation, memory_usage, profiler_marker, frame_timing, baseline_comparison]
+  levels: [static, compile, editor, player, target_device]
+  unobserved_runtime: NOT_EVALUATED_RUNTIME
+  receipt: generated_transported_received_identity_and_fingerprint_match

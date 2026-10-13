@@ -1,0 +1,25 @@
+schema_version: '2.0'
+kind: reasoning_specialist_contract
+identity: graphics_subagent
+capabilities:
+- graphics.inspect
+- graphics.diagnose
+- graphics.validate
+execution_authority: unity_agent_runtime_handoff
+provider_resolution: not_required_for_semantic_capability
+observations:
+  required:
+  - project.inspect
+  - source.read
+  authority: unity_agent_tool_broker
+boundaries:
+  mutation: prohibited
+  provider_selection: prohibited
+  direct_specialist_dispatch: prohibited
+  approval_authority: unity_agent_only
+evidence:
+  required_type: graphics_diagnosis
+  reasoning_context_binding: required
+  runtime_levels: only_matching_observations
+  production_verified: false
+candidate_baseline_ref: subagent/graphics_subagent/contracts/capability-contracts.yaml

@@ -1,0 +1,388 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PerformanceAnalysisResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "status",
+    "profile_id",
+    "capability",
+    "execution_mode",
+    "provider_resolution",
+    "source_context_id",
+    "source_context_fingerprint",
+    "confirmed_facts",
+    "hypotheses",
+    "rejected_hypotheses",
+    "required_observations",
+    "known_limitations",
+    "mutation_performed",
+    "evidence_level",
+    "runtime_evaluation",
+    "measurements",
+    "bottleneck_classification",
+    "classification_basis",
+    "comparison",
+    "recommendations"
+  ],
+  "properties": {
+    "status": {
+      "type": "string",
+      "const": "completed"
+    },
+    "profile_id": {
+      "type": "string",
+      "const": "performance_subagent"
+    },
+    "capability": {
+      "type": "string",
+      "enum": [
+        "performance.analyze"
+      ]
+    },
+    "execution_mode": {
+      "type": "string",
+      "const": "read_only_analysis"
+    },
+    "provider_resolution": {
+      "type": "string",
+      "const": "not_required"
+    },
+    "source_context_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_context_fingerprint": {
+      "type": "string",
+      "minLength": 1
+    },
+    "confirmed_facts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "statement",
+          "source_ref"
+        ],
+        "properties": {
+          "statement": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_ref": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "hypotheses": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "rejected_hypotheses": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "required_observations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "known_limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    },
+    "mutation_performed": {
+      "type": "boolean",
+      "const": false
+    },
+    "evidence_level": {
+      "type": "string",
+      "const": "runtime_reasoning"
+    },
+    "runtime_evaluation": {
+      "type": "string",
+      "const": "RUNTIME_OBSERVED"
+    },
+    "measurements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source_ref",
+          "capture_id",
+          "metadata",
+          "metrics"
+        ],
+        "properties": {
+          "source_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "capture_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "measurement_source",
+              "unity_version",
+              "platform",
+              "graphics_api",
+              "capture_mode",
+              "build_type",
+              "scene_or_scope",
+              "measurement_window",
+              "known_limitations",
+              "validity"
+            ],
+            "properties": {
+              "measurement_source": {
+                "type": "string",
+                "minLength": 1
+              },
+              "unity_version": {
+                "type": "string",
+                "minLength": 1
+              },
+              "platform": {
+                "type": "string",
+                "minLength": 1
+              },
+              "graphics_api": {
+                "type": "string",
+                "minLength": 1
+              },
+              "capture_mode": {
+                "type": "string",
+                "minLength": 1
+              },
+              "build_type": {
+                "type": "string",
+                "minLength": 1
+              },
+              "scene_or_scope": {
+                "type": "string",
+                "minLength": 1
+              },
+              "measurement_window": {
+                "type": "string",
+                "minLength": 1
+              },
+              "known_limitations": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "validity": {
+                "type": "string",
+                "enum": [
+                  "valid",
+                  "limited",
+                  "invalid",
+                  "not_measured",
+                  "fixture_input"
+                ]
+              }
+            }
+          },
+          "metrics": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "name",
+                "value",
+                "unit",
+                "category"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "value": {
+                  "type": "number"
+                },
+                "unit": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "category": {
+                  "type": "string",
+                  "enum": [
+                    "cpu",
+                    "gpu",
+                    "memory",
+                    "gc",
+                    "io_loading"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "bottleneck_classification": {
+      "type": "string",
+      "enum": [
+        "cpu",
+        "gpu",
+        "memory",
+        "gc",
+        "io_loading",
+        "mixed",
+        "unknown"
+      ]
+    },
+    "classification_basis": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source_ref",
+          "capture_id",
+          "metric_names"
+        ],
+        "properties": {
+          "source_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "capture_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "metric_names": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          }
+        }
+      }
+    },
+    "comparison": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "baseline",
+            "candidate",
+            "deltas"
+          ],
+          "properties": {
+            "baseline": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "source_ref",
+                "capture_id"
+              ],
+              "properties": {
+                "source_ref": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "capture_id": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "candidate": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "source_ref",
+                "capture_id"
+              ],
+              "properties": {
+                "source_ref": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "capture_id": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "deltas": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "value",
+                  "unit",
+                  "category"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "value": {
+                    "type": "number"
+                  },
+                  "unit": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "cpu",
+                      "gpu",
+                      "memory",
+                      "gc",
+                      "io_loading"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "recommendations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}
