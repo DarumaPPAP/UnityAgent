@@ -7,14 +7,14 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 EDITOR = ROOT / "Packages/com.darumappap.unity-agent/Editor"
-SETUP = (EDITOR / "UnityAgentSetupWindow.cs").read_text(encoding="utf-8")
-PANEL = (EDITOR / "UnityAgentSetupVerificationPanel.cs").read_text(encoding="utf-8")
+SETUP = (EDITOR / "SetupWindow.cs").read_text(encoding="utf-8")
+PANEL = (EDITOR / "SetupVerificationPanel.cs").read_text(encoding="utf-8")
 
 
 class SetupEditorVerificationContractTests(unittest.TestCase):
     def test_existing_setup_window_is_canonical_ui(self):
         self.assertIn('[MenuItem("UnityAgent/Setup")]', SETUP)
-        self.assertIn("UnityAgentSetupVerificationPanel.Draw();", SETUP)
+        self.assertIn("SetupVerificationPanel.Draw();", SETUP)
         self.assertIn('DrawEnvironmentCard();', SETUP)
         self.assertNotIn('[MenuItem(', PANEL)
 
@@ -22,13 +22,13 @@ class SetupEditorVerificationContractTests(unittest.TestCase):
         self.assertIn('ControlPlaneVersionState() == "READY"', SETUP)
         self.assertIn('return "NEWER VERSION";', SETUP)
         self.assertIn('return "STALE";', SETUP)
-        self.assertIn('UnityAgentControlPlanePathResolver.HasOverride', SETUP)
+        self.assertIn('ControlPlanePathResolver.HasOverride', SETUP)
         self.assertIn('"VERSION UNKNOWN"', SETUP)
         self.assertIn('GetManagedControlPlaneVersion', SETUP)
         self.assertIn('更新 / 修復', SETUP)
-        self.assertIn('UnityAgentControlPlaneBootstrap.Start', SETUP)
+        self.assertIn('ControlPlaneBootstrap.Start', SETUP)
         self.assertIn('Environment.SetEnvironmentVariable(', SETUP)
-        self.assertIn('!UnityAgentControlPlanePathResolver.HasOverride', SETUP)
+        self.assertIn('!ControlPlanePathResolver.HasOverride', SETUP)
 
     def test_explicit_trusted_fixture_selection(self):
         for fixture in ('canonical-full', 'minimal-6000.3', 'minimal-6000.6',
@@ -56,7 +56,7 @@ class SetupEditorVerificationContractTests(unittest.TestCase):
         self.assertIn('EditorUtility.RevealInFinder', PANEL)
 
     def test_unity_meta_guid_is_present_and_unique(self):
-        meta = EDITOR / "UnityAgentSetupVerificationPanel.cs.meta"
+        meta = EDITOR / "SetupVerificationPanel.cs.meta"
         self.assertTrue(meta.is_file())
         match = re.search(r"(?m)^guid: ([a-f0-9]{32})$", meta.read_text(encoding="utf-8"))
         self.assertIsNotNone(match)

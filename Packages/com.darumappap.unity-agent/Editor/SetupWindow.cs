@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace DarumaPPAP.UnityAgent.Editor
 {
-    internal sealed class UnityAgentSetupWindow : EditorWindow
+    internal sealed class SetupWindow : EditorWindow
     {
         private const string CHANNEL = "0.0.8-beta";
         private const string CODEX_PLUGIN_SOURCE = "DarumaPPAP/UnityAgent@v0.0.8-beta";
@@ -54,7 +54,7 @@ namespace DarumaPPAP.UnityAgent.Editor
         [MenuItem("UnityAgent/Setup")]
         private static void Open()
         {
-            var window = GetWindow<UnityAgentSetupWindow>("UnityAgent Setup");
+            var window = GetWindow<SetupWindow>("UnityAgent Setup");
             window.minSize = new Vector2(700f, 540f);
         }
 
@@ -126,7 +126,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                     EditorGUILayout.Space(10);
                     DrawEnvironmentCard();
                     EditorGUILayout.Space(10);
-                    UnityAgentSetupVerificationPanel.Draw();
+                    SetupVerificationPanel.Draw();
                     EditorGUILayout.Space(10);
                     DrawStatusCard();
                     EditorGUILayout.Space(10);
@@ -316,7 +316,7 @@ namespace DarumaPPAP.UnityAgent.Editor
         private void DrawControlPlaneCard()
         {
             var ready = !string.IsNullOrWhiteSpace(controlPlanePath);
-            var running = UnityAgentControlPlaneBootstrap.IsRunning;
+            var running = ControlPlaneBootstrap.IsRunning;
             var versionState = ControlPlaneVersionState();
 
             BeginCard();
@@ -349,7 +349,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                     GUILayout.Label("Control Plane detected", cardSubtitleStyle);
                     GUILayout.FlexibleSpace();
                     using (new EditorGUI.DisabledScope(running || Application.platform != RuntimePlatform.WindowsEditor ||
-                        UnityAgentControlPlanePathResolver.HasOverride || versionState == "NEWER VERSION"))
+                        ControlPlanePathResolver.HasOverride || versionState == "NEWER VERSION"))
                     {
                         if (GUILayout.Button(versionState == "STALE" ? "更新 / 修復" : "再インストール / 修復",
                             secondaryButtonStyle, GUILayout.Width(150f)))
@@ -374,9 +374,9 @@ namespace DarumaPPAP.UnityAgent.Editor
                     {
                         BrowseControlPlane();
                     }
-                    if (UnityAgentControlPlanePathResolver.HasOverride && GUILayout.Button("Override解除", secondaryButtonStyle, GUILayout.Width(110f)))
+                    if (ControlPlanePathResolver.HasOverride && GUILayout.Button("Override解除", secondaryButtonStyle, GUILayout.Width(110f)))
                     {
-                        UnityAgentControlPlanePathResolver.ClearOverride();
+                        ControlPlanePathResolver.ClearOverride();
                         RefreshControlPlanePath(false);
                         UpdateIdleStatus();
                     }
@@ -391,7 +391,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                         ? "現在のUPMより新しいControl Planeです。自動ダウングレードしません。"
                         : "Control Planeの実バージョンは未確認です。Doctorで確認してください。",
                     WarningColor);
-                if (UnityAgentControlPlanePathResolver.HasOverride)
+                if (ControlPlanePathResolver.HasOverride)
                 {
                     DrawHint("手動Overrideは変更しません。更新前に必要ならOverride解除を行ってください。",
                         WarningColor);
@@ -427,9 +427,9 @@ namespace DarumaPPAP.UnityAgent.Editor
                 {
                     BrowseCodex();
                 }
-                if (UnityAgentCodexPathResolver.HasOverride && GUILayout.Button("Override解除", secondaryButtonStyle, GUILayout.Width(110f)))
+                if (CodexPathResolver.HasOverride && GUILayout.Button("Override解除", secondaryButtonStyle, GUILayout.Width(110f)))
                 {
-                    UnityAgentCodexPathResolver.ClearOverride();
+                    CodexPathResolver.ClearOverride();
                     RefreshCodexPath(false);
                     UpdateIdleStatus();
                 }
@@ -453,7 +453,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                 controlPlaneReady && codexReady ? ReadyColor : MutedColor);
 
             EditorGUILayout.Space(8);
-            using (new EditorGUI.DisabledScope(!controlPlaneReady || UnityAgentControlPlaneBootstrap.IsRunning))
+            using (new EditorGUI.DisabledScope(!controlPlaneReady || ControlPlaneBootstrap.IsRunning))
             using (new EditorGUILayout.HorizontalScope())
             {
                 if (GUILayout.Button("状態を確認", secondaryButtonStyle))
@@ -547,7 +547,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                 state == "READY" ? "DIAGNOSABLE" : "NEEDS CHECK",
                 state == "READY" ? ReadyColor : WarningColor);
 
-            var package = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(UnityAgentSetupWindow).Assembly);
+            var package = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(SetupWindow).Assembly);
             EditorGUILayout.LabelField("Unity Editor", Application.unityVersion, fieldLabelStyle);
             EditorGUILayout.LabelField("UnityAgent UPM", package == null ? "UNKNOWN" : package.version, fieldLabelStyle);
             var version = GetManagedControlPlaneVersion(controlPlanePath);
@@ -634,7 +634,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                 }
             }
             EditorGUILayout.Space(4);
-            EditorGUILayout.LabelField("Bootstrap channel: v" + UnityAgentControlPlaneBootstrap.Channel, cardSubtitleStyle);
+            EditorGUILayout.LabelField("Bootstrap channel: v" + ControlPlaneBootstrap.Channel, cardSubtitleStyle);
             EndCard();
         }
 
@@ -657,20 +657,20 @@ namespace DarumaPPAP.UnityAgent.Editor
             error = string.Empty;
             Repaint();
 
-            if (!UnityAgentControlPlaneBootstrap.Start(OnBootstrapCompleted, out var bootstrapError))
+            if (!ControlPlaneBootstrap.Start(OnBootstrapCompleted, out var bootstrapError))
             {
                 SetError(bootstrapError);
             }
         }
 
-        private void OnBootstrapCompleted(UnityAgentControlPlaneBootstrap.Result result)
+        private void OnBootstrapCompleted(ControlPlaneBootstrap.Result result)
         {
             output = result.Output ?? string.Empty;
             error = result.Error ?? string.Empty;
 
             // 子PowerShellの環境変数更新は起動中のUnity Editorへ反映されない。
             // 成功したBootstrapのインストール先だけを現Editorの実行環境へ反映する。
-            if (result.Success && !UnityAgentControlPlanePathResolver.HasOverride)
+            if (result.Success && !ControlPlanePathResolver.HasOverride)
             {
                 var match = Regex.Match(output, @"(?m)^Control Plane:\s*(?<path>[^\r\n]+)$");
                 if (match.Success)
@@ -679,7 +679,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                     if (File.Exists(installedPath))
                     {
                         Environment.SetEnvironmentVariable(
-                            UnityAgentControlPlanePathResolver.EnvironmentVariable, installedPath);
+                            ControlPlanePathResolver.EnvironmentVariable, installedPath);
                     }
                 }
             }
@@ -795,11 +795,11 @@ namespace DarumaPPAP.UnityAgent.Editor
 
         private void RefreshControlPlanePath(bool clearOverride)
         {
-            if (clearOverride && UnityAgentControlPlanePathResolver.HasOverride)
+            if (clearOverride && ControlPlanePathResolver.HasOverride)
             {
-                UnityAgentControlPlanePathResolver.ClearOverride();
+                ControlPlanePathResolver.ClearOverride();
             }
-            controlPlanePath = UnityAgentControlPlanePathResolver.Resolve(
+            controlPlanePath = ControlPlanePathResolver.Resolve(
                 out controlPlanePathSource,
                 out controlPlanePathDiagnostic) ?? string.Empty;
             Repaint();
@@ -807,17 +807,17 @@ namespace DarumaPPAP.UnityAgent.Editor
 
         private void RefreshCodexPath(bool clearOverride)
         {
-            if (clearOverride && UnityAgentCodexPathResolver.HasOverride)
+            if (clearOverride && CodexPathResolver.HasOverride)
             {
-                UnityAgentCodexPathResolver.ClearOverride();
+                CodexPathResolver.ClearOverride();
             }
-            codexCliPath = UnityAgentCodexPathResolver.Resolve(out codexPathSource, out codexPathDiagnostic) ?? string.Empty;
+            codexCliPath = CodexPathResolver.Resolve(out codexPathSource, out codexPathDiagnostic) ?? string.Empty;
             Repaint();
         }
 
         private void UpdateIdleStatus()
         {
-            if (UnityAgentControlPlaneBootstrap.IsRunning)
+            if (ControlPlaneBootstrap.IsRunning)
             {
                 statusMessage = "Control Planeをインストールしています...";
                 statusType = MessageType.Info;
@@ -852,7 +852,7 @@ namespace DarumaPPAP.UnityAgent.Editor
             {
                 return;
             }
-            if (!UnityAgentControlPlanePathResolver.TrySetOverride(selected, out var overrideError))
+            if (!ControlPlanePathResolver.TrySetOverride(selected, out var overrideError))
             {
                 SetError(overrideError);
                 return;
@@ -869,7 +869,7 @@ namespace DarumaPPAP.UnityAgent.Editor
             {
                 return;
             }
-            if (!UnityAgentCodexPathResolver.TrySetOverride(selected, out var overrideError))
+            if (!CodexPathResolver.TrySetOverride(selected, out var overrideError))
             {
                 SetError(overrideError);
                 return;
@@ -906,7 +906,7 @@ namespace DarumaPPAP.UnityAgent.Editor
             }
 
             var projectPath = Directory.GetParent(Application.dataPath).FullName;
-            var success = UnityAgentControlPlaneClient.TryRun(
+            var success = ControlPlaneClient.TryRun(
                 operation,
                 projectPath,
                 controlPlanePath,
@@ -943,7 +943,7 @@ namespace DarumaPPAP.UnityAgent.Editor
             EditorUtility.DisplayProgressBar("UnityAgent Setup", "Codex Plugin setup planを確認しています...", 0.25f);
             try
             {
-                var planSuccess = UnityAgentControlPlaneClient.TryRun(
+                var planSuccess = ControlPlaneClient.TryRun(
                     "plan", projectPath, controlPlanePath, CODEX_INTEGRATION_PRODUCTS,
                     string.Empty, string.Empty, string.Empty, codexCliPath,
                     out var planOutput, out var planError);
@@ -993,7 +993,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                     File.WriteAllText(planPath, planOutput);
                     var approvalRef = "unity-ui-codex-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss");
                     EditorUtility.DisplayProgressBar("UnityAgent Setup", "Codex Pluginをインストールしています...", 0.72f);
-                    var applySuccess = UnityAgentControlPlaneClient.TryRun(
+                    var applySuccess = ControlPlaneClient.TryRun(
                         "apply", projectPath, controlPlanePath, CODEX_INTEGRATION_PRODUCTS,
                         planId, approvalRef, planPath, codexCliPath,
                         out output, out error);

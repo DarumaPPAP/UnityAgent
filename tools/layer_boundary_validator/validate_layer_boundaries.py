@@ -153,12 +153,12 @@ def validate(root: Path = ROOT) -> list[str]:
             if "filename = \"codex\"" in text or "codex plugin marketplace" in text or "codex plugin add" in text:
                 errors.append(f"Unity UI Entry must not invoke Codex Plugin commands directly: {path.relative_to(root)}")
 
-        codex_resolver_path = package_path.parent / "Editor/UnityAgentCodexPathResolver.cs"
-        control_plane_resolver_path = package_path.parent / "Editor/UnityAgentControlPlanePathResolver.cs"
-        bootstrap_path = package_path.parent / "Editor/UnityAgentControlPlaneBootstrap.cs"
+        codex_resolver_path = package_path.parent / "Editor/CodexPathResolver.cs"
+        control_plane_resolver_path = package_path.parent / "Editor/ControlPlanePathResolver.cs"
+        bootstrap_path = package_path.parent / "Editor/ControlPlaneBootstrap.cs"
         bootstrap_script_path = package_path.parent / "Editor/Bootstrap~/install-control-plane.ps1"
-        setup_window_path = package_path.parent / "Editor/UnityAgentSetupWindow.cs"
-        control_plane_client_path = package_path.parent / "Editor/UnityAgentControlPlaneClient.cs"
+        setup_window_path = package_path.parent / "Editor/SetupWindow.cs"
+        control_plane_client_path = package_path.parent / "Editor/ControlPlaneClient.cs"
 
         if not codex_resolver_path.is_file():
             errors.append("UnityAgent Codex path resolver is missing")
@@ -224,11 +224,11 @@ def validate(root: Path = ROOT) -> list[str]:
 
         if setup_window_path.is_file():
             setup_text = setup_window_path.read_text(encoding="utf-8")
-            if "UnityAgentCodexPathResolver.Resolve" not in setup_text:
+            if "CodexPathResolver.Resolve" not in setup_text:
                 errors.append("UnityAgent Setup Window must use the canonical Codex path resolver")
-            if "UnityAgentControlPlanePathResolver.Resolve" not in setup_text:
+            if "ControlPlanePathResolver.Resolve" not in setup_text:
                 errors.append("UnityAgent Setup Window must use the canonical Control Plane path resolver")
-            if "UnityAgentControlPlaneBootstrap.Start" not in setup_text:
+            if "ControlPlaneBootstrap.Start" not in setup_text:
                 errors.append("UnityAgent Setup Window must expose the bounded Control Plane bootstrap path")
             if "Install Control Plane" not in setup_text:
                 errors.append("UnityAgent Setup Window must present an explicit Control Plane bootstrap action")

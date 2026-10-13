@@ -10,9 +10,9 @@ namespace DarumaPPAP.UnityAgent.Editor
     /// <summary>
     /// Resolves the UnityAgent Control Plane executable without relying only on the PATH
     /// inherited by Unity Hub. Resolution is filesystem-only; execution remains owned by
-    /// UnityAgentControlPlaneClient.
+    /// ControlPlaneClient.
     /// </summary>
-    internal static class UnityAgentControlPlanePathResolver
+    internal static class ControlPlanePathResolver
     {
         internal const string EditorPrefKey = "DarumaPPAP.UnityAgent.ControlPlanePath";
         internal const string EnvironmentVariable = "UNITY_AGENT_CONTROL_PLANE";
