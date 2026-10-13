@@ -20,7 +20,9 @@ class SetupEditorVerificationContractTests(unittest.TestCase):
 
     def test_stale_control_plane_does_not_claim_ready(self):
         self.assertIn('ControlPlaneVersionState() == "READY"', SETUP)
-        self.assertIn('? "READY" : "STALE";', SETUP)
+        self.assertIn('return "NEWER VERSION";', SETUP)
+        self.assertIn('return "STALE";', SETUP)
+        self.assertIn('UnityAgentControlPlanePathResolver.HasOverride', SETUP)
         self.assertIn('"VERSION UNKNOWN"', SETUP)
         self.assertIn('GetManagedControlPlaneVersion', SETUP)
         self.assertIn('更新 / 修復', SETUP)
