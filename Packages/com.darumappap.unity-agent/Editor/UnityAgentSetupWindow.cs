@@ -499,7 +499,18 @@ namespace DarumaPPAP.UnityAgent.Editor
                 source.IndexOf(@"UnityAgent\bin\", StringComparison.OrdinalIgnoreCase) >= 0 &&
                 File.Exists(source))
             {
-                source = File.ReadAllText(source);
+                try
+                {
+                    source = File.ReadAllText(source);
+                }
+                catch (IOException)
+                {
+                    return string.Empty;
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    return string.Empty;
+                }
             }
 
             var match = Regex.Match(source,
