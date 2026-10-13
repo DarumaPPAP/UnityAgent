@@ -124,6 +124,10 @@ namespace DarumaPPAP.UnityAgent.Editor
                     EditorGUILayout.Space(10);
                     DrawIntegrationCard();
                     EditorGUILayout.Space(10);
+                    DrawEnvironmentCard();
+                    EditorGUILayout.Space(10);
+                    UnityAgentSetupVerificationPanel.Draw();
+                    EditorGUILayout.Space(10);
                     DrawStatusCard();
                     EditorGUILayout.Space(10);
                     DrawDiagnostics();
@@ -283,7 +287,7 @@ namespace DarumaPPAP.UnityAgent.Editor
 
         private void DrawOverview()
         {
-            var controlPlaneReady = !string.IsNullOrWhiteSpace(controlPlanePath);
+            var controlPlaneReady = ControlPlaneVersionState() == "READY";
             var codexReady = !string.IsNullOrWhiteSpace(codexCliPath);
             var readyCount = (controlPlaneReady ? 1 : 0) + (codexReady ? 1 : 0);
 
@@ -313,13 +317,14 @@ namespace DarumaPPAP.UnityAgent.Editor
         {
             var ready = !string.IsNullOrWhiteSpace(controlPlanePath);
             var running = UnityAgentControlPlaneBootstrap.IsRunning;
+            var versionState = ControlPlaneVersionState();
 
             BeginCard();
             DrawCardHeader(
                 "1. UnityAgent Control Plane",
                 "UnityAgentのPlan / Approval / Provider routing / Evidenceを担当する実行基盤です。",
-                running ? "INSTALLING" : (ready ? "READY" : "ACTION REQUIRED"),
-                running ? BusyColor : (ready ? ReadyColor : ActionColor));
+                running ? "INSTALLING" : versionState,
+                running ? BusyColor : (versionState == "READY" ? ReadyColor : ActionColor));
 
             EditorGUILayout.Space(6);
             DrawResolvedPath(controlPlanePath, controlPlanePathSource);
@@ -343,6 +348,14 @@ namespace DarumaPPAP.UnityAgent.Editor
                 {
                     GUILayout.Label("Control Plane detected", cardSubtitleStyle);
                     GUILayout.FlexibleSpace();
+                    using (new EditorGUI.DisabledScope(running || Application.platform != RuntimePlatform.WindowsEditor))
+                    {
+                        if (GUILayout.Button(versionState == "STALE" ? "更新 / 修復" : "再インストール / 修復",
+                            secondaryButtonStyle, GUILayout.Width(150f)))
+                        {
+                            InstallControlPlaneBootstrap();
+                        }
+                    }
                 }
             }
 
@@ -369,6 +382,13 @@ namespace DarumaPPAP.UnityAgent.Editor
                 }
             }
 
+            if (ready && !running && versionState != "READY")
+            {
+                DrawHint(versionState == "STALE"
+                    ? "旧バージョンのControl Planeを検出しました。更新には明示的な承認が必要です。"
+                    : "Control Planeの実バージョンは未確認です。Doctorで確認してください。",
+                    WarningColor);
+            }
             if (!ready && !running && !string.IsNullOrWhiteSpace(controlPlanePathDiagnostic))
             {
                 DrawHint(controlPlanePathDiagnostic, ActionColor);
@@ -455,6 +475,65 @@ namespace DarumaPPAP.UnityAgent.Editor
             EndCard();
         }
 
+        private string ControlPlaneVersionState()
+        {
+            if (string.IsNullOrWhiteSpace(controlPlanePath))
+            {
+                return "ACTION REQUIRED";
+            }
+
+            var version = GetManagedControlPlaneVersion(controlPlanePath);
+            if (string.IsNullOrWhiteSpace(version))
+            {
+                return "VERSION UNKNOWN";
+            }
+
+            return string.Equals(version, CHANNEL, StringComparison.OrdinalIgnoreCase) ? "READY" : "STALE";
+        }
+
+        private static string GetManagedControlPlaneVersion(string path)
+        {
+            var source = path ?? string.Empty;
+            // Managed shimは実体Pathを記録する。任意の外部スクリプトは読み込まない。
+            if (source.EndsWith("unity-agent.cmd", StringComparison.OrdinalIgnoreCase) &&
+                source.IndexOf(@"UnityAgent\bin\", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                File.Exists(source))
+            {
+                source = File.ReadAllText(source);
+            }
+
+            var match = Regex.Match(source,
+                @"[\\/]UnityAgent[\\/]ControlPlane[\\/]v(?<version>\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?)[\\/]",
+                RegexOptions.IgnoreCase);
+            return match.Success ? match.Groups["version"].Value : string.Empty;
+        }
+
+        private void DrawEnvironmentCard()
+        {
+            BeginCard();
+            var state = ControlPlaneVersionState();
+            DrawCardHeader("4. Unity Environment",
+                "Unity Editorと既存Toolchainの状態を確認します。READYは実E2E PASSを意味しません。",
+                state == "READY" ? "DIAGNOSABLE" : "NEEDS CHECK",
+                state == "READY" ? ReadyColor : WarningColor);
+
+            var package = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(UnityAgentSetupWindow).Assembly);
+            EditorGUILayout.LabelField("Unity Editor", Application.unityVersion, fieldLabelStyle);
+            EditorGUILayout.LabelField("UnityAgent UPM", package == null ? "UNKNOWN" : package.version, fieldLabelStyle);
+            var version = GetManagedControlPlaneVersion(controlPlanePath);
+            EditorGUILayout.LabelField("Control Plane",
+                string.IsNullOrWhiteSpace(version) ? "VERSION UNKNOWN" : version, fieldLabelStyle);
+            EditorGUILayout.HelpBox("Unity CLI / Pipeline / optional SubAgentはControl Plane Doctorで判定します。" +
+                "単なるファイル存在をInstall済み・Bind済みと扱いません。", MessageType.Info);
+            using (new EditorGUI.DisabledScope(string.IsNullOrWhiteSpace(controlPlanePath)))
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button("全Toolchain Doctor", secondaryButtonStyle)) Run("doctor", ALL_PRODUCTS);
+                if (GUILayout.Button("全Toolchain Plan", secondaryButtonStyle)) Run("plan", ALL_PRODUCTS);
+            }
+            EndCard();
+        }
+
         private void DrawStatusCard()
         {
             BeginCard();
@@ -535,7 +614,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                     "Install UnityAgent Control Plane",
                     "UnityAgent Control Plane v" + CHANNEL + " をユーザースコープへインストールします。\n\n" +
                     "BootstrapはControl Plane本体だけを導入します。Codex PluginやProviderは直接変更しません。\n" +
-                    "Release wheelはSHA-256検証後にpip --userでインストールされます。",
+                    "Release wheelはSHA-256検証後に専用LocalAppData runtimeへインストールされます。",
                     "インストール",
                     "キャンセル"))
             {
@@ -558,6 +637,22 @@ namespace DarumaPPAP.UnityAgent.Editor
         {
             output = result.Output ?? string.Empty;
             error = result.Error ?? string.Empty;
+
+            // 子PowerShellの環境変数更新は起動中のUnity Editorへ反映されない。
+            // 成功したBootstrapのインストール先だけを現Editorの実行環境へ反映する。
+            if (result.Success && !UnityAgentControlPlanePathResolver.HasOverride)
+            {
+                var match = Regex.Match(output, @"(?m)^Control Plane:\s*(?<path>[^\r\n]+)$");
+                if (match.Success)
+                {
+                    var installedPath = match.Groups["path"].Value.Trim();
+                    if (File.Exists(installedPath))
+                    {
+                        Environment.SetEnvironmentVariable(
+                            UnityAgentControlPlanePathResolver.EnvironmentVariable, installedPath);
+                    }
+                }
+            }
             RefreshControlPlanePath(false);
 
             if (result.Success && !string.IsNullOrWhiteSpace(controlPlanePath))
