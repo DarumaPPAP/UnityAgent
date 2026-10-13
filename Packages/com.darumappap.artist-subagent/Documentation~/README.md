@@ -37,4 +37,4 @@ unity artist doctor --project-path <project> --format json --non-interactive
 unity artist install --project-path <project> --format json --non-interactive
 ```
 
-CLIの`unity-artist`実行ファイルと`unity_artist_cli`Backend IDは別の名称です。Backendを導入する操作はUser Setupとして明示され、Capability Resolution時の自動Installではありません。対応Version / Pipelineは[ArtistSubAgent Manifest](../../../Hub/SubAgents/artist_subagent/manifest.yaml)と[Compatibility Matrix](../../../ci/compatibility/support-matrix.yaml)を参照してください。
+CLIの`unity-artist`実行ファイルと`unity_artist_cli`Backend IDは別の名称です。Backendを導入する操作はUser Setupとして明示され、Capability Resolution時の自動Installではありません。対応Version / Pipelineは[ArtistSubAgent Manifest](../../../subagent/artist_subagent/manifest.yaml)と[Compatibility Matrix](../../../ci/compatibility/support-matrix.yaml)を参照してください。
