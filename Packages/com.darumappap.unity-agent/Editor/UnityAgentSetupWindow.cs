@@ -443,7 +443,7 @@ namespace DarumaPPAP.UnityAgent.Editor
 
         private void DrawIntegrationCard()
         {
-            var controlPlaneReady = !string.IsNullOrWhiteSpace(controlPlanePath);
+            var controlPlaneReady = ControlPlaneVersionState() == "READY";
             var codexReady = !string.IsNullOrWhiteSpace(codexCliPath);
             BeginCard();
             DrawCardHeader(
@@ -685,10 +685,14 @@ namespace DarumaPPAP.UnityAgent.Editor
             }
             RefreshControlPlanePath(false);
 
-            if (result.Success && !string.IsNullOrWhiteSpace(controlPlanePath))
+            if (result.Success)
             {
-                statusMessage = "Control Planeのインストールが完了しました。Codex Integrationへ進めます。";
-                statusType = MessageType.Info;
+                var activeState = ControlPlaneVersionState();
+                statusMessage = activeState == "READY"
+                    ? "Control Planeの更新が完了しました。Codex Integrationへ進めます。"
+                    : "Control Planeの導入には成功しましたが、現在の参照先は " + activeState +
+                      " です。Manual overrideと実行環境変数を確認してください。";
+                statusType = activeState == "READY" ? MessageType.Info : MessageType.Warning;
             }
             else
             {
@@ -822,6 +826,12 @@ namespace DarumaPPAP.UnityAgent.Editor
             if (string.IsNullOrWhiteSpace(controlPlanePath))
             {
                 statusMessage = "Control Planeは未導入です。『Install Control Plane』からこのWindow内でセットアップできます。";
+                statusType = MessageType.Warning;
+                return;
+            }
+            if (ControlPlaneVersionState() != "READY")
+            {
+                statusMessage = "Control Planeのバージョンが未確認・旧版・新版です。Setupで診断または更新してください。";
                 statusType = MessageType.Warning;
                 return;
             }
