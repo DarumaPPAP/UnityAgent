@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "WorldPlanResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "profile_id", "capability", "execution_mode", "provider_resolution", "source_context_id", "source_context_fingerprint", "world_plan", "evidence_level", "known_limitations", "runtime_evaluation"],
+  "properties": {
+    "status": {"type": "string", "const": "completed"},
+    "profile_id": {"type": "string", "const": "world_creator_subagent"},
+    "capability": {"type": "string", "const": "world.plan"},
+    "execution_mode": {"type": "string", "const": "planning_only"},
+    "provider_resolution": {"type": "string", "const": "not_required"},
+    "source_context_id": {"type": "string", "minLength": 1},
+    "source_context_fingerprint": {"type": "string", "minLength": 1},
+    "evidence_level": {"type": "string", "const": "runtime_reasoning"},
+    "runtime_evaluation": {"type": "string", "const": "RUNTIME_OBSERVED"},
+    "known_limitations": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "world_plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["world_goal", "scene_scope", "environment_type", "visual_intent", "zones", "camera_requirements", "lighting_requirements", "content_requirements", "technical_constraints", "performance_constraints", "platform_constraints", "prohibited_changes", "acceptance_criteria", "work_packages", "dependencies", "required_evidence", "open_decisions", "human_review_required", "direct_unity_mutation", "automatic_visual_acceptance"],
+      "properties": {
+        "world_goal": {"type": "string", "minLength": 1},
+        "scene_scope": {"type": "string", "minLength": 1},
+        "environment_type": {"type": ["string", "null"]},
+        "visual_intent": {"type": ["string", "null"]},
+        "zones": {"$ref": "#/$defs/texts"},
+        "camera_requirements": {"$ref": "#/$defs/texts"},
+        "lighting_requirements": {"$ref": "#/$defs/texts"},
+        "content_requirements": {"$ref": "#/$defs/texts"},
+        "technical_constraints": {"$ref": "#/$defs/texts"},
+        "performance_constraints": {"$ref": "#/$defs/texts"},
+        "platform_constraints": {"$ref": "#/$defs/texts"},
+        "prohibited_changes": {"$ref": "#/$defs/texts"},
+        "acceptance_criteria": {"$ref": "#/$defs/texts"},
+        "required_evidence": {"$ref": "#/$defs/texts"},
+        "open_decisions": {"$ref": "#/$defs/texts"},
+        "human_review_required": {"type": "boolean", "const": true},
+        "direct_unity_mutation": {"type": "boolean", "const": false},
+        "automatic_visual_acceptance": {"type": "boolean", "const": false},
+        "work_packages": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/package"}},
+        "dependencies": {"type": "array", "items": {"$ref": "#/$defs/dependency"}}
+      }
+    }
+  },
+  "$defs": {
+    "texts": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "package": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "goal", "scope", "domain_hint", "depends_on", "constraints", "acceptance_criteria", "required_evidence"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "goal": {"type": "string", "minLength": 1},
+        "scope": {"type": "string", "minLength": 1},
+        "domain_hint": {"type": "string", "enum": ["visual", "graphics", "performance", "content", "generic_unity"]},
+        "depends_on": {"$ref": "#/$defs/texts"},
+        "constraints": {"$ref": "#/$defs/texts"},
+        "acceptance_criteria": {"$ref": "#/$defs/texts"},
+        "required_evidence": {"$ref": "#/$defs/texts"}
+      }
+    },
+    "dependency": {
+      "type": "object", "additionalProperties": false, "required": ["before", "after"],
+      "properties": {"before": {"type": "string", "minLength": 1}, "after": {"type": "string", "minLength": 1}}
+    }
+  }
+}
