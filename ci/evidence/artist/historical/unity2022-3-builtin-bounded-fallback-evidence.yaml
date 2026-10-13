@@ -1,0 +1,113 @@
+schema_version: "2.0"
+product: UnityArtistCLI
+release_version: "0.0.1-beta"
+case: unity-2022.3-builtin-bounded-fallback
+status: passed
+support:
+  unity_version: "2022.3.22f1"
+  render_pipeline: builtin
+  support_tier: compatibility
+  compatibility_backend: builtin_editor_api
+  transport: official_unity_cli_bounded_batch_fallback
+editor:
+  official_unity_cli: "1.0.0-beta.8"
+  fallback_invoked_by: "unity run <project> --editor-version 2022.3.22f1 -- -executeMethod UnityArtist.UnityArtistBatchCommands.Dispatch"
+  fallback_entrypoint: UnityArtist.UnityArtistBatchCommands.Dispatch
+  scene_path: Assets/Scenes/ArtistVerification.unity
+  scene_selection: "exact --scene-path or exactly one enabled EditorBuildSettings scene"
+  compile_error_count: 0
+  capture_status: passed
+official_first_candidate:
+  transport: official_unity_cli_pipeline
+  gate_status: failed_concrete
+  failure_class: concrete_cli_pipeline_gate_failure
+  observed_message: "Pipeline package requires Unity 6.0 or later"
+  exhaustive_probe_evidence: Tests/Compatibility/cli-pipeline-gate-evidence.yaml
+  fallback_allowed_after_gate: true
+fallback:
+  selected: true
+  status: verified_bounded_non_mcp
+  transport: official_unity_cli_bounded_batch_fallback
+  product_boundary: "Unity 2022.3 LTS + Built-in only"
+  allowed_commands: [inspect, plan, preview, apply, capture, evaluate, refine, cinematic, history]
+  fixed_editor_method: UnityArtist.UnityArtistBatchCommands.Dispatch
+  request_channel: "base64 JSON in UNITY_ARTIST_BATCH_REQUEST"
+  response_channel: "single JSON file in UNITY_ARTIST_BATCH_RESPONSE"
+  state_path: Library/UnityArtist/BatchSession.json
+  state_scope: "plan/capture/history metadata only; approval tokens are not persisted"
+  forbidden: [dynamic_code_execution, raw_yaml_mutation, mcp_transport, generic_crud, automatic_scene_save]
+fixture_authoring:
+  status: passed
+  transport: official_unity_cli_batch
+  bootstrap_method: UnityArtistVerification2022.FixtureBootstrap.Create
+  no_yaml_edit: true
+  scene_saved_by_editor_api: true
+artist_flow:
+  inspect:
+    status: passed
+    verified: true
+    evidence: [bounded_non_mcp_batch_fallback, visual_art_inspection, pipeline_support_fact]
+    targets: [Main Camera, Key Light]
+  plan:
+    status: passed
+    verified: false
+    plan_id: artist-plan-03ba3c00aead4aff9f8760225d329078
+    revision: 04f2e5156a034ba506852a7575a3c6cdd8952c4d03d0a223484eb61be907f840
+    exact_diff:
+      - { target: RenderSettings, property: fogDensity, before: "0.015", after: "0.025" }
+      - { target: Key Light, property: intensity, before: observed, after: "1.2" }
+  preview:
+    status: passed
+    verified: false
+    plan_id: artist-plan-03ba3c00aead4aff9f8760225d329078
+    exact_diff_count: 2
+  approval_guard:
+    status: passed
+    no_token_status: blocked
+    no_token_error: APPROVAL_REQUIRED
+    no_scene_mutation: true
+  apply:
+    status: passed
+    verified: true
+    plan_id: artist-plan-03ba3c00aead4aff9f8760225d329078
+    exact_diff_count: 2
+    evidence: [mutation_evidence, undo_registration, save_not_performed]
+    save_performed: false
+    undo_available: true
+  capture:
+    status: passed
+    verified: true
+    capture_id: artist-capture-76c514d6ef144fe98ec8709004741d1d
+    camera: Main Camera
+    resolution: 1920x1080
+    file: TestProjects/UnityArtistVerification-2022.3/Library/UnityArtist/Captures/artist-capture-76c514d6ef144fe98ec8709004741d1d/color.png
+    file_size_bytes: 169639
+    png_sha256: ea1fb76f51a3e42ba59452b2bd655411c8277c2a902f10dccf75c87836bd46fa
+    evidence: [visual_capture, camera_binding:Main Camera, capture_manifest]
+  evaluate:
+    status: passed
+    verified: true
+    evaluation_id: artist-evaluation-90134fdefdf04f9e96f0d86f036ed1c2
+    decision: accepted
+    human_review: true
+  refine:
+    status: passed
+    verified: false
+    evaluation_id: artist-evaluation-dc8bd67d79b6497caa89af79a8379df7
+    plan_id: artist-plan-a4884c2bdb884b1db8b3e3af2593d55f
+    exact_diff: { target: Main Camera, property: fieldOfView, before: observed, after: "45" }
+  refine_apply:
+    status: passed
+    verified: true
+    plan_id: artist-plan-a4884c2bdb884b1db8b3e3af2593d55f
+    exact_diff: { target: Main Camera, property: fieldOfView, before: "40", after: "45" }
+    evidence: [mutation_evidence, undo_registration, save_not_performed]
+  history:
+    status: passed
+    verified: true
+    evidence_ids: [artist-plan-03ba3c00aead4aff9f8760225d329078, artist-capture-76c514d6ef144fe98ec8709004741d1d, artist-evaluation-90134fdefdf04f9e96f0d86f036ed1c2, artist-plan-a4884c2bdb884b1db8b3e3af2593d55f]
+terminal_state: verified_for_fixture
+notes:
+  - Official Unity CLI/Pipeline remained the first candidate and the localized Unity 6.0 requirement was classified as a concrete compatibility failure.
+  - The fallback is a fixed Unity CLI batch entrypoint, not unity-cli-loop execute-dynamic-code and not MCP.
+  - Each batch process reopens the exact fixture scene; scene mutation is not auto-saved.

@@ -1,0 +1,77 @@
+schema_version: "2.0"
+product: UnityArtistCLI
+release_version: "0.0.1-beta"
+case: unity-6-hdrp-minimal-smoke
+status: passed
+fixture: TestProjects/UnityArtistVerification-HDRP
+scene: Assets/MinimalSmoke.unity
+editor:
+  version: "6000.6.0f1"
+  transport: official_unity_cli_pipeline
+  pipeline_server:
+    host: 127.0.0.1
+    port: 7801
+    status: reachable
+  safe_mode: false
+setup:
+  fixture_mode: saved_official_pipeline_fixture
+  camera: Main Camera
+  geometry: SmokeSubject
+  hdrp_asset: Assets/Settings/HDRP.asset
+  volume_object: ArtistHDRPVolume
+  volume_profile: Assets/Settings/HDRPVolumeProfile.asset
+  fog_override: HDRP.Fog.meanFreePath
+  player_color_space: Linear
+support:
+  tier: primary
+  render_pipeline: hdrp
+  compatibility_backend: hdrp_native_api
+native_adapter:
+  status: passed
+  inspection_evidence:
+    - hdrp_volume_inspection
+    - hdrp_fog_override
+  plan_target: ArtistHDRPVolume
+  plan_property: HDRP.Fog.meanFreePath
+  plan_before: "80"
+  plan_after: "50"
+  apply_evidence:
+    - hdrp_native_volume
+    - hdrp_fog_mean_free_path
+    - mutation_evidence
+    - undo_registration
+    - save_not_performed
+artist_lifecycle:
+  inspect: passed
+  plan: passed
+  preview: passed
+  approval_guard: passed
+  approved_apply:
+    status: passed
+    save_performed: false
+    undo_available: true
+  capture:
+    status: passed
+    verified: true
+    camera: Main Camera
+    png_relative_path: TestProjects/UnityArtistVerification-HDRP/Library/UnityArtist/Captures/<capture-id>/color.png
+    png_bytes: 407699
+    png_sha256: f83e8e9d9c7bc45b07c400f34589d1390dc4ccc4716bc4b41020131d1330f774
+    resolution: 1920x1080
+  evaluate:
+    status: passed
+    decision: needs_refine
+    human_review: true
+  refine:
+    status: passed
+    approval_required: true
+    evaluation_reference: true
+  history: passed
+static_contract:
+  test: Tests/Minimal/test_minimal_smoke_contract.py
+  status: passed
+  tests: 2
+notes:
+  - This is a reduced Unity 6 HDRP native Volume/Fog adapter smoke fixture; it does not replace the primary cinematic acceptance scenario.
+  - HDRP fog is fail-closed when an exact scene Volume and Fog override are not present.
+  - The runner uses Official Unity CLI/Pipeline commands and never uses eval or edits Unity YAML.
