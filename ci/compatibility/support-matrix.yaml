@@ -1,0 +1,39 @@
+schema_version: "2.0"
+kind: unity_artist_release_matrix
+product: UnityArtistCLI
+package_version: "0.0.2-beta"
+transport: official_unity_cli_pipeline
+rows:
+  - id: unity-6-builtin
+    unity_version: "Unity 6.x+"
+    render_pipeline: builtin
+    support_tier: primary
+    supported: true
+    compatibility_backend: builtin_editor_api
+    transport: official_unity_cli_pipeline
+  - id: unity-6-urp
+    unity_version: "Unity 6.x+"
+    render_pipeline: urp
+    support_tier: primary
+    supported: true
+    compatibility_backend: urp_native_api
+    transport: official_unity_cli_pipeline
+  - id: unity-6-hdrp
+    unity_version: "Unity 6.x+"
+    render_pipeline: hdrp
+    support_tier: primary
+    supported: true
+    compatibility_backend: hdrp_native_api
+    transport: official_unity_cli_pipeline
+unsupported_rows:
+  - "Unity 2022.3 (all pipelines; not currently supported)"
+  - "Unity 2023 (all pipelines)"
+  - "URP 14-16 formal release rows"
+verification_contract:
+  required_real_fixture_evidence:
+    - cli_identify_open_manage
+    - pipeline_install_or_existing_available
+    - connected_command_discovery
+    - bounded_command_execution
+    - structured_safety_scope_evidence
+  unsupported_result_before_mutation: true
