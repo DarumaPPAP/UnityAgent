@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "canonical_editor": "6000.6.0f1",
+  "observation": "not_observed",
+  "package_policy": "official-registry-stable-17-exact-editor-stream",
+  "fixtures": [
+    {
+      "id": "canonical-full",
+      "project": "ci/unity-projects/artist-e2e",
+      "editor": "6000.6.0f1",
+      "pipeline": "builtin",
+      "scope": "full"
+    },
+    {
+      "id": "minimal-6000.6",
+      "project": "ci/unity-projects/versions/6000.6",
+      "editor": "6000.6.0f1",
+      "pipeline": "builtin",
+      "scope": "compile-import",
+      "test_filter": "UnityCi.MinimalTests"
+    },
+    {
+      "id": "minimal-6000.3",
+      "project": "ci/unity-projects/versions/6000.3",
+      "editor": "6000.3.12f1",
+      "pipeline": "builtin",
+      "scope": "compile-import",
+      "test_filter": "UnityCi.MinimalTests",
+      "version_provenance": {
+        "repository": "https://github.com/Unity-Technologies/Graphics",
+        "commit": "2d2e78cc9d6254bc6e7c9c5552cea053508e86cb",
+        "path": "Templates/com.unity.template-hd/ProjectSettings/ProjectVersion.txt",
+        "revision": "fca03ac9b0d5"
+      }
+    },
+    {
+      "id": "builtin-smoke",
+      "project": "ci/unity-projects/pipelines/builtin",
+      "editor": "6000.6.0f1",
+      "pipeline": "builtin",
+      "scope": "scene-native-api-smoke",
+      "test_filter": "UnityCi.PipelineSmokeTests",
+      "requires_graphics": true,
+      "required_artifacts": [
+        "pipeline-smoke.png",
+        "graphics-device.json"
+      ]
+    },
+    {
+      "id": "urp-smoke",
+      "project": "ci/unity-projects/pipelines/urp",
+      "editor": "6000.6.0f1",
+      "pipeline": "urp",
+      "scope": "scene-native-api-smoke",
+      "test_filter": "UnityCi.PipelineSmokeTests",
+      "srp_package": "com.unity.render-pipelines.universal",
+      "requires_graphics": true,
+      "required_artifacts": [
+        "pipeline-smoke.png",
+        "graphics-device.json"
+      ]
+    },
+    {
+      "id": "hdrp-smoke",
+      "project": "ci/unity-projects/pipelines/hdrp",
+      "editor": "6000.6.0f1",
+      "pipeline": "hdrp",
+      "scope": "scene-native-api-smoke",
+      "test_filter": "UnityCi.PipelineSmokeTests",
+      "srp_package": "com.unity.render-pipelines.high-definition",
+      "requires_graphics": true,
+      "required_artifacts": [
+        "pipeline-smoke.png",
+        "graphics-device.json"
+      ]
+    }
+  ]
+}
