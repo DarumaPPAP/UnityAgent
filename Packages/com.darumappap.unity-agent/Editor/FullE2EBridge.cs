@@ -12,7 +12,7 @@ namespace DarumaPPAP.UnityAgent.Editor
 {
     // 固定の操作だけを受け付け、任意のEditor API・Path・C# source・YAMLは実行しない。
     [InitializeOnLoad]
-    internal static class UnityAgentFullE2EBridge
+    internal static class FullE2EBridge
     {
         private const string AssetDirectory = "Assets/UnityAgentE2E";
         private const string ScenePath = AssetDirectory + "/FullE2EScene.unity";
@@ -130,7 +130,7 @@ namespace DarumaPPAP.UnityAgent.Editor
         private static readonly string InstanceId = ResolveInstanceId();
         private static double _lastHeartbeat;
 
-        static UnityAgentFullE2EBridge()
+        static FullE2EBridge()
         {
             EditorApplication.update += Tick;
         }

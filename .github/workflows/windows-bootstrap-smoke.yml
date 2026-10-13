@@ -5,18 +5,18 @@ on:
     paths:
       - "scripts/install.ps1"
       - "Packages/com.darumappap.unity-agent/Editor/Bootstrap~/**"
-      - "Packages/com.darumappap.unity-agent/Editor/UnityAgentControlPlanePathResolver.cs"
-      - "Packages/com.darumappap.unity-agent/Editor/UnityAgentControlPlaneBootstrap.cs"
-      - "Packages/com.darumappap.unity-agent/Editor/UnityAgentSetupWindow.cs"
+      - "Packages/com.darumappap.unity-agent/Editor/ControlPlanePathResolver.cs"
+      - "Packages/com.darumappap.unity-agent/Editor/ControlPlaneBootstrap.cs"
+      - "Packages/com.darumappap.unity-agent/Editor/SetupWindow.cs"
       - ".github/workflows/windows-bootstrap-smoke.yml"
   push:
     branches: [main]
     paths:
       - "scripts/install.ps1"
       - "Packages/com.darumappap.unity-agent/Editor/Bootstrap~/**"
-      - "Packages/com.darumappap.unity-agent/Editor/UnityAgentControlPlanePathResolver.cs"
-      - "Packages/com.darumappap.unity-agent/Editor/UnityAgentControlPlaneBootstrap.cs"
-      - "Packages/com.darumappap.unity-agent/Editor/UnityAgentSetupWindow.cs"
+      - "Packages/com.darumappap.unity-agent/Editor/ControlPlanePathResolver.cs"
+      - "Packages/com.darumappap.unity-agent/Editor/ControlPlaneBootstrap.cs"
+      - "Packages/com.darumappap.unity-agent/Editor/SetupWindow.cs"
       - ".github/workflows/windows-bootstrap-smoke.yml"
   workflow_dispatch:
 

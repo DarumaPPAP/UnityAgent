@@ -46,17 +46,17 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
 
-          path = Path("Packages/com.darumappap.unity-agent/Editor/UnityAgentControlPlaneBootstrap.cs")
+          path = Path("Packages/com.darumappap.unity-agent/Editor/ControlPlaneBootstrap.cs")
           text = path.read_text(encoding="utf-8")
           required = "UnityEditor.PackageManager.PackageInfo.FindForAssembly"
           if required not in text:
               raise SystemExit(
-                  "UnityAgentControlPlaneBootstrap.cs must fully qualify "
+                  "ControlPlaneBootstrap.cs must fully qualify "
                   "UnityEditor.PackageManager.PackageInfo.FindForAssembly to avoid CS0104."
               )
           if "using UnityEditor.PackageManager;" in text:
               raise SystemExit(
-                  "UnityAgentControlPlaneBootstrap.cs must not import UnityEditor.PackageManager "
+                  "ControlPlaneBootstrap.cs must not import UnityEditor.PackageManager "
                   "while UnityEditor is also imported; PackageInfo becomes ambiguous on Unity 6."
               )
           print("Unity PackageInfo qualification validation passed.")
@@ -109,11 +109,11 @@ jobs:
               if '"--user"' in text:
                   raise SystemExit(f"{path} must not install the Control Plane with pip --user")
 
-          resolver = Path("Packages/com.darumappap.unity-agent/Editor/UnityAgentControlPlanePathResolver.cs").read_text(encoding="utf-8")
+          resolver = Path("Packages/com.darumappap.unity-agent/Editor/ControlPlanePathResolver.cs").read_text(encoding="utf-8")
           if "UnityAgent LocalAppData runtime" not in resolver or 'Path.Combine(localAppData, "UnityAgent", "ControlPlane")' not in resolver:
               raise SystemExit("Control Plane resolver must prefer the managed LocalAppData runtime")
 
-          codex = Path("Packages/com.darumappap.unity-agent/Editor/UnityAgentCodexPathResolver.cs").read_text(encoding="utf-8")
+          codex = Path("Packages/com.darumappap.unity-agent/Editor/CodexPathResolver.cs").read_text(encoding="utf-8")
           for token in ("Codex Desktop managed runtime", '".codex", "packages", "standalone", "releases"', '"Programs", "OpenAI", "Codex", "bin"'):
               if token not in codex:
                   raise SystemExit(f"Codex resolver is missing desktop runtime discovery: {token}")
@@ -196,12 +196,12 @@ jobs:
               "package/package.json.meta",
               "package/Editor.meta",
               "package/Editor/DarumaPPAP.UnityAgent.Editor.asmdef.meta",
-              "package/Editor/UnityAgentCodexPathResolver.cs.meta",
-              "package/Editor/UnityAgentControlPlanePathResolver.cs.meta",
-              "package/Editor/UnityAgentControlPlaneBootstrap.cs",
-              "package/Editor/UnityAgentControlPlaneBootstrap.cs.meta",
-              "package/Editor/UnityAgentControlPlaneClient.cs.meta",
-              "package/Editor/UnityAgentSetupWindow.cs.meta",
+              "package/Editor/CodexPathResolver.cs.meta",
+              "package/Editor/ControlPlanePathResolver.cs.meta",
+              "package/Editor/ControlPlaneBootstrap.cs",
+              "package/Editor/ControlPlaneBootstrap.cs.meta",
+              "package/Editor/ControlPlaneClient.cs.meta",
+              "package/Editor/SetupWindow.cs.meta",
               "package/Editor/Bootstrap~/install-control-plane.ps1",
           }
           with tarfile.open(archive, "r:gz") as package:

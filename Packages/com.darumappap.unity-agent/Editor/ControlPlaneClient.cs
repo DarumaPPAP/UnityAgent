@@ -5,7 +5,7 @@ using System.Text;
 
 namespace DarumaPPAP.UnityAgent.Editor
 {
-    internal static class UnityAgentControlPlaneClient
+    internal static class ControlPlaneClient
     {
         internal static bool TryRun(
             string operation,

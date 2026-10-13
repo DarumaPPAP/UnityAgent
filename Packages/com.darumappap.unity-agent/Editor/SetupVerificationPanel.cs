@@ -12,7 +12,7 @@ namespace DarumaPPAP.UnityAgent.Editor
     /// 既存UnityAgent Setup内の開発用検証入口。HubはRuntimeやInstallerとして扱わない。
     /// 別Editorプロセスで既存P9 fixtureを実行し、測定Evidenceを表示する。
     /// </summary>
-    internal static class UnityAgentSetupVerificationPanel
+    internal static class SetupVerificationPanel
     {
         internal const string HubRootPreferenceKey = "DarumaPPAP.UnityAgent.VerificationHubRoot";
         internal static readonly string[] Fixtures =
@@ -229,7 +229,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                         s_outputDirectory = result.Output;
                         s_standardOutput = result.StandardOutput ?? string.Empty;
                         s_standardError = result.StandardError ?? string.Empty;
-                        foreach (var window in Resources.FindObjectsOfTypeAll<UnityAgentSetupWindow>())
+                        foreach (var window in Resources.FindObjectsOfTypeAll<SetupWindow>())
                         {
                             window.Repaint();
                         }

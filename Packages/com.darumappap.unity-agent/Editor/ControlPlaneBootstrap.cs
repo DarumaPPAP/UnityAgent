@@ -12,7 +12,7 @@ namespace DarumaPPAP.UnityAgent.Editor
     /// Bootstrap-only path for installing the Control Plane when it does not exist yet.
     /// It installs only the Control Plane; all normal toolchain mutations remain behind it.
     /// </summary>
-    internal static class UnityAgentControlPlaneBootstrap
+    internal static class ControlPlaneBootstrap
     {
         internal const string Channel = "0.0.8-beta";
         internal const string ReleaseTag = "v0.0.8-beta";
@@ -42,7 +42,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                 return false;
             }
 
-            var package = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(UnityAgentControlPlaneBootstrap).Assembly);
+            var package = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(ControlPlaneBootstrap).Assembly);
             if (package == null || string.IsNullOrWhiteSpace(package.resolvedPath))
             {
                 error = "UnityAgent package pathを解決できませんでした。";

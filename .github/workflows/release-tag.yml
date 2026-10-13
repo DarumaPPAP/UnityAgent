@@ -222,11 +222,11 @@ jobs:
               "package/package.json.meta",
               "package/Editor.meta",
               "package/Editor/DarumaPPAP.UnityAgent.Editor.asmdef.meta",
-              "package/Editor/UnityAgentCodexPathResolver.cs.meta",
-              "package/Editor/UnityAgentControlPlanePathResolver.cs.meta",
-              "package/Editor/UnityAgentControlPlaneBootstrap.cs.meta",
-              "package/Editor/UnityAgentControlPlaneClient.cs.meta",
-              "package/Editor/UnityAgentSetupWindow.cs.meta",
+              "package/Editor/CodexPathResolver.cs.meta",
+              "package/Editor/ControlPlanePathResolver.cs.meta",
+              "package/Editor/ControlPlaneBootstrap.cs.meta",
+              "package/Editor/ControlPlaneClient.cs.meta",
+              "package/Editor/SetupWindow.cs.meta",
               "package/Editor/Bootstrap~/install-control-plane.ps1",
           }
           with tarfile.open(archive, "r:gz") as package:

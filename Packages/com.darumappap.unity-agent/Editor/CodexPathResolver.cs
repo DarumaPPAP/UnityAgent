@@ -12,7 +12,7 @@ namespace DarumaPPAP.UnityAgent.Editor
     /// Discovery is intentionally read-only. Executable validation belongs to the
     /// Control Plane / Installer Provider so the Entry Layer never executes Codex directly.
     /// </summary>
-    internal static class UnityAgentCodexPathResolver
+    internal static class CodexPathResolver
     {
         internal const string EditorPrefKey = "DarumaPPAP.UnityAgent.CodexCliPath";
 
