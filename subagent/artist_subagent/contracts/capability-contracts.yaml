@@ -1,0 +1,45 @@
+schema_version: "1.0"
+kind: artist_capability_behavior_contract
+
+# Specialist identity, lifecycle, installation, and capability ids are canonical in
+# ../manifest.yaml. This file contains operation-level rules.
+# The current Agent profile exposes only artist.camera.inspect, artist.camera.refine,
+# and visual.capture. Other operations below are backend surface contracts, not
+# independent Resolver candidates in the current runtime profile.
+capabilities:
+  inspect:
+    mode: read_only
+    use_when: ["visual targets, pipeline support, lighting, camera, and cinematic objects must be observed"]
+    requires: [explicit_project_path, artist_subagent_eligible]
+    must_not: [mutate_scene, save_project, infer_human_aesthetic_decision]
+    success_evidence: [visual_art_inspection, pipeline_support_fact]
+  lookdev:
+    mode: plan_or_approved_mutation
+    use_when: ["mood, LookDev, lighting, environment, or camera intent is explicit"]
+    requires: [artist_subagent_eligible, structured_visual_intent, exact_diff, expected_revision, unity_agent_approval_for_apply]
+    must_not: [generic_gameobject_crud, arbitrary_eval, silent_pipeline_fallback]
+    success_evidence: [visual_direction_plan, exact_diff, expected_revision, mutation_evidence]
+  cinematic:
+    mode: plan_or_approved_mutation
+    use_when: ["Timeline, Cinemachine Shot, track, clip, binding, marker, signal, activation, control, or animation intent is explicit"]
+    requires: [artist_subagent_eligible, exact_target, exact_diff, expected_revision, unity_agent_approval_for_apply]
+    must_not: [rewrite_unrelated_timeline, mutate_unbound_track, automatic_save]
+    success_evidence: [cinematic_plan, timeline_evidence, mutation_evidence]
+  capture:
+    mode: read_only_evidence
+    use_when: ["a bounded visual evidence bundle is requested"]
+    requires: [artist_subagent_eligible, exact_camera_binding, pipeline_support_fact, evidence_bundle]
+    must_not: [claim_visual_acceptance, automatic_scene_mutation, automatic_save]
+    success_evidence: [visual_capture, camera_binding, capture_manifest]
+  evaluate:
+    mode: human_review_record
+    use_when: ["a human must decide accepted, rejected, or needs_refine"]
+    requires: [capture_reference, human_review_decision]
+    must_not: [auto_accept, aesthetic_decision_without_human_review]
+    success_evidence: [artist_validation, human_review_decision]
+  refine:
+    mode: linked_plan
+    use_when: ["a rejected or needs_refine capture requires a new explicit intent plan"]
+    requires: [artist_subagent_eligible, evaluation_reference, structured_visual_intent]
+    must_not: [unbounded_iteration, hidden_mutation]
+    success_evidence: [refinement_plan, evaluation_reference]

@@ -1,0 +1,7 @@
+schema_version: '2.0'
+kind: subagent_registry
+entries:
+- manifest: subagent/artist_subagent/manifest.yaml
+- manifest: subagent/graphics_subagent/manifest.yaml
+- manifest: subagent/world_creator_subagent/manifest.yaml
+- manifest: subagent/performance_subagent/manifest.yaml
