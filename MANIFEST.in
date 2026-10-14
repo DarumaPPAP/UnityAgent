@@ -7,3 +7,6 @@ include VERSION
 include eval/datasets/behavior/production-tool-runtime-environment-matrix.yaml
 
 prune src/unityagent/_resources
+
+recursive-include subagent *.yaml *.yml *.json *.md *.txt
+include cli/artist/artist-backend-contract.yaml

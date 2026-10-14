@@ -84,35 +84,23 @@ EntryからProviderを直接呼び出したり、ProviderがPolicyやdurable sta
 
 ## Responsibility Boundaries
 
-### UnitySubAgentHub
+### 統合SubAgent
 
-[UnitySubAgentHub](https://github.com/DarumaPPAP/UnitySubAgentHub) は、Optional Specialist SubAgentのRegistry / Catalog / Manifest / Schema / Validationとco-located Specialist sourceを管理する別Repositoryです。Hub/個別SubAgentは独立Releaseを公開せず、公開DistributionはUnityAgent Releaseへ集約します。
+4つのSubAgentの正本はUnityAgentの `subagent/` にあります。Artistのoptional Unity Packageは
+`Packages/com.darumappap.artist-subagent/`、CLIは `cli/artist/` に配置しています。
+Releaseは同じUnityAgent checkoutから全成果物を生成し、Python配布にも定義・Instructions・Contractsを同梱します。
+[旧UnitySubAgentHub](https://github.com/DarumaPPAP/UnitySubAgentHub) は移行履歴・互換検証用です。
+現在のReleaseは旧Hubを取得しません。旧HubのArchiveは実Editor移行検証後に別途行います。
 
-| UnityAgent owns | UnitySubAgentHub owns |
-|---|---|
-| Request interpretation / src/unityagent/policy / Approval | Registry index |
-| Environment / Project Binding | Canonical SubAgent manifests |
-| Eligibility / Capability resolution | Shared schemas |
-| src/unityagent/runtime execution / Retry / Fallback | Fail-Closed validation |
-| Evidence normalization | Data-only catalog snapshot generation |
+- `requested_subagent` はEntry v2の任意指定です。Routeの担当と一致し、既存の導入・互換性・Binding・Context Gateを満たす場合だけ利用できます。
+- Project inspectionはFast、単一の専門TaskはStandardで処理し、選択をOrchestration decisionに記録します。Mode UIはありません。
+- Control Plane実行は同じ物理ProjectへのOS leaseを取得し、Evidence保存まで保持します。競合は `blocked / resource_busy` です。
+- Registry登録は導入・Binding・実行可能を意味しません。SubAgentは自動Installしません。
+- 同居ManifestとConsumer Catalogの一致は `python tools/validate_local_subagent_catalog.py` で検証します。
+- 旧SnapshotのOffline Import CLIとSource Lockは履歴互換検証として維持します。Catalogを書き換えず、変更候補はGit PRとしてレビューします。
 
-- Specialist identity: **`artist_subagent`**
-- Current backend/provider ID: **`unity_artist_cli`**
-- Registry登録だけではinstalled / compatible / project-bound / available / eligibleを意味しません。
-- Missing SubAgentをCapability解決のために自動Installしません。
-
-<details>
-<summary><strong>Current Hub snapshot integration</strong></summary>
-
-Hub CIは登録Manifestからconsumer-neutralな `Hub-SubAgent-Catalog-Snapshot` Artifactを生成します。Snapshotは静的Identity、Lifecycle、Capability、Activation、BackendとEvidenceの契約を含み、src/unityagent/runtime Profileの`goal_type`や既定Profileを含めません。
-
-UnityAgentのReferenceImplementationは、現在もRepository内の `src/unityagent/runtime/reference_implementation/subagent-catalog.yaml` を `SubAgentProfileCatalog` で読み込みます。Hub CI Artifactを自動取得・同期する経路は現行コードにはありません。
-
-そのため、**HubでSnapshotが公開されたことと、UnityAgent Runtimeへ同期済みであることは別です。**
-
-Offline Snapshotを反映候補として確認するときは、`python tools/import_subagent_catalog.py` へSnapshotの取得元と完全なSHA-256を渡します。UnityAgent側Adapterがconsumer-owned Profile値を保持してImport Planを作ります。Planは `Added` / `Removed` / `Changed` / `No-op`、protected Field、Riskを出力しますが、Catalogへ書き込みません。RuntimeのEligibilityは反映後も現在のEnvironment Factで再判定され、Catalog更新は通常のGit Pull Requestとしてレビューします。
-
-</details>
+複数Task DAGの並列実行、Resource Queue / Device Lock、Graphics / Performance / WorldCreatorの変更権限付きE2Eは未接続です。
+現行診断・計画の成功を実装E2E成功として報告しません。
 
 ### Provider model
 
@@ -242,7 +230,7 @@ Local Regression Gateの一部はローカルCodex CLIや認証済み環境を�
 | src/unityagent/runtime / Provider Registry / Resolution | `src/unityagent/runtime/` |
 | Durable Evidence | `src/unityagent/persistence/` |
 | Regression / eval | `eval/` |
-| Optional SubAgent metadata | [UnitySubAgentHub](https://github.com/DarumaPPAP/UnitySubAgentHub) |
+| Optional SubAgent metadata | [`subagent/`](subagent/) |
 
 詳細は [Architecture](docs/architecture/architecture.md) と [Production Tool src/unityagent/runtime](docs/architecture/production-tool-runtime.md) を参照してください。
 

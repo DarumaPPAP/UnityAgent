@@ -15,9 +15,9 @@ def copy_resources(destination):
         shutil.rmtree(destination)
     manifest = {}
     paths = []
-    for base in ('src/unityagent', '.agents', 'docs/standards', 'docs/templates', 'docs/architecture/specifications'):
+    for base in ('src/unityagent', '.agents', 'docs/standards', 'docs/templates', 'docs/architecture/specifications', 'subagent'):
         paths.extend((ROOT / base).rglob('*'))
-    paths.extend(ROOT / p for p in ('VERSION', 'src/unityagent/contracts/unityagent-layer-contract.yaml', 'eval/datasets/behavior/production-tool-runtime-environment-matrix.yaml'))
+    paths.extend(ROOT / p for p in ('VERSION', 'cli/artist/artist-backend-contract.yaml', 'src/unityagent/contracts/unityagent-layer-contract.yaml', 'eval/datasets/behavior/production-tool-runtime-environment-matrix.yaml'))
     for source in sorted(set(paths)):
         relative = source.relative_to(ROOT)
         if not source.is_file() or (source.name != 'VERSION' and source.suffix not in {'.yaml', '.yml', '.json', '.md', '.txt', '.cs'}) or any(part in {'_resources', '__pycache__'} for part in relative.parts):

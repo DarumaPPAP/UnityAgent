@@ -12,6 +12,8 @@ from unityagent.resources import resource_root
 from datetime import datetime, timezone
 import uuid
 from copy import deepcopy
+from functools import wraps
+from contextlib import ExitStack
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -19,6 +21,7 @@ import yaml
 from jsonschema import Draft202012Validator
 
 from unityagent.orchestration.orchestrator.orchestrator import runtime_handoff, runtime_node_for_requests
+from unityagent.orchestration.routing.adaptive_execution import select_execution_path
 from unityagent.orchestration.routing.route_selector import load_routes, resolve_specialist, select_route, select_specialist_capability, task_fingerprint_from_intent
 from unityagent.orchestration.tool_routing.capability_request_builder import (build_capability_requests, build_specialist_capability_requests, conditions_for_intent,
     mutation_scope_for_intent, task_contract_projection)
@@ -49,6 +52,8 @@ from unityagent.runtime.reference_implementation.authority import ApprovalDecisi
 from unityagent.runtime.handoff.reasoning_runtime import ContextBindingError, execute_reasoning
 from unityagent.runtime.runner.codex.codex_runner import CodexRunnerError
 from unityagent.control_plane.reference_camera_fov import execute_camera_fov_reference, is_camera_fov_reference_request
+
+from unityagent.runtime.guardrails.project_lease import ProjectLeaseBusy, acquire_project_lease
 
 ROOT = resource_root()
 ENTRY_SCHEMA_PATH = Path("src/unityagent/runtime/contracts/entry-request.schema.yaml")
@@ -89,6 +94,38 @@ def validate_entry_request(value: dict[str, Any], *, root: Path = ROOT) -> None:
             validate_capability_request(dict(request), root=root)
             if str(request["project_root"]).casefold() != str(value["project_root"]).casefold():
                 raise ValueError("CapabilityRequest project_root must match Entry project_root")
+
+
+def _project_exclusive(operation):
+    """Control Plane間の競合をRuntimeへ渡す前に検出し、Evidence保存まで保持する。"""
+    @wraps(operation)
+    def execute(plane, entry_request, **parameters):
+        validate_entry_request(entry_request)
+        if entry_request['schema_version'] == '1.0':
+            raise ValueError('Entry v1 migration required: use v2 without caller-supplied Context identity')
+        owner = parameters.get('run_id') or _new_run_id(str(entry_request['request_id']))
+        try:
+            task_fingerprint_from_intent(dict(entry_request['intent']),
+                _snapshot_dict(parameters['environment_snapshot']),
+                project_root=str(entry_request['project_root']),
+                policy_allowed=parameters['context'].policy_allowed)
+        except ValueError as exc:
+            return {'schema_version': '2.0', 'status': 'blocked', 'run_id': owner,
+                    'reason': str(exc), 'results': [], 'evidence_refs': []}
+        stack = ExitStack()
+        try:
+            stack.enter_context(acquire_project_lease(entry_request['project_root'], owner=owner))
+        except ProjectLeaseBusy as exc:
+            return {'schema_version': '2.0', 'status': 'blocked', 'run_id': owner,
+                    'failure_class': 'resource_busy', 'reason': str(exc),
+                    'results': [], 'evidence_refs': []}
+        except (OSError, ValueError) as exc:
+            return {'schema_version': '2.0', 'status': 'blocked', 'run_id': owner,
+                    'failure_class': 'resource_unavailable', 'reason': str(exc),
+                    'results': [], 'evidence_refs': []}
+        with stack:
+            return operation(plane, entry_request, **{**parameters, 'run_id': owner})
+    return execute
 
 
 def _snapshot_dict(snapshot: EnvironmentSnapshot | Mapping[str, Any]) -> dict[str, Any]:
@@ -179,6 +216,7 @@ class UnityAgentControlPlane:
             )
         )
 
+    @_project_exclusive
     def execute(
         self,
         entry_request: dict[str, Any],
@@ -208,8 +246,13 @@ class UnityAgentControlPlane:
         try:
             task_fingerprint = task_fingerprint_from_intent(intent, snapshot,
                 project_root=str(entry_request["project_root"]), policy_allowed=context.policy_allowed)
-            route_decision = select_route(task_fingerprint, load_routes(ROOT / "src/unityagent/orchestration/routing/task-routes.yaml"))
+            route_catalog = load_routes(ROOT / "src/unityagent/orchestration/routing/task-routes.yaml")
+            route_decision = select_route(task_fingerprint, route_catalog)
             route_id = str(route_decision["route_id"])
+            assigned_subagent = route_catalog['routes'][route_id].get('specialist_profile')
+            requested_subagent = entry_request.get('requested_subagent')
+            if requested_subagent is not None and requested_subagent != assigned_subagent:
+                raise ValueError('requested SubAgent is incompatible with resolved task ownership')
             conditions = conditions_for_intent(intent, task_fingerprint)
             mutation_scope = mutation_scope_for_intent(intent, task_fingerprint)
             capability_requests = build_capability_requests(route_id=route_id,
@@ -236,8 +279,6 @@ class UnityAgentControlPlane:
             projection = task_contract_projection(route_id)
             requirements = list(dict.fromkeys(evidence for request in capability_requests
                 for evidence in request["required_evidence"]))
-            node_id = runtime_node_for_requests(capability_requests,
-                graph_path=ROOT / "src/unityagent/orchestration/definitions/development-parent-graph.yaml")
             capabilities = [str(request["capability"]) for request in capability_requests]
         except ValueError as exc:
             return {"schema_version": "2.0", "status": "blocked", "run_id": resolved_run_id,
@@ -272,6 +313,23 @@ class UnityAgentControlPlane:
             return {"schema_version": "2.0", "status": "blocked", "run_id": resolved_run_id,
                     "reason": f"Context gate: {manifest['budget_report']['decision']}; unresolved={view['unresolved_bindings']}",
                     "context_manifest_ref": manifest_ref, "results": [], "evidence_refs": []}
+        # 経路は調整コストの判断。権限とContextのGateは上で検証済みのまま維持する。
+        bounded_inspection = intent['kind'] == 'project_inspection'
+        risk = {'R0': 'low', 'R1': 'medium', 'R2': 'high', 'R3': 'critical'}.get(
+            projection['risk_level'], 'critical')
+        execution_plan = select_execution_path(
+            task_count=1, simple_task=bounded_inspection, risk=risk,
+            design_review='not_required' if bounded_inspection else route_decision['design_review'],
+            requires_replan=False, project_bound=task_fingerprint['project_access'] == 'authorized',
+            scope_known=True, requested_subagent=requested_subagent,
+            required_subagents=(assigned_subagent,) if assigned_subagent else (),
+            context_profile=manifest['budget_report']['profile'])
+        if execution_plan['status'] == 'blocked':
+            return {'schema_version': '2.0', 'status': 'blocked', 'run_id': resolved_run_id,
+                    'reason': execution_plan['reason'], 'results': [], 'evidence_refs': []}
+        node_id = 'inspect_sources' if execution_plan['path'] == 'fast' else runtime_node_for_requests(
+            capability_requests,
+            graph_path=ROOT / 'src/unityagent/orchestration/definitions/development-parent-graph.yaml')
         effective_request = {**entry_request, "route_id": route_id, "node_id": node_id,
             "execution_profile": route_decision["profile"], "task_contract_runtime_projection": projection,
             "mutation_scope": mutation_scope, "validation_requirements": requirements,
@@ -303,7 +361,8 @@ class UnityAgentControlPlane:
             definition_fingerprint=dict(definition_fingerprint),
         )
         validate_runtime_handoff(handoff)
-        routing_proof = {"task_fingerprint": task_fingerprint, "route_decision": route_decision,
+        routing_proof = {"execution_plan": execution_plan,
+            "task_fingerprint": task_fingerprint, "route_decision": route_decision,
             "active_conditions": sorted(conditions), "task_contract_projection": projection,
             "capability_requests": handoff["capability_requests"], "specialist_capability_requests": specialist_requests,
             "selected_specialist_capability": selected_capability, "node_id": node_id,

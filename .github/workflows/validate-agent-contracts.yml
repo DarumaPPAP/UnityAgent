@@ -238,3 +238,17 @@ jobs:
           test -f .github/ProductionSmoke/run_one_repo_smoke.py
           test ! -e tools/production_smoke/run_one_repo_smoke.py
           test ! -e tests/operations/test_one_repo_production_smoke.py
+
+  project-lease-windows:
+    name: Windows Project Lease
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install Control Plane
+        run: python -m pip install --disable-pip-version-check -e .
+      - name: Verify OS lease and environment-independent namespace
+        run: python -m unittest tests.runtime.test_project_lease -v

@@ -42,3 +42,14 @@ Unknownや競合はBLOCKED / 待機にする。
   外部Hub checkoutをProduction PR検証時に取得しない。
 - RuntimeへのLease/Queue接続、SubAgentごとの変更権限付きE2E能力、
   互換のため残るLegacy Hub Source Lock/Import CLI撤去: 未完了。
+
+## Control Plane接続（2026-10-14）
+
+Entry v2の任意`requested_subagent`は既存Route担当と照合し、activation gateを維持する。
+Adaptive選択は実際のControl Plane実行に接続し、Orchestration decisionへ保存する。
+Project inspectionはFastで追加Agent/Worktreeを作らず、単一専門TaskはStandardとなる。
+現行Entryは1タスクだけを受け付けるため、DAG plannerのparallel提案を実行許可にしない。
+同一Projectへの実行はRuntimeのOS file lockで排他し、Evidence保存まで保持する。
+別Persistence rootも同じHost/userのlease領域を使い、TTLだけで所有権を奪取しない。
+競合は`blocked/resource_busy`。Queue/Heartbeat/Device Lockはまだ有効化しない。
+Releaseは同居sourceを使い、Python配布にはSubAgent定義も同梱する。
