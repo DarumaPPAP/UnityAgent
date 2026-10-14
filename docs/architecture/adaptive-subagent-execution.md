@@ -35,5 +35,10 @@ Unknownや競合はBLOCKED / 待機にする。
 - SubAgent定義の同居: \`subagent/\` 移植済み
 - Artist Package/CLI: 同居済み
 - Adaptive選択/DAGリソース計画: 本変更
-- RuntimeへのLease/Queue接続、EditorのE2E検証経路、Hub配布依存の撤去:
-  未実装として追跡し、CIと実Unity Editorで段階検証する。
+- Unity Editor P9検証経路: UnityAgent UPMへ同居P9/Artist Fixtureを同梱済み。
+  Setupは外部Hub Git取得を使わず、同梱Manifestを照合して別Editorで実行。
+- SubAgent Catalog Import Gate: UnityAgent内の`subagent/` Manifestから作った
+  SnapshotがConsumer Catalogとread-only/no-opで一致することをCIで検査。
+  外部Hub checkoutをProduction PR検証時に取得しない。
+- RuntimeへのLease/Queue接続、SubAgentごとの変更権限付きE2E能力、
+  互換のため残るLegacy Hub Source Lock/Import CLI撤去: 未完了。
