@@ -1,0 +1,23 @@
+{
+  "name": "com.darumappap.artist-subagent",
+  "version": "0.0.2-beta",
+  "displayName": "ArtistSubAgent Backend",
+  "description": "Unity Editor backend package for ArtistSubAgent visual-art workflows, including LookDev, Lighting, Environment, Camera, Cinematic, Timeline, Capture, Evaluation and Refine.",
+  "dependencies": {},
+  "author": {
+    "name": "DarumaPPAP"
+  },
+  "keywords": [
+    "unity",
+    "artist",
+    "lookdev",
+    "lighting",
+    "environment",
+    "camera",
+    "cinematic",
+    "timeline",
+    "pipeline",
+    "cli"
+  ],
+  "unity": "6000.0"
+}

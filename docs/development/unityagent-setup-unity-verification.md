@@ -37,16 +37,21 @@ Doctorはoptional SubAgentのInstalled/Bind/Compatibilityを別途評価しま�
 
 ## 3. P9 Unity検証の実行
 
-`5. Unity Verification` に、手動Hub checkoutを指定する欄はありません。
-`検証環境を取得・更新` を押し、Source Lockに固定された `DarumaPPAP/UnitySubAgentHub` の
-正確なCommitを承認して取得します。取得はUnityAgent管理のユーザーキャッシュ
-`%LOCALAPPDATA%/UnityAgent/VerificationHub/<commit>/` に限定されます。
-Gitが使用できない、通信失敗、Pin不一致、キャッシュ汚染の場合はBLOCKED_NOT_RUNです。
-Hubの現在のmainや、ユーザー選択の未検証コードを実行しません。
+UnitySubAgentHubをClone・取得する必要はありません。UnityAgent内の
+`ci/` Fixtureと同一の検証SourceをUPMの
+`Editor/Verification~/`に同梱しています。UPMの検証用ManifestはGit blob IDと
+サイズの検査で改変・欠損を拒否します（Git SHA-1は暗号学的な真正性保証ではなく、
+Package自体の信頼境界はレビュー済みUnityAgent UPM Revisionです）。
 
-取得完了後、Fixtureを選択してEditor内で実行してください。認証済みライセンス、
-必要に応じGPU/Displayの確認を行い、別Unity Editorのプロセスで実行します。
-Control PlaneやProviderのInstallは行いません。
+`UnityAgent > Setup > 5. Unity Verification`を開いて
+`検証環境を再確認`を押すと内容を照合します。
+READYならFixtureとUnityライセンス準備を確認後、
+`選択したUnity検証を実行`を押してください。
+Hub Source Lock/Git clone/ユーザーScope Cacheを必要としません。
+必要なUnity Editor実行ファイル、Python 3.12+、GPUは別の前提条件です。
+
+独立した一時Projectで実行します。手元のゲームProject/Control Plane/Providerは変更しません。
+RunnerはUnityAgentの `ci/scripts/run-unity-tests.ps1` と同じ内容です。
 
 ## 4. Evidenceと制約
 
@@ -59,7 +64,7 @@ ExitCode 0かつ`evidence.json`の`status=PASS, observation=observed`のみPASS�
 ExitCode 2かつ`status=BLOCKED_NOT_RUN, observation=not_observed`はBLOCKED。
 証跡なし・矛盾した結果はFAILです。Host Testや合成Evidenceを実Editor PASSと判断しません。
 
-現行UIは**Windows Editor用**で、P9 Linux入口は引き続きHubのShellスクリプトです。
+現行UIは**Windows Editor用**で、P9 Linux入口はUnityAgentの `ci/scripts/run-unity-tests.sh` です。
 Canary、UnityAgent Control Plane → 実EditorのFull E2E、Player/実機は別検証Gateです。
 Public RepositoryのPRからライセンス済みPCをSelf-hosted Runnerとして実行させないでください。
 

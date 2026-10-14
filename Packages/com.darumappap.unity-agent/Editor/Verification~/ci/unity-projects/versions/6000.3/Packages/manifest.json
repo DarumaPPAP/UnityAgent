@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "com.darumappap.artist-subagent": "file:../../../../../Packages/com.darumappap.artist-subagent",
+    "com.unity.test-framework": "1.3.9"
+  },
+  "testables": [
+    "com.darumappap.artist-subagent"
+  ]
+}
