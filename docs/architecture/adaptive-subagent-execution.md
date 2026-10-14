@@ -42,3 +42,19 @@ Unknownや競合はBLOCKED / 待機にする。
   外部Hub checkoutをProduction PR検証時に取得しない。
 - RuntimeへのLease/Queue接続、SubAgentごとの変更権限付きE2E能力、
   互換のため残るLegacy Hub Source Lock/Import CLI撤去: 未完了。
+
+## Runtime Project排他（実装段階）
+
+`runtime/execution_control/resource_lease.py`はEditorを利用するCapabilityと
+Mutation操作について、ユーザー領域のProject実体Path Hashに基づく
+排他Leaseを発行する。最後のGuardの後、Provider実行前に確保する。
+拒否時は`resource_conflict`でBLOCKED。別ProviderへFallbackして抜け道を
+作らない。Heartbeatは監査情報であり期限切れで自動奪取しない。
+壊れたLeaseや残留LeaseはRuntimeが自動削除せず、Editor停止を観測した
+明示的なRecovery手順が必要。
+
+これは**UnityAgent Runtime経由の処理同士**の排他であり、Editorの
+手動操作やUnity自身のProject Lockとの統合、Workbench/Worktree統合、
+Task SchedulerのLease待ち行列、Console実機排他、E2E Mutation Grantまで
+完成したという意味ではない。Fast Pathのread-only source readは
+Leaseを取得せず、Tokenを増やすOrchestrationを追加しない。

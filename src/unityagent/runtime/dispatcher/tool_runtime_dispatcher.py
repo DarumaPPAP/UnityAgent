@@ -10,10 +10,22 @@ from dataclasses import dataclass
 from typing import Any, Callable, Mapping
 
 from unityagent.runtime.contracts.capability_contract import validate_capability_request
+from unityagent.runtime.execution_control.resource_lease import RuntimeProjectLease, ProjectLeaseUnavailable, ProjectLeaseError
 from unityagent.runtime.guardrails.tool_runtime_guard import guard_runtime_dispatch
 from unityagent.runtime.tooling.environment.environment_snapshot import validate_environment_snapshot
 from unityagent.runtime.tooling.capability_resolver import ResolutionContext
 from unityagent.runtime.tooling.fallback_policy import FallbackPolicy
+
+# Editor-facing operations serialize per Project across Runtime processes.
+# A read-only source.inspect/source.read Fast Path takes no lease.
+EDITOR_CAPABILITIES = frozenset({
+    "compile.observe", "project.test", "project.build", "scene.inspect",
+    "scene.mutate", "profiler.observe", "visual.capture", "domain.workflow",
+})
+MUTATION_OPERATIONS = frozenset({
+    "source_mutation", "editor_mutation", "save", "build", "bake",
+    "player_mutate", "arbitrary_code",
+})
 
 ProviderExecutor = Callable[
     [dict[str, Any], ResolutionContext, Mapping[str, Any]],
@@ -206,13 +218,31 @@ def dispatch_capability(
             arguments["specialist_execution_context"] = dict(specialist_execution_context)
             if specialist_context_manifest_path is not None:
                 arguments["specialist_context_manifest_path"] = specialist_context_manifest_path
-        provider_result = _invoke_executor(
-            executor,
-            provider_ref=provider_ref,
-            request=request,
-            context=context,
-            arguments=arguments,
-        )
+        # Lease only at Runtime dispatch, after Policy/Approval and project binding.
+        # A plan-time parallel wave never authorizes a second Editor process.
+        try:
+            if (request["capability"] in EDITOR_CAPABILITIES or
+                    request["operation_kind"] in MUTATION_OPERATIONS):
+                with RuntimeProjectLease(request["project_root"]):
+                    provider_result = _invoke_executor(
+                        executor, provider_ref=provider_ref, request=request,
+                        context=context, arguments=arguments,
+                    )
+            else:
+                provider_result = _invoke_executor(
+                    executor, provider_ref=provider_ref, request=request,
+                    context=context, arguments=arguments,
+                )
+        except (ProjectLeaseUnavailable, ProjectLeaseError) as exc:
+            return {
+                "schema_version": "1.0",
+                "status": "blocked",
+                "capability": request["capability"],
+                "resolution": current_resolution,
+                "provider_result": _failure(provider_ref, "resource_conflict", str(exc)),
+                "attempts": [item.to_dict() for item in attempts],
+                "fallback_from": fallback_from,
+            }
         attempts.append(
             DispatchAttempt(
                 provider_ref,
