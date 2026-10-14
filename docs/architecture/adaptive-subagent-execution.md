@@ -49,7 +49,28 @@ Entry v2の任意`requested_subagent`は既存Route担当と照合し、activati
 Adaptive選択は実際のControl Plane実行に接続し、Orchestration decisionへ保存する。
 Project inspectionはFastで追加Agent/Worktreeを作らず、単一専門TaskはStandardとなる。
 現行Entryは1タスクだけを受け付けるため、DAG plannerのparallel提案を実行許可にしない。
-同一Projectへの実行はRuntimeのOS file lockで排他し、Evidence保存まで保持する。
+Control Plane同士の同一Project実行はOS file lockで排他し、Evidence保存まで保持する。
 別Persistence rootも同じHost/userのlease領域を使い、TTLだけで所有権を奪取しない。
-競合は`blocked/resource_busy`。Queue/Heartbeat/Device Lockはまだ有効化しない。
+この外側のRun lockの競合は`blocked/resource_busy`。Queue/Device Lockは未接続。
 Releaseは同居sourceを使い、Python配布にはSubAgent定義も同梱する。
+
+## Runtime Project排他（実装段階）
+
+`runtime/execution_control/resource_lease.py`はEditorを利用するCapabilityと
+Mutation操作について、ユーザー領域のProject実体Path Hashに基づく
+排他Leaseを発行する。最後のGuardの後、Provider実行前に確保する。
+拒否時は`resource_conflict`でBLOCKED。別ProviderへFallbackして抜け道を
+作らない。Heartbeatは監査情報であり期限切れで自動奪取しない。
+壊れたLeaseや残留LeaseはRuntimeが自動削除せず、Editor停止を観測した
+明示的なRecovery手順が必要。
+
+これは**UnityAgent Runtime経由の処理同士**の排他であり、Editorの
+手動操作やUnity自身のProject Lockとの統合、Workbench/Worktree統合、
+Task SchedulerのLease待ち行列、Console実機排他、E2E Mutation Grantまで
+完成したという意味ではない。Fast Pathのread-only source readは
+Leaseを取得せず、Tokenを増やすOrchestrationを追加しない。
+
+Control PlaneのRun lockとRuntimeのEditor leaseは別境界を保護する。
+取得順はRun lock → Provider単位のEditor lease。Run lockはEvidence永続化まで、
+Editor leaseはProvider実行中保持する。Runtime直呼出しはRun lockを取得しないため、
+Run lockをユーザー手動操作や全Runtime経路の保護として扱わない。

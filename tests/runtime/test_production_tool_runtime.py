@@ -18,6 +18,7 @@ from unityagent.runtime.contracts.capability_contract import validate_capability
 from unityagent.runtime.tooling.capability_resolver import ResolutionContext
 from unityagent.runtime.tooling.tool_broker import ToolBroker
 from unityagent.runtime.dispatcher.tool_runtime_dispatcher import dispatch_capability
+from unityagent.runtime.execution_control.resource_lease import RuntimeProjectLease
 
 MATRIX_PATH = ROOT / "eval/datasets/behavior/production-tool-runtime-environment-matrix.yaml"
 
@@ -206,6 +207,33 @@ class ProductionToolRuntimeTests(unittest.TestCase):
         self.assertEqual(outcome["provider_result"]["provider_ref"], "native_unity_editor")
         self.assertEqual(outcome["fallback_from"], "unity_cli")
         self.assertEqual([item["provider_ref"] for item in outcome["attempts"]], ["unity_cli", "native_unity_editor"])
+
+    def test_existing_project_lease_blocks_mutating_provider(self):
+        broker = ToolBroker()
+        snapshot = self.snapshot("FULL")
+        calls = []
+        with RuntimeProjectLease(self.project_root):
+            result = broker.dispatch(
+                self.request("scene.mutate"), snapshot,
+                context=self.context("scene.mutate"),
+                executors={"unity_cli": lambda *_: calls.append(True)},
+            )
+        self.assertEqual(result["status"], "blocked")
+        self.assertEqual(result["provider_result"]["failure_class"], "resource_conflict")
+        self.assertEqual(calls, [])
+
+    def test_source_read_fast_path_does_not_acquire_editor_lease(self):
+        broker = ToolBroker()
+        snapshot = self.snapshot("FILES_ONLY")
+        with RuntimeProjectLease(self.project_root):
+            result = broker.dispatch(
+                self.request("source.read"), snapshot,
+                context=self.context("source.read"),
+                executors={"file": lambda *_: {
+                    "status": "passed", "provider_ref": "file", "evidence": ["source_read"],
+                }},
+            )
+        self.assertEqual(result["status"], "completed")
 
     def test_no_silent_weaker_mutation_fallback(self):
         broker = ToolBroker()

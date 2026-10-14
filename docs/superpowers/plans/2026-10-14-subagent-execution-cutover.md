@@ -50,3 +50,10 @@
   移植した旧Hubのhistorical source verifierは旧Path/Tag依存があるためRelease入口にしない。
 - Windows OS leaseは専用CIへ追加。ローカルに.NET/Unity Editorはなく、CLI Compile/実Editor/実機はここで検証していない。
 - 元の設計の残り: 複数Task DAG実行、Queue/Device Lock、専門SubAgentの変更権限付きE2Eと統合Acceptance、旧Hub Archive。
+
+## PR更新
+
+最新mainの#192を取り込み、既存Runtime Editor leaseを維持した。
+今回のRun lockはControl PlaneからEvidence永続化までのRunを保護し、
+#192のEditor leaseはProvider単位の直接Runtime実行も保護する。
+取得順をRun→Editorへ固定し、共通Projectでの待機を自動Retryへ変換しない。
