@@ -28,7 +28,12 @@ MIGRATION_DIR = ROOT / "docs/migration"
 PHASE_NAMED_MIGRATION = re.compile(r"^phase\d+(?:[-_.]|$)", re.IGNORECASE)
 PHASE_NAMED_MIGRATION_TITLE = re.compile(r"^#\s+phase\s*\d+\b", re.IGNORECASE)
 
-EXCLUDED_PREFIXES = (Path("docs/migration"),)
+# UPM内包のP9 Source Mirrorは実行Inputであり、アクティブなMarkdown文書ではない。
+# Mirror内READMEの相対リンクはcanonical repositoryでのみ解決される。
+EXCLUDED_PREFIXES = (
+    Path("docs/migration"),
+    Path("Packages/com.darumappap.unity-agent/Editor/Verification~"),
+)
 
 LEGACY_PATH_MARKERS = (
     ".ai/",

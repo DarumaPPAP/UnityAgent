@@ -9,16 +9,15 @@ using UnityEngine;
 namespace DarumaPPAP.UnityAgent.Editor
 {
     /// <summary>
-    /// 既存UnityAgent Setup内の開発用検証入口。HubはRuntimeやInstallerとして扱わない。
-    /// 別Editorプロセスで既存P9 fixtureを実行し、測定Evidenceを表示する。
+    /// UnityAgent UPMへ検証済みとして同梱されたP9 fixtureを使用する。
+    /// 別Editorプロセスで検証し、測定Evidenceを表示する。
     /// </summary>
     internal static class SetupVerificationPanel
     {
-        private static readonly VerificationHubSource s_source = new VerificationHubSource();
+        private static readonly VerificationFixtureSource s_source = new VerificationFixtureSource();
         private static bool s_cacheCheckStarted;
         private static bool s_sourceReady;
-        private static bool s_preparingSource;
-        private static string s_sourceStatus = "検証用Hub環境を確認しています。";
+        private static string s_sourceStatus = "UPM同梱のP9検証環境を確認しています。";
         internal static readonly string[] Fixtures =
         {
             "minimal-6000.6",
@@ -62,7 +61,7 @@ namespace DarumaPPAP.UnityAgent.Editor
             using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
             {
                 EditorGUILayout.LabelField("5. Unity Verification", EditorStyles.boldLabel);
-                EditorGUILayout.LabelField("既存Hub P9 Runnerを使い、別Unity Editorプロセスで検証します。",
+                EditorGUILayout.LabelField("UnityAgent同梱のP9 Runnerを使い、別Unity Editorプロセスで検証します。",
                     EditorStyles.wordWrappedMiniLabel);
                 EditorGUILayout.Space(4f);
                 EditorGUILayout.LabelField("現在のUnity Editor", Application.unityVersion);
@@ -70,46 +69,26 @@ namespace DarumaPPAP.UnityAgent.Editor
                 if (!s_cacheCheckStarted)
                 {
                     s_cacheCheckStarted = true;
-                    Task.Run(() => s_source.TryGetVerifiedCache(out _, out var reason)
+                    Task.Run(() => s_source.TryGetVerifiedSource(out _, out var reason)
                         ? "READY" : reason).ContinueWith(task =>
                     {
                         EditorApplication.delayCall += () =>
                         {
-                            s_sourceStatus = task.IsFaulted ? "検証環境の確認に失敗しました。" : task.Result;
+                            s_sourceStatus = task.IsFaulted ? "P9検証環境の照合に失敗しました。" : task.Result;
                             s_sourceReady = s_sourceStatus == "READY";
                             RepaintSetupWindows();
                         };
                     });
                 }
-                EditorGUILayout.LabelField("Hub Pin", string.IsNullOrWhiteSpace(s_source.Commit) ?
-                    "UNKNOWN" : s_source.Commit.Substring(0, 12));
-                EditorGUILayout.LabelField("取得状態", s_preparingSource ? "取得中..." : s_sourceStatus);
-                using (new EditorGUI.DisabledScope(s_preparingSource || s_running || s_sourceReady))
+                EditorGUILayout.LabelField("検証環境", "UnityAgent UPM同梱（Hubの取得不要）");
+                EditorGUILayout.LabelField("照合状態", s_sourceStatus);
+                using (new EditorGUI.DisabledScope(s_running))
                 {
-                    if (GUILayout.Button("検証環境を取得・更新", GUILayout.Height(26f)))
+                    if (GUILayout.Button("検証環境を再確認", GUILayout.Height(26f)))
                     {
-                        if (EditorUtility.DisplayDialog("Hub検証環境を準備",
-                            "UnityAgent Source Lockで固定したUnitySubAgentHubを取得します。\n\n" +
-                            "取得元: DarumaPPAP/UnitySubAgentHub\nCommit: " + s_source.Commit +
-                            "\n保存先: UnityAgent管理キャッシュ（Project外）\n\n" +
-                            "既存のゲームProject・Source Lock・Providerは変更しません。",
-                            "取得", "キャンセル"))
-                        {
-                            s_preparingSource = true;
-                            s_sourceStatus = "取得中...";
-                            Task.Run(() => s_source.Prepare()).ContinueWith(task =>
-                            {
-                                EditorApplication.delayCall += () =>
-                                {
-                                    s_preparingSource = false;
-                                    s_cacheCheckStarted = false;
-                                    s_sourceStatus = task.IsFaulted ?
-                                        task.Exception.GetBaseException().Message :
-                                        string.IsNullOrWhiteSpace(task.Result) ? "取得完了。検証しています。" : task.Result;
-                                    RepaintSetupWindows();
-                                };
-                            });
-                        }
+                        s_cacheCheckStarted = false;
+                        s_sourceReady = false;
+                        s_sourceStatus = "再照合中...";
                     }
                 }
 
@@ -123,11 +102,11 @@ namespace DarumaPPAP.UnityAgent.Editor
                 }
 
                 EditorGUILayout.HelpBox(
-                    "Hub検証環境はSource Lockの固定Commitから取得します。手動Clone不要。" +
-                    "Control Plane / SubAgentを自動Installするものではありません。",
+                    "検証用P9 FixtureはUPMに同梱されています。HubのClone・Git取得は不要です。" +
+                    "ゲームProjectやControl Planeを変更するものではありません。",
                     MessageType.Info);
 
-                using (new EditorGUI.DisabledScope(s_running || s_preparingSource || !s_sourceReady || !s_licenseConfirmed ||
+                using (new EditorGUI.DisabledScope(s_running || !s_sourceReady || !s_licenseConfirmed ||
                     (RequiresGraphics(Fixtures[s_fixtureIndex]) && !s_graphicsConfirmed)))
                 {
                     if (GUILayout.Button(s_running ? "実行中..." : "選択したUnity検証を実行",
@@ -135,7 +114,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                     {
                         var fixture = Fixtures[s_fixtureIndex];
                         if (EditorUtility.DisplayDialog("Unity検証を実行",
-                            "Pinned Hub: " + s_source.Commit + "\nFixture: " + fixture +
+                            "UnityAgent Package Fixture: " + fixture +
                             "\n\n別Unity Editorプロセスでテストを開始します。" +
                             "\n手元のゲームProjectには変更を加えません。", "実行", "キャンセル"))
                         {
@@ -193,14 +172,14 @@ namespace DarumaPPAP.UnityAgent.Editor
             if (Application.platform != RuntimePlatform.WindowsEditor)
             {
                 s_status = "BLOCKED_NOT_RUN";
-                s_message = "このSetup入口はWindows Editor専用です。Linuxは既存Hubのshell入口を使用してください。";
+                s_message = "このSetup入口はWindows Editor専用です。LinuxはUnityAgent内ci/scripts/run-unity-tests.shを利用してください。";
                 return;
             }
 
-            if (!s_source.TryGetVerifiedCache(out var root, out var reason))
+            if (!s_source.TryGetVerifiedSource(out var root, out var reason))
             {
                 s_status = "BLOCKED_NOT_RUN";
-                s_message = "検証用Hubキャッシュを確認できません: " + reason;
+                s_message = "UPM同梱の検証環境を確認できません: " + reason;
                 s_sourceReady = false;
                 return;
             }
@@ -267,6 +246,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
             };
+            start.EnvironmentVariables["PYTHONDONTWRITEBYTECODE"] = "1";
             start.EnvironmentVariables["UNITY_LICENSE_READY"] = "true";
             start.EnvironmentVariables["UNITY_GRAPHICS_READY"] = graphicsReady ? "true" : "false";
 

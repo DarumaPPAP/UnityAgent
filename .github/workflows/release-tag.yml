@@ -228,9 +228,12 @@ jobs:
               "package/Editor/ControlPlaneClient.cs.meta",
               "package/Editor/SetupWindow.cs.meta",
               "package/Editor/SetupVerificationPanel.cs.meta",
-              "package/Editor/VerificationHubSource.cs",
-              "package/Editor/VerificationHubSource.cs.meta",
-              "package/Editor/Verification~/subagent-sources.lock.json",
+              "package/Editor/VerificationFixtureSource.cs",
+              "package/Editor/VerificationFixtureSource.cs.meta",
+              "package/Editor/Verification~/p9-source-manifest.json",
+              "package/Editor/Verification~/ci/scripts/run-unity-tests.ps1",
+              "package/Editor/Verification~/ci/unity-matrix.yaml",
+              "package/Editor/Verification~/Packages/com.darumappap.artist-subagent/package.json",
               "package/Editor/Bootstrap~/install-control-plane.ps1",
           }
           with tarfile.open(archive, "r:gz") as package:
