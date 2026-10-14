@@ -90,7 +90,7 @@ def _expected_digest(value: str) -> str:
 
 
 HUB_MANIFEST_KEYS = frozenset({"schema_version", "kind", "identity", "lifecycle", "installation", "activation", "capabilities", "capability_contract_ref", "compatibility", "dependencies", "backends", "evidence"})
-HUB_MANIFEST_REF = re.compile(r"^(?:Hub/)?SubAgents/([a-z][a-z0-9_]*_subagent)/manifest\.yaml$")
+HUB_MANIFEST_REF = re.compile(r"^(?:(?:Hub/)?SubAgents|subagent)/([a-z][a-z0-9_]*_subagent)/manifest\.yaml$")
 HUB_SNAPSHOT_SCHEMA_PATH = ROOT / "src/unityagent/runtime/reference_implementation/schemas/hub-snapshot-v1.schema.json"
 HUB_MANIFEST_SCHEMA_PATH = ROOT / "src/unityagent/runtime/reference_implementation/schemas/hub-manifest-v3.schema.json"
 HUB_V2_SNAPSHOT_SCHEMA_PATH = ROOT / "src/unityagent/runtime/reference_implementation/schemas/hub-snapshot-v2.schema.json"
@@ -133,9 +133,12 @@ def _same_hub_contract_ref(candidate: str, expected: str) -> bool:
     if candidate == expected:
         return True
     if expected.startswith("SubAgents/"):
-        return candidate == "Hub/" + expected
+        return candidate in {"Hub/" + expected, "subagent/" + expected[len("SubAgents/"):]}
     if expected.startswith("Hub/SubAgents/"):
-        return candidate == expected.removeprefix("Hub/")
+        return candidate in {expected.removeprefix("Hub/"), "subagent/" + expected[len("Hub/SubAgents/"):]}
+    if expected.startswith("subagent/"):
+        identity_suffix = expected[len("subagent/"):]
+        return candidate in {"SubAgents/" + identity_suffix, "Hub/SubAgents/" + identity_suffix}
     return False
 
 

@@ -32,6 +32,7 @@ VALIDATORS = (
     Path("tools/orchestration_validator/validate_loops.py"),
     Path("src/unityagent/runtime/contracts/capability_contract.py"),
     Path("tools/validate_catalog_import_gate.py"),
+    Path("tools/validate_local_subagent_catalog.py"),
     Path("tools/production_tool_runtime/validate_production_tool_runtime.py"),
     Path("tools/layer_boundary_validator/validate_layer_boundaries.py"),
     Path("tools/repository_authority_validator/validate_repository_authority.py"),
