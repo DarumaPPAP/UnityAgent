@@ -43,12 +43,19 @@ namespace DarumaPPAP.UnityAgent.Editor
 
         [SerializeField] private string outputDirectory = string.Empty;
         [SerializeField] private string runId = string.Empty;
+        [SerializeField] private string startedAtUtc = string.Empty;
+        [SerializeField] private string capturedScene = string.Empty;
         [SerializeField] private string status = "NOT_RUN";
         [SerializeField] private string captureError = string.Empty;
         [SerializeField] private bool screenshotRequested;
         [SerializeField] private bool videoRequested;
         [SerializeField] private int errorCount;
         [SerializeField] private int startingFrame;
+        [SerializeField] private int observedFrames;
+        [SerializeField] private string screenshotPath = string.Empty;
+        [SerializeField] private string videoPath = string.Empty;
+        [SerializeField] private string screenshotSha256 = string.Empty;
+        [SerializeField] private string videoSha256 = string.Empty;
 
         private object recorderController;
         private UnityEngine.Object controllerSettings;
@@ -57,8 +64,8 @@ namespace DarumaPPAP.UnityAgent.Editor
         private double screenshotDeadline;
         private double videoDeadline;
         private double nextEvidenceRefresh;
-        private string screenshotPath;
-        private string videoPath;
+        private long lastVideoFileSize;
+        private double lastVideoSizeChange;
 
         [MenuItem("UnityAgent/Play Evidence")]
         internal static void Open()
@@ -92,7 +99,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                 MessageType.Info);
 
             EditorGUILayout.LabelField("Play状態", EditorApplication.isPlaying ? "PLAYING" : "STOPPED");
-            EditorGUILayout.LabelField("Capture状態", status);
+            EditorGUILayout.LabelField("Capture状態", recording ? "RECORDING" : status);
             EditorGUILayout.LabelField("Console Error/Exception/Assert", errorCount.ToString());
             if (!string.IsNullOrEmpty(captureError))
             {
@@ -159,7 +166,11 @@ namespace DarumaPPAP.UnityAgent.Editor
 
         private void OnPlayModeChanged(PlayModeStateChange change)
         {
-            if (change == PlayModeStateChange.ExitingPlayMode)
+            if (change == PlayModeStateChange.EnteredPlayMode)
+            {
+                BeginSession();
+            }
+            else if (change == PlayModeStateChange.ExitingPlayMode)
             {
                 StopRecording();
                 SaveEvidence();
@@ -192,9 +203,12 @@ namespace DarumaPPAP.UnityAgent.Editor
             }
 
             runId = Guid.NewGuid().ToString("N");
+            startedAtUtc = DateTime.UtcNow.ToString("o");
+            capturedScene = SceneManager.GetActiveScene().path;
             outputDirectory = Path.Combine(Path.GetTempPath(), "UnityAgentPlayEvidence", runId);
             Directory.CreateDirectory(outputDirectory);
             startingFrame = Time.frameCount;
+            observedFrames = 0;
             errorCount = 0;
             status = "RUNNING";
             captureError = string.Empty;
@@ -205,7 +219,8 @@ namespace DarumaPPAP.UnityAgent.Editor
             try
             {
                 BeginSession();
-                screenshotPath = Path.Combine(outputDirectory, "game-view.png");
+                screenshotPath = Path.Combine(outputDirectory, "game-view-" + Guid.NewGuid().ToString("N") + ".png");
+                screenshotSha256 = string.Empty;
                 // CaptureScreenshotは非同期保存される場合があるので、ファイルを観測してから記録する。
                 ScreenCapture.CaptureScreenshot(screenshotPath);
                 screenshotRequested = true;
@@ -313,10 +328,14 @@ namespace DarumaPPAP.UnityAgent.Editor
             nextEvidenceRefresh = EditorApplication.timeSinceStartup + 0.5;
             if (screenshotRequested)
             {
-                var candidate = Path.Combine(outputDirectory, "game-view.png");
+                var candidate = screenshotPath;
                 if (File.Exists(candidate) && new FileInfo(candidate).Length > 100)
                 {
-                    screenshotPath = candidate;
+                    if (string.IsNullOrEmpty(screenshotSha256))
+                    {
+                        screenshotSha256 = CalculateSha256(candidate);
+                    }
+                    screenshotDeadline = 0;
                 }
                 else if (EditorApplication.timeSinceStartup > screenshotDeadline && screenshotDeadline > 0)
                 {
@@ -330,9 +349,19 @@ namespace DarumaPPAP.UnityAgent.Editor
                 var candidate = Path.Combine(outputDirectory, "gameplay.mp4");
                 if (File.Exists(candidate) && new FileInfo(candidate).Length > 1024)
                 {
-                    videoPath = candidate;
-                    videoDeadline = 0;
-                    ReleaseRecorderSettings();
+                    var size = new FileInfo(candidate).Length;
+                    if (size != lastVideoFileSize)
+                    {
+                        lastVideoFileSize = size;
+                        lastVideoSizeChange = EditorApplication.timeSinceStartup;
+                    }
+                    else if (EditorApplication.timeSinceStartup - lastVideoSizeChange >= 1.0)
+                    {
+                        videoPath = candidate;
+                        videoSha256 = CalculateSha256(candidate);
+                        videoDeadline = 0;
+                        ReleaseRecorderSettings();
+                    }
                 }
                 else if (EditorApplication.timeSinceStartup > videoDeadline)
                 {
@@ -355,13 +384,17 @@ namespace DarumaPPAP.UnityAgent.Editor
 
             try
             {
-                var screenshotValid = screenshotRequested && File.Exists(screenshotPath ?? "") &&
-                    new FileInfo(screenshotPath).Length > 100;
-                var videoValid = videoRequested && File.Exists(videoPath ?? "") &&
-                    new FileInfo(videoPath).Length > 1024;
+                var screenshotValid = screenshotRequested && !string.IsNullOrEmpty(screenshotSha256) &&
+                    File.Exists(screenshotPath);
+                var videoValid = videoRequested && !string.IsNullOrEmpty(videoSha256) &&
+                    File.Exists(videoPath);
                 var requestedComplete = (screenshotRequested || videoRequested) &&
                     (!screenshotRequested || screenshotValid) && (!videoRequested || videoValid);
-                var measuredFrames = Math.Max(0, Time.frameCount - startingFrame);
+                if (EditorApplication.isPlaying)
+                {
+                    observedFrames = Math.Max(observedFrames, Math.Max(0, Time.frameCount - startingFrame));
+                }
+                var measuredFrames = observedFrames;
                 var captureStatus = requestedComplete && measuredFrames > 0 && string.IsNullOrEmpty(captureError)
                     ? (errorCount == 0 ? "CAPTURED" : "CAPTURED_WITH_RUNTIME_ERRORS")
                     : status == "FAILED" || !string.IsNullOrEmpty(captureError) ? "FAILED" : "INCOMPLETE";
@@ -369,16 +402,16 @@ namespace DarumaPPAP.UnityAgent.Editor
                 {
                     run_id = runId,
                     unity_version = Application.unityVersion,
-                    scene_path = SceneManager.GetActiveScene().path,
+                    scene_path = capturedScene,
                     project_path = Path.GetDirectoryName(Application.dataPath),
-                    started_at_utc = runId,
+                    started_at_utc = startedAtUtc,
                     updated_at_utc = DateTime.UtcNow.ToString("o"),
                     observation = measuredFrames > 0 ? "observed" : "not_observed",
                     status = captureStatus,
                     screenshot_path = screenshotValid ? screenshotPath : null,
-                    screenshot_sha256 = screenshotValid ? CalculateSha256(screenshotPath) : null,
+                    screenshot_sha256 = screenshotValid ? screenshotSha256 : null,
                     video_path = videoValid ? videoPath : null,
-                    video_sha256 = videoValid ? CalculateSha256(videoPath) : null,
+                    video_sha256 = videoValid ? videoSha256 : null,
                     play_frames = measuredFrames,
                     error_count = errorCount,
                     capture_error = captureError,
