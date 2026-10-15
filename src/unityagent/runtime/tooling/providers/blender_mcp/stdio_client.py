@@ -1,6 +1,7 @@
 """外部MCP Serverとの限定JSON-RPC stdio接続。依存導入と再送は行わない。"""
 from __future__ import annotations
 import json
+import hashlib
 import queue
 import subprocess
 import threading
@@ -18,6 +19,8 @@ class McpStdioClient:
         self.messages = queue.Queue()
         self.counter = 0
         self.identity = None
+        self.blender_session_identity = None
+        self.scene_observation = None
         self.tools = set()
 
     def __enter__(self):
@@ -31,6 +34,13 @@ class McpStdioClient:
                 raise ValueError('Incompatible MCP protocol')
             self._send({'jsonrpc': '2.0', 'method': 'notifications/initialized'})
             self.tools = {t['name'] for t in self.request('tools/list', {}).get('tools', [])}
+            if 'get_scene_info' in self.tools:
+                self.scene_observation = self.tool('get_scene_info', {})
+                facts = self.scene_observation.get('structuredContent') or {}
+                observed = facts.get('blender_session_identity')
+                if isinstance(observed, str) and observed.strip():
+                    self.blender_session_identity = observed
+                    self.session_id = 'blender-' + hashlib.sha256(observed.encode('utf-8')).hexdigest()
             return self
         except BaseException:
             self.__exit__(None, None, None)
