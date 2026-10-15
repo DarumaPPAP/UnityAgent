@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "evidence_level": "blender_template_validation",
+  "production_mcp": "BLOCKED_NOT_RUN",
+  "vertices": 42,
+  "triangles": 80,
+  "dimensions": [
+    1.0679830312728882,
+    0.8199999332427979,
+    0.7434189319610596
+  ],
+  "uv_layers": 1,
+  "sha256": "b79d0237a8ecd453447db7a2f12d09992e1d213aeb71137d99789ce6f502038c",
+  "blender_version": "4.3.2"
+}
