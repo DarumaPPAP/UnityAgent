@@ -108,7 +108,7 @@ Player Buildを毎回行う代わりに、描画可能なUnity Editor上でPlay 
 
 1. **Play中**に`Timeline (任意)`へScene内の`PlayableDirector`を指定する。
 2. `Timelineを先頭から再生して録画 (MP4)`を押す。
-3. 対象Directorを停止→時刻0→`Evaluate()`→`Play()`で開始する。
+3. 対象Directorを停止→`Play()`でGraph再構築→時刻0→`Evaluate()`で開始する。
    Directorの`stopped`イベント、有限`duration`への到達、最大録画時間、
    ユーザーの停止、Play終了、Window破棄またはDomain Reloadで録画を終了する。
 4. TimelineのCamera切替、Cinemachine、URP Camera Stack、PostProcess、
