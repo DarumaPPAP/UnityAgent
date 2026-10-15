@@ -11,9 +11,9 @@ class ExecutionAdmissionTests(unittest.TestCase):
     def test_admission_separates_semantic_reasoning_from_observation_providers(self) -> None:
         admission = yaml.safe_load((ROOT / "subagent/specialist-execution-admission.yaml").read_text(encoding="utf-8"))
         rows = {row["profile_id"]: row for row in admission["specialists"]}
-        self.assertEqual(set(rows), {"graphics_subagent", "performance_subagent", "world_creator_subagent"})
+        self.assertEqual(set(rows), {"graphics_subagent", "qa_subagent", "world_creator_subagent"})
         self.assertEqual(rows["graphics_subagent"]["semantic_capabilities"], ["graphics.inspect", "graphics.diagnose", "graphics.validate"])
-        self.assertEqual(rows["performance_subagent"]["required_observation_capabilities"], ["profiler.observe"])
+        self.assertEqual(rows["qa_subagent"]["required_observation_capabilities"], ["profiler.observe"])
         self.assertEqual(rows["world_creator_subagent"]["required_observation_capabilities"], [])
         for row in rows.values():
             self.assertEqual(row["execution_model"], "reasoning")

@@ -19,6 +19,7 @@ strength_scale:
     5: strongest_declared_provider_contract
 
 capability_requirements:
+  world.create: { minimum_safety_strength: 4, minimum_evidence_strength: 4 }
   project.inspect: { minimum_safety_strength: 2, minimum_evidence_strength: 2 }
   source.read: { minimum_safety_strength: 2, minimum_evidence_strength: 2 }
   source.patch: { minimum_safety_strength: 4, minimum_evidence_strength: 3 }
@@ -36,6 +37,28 @@ capability_requirements:
   player.mutate: { minimum_safety_strength: 4, minimum_evidence_strength: 4 }
 
 providers:
+  blender_mcp:
+    id: blender_mcp
+    transport: mcp
+    surfaces: [host]
+    health: environment_fact
+    project_binding: explicit_project_path
+    environment_key: blender_mcp
+    safety_strength: 4
+    evidence_strength: 4
+    qualifiers_supported: {workflow: [blender_rock]}
+    required_qualifiers: [workflow]
+    capabilities:
+      world.create:
+        priority: 100
+        surfaces: [host]
+        evidence_supported: [domain_result, mutation_evidence]
+        environment_requirements:
+          project.exists: true
+          blender_mcp.available: true
+          blender_mcp.project_bound: true
+          blender_mcp.reachable: true
+        scope_preservation: true
   file:
     id: file
     transport: filesystem

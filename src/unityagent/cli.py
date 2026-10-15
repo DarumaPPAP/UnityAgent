@@ -27,6 +27,8 @@ PRODUCTS = (
     "unity_artist_cli",
     "codex_cli",
     "unity_agent_codex_plugin",
+    "blender_mcp",
+    "unity_cli_loop",
 )
 CHANNEL = "0.0.8-beta"
 
@@ -65,6 +67,14 @@ def _default_state_root() -> Path:
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="UnityAgent Control Plane host")
     subparsers = parser.add_subparsers(dest="command", required=True)
+    rock = subparsers.add_parser("rock", help="承認済み固定TemplateによるBlender MCP岩制作")
+    rock.add_argument("operation", choices=("plan", "approve", "apply"))
+    rock.add_argument("--project-path", required=True)
+    rock.add_argument("--state-root", type=Path, default=_default_state_root())
+    rock.add_argument("--job-id", default="rock-g1")
+    rock.add_argument("--plan-id")
+    rock.add_argument("--approval-ref")
+    rock.add_argument("--mcp-executable", type=Path)
     e2e = subparsers.add_parser("e2e", help="固定のUnity Editor Full E2E検証")
     e2e.add_argument("operation", choices=("plan", "approve", "approve-save", "apply"))
     e2e.add_argument("--project-path", required=True)
@@ -98,6 +108,26 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = _parse_args()
+    if args.command == "rock":
+        from unityagent.control_plane.rock_artifact import plan_rock, approve_rock, apply_rock
+        from unityagent.runtime.tooling.providers.blender_mcp.stdio_client import McpStdioClient
+        import shutil
+        try:
+            if args.operation == "plan":
+                result = {"status": "planned", **plan_rock(args.project_path, args.state_root, args.job_id, _fingerprint())}
+            elif args.operation == "approve":
+                result = {"status": "approved", **approve_rock(args.state_root, args.plan_id or "")}
+            else:
+                executable = str(args.mcp_executable) if args.mcp_executable else shutil.which("blender-mcp")
+                if not executable or not Path(executable).is_file():
+                    raise ValueError("Blender MCP server unavailable; installation requires explicit setup approval")
+                with McpStdioClient([executable]) as client:
+                    result = apply_rock(UnityAgentControlPlane(args.state_root), args.plan_id or "",
+                        args.approval_ref or "", client, definition_fingerprint=_fingerprint())
+        except (ValueError, OSError, PersistenceError) as exc:
+            result = {"status": "blocked", "reason": str(exc), "gate": "BLOCKED_NOT_RUN"}
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0 if result["status"] in {"planned", "approved", "completed"} else 1
     if args.command == "e2e":
         try:
             if args.operation == "plan":

@@ -4,6 +4,10 @@ authority: Context
 production_dispatch_authority: false
 
 capabilities:
+  world.create:
+    description: 承認済みの制限TemplateでBlender SceneからStagingへ制作する。
+    context_tags: [world, staging, mutation]
+    mutation: true
   project.inspect:
     description: Unity Projectの構成とProject Factを読み取り専用で観測する。
     context_tags: [project, inspection]

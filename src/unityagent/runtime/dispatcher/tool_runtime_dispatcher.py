@@ -221,7 +221,8 @@ def dispatch_capability(
         # Lease only at Runtime dispatch, after Policy/Approval and project binding.
         # A plan-time parallel wave never authorizes a second Editor process.
         try:
-            if (request["capability"] in EDITOR_CAPABILITIES or
+            # Blenderは自身のSession Leaseを保持する。制作待ちでUnityのLeaseを占有しない。
+            if request["capability"] != "world.create" and (request["capability"] in EDITOR_CAPABILITIES or
                     request["operation_kind"] in MUTATION_OPERATIONS):
                 with RuntimeProjectLease(request["project_root"]):
                     provider_result = _invoke_executor(

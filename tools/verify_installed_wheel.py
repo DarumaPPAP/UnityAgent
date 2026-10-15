@@ -34,7 +34,7 @@ for route in ('generic-planning', 'csharp-local-fix', 'rendering-incident', 'wor
     view = materialize_context('wheel-' + route, route)
     assert view['selected_refs']['primary_skill']['revision'].startswith('sha256:')
 assert build('wheel-manifest', 'csharp-local-fix')['materialized_context']['route_id'] == 'csharp-local-fix'
-for profile_id in ('graphics_subagent', 'performance_subagent', 'world_creator_subagent'):
+for profile_id in ('graphics_subagent', 'qa_subagent', 'world_creator_subagent'):
     execution = CATALOG.get(profile_id).execution
     assert (root / execution['instructions_ref']).is_file()
     assert (root / execution['output_contract_ref']).is_file()

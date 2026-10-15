@@ -6,7 +6,7 @@
 
 Unity Rendering実装の正当性と互換性を調査する。URP / HDRP / Built-in、RenderGraph、RendererFeature / RenderPass、Shader / HLSL、Variant、Depth / DepthNormals / MotionVectors、Compute Shader、RenderTexture、SRP Batcher、Forward / Forward+、Graphics APIとPipeline移行を対象にする。
 
-Art direction、Visual composition、Aesthetic approvalはArtistSubAgentの責務。一般的なCPU / GPU / Memory計測と最適化効果の判定はPerformanceSubAgent候補の責務。GraphicsSubAgentはUnityAgentのRouting、Policy、Approval、Provider Resolution、Retry、Persistenceを変更しない。
+Art direction、Visual composition、Aesthetic approvalはArtistSubAgentの責務。一般的なCPU / GPU / Memory計測と最適化効果の判定はQASubAgent候補の責務。GraphicsSubAgentはUnityAgentのRouting、Policy、Approval、Provider Resolution、Retry、Persistenceを変更しない。
 
 ## Input contract
 

@@ -44,7 +44,7 @@ class AdaptiveExecutionTests(unittest.TestCase):
 
     def test_conflict_multi_task_or_multi_subagent_requires_graph(self):
         for args in (dict(task_count=2), dict(resource_conflict=True),
-                     dict(required_subagents=("graphics_subagent", "performance_subagent"))):
+                     dict(required_subagents=("graphics_subagent", "qa_subagent"))):
             with self.subTest(args=args):
                 self.assertEqual(choose(**args)["path"], "orchestrated")
                 self.assertTrue(choose(**args)["parent_graph_required"])

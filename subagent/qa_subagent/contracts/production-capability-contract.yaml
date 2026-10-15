@@ -1,6 +1,6 @@
 schema_version: '2.0'
 kind: reasoning_specialist_contract
-identity: performance_subagent
+identity: qa_subagent
 capabilities:
 - performance.analyze
 execution_authority: unity_agent_runtime_handoff
@@ -19,4 +19,4 @@ evidence:
   reasoning_context_binding: required
   runtime_levels: only_matching_observations
   production_verified: false
-candidate_baseline_ref: subagent/performance_subagent/contracts/capability-contracts.yaml
+candidate_baseline_ref: subagent/qa_subagent/contracts/capability-contracts.yaml

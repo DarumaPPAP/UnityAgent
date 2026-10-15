@@ -187,13 +187,13 @@ specialists:
       - partial_verified
       - blocked_by_environment
       - unavailable
-- manifest_ref: SubAgents/performance_subagent/manifest.yaml
+- manifest_ref: SubAgents/qa_subagent/manifest.yaml
   manifest:
     schema_version: '5.0'
     kind: subagent_manifest
     identity:
-      id: performance_subagent
-      name: PerformanceSubAgent
+      id: qa_subagent
+      name: QASubAgent
       version: 0.0.1-beta
     lifecycle: active
     installation:
@@ -215,13 +215,13 @@ specialists:
       source_context_binding: required
       required_observation_capabilities:
       - profiler.observe
-      instructions_ref: SubAgents/performance_subagent/instructions.md
-      output_contract_ref: SubAgents/performance_subagent/contracts/performance-analysis-result.schema.json
+      instructions_ref: SubAgents/qa_subagent/instructions.md
+      output_contract_ref: SubAgents/qa_subagent/contracts/performance-analysis-result.schema.json
     capabilities:
     - id: performance
       operations:
       - analyze
-    capability_contract_ref: SubAgents/performance_subagent/contracts/production-capability-contract.yaml
+    capability_contract_ref: SubAgents/qa_subagent/contracts/production-capability-contract.yaml
     compatibility:
       supported_targets:
       - unity_version: Unity 6.x+

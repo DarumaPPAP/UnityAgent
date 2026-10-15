@@ -426,12 +426,16 @@ class SubAgentProfileCatalog:
         return cls(definitions, default_profile_id=_text(data.get("default_profile"), "default_profile"), schema_version=version)
 
     def get(self, profile_id: str) -> SubAgentProfile:
+        from unityagent.contracts.subagent_identity import canonical_subagent_id
+        profile_id = canonical_subagent_id(profile_id)
         try:
             return self._definitions[profile_id].profile
         except KeyError as exc:
             raise ProfileValidationError(f"unknown SubAgent profile: {profile_id}") from exc
 
     def definition(self, profile_id: str) -> SubAgentDefinition:
+        from unityagent.contracts.subagent_identity import canonical_subagent_id
+        profile_id = canonical_subagent_id(profile_id)
         try:
             return self._definitions[profile_id]
         except KeyError as exc:

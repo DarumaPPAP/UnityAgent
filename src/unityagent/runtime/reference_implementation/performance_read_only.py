@@ -20,7 +20,7 @@ def verify_performance_read_only(manifest: Mapping[str, Any], transported: Mappi
     if not isinstance(view, Mapping) or not isinstance(view.get("specialist_context"), Mapping):
         raise PerformancePilotContractError("Performance Specialist Context is missing")
     specialist = view["specialist_context"]
-    if specialist.get("profile_id") != "performance_subagent" or specialist.get("capability") != "performance.analyze":
+    if specialist.get("profile_id") != "qa_subagent" or specialist.get("capability") != "performance.analyze":
         raise PerformancePilotContractError("Performance Specialist identity or capability is invalid")
     expected = (view.get("context_id"), (view.get("context_fingerprint") or {}).get("value"))
     if not all(isinstance(value, str) and value for value in expected):
@@ -31,7 +31,7 @@ def verify_performance_read_only(manifest: Mapping[str, Any], transported: Mappi
         raise PerformancePilotContractError("Performance result fields are not exact")
     if (result["received_context_id"], result["received_context_fingerprint"]) != expected:
         raise PerformancePilotContractError("received Specialist Context identity does not match generated src/unityagent/context")
-    if result["profile_id"] != "performance_subagent" or result["capability"] != "performance.analyze":
+    if result["profile_id"] != "qa_subagent" or result["capability"] != "performance.analyze":
         raise PerformancePilotContractError("Performance result identity or capability is invalid")
     if result["status"] != "completed" or result["evidence_level"] != "static" or result["runtime_evaluation"] != "NOT_EVALUATED_RUNTIME":
         raise PerformancePilotContractError("Pilot cannot claim runtime verification")

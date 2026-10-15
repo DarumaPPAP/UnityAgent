@@ -23,20 +23,9 @@ def _acceptance(plane, result, gates, definition):
     effective = result.get('handoff', {}).get('definition_fingerprint', definition)
     if any(effective.get(k) != v for k, v in definition.items() if k not in {'policy_revision', 'context_revision'}):
         raise ValueError('Runtime definition revision differs')
-    observations = set()
-    failed = unavailable = False
-    for ref in result.get('evidence_refs', []):
-        record = plane.evidence_store.get(ref)
-        if record['run_id'] != result['run_id'] or record['definition_fingerprint'] != effective:
-            raise ValueError('Evidence task or definition revision mismatch')
-        status = record['verification_status']
-        failed |= status == 'failed'
-        unavailable |= status == 'unavailable'
-        if status == 'passed' and record.get('observation_state') == 'observed' and record.get('completion') == 'verified':
-            observations.update(record.get('observed_evidence', []))
-    return {gate: 'passed' if set(required) <= observations else
-            'failed' if failed else 'unavailable' if unavailable else 'not_observed'
-            for gate, required in gates.items()}
+    from unityagent.orchestration.qa.task_acceptance import assess_task
+    return assess_task([plane.evidence_store.get(ref) for ref in result.get('evidence_refs', [])],
+        required_gates=gates, run_id=result['run_id'], definition_fingerprint=effective)['gates']
 
 
 def execute_task_dag(plane, tasks, *, run_id, definition_fingerprint, task_parameters, resume=False):

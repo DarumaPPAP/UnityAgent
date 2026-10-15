@@ -1,4 +1,4 @@
-# PerformanceSubAgent Read-only Pilot Instructions
+# QASubAgent Read-only Pilot Instructions
 
 **Status:** Candidate / Pilot。Hub Production Registryには登録しない。C ArmのLive評価は対象Unity Projectを決めた後に実施する。
 

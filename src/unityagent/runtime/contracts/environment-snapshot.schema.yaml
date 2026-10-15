@@ -19,6 +19,16 @@ required:
   - profile_hint
   - binding_fingerprint
 properties:
+  blender_mcp:
+    type: object
+    additionalProperties: false
+    required: [available, project_bound, reachable, binding_status, bound_instance_id]
+    properties:
+      available: { $ref: "#/$defs/tri_state" }
+      project_bound: { $ref: "#/$defs/tri_state" }
+      reachable: { $ref: "#/$defs/tri_state" }
+      binding_status: {enum: [bound, unbound, ambiguous_binding, not_running, unknown]}
+      bound_instance_id: {type: [string, "null"]}
   schema_version:
     const: "1.0"
   project:

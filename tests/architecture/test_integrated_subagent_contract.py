@@ -14,7 +14,7 @@ class IntegratedSubAgentTests(unittest.TestCase):
         paths = [x["manifest"] for x in registry["entries"]]
         self.assertEqual(set(paths), {
             f"subagent/{name}/manifest.yaml"
-            for name in ("artist_subagent", "graphics_subagent", "performance_subagent", "world_creator_subagent")
+            for name in ("artist_subagent", "graphics_subagent", "qa_subagent", "world_creator_subagent")
         })
         self.assertEqual(len(paths), len(set(paths)))
 

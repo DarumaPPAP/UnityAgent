@@ -17,6 +17,7 @@ properties:
     const: "1.0"
   capability:
     enum:
+      - world.create
       - project.inspect
       - source.read
       - source.patch
