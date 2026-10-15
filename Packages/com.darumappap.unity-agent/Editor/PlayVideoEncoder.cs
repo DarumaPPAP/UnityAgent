@@ -14,7 +14,16 @@ namespace DarumaPPAP.UnityAgent.Editor
     {
         private readonly MediaEncoder encoder;
         private readonly Texture2D frameTexture;
+        private readonly RenderTexture readbackTarget;
         private readonly int frameRate;
+
+        // Editor内部API解決はDomain Reloadごとに一度だけ行う。
+        private static readonly Type s_viewType =
+            typeof(Editor).Assembly.GetType("UnityEditor.PlayModeView");
+        private static readonly MethodInfo s_getMainView = s_viewType?.GetMethod(
+            "GetMainPlayModeView", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        private static readonly FieldInfo s_targetTexture = s_viewType?.GetField(
+            "m_TargetTexture", BindingFlags.Instance | BindingFlags.NonPublic);
         private readonly double startedAt;
         private readonly double maxDuration;
         private readonly int sourceWidth;
@@ -99,13 +108,22 @@ namespace DarumaPPAP.UnityAgent.Editor
             // エンコーダの破棄時にコンテナが確定する。開始失敗時も資源を保持しない。
             MediaEncoder createdEncoder = null;
             Texture2D createdTexture = null;
+            RenderTexture createdTarget = null;
             try
             {
                 createdEncoder = new MediaEncoder(outputPath, video);
                 createdTexture = new Texture2D(Width, Height, TextureFormat.RGBA32, false);
                 createdTexture.hideFlags = HideFlags.HideAndDontSave;
+                createdTarget = new RenderTexture(Width, Height, 0, RenderTextureFormat.ARGB32,
+                    RenderTextureReadWrite.sRGB);
+                createdTarget.hideFlags = HideFlags.HideAndDontSave;
+                if (!createdTarget.Create())
+                {
+                    throw new InvalidOperationException("Readback RenderTextureの生成に失敗しました。");
+                }
                 encoder = createdEncoder;
                 frameTexture = createdTexture;
+                readbackTarget = createdTarget;
             }
             catch
             {
@@ -113,6 +131,11 @@ namespace DarumaPPAP.UnityAgent.Editor
                 if (createdTexture != null)
                 {
                     UnityEngine.Object.DestroyImmediate(createdTexture);
+                }
+                if (createdTarget != null)
+                {
+                    createdTarget.Release();
+                    UnityEngine.Object.DestroyImmediate(createdTarget);
                 }
                 throw;
             }
@@ -183,13 +206,11 @@ namespace DarumaPPAP.UnityAgent.Editor
         private bool TryCopyFrame(RenderTexture renderTarget)
         {
             var previous = RenderTexture.active;
-            var flipped = RenderTexture.GetTemporary(Width, Height, 0, RenderTextureFormat.ARGB32,
-                RenderTextureReadWrite.sRGB);
             try
             {
                 // Game View RTはそのままReadPixelsすると上下反転するため描画方向を補正する。
-                Graphics.Blit(renderTarget, flipped, new Vector2(1f, -1f), new Vector2(0f, 1f));
-                RenderTexture.active = flipped;
+                Graphics.Blit(renderTarget, readbackTarget, new Vector2(1f, -1f), new Vector2(0f, 1f));
+                RenderTexture.active = readbackTarget;
                 frameTexture.ReadPixels(new Rect(0, 0, Width, Height), 0, 0);
                 frameTexture.Apply(false, false);
                 return true;
@@ -197,7 +218,6 @@ namespace DarumaPPAP.UnityAgent.Editor
             finally
             {
                 RenderTexture.active = previous;
-                RenderTexture.ReleaseTemporary(flipped);
             }
         }
 
@@ -229,26 +249,26 @@ namespace DarumaPPAP.UnityAgent.Editor
                 {
                     UnityEngine.Object.DestroyImmediate(frameTexture);
                 }
+                if (readbackTarget != null)
+                {
+                    readbackTarget.Release();
+                    UnityEngine.Object.DestroyImmediate(readbackTarget);
+                }
             }
         }
 
         // Game View/Device Simulatorの最終合成RT。Unity 6内部APIのためアクセス失敗時はFail Closed。
         private static RenderTexture GetGameViewRenderTexture()
         {
-            var viewType = typeof(Editor).Assembly.GetType("UnityEditor.PlayModeView");
-            var getter = viewType?.GetMethod("GetMainPlayModeView",
-                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-            var target = viewType?.GetField("m_TargetTexture",
-                BindingFlags.Instance | BindingFlags.NonPublic);
-            if (getter == null || target == null)
+            if (s_getMainView == null || s_targetTexture == null)
             {
                 return null;
             }
 
             try
             {
-                var window = getter.Invoke(null, null) as EditorWindow;
-                return window == null ? null : target.GetValue(window) as RenderTexture;
+                var window = s_getMainView.Invoke(null, null) as EditorWindow;
+                return window == null ? null : s_targetTexture.GetValue(window) as RenderTexture;
             }
             catch (TargetInvocationException)
             {
