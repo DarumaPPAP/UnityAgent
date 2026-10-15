@@ -1,163 +1,214 @@
 using System;
 using System.IO;
-using System.Reflection;
 using System.Security.Cryptography;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Playables;
 using UnityEngine.SceneManagement;
 
 namespace DarumaPPAP.UnityAgent.Editor
 {
     /// <summary>
-    /// 現在のEditor Playを観測するためのローカル診断入口。
-    /// 取得した映像は実機・Player・E2E成功を証明しない。
+    /// 既存Editor Playを観測するUI。動画のEncodeとGame View取得はPlayVideoEncoderが所有する。
+    /// Captureファイルの存在はTask E2EやVisual受入のPASSを意味しない。
     /// </summary>
     internal sealed class PlayEvidenceWindow : EditorWindow
     {
-        private const int RecordingFrameRate = 15;
-        private const double CaptureTimeoutSeconds = 20.0;
+        private const double ScreenshotTimeoutSeconds = 20;
 
         [Serializable]
         private sealed class CaptureEvidence
         {
-            public string schema_version = "1.0";
+            public string schema_version = "1.1";
             public string capture_kind = "editor_play";
-            public string observation = "not_observed";
-            public string status = "NOT_RUN";
+            public string status;
             public string run_id;
             public string unity_version;
             public string scene_path;
             public string project_path;
             public string started_at_utc;
             public string updated_at_utc;
+            public string timeline_director;
+            public string timeline_asset_path;
             public string screenshot_path;
             public string screenshot_sha256;
             public string video_path;
             public string video_sha256;
-            public int play_frames;
-            public int error_count;
+            public string video_stopped_by;
             public string capture_error;
+            public string observation = "not_observed";
             public string visual_acceptance = "human_review_required";
             public string e2e_gate = "not_assessed";
+            public string video_timing = "realtime_not_frame_exact";
+            public int play_frames;
+            public int error_count;
+            public int video_width;
+            public int video_height;
+            public int video_fps;
+            public int encoded_frames;
+            public int skipped_frames;
+            public double video_elapsed_seconds;
         }
 
+        [SerializeField] private int requestedFps = 30;
+        [SerializeField] private int maxDurationSeconds = 90;
+        [SerializeField] private float scale = 1f;
+        [SerializeField] private PlayableDirector timelineDirector;
         [SerializeField] private string outputDirectory = string.Empty;
         [SerializeField] private string runId = string.Empty;
-        [SerializeField] private string startedAtUtc = string.Empty;
+        [SerializeField] private string startedAt = string.Empty;
         [SerializeField] private string capturedScene = string.Empty;
         [SerializeField] private string status = "NOT_RUN";
         [SerializeField] private string captureError = string.Empty;
+        [SerializeField] private string screenshotPath = string.Empty;
+        [SerializeField] private string screenshotHash = string.Empty;
+        [SerializeField] private string videoPath = string.Empty;
+        [SerializeField] private string videoHash = string.Empty;
+        [SerializeField] private string stoppedBy = string.Empty;
+        [SerializeField] private string recordedDirectorName = string.Empty;
+        [SerializeField] private string recordedTimelinePath = string.Empty;
         [SerializeField] private bool screenshotRequested;
         [SerializeField] private bool videoRequested;
+        [SerializeField] private bool screenshotPaused;
         [SerializeField] private int errorCount;
         [SerializeField] private int startingFrame;
         [SerializeField] private int observedFrames;
-        [SerializeField] private string screenshotPath = string.Empty;
-        [SerializeField] private string videoPath = string.Empty;
-        [SerializeField] private string screenshotSha256 = string.Empty;
-        [SerializeField] private string videoSha256 = string.Empty;
-
-        private object recorderController;
-        private UnityEngine.Object controllerSettings;
-        private UnityEngine.Object movieSettings;
-        private bool recording;
+        [SerializeField] private int videoWidth;
+        [SerializeField] private int videoHeight;
+        [SerializeField] private int videoFps;
+        [SerializeField] private int encodedFrames;
+        [SerializeField] private int skippedFrames;
+        [SerializeField] private double videoElapsed;
         [SerializeField] private double screenshotDeadline;
-        [SerializeField] private double videoDeadline;
-        private double nextEvidenceRefresh;
-        private long lastVideoFileSize;
-        private double lastVideoSizeChange;
+
+        private PlayVideoEncoder recorder;
+        private PlayableDirector activeTimeline;
+        private double nextPoll;
 
         [MenuItem("UnityAgent/Play Evidence")]
         internal static void Open()
         {
-            GetWindow<PlayEvidenceWindow>("UnityAgent Play Evidence").minSize = new Vector2(460f, 310f);
+            var window = GetWindow<PlayEvidenceWindow>("UnityAgent Play Evidence");
+            window.minSize = new Vector2(500, 440);
         }
 
         private void OnEnable()
         {
             EditorApplication.playModeStateChanged += OnPlayModeChanged;
-            EditorApplication.update += UpdateEvidence;
-            Application.logMessageReceived += OnLogMessage;
+            EditorApplication.update += UpdateCapture;
+            Application.logMessageReceived += OnLog;
         }
 
         private void OnDisable()
         {
             EditorApplication.playModeStateChanged -= OnPlayModeChanged;
-            EditorApplication.update -= UpdateEvidence;
-            Application.logMessageReceived -= OnLogMessage;
-            StopRecording();
+            EditorApplication.update -= UpdateCapture;
+            Application.logMessageReceived -= OnLog;
+            StopRecording("window_closed_or_reload");
             SaveEvidence();
-            ReleaseRecorderSettings();
         }
 
         private void OnGUI()
         {
-            EditorGUILayout.LabelField("Play Mode 動作確認", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Play / Timeline 動作確認", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Player Buildは行いません。Game ViewのPNGと録画を外部一時フォルダへ保存します。" +
-                "映像があってもG1/G2・Visual受入は自動PASSにはなりません。",
+                "BuildせずGame ViewをPNG / H.264 MP4として取得します。" +
+                "動画は実時間Captureです。フレーム完全同期や音声録音は保証しません。" +
+                "Capture成功はG1/G2・Visual品質の自動PASSではありません。",
                 MessageType.Info);
 
-            EditorGUILayout.LabelField("Play状態", EditorApplication.isPlaying ? "PLAYING" : "STOPPED");
-            EditorGUILayout.LabelField("Capture状態", recording ? "RECORDING" : status);
-            EditorGUILayout.LabelField("Console Error/Exception/Assert", errorCount.ToString());
-            if (!string.IsNullOrEmpty(captureError))
-            {
-                EditorGUILayout.HelpBox(captureError, MessageType.Warning);
-            }
+            EditorGUILayout.LabelField("Play", EditorApplication.isPlaying
+                ? (EditorApplication.isPaused ? "PAUSED" : "PLAYING") : "STOPPED");
 
-            using (new EditorGUI.DisabledScope(EditorApplication.isPlayingOrWillChangePlaymode))
+            using (new EditorGUILayout.HorizontalScope())
             {
-                if (GUILayout.Button("Playを開始", GUILayout.Height(28)))
+                using (new EditorGUI.DisabledScope(EditorApplication.isPlayingOrWillChangePlaymode))
                 {
-                    EditorApplication.isPlaying = true;
+                    if (GUILayout.Button("Play"))
+                    {
+                        EditorApplication.isPlaying = true;
+                    }
+                }
+                using (new EditorGUI.DisabledScope(!EditorApplication.isPlaying))
+                {
+                    if (GUILayout.Button(EditorApplication.isPaused ? "Resume" : "Pause"))
+                    {
+                        EditorApplication.isPaused = !EditorApplication.isPaused;
+                    }
+                    if (GUILayout.Button("Stop"))
+                    {
+                        EditorApplication.isPlaying = false;
+                    }
+                }
+                using (new EditorGUI.DisabledScope(!EditorApplication.isPlaying ||
+                    !EditorApplication.isPaused))
+                {
+                    if (GUILayout.Button("Step"))
+                    {
+                        EditorApplication.Step();
+                    }
                 }
             }
 
-            using (new EditorGUI.DisabledScope(!EditorApplication.isPlaying))
+            using (new EditorGUI.DisabledScope(recorder != null))
             {
-                if (GUILayout.Button("スクリーンショット取得（PNG）", GUILayout.Height(28)))
+                requestedFps = EditorGUILayout.IntPopup("動画FPS", requestedFps,
+                    new[] { "30 FPS", "60 FPS" }, new[] { 30, 60 });
+                scale = EditorGUILayout.Popup("録画解像度", Mathf.Approximately(scale, 1f) ? 0 : 1,
+                    new[] { "Game View原寸", "50%" }) == 0 ? 1f : 0.5f;
+                maxDurationSeconds = EditorGUILayout.IntSlider("最大録画秒数", maxDurationSeconds, 5, 600);
+                timelineDirector = (PlayableDirector)EditorGUILayout.ObjectField(
+                    "Timeline (任意)", timelineDirector, typeof(PlayableDirector), true);
+            }
+
+            using (new EditorGUI.DisabledScope(!EditorApplication.isPlaying || Application.isBatchMode))
+            {
+                if (GUILayout.Button("Screenshot (PNG)"))
                 {
                     CaptureScreenshot();
                 }
-
-                var recorderAvailable = FindRecorderType("UnityEditor.Recorder.RecorderController") != null;
-                using (new EditorGUI.DisabledScope(!recorderAvailable || Application.isBatchMode))
+                if (recorder == null)
                 {
-                    if (GUILayout.Button(recording ? "録画を終了" : "録画を開始（MP4 / 15fps）",
-                            GUILayout.Height(28)))
+                    if (GUILayout.Button("通常Playを録画 (MP4)"))
                     {
-                        if (recording)
+                        StartRecording(false);
+                    }
+                    using (new EditorGUI.DisabledScope(timelineDirector == null ||
+                        timelineDirector.playableAsset == null))
+                    {
+                        if (GUILayout.Button("Timelineを先頭から再生して録画 (MP4)"))
                         {
-                            StopRecording();
-                        }
-                        else
-                        {
-                            StartRecording();
+                            StartRecording(true);
                         }
                     }
                 }
-                if (!recorderAvailable)
+                else if (GUILayout.Button("録画を終了して保存"))
                 {
-                    EditorGUILayout.HelpBox(
-                        "録画には公式 com.unity.recorder 5.1系が必要です。" +
-                        "Package Managerで明示的に導入してください（自動Installしません）。",
-                        MessageType.Warning);
+                    StopRecording("user_stop");
                 }
             }
 
-            using (new EditorGUI.DisabledScope(!EditorApplication.isPlaying))
+            EditorGUILayout.Space(5);
+            EditorGUILayout.LabelField("Capture", recorder != null ? "RECORDING" : status);
+            EditorGUILayout.LabelField("Error / Exception / Assert", errorCount.ToString());
+            EditorGUILayout.LabelField("動画フレーム", recorder != null
+                ? recorder.EncodedFrames + " / 欠落 " + recorder.SkippedFrames
+                : encodedFrames + " / 欠落 " + skippedFrames);
+            if (!string.IsNullOrEmpty(captureError))
             {
-                if (GUILayout.Button("Playを終了"))
-                {
-                    EditorApplication.isPlaying = false;
-                }
+                EditorGUILayout.HelpBox(captureError, MessageType.Error);
             }
-
+            if (screenshotPaused)
+            {
+                EditorGUILayout.HelpBox(
+                    "Pause中のスクリーンショットは直前の描画結果を含む場合があります。",
+                    MessageType.Warning);
+            }
             if (!string.IsNullOrEmpty(outputDirectory))
             {
-                EditorGUILayout.SelectableLabel(outputDirectory, GUILayout.Height(34));
-                if (GUILayout.Button("Evidenceフォルダを開く") && Directory.Exists(outputDirectory))
+                EditorGUILayout.SelectableLabel(outputDirectory, GUILayout.Height(35));
+                if (GUILayout.Button("Evidenceフォルダを開く") &&
+                    Directory.Exists(outputDirectory))
                 {
                     EditorUtility.RevealInFinder(outputDirectory);
                 }
@@ -168,32 +219,16 @@ namespace DarumaPPAP.UnityAgent.Editor
         {
             if (change == PlayModeStateChange.EnteredPlayMode)
             {
-                // 新しいPlayごとにRun IDとCaptureファイルを分離する。
-                outputDirectory = string.Empty;
-                screenshotRequested = false;
-                videoRequested = false;
-                screenshotPath = string.Empty;
-                videoPath = string.Empty;
-                screenshotSha256 = string.Empty;
-                videoSha256 = string.Empty;
-                screenshotDeadline = 0;
-                videoDeadline = 0;
-                lastVideoFileSize = 0;
-                lastVideoSizeChange = 0;
-                BeginSession();
+                StartNewSession();
             }
             else if (change == PlayModeStateChange.ExitingPlayMode)
             {
-                StopRecording();
-                SaveEvidence();
-            }
-            else if (change == PlayModeStateChange.EnteredEditMode)
-            {
+                StopRecording("play_mode_exit");
                 SaveEvidence();
             }
         }
 
-        private void OnLogMessage(string message, string stackTrace, LogType type)
+        private void OnLog(string message, string trace, LogType type)
         {
             if (EditorApplication.isPlaying &&
                 (type == LogType.Error || type == LogType.Exception || type == LogType.Assert))
@@ -202,191 +237,227 @@ namespace DarumaPPAP.UnityAgent.Editor
             }
         }
 
-        private void BeginSession()
+        private void StartNewSession()
+        {
+            // Runの取り違えを防ぐ。Play中にWindowを開いた場合も同じ初期化を行う。
+            StopRecording("session_restarted");
+            runId = Guid.NewGuid().ToString("N");
+            startedAt = DateTime.UtcNow.ToString("o");
+            capturedScene = SceneManager.GetActiveScene().path;
+            outputDirectory = Path.Combine(Path.GetTempPath(), "UnityAgentPlayEvidence", runId);
+            screenshotPath = string.Empty;
+            screenshotHash = string.Empty;
+            videoPath = string.Empty;
+            videoHash = string.Empty;
+            recordedDirectorName = string.Empty;
+            recordedTimelinePath = string.Empty;
+            stoppedBy = string.Empty;
+            screenshotRequested = false;
+            videoRequested = false;
+            screenshotPaused = false;
+            screenshotDeadline = 0;
+            errorCount = 0;
+            observedFrames = 0;
+            startingFrame = Time.frameCount;
+            videoWidth = videoHeight = videoFps = encodedFrames = skippedFrames = 0;
+            videoElapsed = 0;
+            captureError = string.Empty;
+            status = "INCOMPLETE";
+            Directory.CreateDirectory(outputDirectory);
+            SaveEvidence();
+        }
+
+        private void EnsureSession()
         {
             if (!EditorApplication.isPlaying)
             {
-                throw new InvalidOperationException("Play Mode中のみCaptureできます。");
+                throw new InvalidOperationException("Play Modeで実行してください。");
             }
-
-            if (!string.IsNullOrEmpty(outputDirectory))
+            if (string.IsNullOrEmpty(outputDirectory))
             {
-                return;
+                StartNewSession();
             }
-
-            runId = Guid.NewGuid().ToString("N");
-            startedAtUtc = DateTime.UtcNow.ToString("o");
-            capturedScene = SceneManager.GetActiveScene().path;
-            outputDirectory = Path.Combine(Path.GetTempPath(), "UnityAgentPlayEvidence", runId);
-            Directory.CreateDirectory(outputDirectory);
-            startingFrame = Time.frameCount;
-            observedFrames = 0;
-            errorCount = 0;
-            status = "RUNNING";
-            captureError = string.Empty;
         }
 
         private void CaptureScreenshot()
         {
             try
             {
-                BeginSession();
-                screenshotPath = Path.Combine(outputDirectory, "game-view-" + Guid.NewGuid().ToString("N") + ".png");
-                screenshotSha256 = string.Empty;
-                // CaptureScreenshotは非同期保存される場合があるので、ファイルを観測してから記録する。
-                ScreenCapture.CaptureScreenshot(screenshotPath);
+                EnsureSession();
+                screenshotPath = Path.Combine(outputDirectory,
+                    "game-view-" + Guid.NewGuid().ToString("N") + ".png");
+                screenshotHash = string.Empty;
                 screenshotRequested = true;
-                screenshotDeadline = EditorApplication.timeSinceStartup + CaptureTimeoutSeconds;
-                status = "CAPTURING";
+                screenshotPaused = EditorApplication.isPaused;
+                screenshotDeadline = EditorApplication.timeSinceStartup + ScreenshotTimeoutSeconds;
+                ScreenCapture.CaptureScreenshot(screenshotPath);
                 SaveEvidence();
             }
             catch (Exception exception)
             {
-                captureError = exception.Message;
-                status = "FAILED";
-                SaveEvidence();
+                RecordError(exception);
             }
         }
 
-        private void StartRecording()
+        private void StartRecording(bool timeline)
         {
             try
             {
-                BeginSession();
-                if (Application.isBatchMode)
+                EnsureSession();
+                if (recorder != null)
                 {
-                    throw new InvalidOperationException("Unity Recorderは-batchmodeでは録画できません。");
-                }
-                if (recording)
-                {
-                    return;
+                    throw new InvalidOperationException("すでに録画中です。");
                 }
 
-                var controllerType = RequireRecorderType("UnityEditor.Recorder.RecorderController");
-                var settingsType = RequireRecorderType("UnityEditor.Recorder.RecorderControllerSettings");
-                var movieType = RequireRecorderType("UnityEditor.Recorder.MovieRecorderSettings");
-                var inputType = RequireRecorderType("UnityEditor.Recorder.Input.GameViewInputSettings");
-
-                controllerSettings = ScriptableObject.CreateInstance(settingsType);
-                movieSettings = ScriptableObject.CreateInstance(movieType);
-                SetProperty(controllerSettings, "FrameRate", (float)RecordingFrameRate);
-                SetProperty(controllerSettings, "CapFrameRate", false);
-                SetProperty(controllerSettings, "ExitPlayMode", false);
-                InvokeMethod(controllerSettings, "SetRecordModeToManual");
-
-                // Recorder 5.1のGame View入力とH.264 MP4を利用する。
-                SetProperty(movieSettings, "ImageInputSettings", Activator.CreateInstance(inputType));
-                SetProperty(movieSettings, "CaptureAudio", false);
-                var outputFormat = movieType.GetProperty("OutputFormat");
-                if (outputFormat == null || !outputFormat.CanWrite)
+                var director = timeline ? timelineDirector : null;
+                if (timeline && (director == null || director.playableAsset == null ||
+                    !director.isActiveAndEnabled))
                 {
-                    throw new MissingMemberException("Recorder MP4 OutputFormat is unavailable");
-                }
-                outputFormat.SetValue(movieSettings, Enum.Parse(outputFormat.PropertyType, "MP4"), null);
-                SetProperty(movieSettings, "OutputFile", Path.Combine(outputDirectory, "gameplay"));
-                InvokeMethod(controllerSettings, "AddRecorderSettings", movieSettings);
-                recorderController = Activator.CreateInstance(controllerType, controllerSettings);
-                InvokeMethod(recorderController, "PrepareRecording");
-                if (!(bool)InvokeMethod(recorderController, "StartRecording"))
-                {
-                    throw new InvalidOperationException("Unity Recorderは録画を開始できませんでした。Consoleを確認してください。");
+                    throw new InvalidOperationException("有効なPlayableDirectorを選択してください。");
                 }
 
-                recording = true;
+                var path = Path.Combine(outputDirectory,
+                    "gameplay-" + Guid.NewGuid().ToString("N") + ".mp4");
+                recorder = new PlayVideoEncoder(path, requestedFps, scale, maxDurationSeconds);
                 videoRequested = true;
+                videoPath = path;
+                videoHash = string.Empty;
+                stoppedBy = string.Empty;
+                if (timeline)
+                {
+                    activeTimeline = director;
+                    recordedDirectorName = director.name;
+                    recordedTimelinePath = AssetDatabase.GetAssetPath(director.playableAsset);
+                    director.stopped += OnTimelineStopped;
+                    // Timelineを先頭から再生する操作はユーザーのボタンによってのみ行う。
+                    director.Stop();
+                    director.time = 0;
+                    director.Evaluate();
+                    director.Play();
+                }
                 status = "RECORDING";
                 SaveEvidence();
             }
             catch (Exception exception)
             {
-                captureError = exception.GetBaseException().Message;
-                status = "FAILED";
-                StopRecording();
-                ReleaseRecorderSettings();
-                SaveEvidence();
+                RecordError(exception);
+                StopRecording("start_failed");
             }
         }
 
-        private void StopRecording()
+        private void OnTimelineStopped(PlayableDirector director)
         {
-            if (recorderController == null)
+            if (activeTimeline == director)
+            {
+                StopRecording("timeline_stopped");
+            }
+        }
+
+        private void StopRecording(string reason)
+        {
+            if (activeTimeline != null)
+            {
+                activeTimeline.stopped -= OnTimelineStopped;
+                activeTimeline = null;
+            }
+            if (recorder == null)
             {
                 return;
             }
-
+            var current = recorder;
+            recorder = null;
             try
             {
-                InvokeMethod(recorderController, "StopRecording");
-                videoDeadline = EditorApplication.timeSinceStartup + CaptureTimeoutSeconds;
-                status = "FINALIZING_VIDEO";
+                current.Stop(reason);
+                videoWidth = current.Width;
+                videoHeight = current.Height;
+                videoFps = current.FrameRate;
+                encodedFrames = current.EncodedFrames;
+                skippedFrames = current.SkippedFrames;
+                videoElapsed = current.ElapsedSeconds;
+                stoppedBy = current.StopReason;
+                if (encodedFrames == 0)
+                {
+                    captureError = "動画フレームが一枚もエンコードされませんでした。";
+                }
+                else if (!IsPlausibleMp4(videoPath))
+                {
+                    captureError = "MP4の実ファイルを確認できません。";
+                }
+                else
+                {
+                    videoHash = HashFile(videoPath);
+                }
             }
             catch (Exception exception)
             {
-                captureError = exception.GetBaseException().Message;
-                status = "FAILED";
+                RecordError(exception);
             }
             finally
             {
-                recorderController = null;
-                recording = false;
+                current.Dispose();
                 SaveEvidence();
             }
         }
 
-        private void UpdateEvidence()
+        private void UpdateCapture()
         {
-            if (string.IsNullOrEmpty(outputDirectory) || !Directory.Exists(outputDirectory) ||
-                EditorApplication.timeSinceStartup < nextEvidenceRefresh)
+            if (string.IsNullOrEmpty(outputDirectory) ||
+                EditorApplication.timeSinceStartup < nextPoll)
             {
                 return;
             }
-
-            nextEvidenceRefresh = EditorApplication.timeSinceStartup + 0.5;
-            if (screenshotRequested)
+            nextPoll = EditorApplication.timeSinceStartup + 0.05;
+            if (recorder != null)
             {
-                var candidate = screenshotPath;
-                if (File.Exists(candidate) && new FileInfo(candidate).Length > 100)
+                try
                 {
-                    if (string.IsNullOrEmpty(screenshotSha256))
+                    if (!EditorApplication.isPlaying)
                     {
-                        screenshotSha256 = CalculateSha256(candidate);
+                        StopRecording("play_mode_exit");
                     }
+                    else
+                    {
+                        recorder.Tick();
+                        if (activeTimeline != null && (activeTimeline.state != PlayState.Playing ||
+                            (IsFiniteDuration(activeTimeline.duration) &&
+                            activeTimeline.time >= activeTimeline.duration)))
+                        {
+                            StopRecording("timeline_finished");
+                        }
+                        else if (recorder != null && recorder.DurationReached)
+                        {
+                            StopRecording("max_duration");
+                        }
+                    }
+                }
+                catch (Exception exception)
+                {
+                    RecordError(exception);
+                    StopRecording("capture_failed");
+                }
+            }
+
+            if (screenshotRequested && string.IsNullOrEmpty(screenshotHash) &&
+                !string.IsNullOrEmpty(screenshotPath))
+            {
+                if (IsPlausiblePng(screenshotPath))
+                {
+                    screenshotHash = HashFile(screenshotPath);
                     screenshotDeadline = 0;
                 }
-                else if (EditorApplication.timeSinceStartup > screenshotDeadline && screenshotDeadline > 0)
+                else if (screenshotDeadline > 0 &&
+                    EditorApplication.timeSinceStartup >= screenshotDeadline)
                 {
-                    captureError = "スクリーンショットを取得できませんでした。";
+                    captureError = "PNGが保存されませんでした。";
                     screenshotDeadline = 0;
                 }
             }
 
-            if (videoRequested && !recording && videoDeadline > 0)
+            if (EditorApplication.isPlaying)
             {
-                var candidate = Path.Combine(outputDirectory, "gameplay.mp4");
-                if (File.Exists(candidate) && new FileInfo(candidate).Length > 1024)
-                {
-                    var size = new FileInfo(candidate).Length;
-                    if (size != lastVideoFileSize)
-                    {
-                        lastVideoFileSize = size;
-                        lastVideoSizeChange = EditorApplication.timeSinceStartup;
-                    }
-                    else if (EditorApplication.timeSinceStartup - lastVideoSizeChange >= 1.0)
-                    {
-                        videoPath = candidate;
-                        videoSha256 = CalculateSha256(candidate);
-                        videoDeadline = 0;
-                        ReleaseRecorderSettings();
-                    }
-                }
-                else if (EditorApplication.timeSinceStartup > videoDeadline)
-                {
-                    captureError = "MP4の生成を確認できませんでした。Recorderのログを確認してください。";
-                    videoDeadline = 0;
-                    ReleaseRecorderSettings();
-                }
+                observedFrames = Math.Max(observedFrames, Time.frameCount - startingFrame);
             }
-
             SaveEvidence();
             Repaint();
         }
@@ -397,112 +468,107 @@ namespace DarumaPPAP.UnityAgent.Editor
             {
                 return;
             }
-
             try
             {
-                var screenshotValid = screenshotRequested && !string.IsNullOrEmpty(screenshotSha256) &&
-                    File.Exists(screenshotPath);
-                var videoValid = videoRequested && !string.IsNullOrEmpty(videoSha256) &&
-                    File.Exists(videoPath);
-                var requestedComplete = (screenshotRequested || videoRequested) &&
-                    (!screenshotRequested || screenshotValid) && (!videoRequested || videoValid);
-                if (EditorApplication.isPlaying)
-                {
-                    observedFrames = Math.Max(observedFrames, Math.Max(0, Time.frameCount - startingFrame));
-                }
-                var measuredFrames = observedFrames;
-                var captureStatus = requestedComplete && measuredFrames > 0 && string.IsNullOrEmpty(captureError)
-                    ? (errorCount == 0 ? "CAPTURED" : "CAPTURED_WITH_RUNTIME_ERRORS")
-                    : status == "FAILED" || !string.IsNullOrEmpty(captureError) ? "FAILED" : "INCOMPLETE";
+                var screenshotOk = screenshotRequested && !string.IsNullOrEmpty(screenshotHash) &&
+                    IsPlausiblePng(screenshotPath);
+                var videoOk = videoRequested && !string.IsNullOrEmpty(videoHash) &&
+                    IsPlausibleMp4(videoPath);
+                var complete = (screenshotRequested || videoRequested) &&
+                    (!screenshotRequested || screenshotOk) &&
+                    (!videoRequested || videoOk);
+                status = !string.IsNullOrEmpty(captureError) ? "FAILED" :
+                    !complete ? "INCOMPLETE" :
+                    errorCount > 0 ? "CAPTURED_WITH_RUNTIME_ERRORS" :
+                    skippedFrames > 0 ? "CAPTURED_WITH_GAPS" : "CAPTURED";
+
                 var evidence = new CaptureEvidence
                 {
                     run_id = runId,
                     unity_version = Application.unityVersion,
                     scene_path = capturedScene,
                     project_path = Path.GetDirectoryName(Application.dataPath),
-                    started_at_utc = startedAtUtc,
+                    started_at_utc = startedAt,
                     updated_at_utc = DateTime.UtcNow.ToString("o"),
-                    observation = measuredFrames > 0 ? "observed" : "not_observed",
-                    status = captureStatus,
-                    screenshot_path = screenshotValid ? screenshotPath : null,
-                    screenshot_sha256 = screenshotValid ? screenshotSha256 : null,
-                    video_path = videoValid ? videoPath : null,
-                    video_sha256 = videoValid ? videoSha256 : null,
-                    play_frames = measuredFrames,
-                    error_count = errorCount,
+                    status = status,
+                    observation = observedFrames > 0 || encodedFrames > 0
+                        ? "observed" : "not_observed",
+                    timeline_director = recordedDirectorName,
+                    timeline_asset_path = recordedTimelinePath,
+                    screenshot_path = screenshotOk ? screenshotPath : null,
+                    screenshot_sha256 = screenshotOk ? screenshotHash : null,
+                    video_path = videoOk ? videoPath : null,
+                    video_sha256 = videoOk ? videoHash : null,
+                    video_stopped_by = stoppedBy,
                     capture_error = captureError,
+                    play_frames = observedFrames,
+                    error_count = errorCount,
+                    video_width = videoWidth,
+                    video_height = videoHeight,
+                    video_fps = videoFps,
+                    encoded_frames = encodedFrames,
+                    skipped_frames = skippedFrames,
+                    video_elapsed_seconds = videoElapsed,
                 };
                 File.WriteAllText(Path.Combine(outputDirectory, "play-evidence.json"),
                     JsonUtility.ToJson(evidence, true));
-                status = captureStatus;
             }
-            catch (Exception exception)
+            catch (IOException exception)
             {
                 status = "FAILED";
-                captureError = "Evidence保存失敗: " + exception.Message;
+                captureError = "Evidence出力失敗: " + exception.Message;
             }
         }
 
-        private void ReleaseRecorderSettings()
+        private void RecordError(Exception exception)
         {
-            if (controllerSettings != null)
+            captureError = exception.GetBaseException().Message;
+            status = "FAILED";
+            Debug.LogError("[UnityAgent Play Evidence] " + captureError);
+        }
+
+        private static bool IsFiniteDuration(double duration)
+        {
+            return !double.IsNaN(duration) && !double.IsInfinity(duration) && duration > 0;
+        }
+
+        private static bool IsPlausiblePng(string path)
+        {
+            if (string.IsNullOrEmpty(path) || !File.Exists(path) ||
+                new FileInfo(path).Length < 100)
             {
-                DestroyImmediate(controllerSettings);
-                controllerSettings = null;
+                return false;
             }
-            if (movieSettings != null)
+            using (var file = File.OpenRead(path))
             {
-                DestroyImmediate(movieSettings);
-                movieSettings = null;
+                return file.ReadByte() == 137 && file.ReadByte() == 80 &&
+                    file.ReadByte() == 78 && file.ReadByte() == 71;
             }
         }
 
-        private static string CalculateSha256(string filename)
+        private static bool IsPlausibleMp4(string path)
         {
-            using (var stream = File.OpenRead(filename))
-            using (var algorithm = SHA256.Create())
+            if (string.IsNullOrEmpty(path) || !File.Exists(path) ||
+                new FileInfo(path).Length < 1024)
             {
-                return BitConverter.ToString(algorithm.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
+                return false;
+            }
+            using (var file = File.OpenRead(path))
+            {
+                file.Position = 4;
+                return file.ReadByte() == 'f' && file.ReadByte() == 't' &&
+                    file.ReadByte() == 'y' && file.ReadByte() == 'p';
             }
         }
 
-        private static Type FindRecorderType(string name)
+        private static string HashFile(string path)
         {
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            using (var stream = File.OpenRead(path))
+            using (var sha = SHA256.Create())
             {
-                var type = assembly.GetType(name, false);
-                if (type != null)
-                {
-                    return type;
-                }
+                return BitConverter.ToString(sha.ComputeHash(stream))
+                    .Replace("-", "").ToLowerInvariant();
             }
-            return null;
-        }
-
-        private static Type RequireRecorderType(string name)
-        {
-            return FindRecorderType(name) ?? throw new InvalidOperationException(
-                "Unity Recorder APIが見つかりません: " + name);
-        }
-
-        private static void SetProperty(object target, string name, object value)
-        {
-            var property = target.GetType().GetProperty(name, BindingFlags.Public | BindingFlags.Instance);
-            if (property == null || !property.CanWrite)
-            {
-                throw new MissingMemberException(target.GetType().FullName, name);
-            }
-            property.SetValue(target, value, null);
-        }
-
-        private static object InvokeMethod(object target, string name, params object[] arguments)
-        {
-            var method = target.GetType().GetMethod(name, BindingFlags.Public | BindingFlags.Instance);
-            if (method == null)
-            {
-                throw new MissingMethodException(target.GetType().FullName, name);
-            }
-            return method.Invoke(target, arguments);
         }
     }
 }
