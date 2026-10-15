@@ -51,7 +51,10 @@ def apply_rock(plane, plan_id, approval_ref, client, *, definition_fingerprint):
     project = Path(plan['project_root'])
     if plan['definition_fingerprint'] != dict(definition_fingerprint) or plan['project_revision'] != project_revision(project):
         raise ValueError('Rock Task definition or Project revision changed')
-    def check_approval(_):
+    def check_approval(request_digest):
+        expected = sha256_json({'template': plan['template'], 'approval_ref': approval_ref})
+        if request_digest is not None and request_digest != expected:
+            raise ValueError('Reviewed Blender template changed since approval')
         record = ApprovalDecisionStore(state).get(approval_ref)
         decision = record['decision']
         if (decision.get('operation') != 'blender_rock' or decision.get('plan_digest') != sha256_json(plan)
