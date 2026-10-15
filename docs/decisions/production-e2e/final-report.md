@@ -45,7 +45,7 @@ Baselineは `4747fd3f82e5a9c0be191d606f7827a16c8eef90`。main、Open PR、CIを�
 2. **QAは段階的再編。** 旧Performanceの実行能力と決定的Acceptance補助はあるが、テスト計画・再現・修正候補生成・再検証を汎用QA reasoningとして一貫Dispatchする新経路は未完成。現在の意味的修正は開始時に固定した候補のみ。
 3. **Rollbackは限定Helperまで。** 他者編集のAsset/metaを上書きしないが、Unity Import後に新しく作られた`.meta`等は照合不一致で止まる。Editor生成物の所有権/Hash/GUIDを署名付きReceiptへ拘束して、安全な適用後Rollbackへ接続する必要がある。CheckpointからAssetを復旧しない。
 4. **G1のC# / URP pinは未検証。** Unity Package Registryへの照会はHTTP 403。`17.3.0`の解決とRenderGraph API互換を実Editorで確認し、実UPM解決前にpackages-lockを捏造しない。
-5. **Optional SetupのApplyは未自動化。** Blender MCP/Loopの追加Doctorは導入状態を観測する。Install/Updateは明示承認とレビュー済み導入手順が必要で、現状は`manual_required`。Addon versionは`unmeasured`。
+5. **Optional SetupのApplyは未自動化。** Blender MCP/Loopの追加Doctorは導入状態を観測する。Install/Updateは明示承認とレビュー済み導入手順が必要で、現状は`manual_required`。Addon versionは`unmeasured`。制作には実Blender Session identityの観測が必要で、MCP Client側のUUIDだけでは実行しない。未対応ServerはUnavailableのままにし、別State Rootでも共有Session排他を維持する。
 6. **G2/G3未実行。** 許可された実Project/Player/Device/SDKを観測していない。Editorの結果をPlayer/実機の結果へ流用しない。
 
 ## 次に必要な操作
