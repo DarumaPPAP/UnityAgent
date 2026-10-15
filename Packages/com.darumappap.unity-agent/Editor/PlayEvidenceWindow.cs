@@ -168,6 +168,18 @@ namespace DarumaPPAP.UnityAgent.Editor
         {
             if (change == PlayModeStateChange.EnteredPlayMode)
             {
+                // 新しいPlayごとにRun IDとCaptureファイルを分離する。
+                outputDirectory = string.Empty;
+                screenshotRequested = false;
+                videoRequested = false;
+                screenshotPath = string.Empty;
+                videoPath = string.Empty;
+                screenshotSha256 = string.Empty;
+                videoSha256 = string.Empty;
+                screenshotDeadline = 0;
+                videoDeadline = 0;
+                lastVideoFileSize = 0;
+                lastVideoSizeChange = 0;
                 BeginSession();
             }
             else if (change == PlayModeStateChange.ExitingPlayMode)
