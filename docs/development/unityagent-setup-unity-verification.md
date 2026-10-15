@@ -89,6 +89,8 @@ Unity Editorのメニュー `UnityAgent > Play Evidence`、または既存の `U
 録画は **Unity公式 `com.unity.recorder`（Unity 6対応の5.1系）をオプションとして利用**します。
 RecorderがないProjectでは録画ボタンを無効化します。UnityAgentはRecorderを自動導入せず、
 Package Managerからユーザーが明示的に導入する必要があります。PNGは標準ScreenCaptureなのでRecorder不要です。
+Unity Recorder 5.1は `-batchmode` の無描画環境では録画できません。
+録画の受入にはGame ViewとGPU/Displayのある対話型Editorが必要です（Headless CIの代替にはしない）。
 
 Captureの保存先はOSの一時フォルダ `UnityAgentPlayEvidence/<run-id>/`。
 `Assets/`や`ProjectSettings/`に生成物を追加せず、Player Buildも起動しません。
