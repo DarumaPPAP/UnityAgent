@@ -405,12 +405,12 @@ namespace DarumaPPAP.UnityAgent.Editor
 
         private void UpdateCapture()
         {
-            if (string.IsNullOrEmpty(outputDirectory) ||
-                EditorApplication.timeSinceStartup < nextPoll)
+            if (string.IsNullOrEmpty(outputDirectory))
             {
                 return;
             }
-            nextPoll = EditorApplication.timeSinceStartup + 0.05;
+
+            // 映像取得はEditor Tickごとに行う。Evidence書込だけ間引く。
             if (recorder != null)
             {
                 try
@@ -440,6 +440,12 @@ namespace DarumaPPAP.UnityAgent.Editor
                     StopRecording("capture_failed");
                 }
             }
+
+            if (EditorApplication.timeSinceStartup < nextPoll)
+            {
+                return;
+            }
+            nextPoll = EditorApplication.timeSinceStartup + 0.25;
 
             if (screenshotRequested && string.IsNullOrEmpty(screenshotHash) &&
                 !string.IsNullOrEmpty(screenshotPath))
