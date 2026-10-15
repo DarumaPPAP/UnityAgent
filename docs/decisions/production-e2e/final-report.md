@@ -28,7 +28,16 @@ Baselineは `4747fd3f82e5a9c0be191d606f7827a16c8eef90`。main、Open PR、CIを�
 
 ## CI
 
-実装Commitに対するCIの取得結果を `execution-results.json#ci` に記録する。Canonical ValidationとWindows Project Leaseは実Unity E2Eとは別である。初回の#196/#197はwheel内包漏れで失敗し、修正後のRunを確認している。新規G1 Workflowは手動・Self-hostedのみで、ここから未確認RunnerへDispatchしていない。
+実装Commitに対する **4本すべてのCanonical ValidationとWindows Project Leaseが成功**。完全なSHAとRunは `execution-results.json#ci`。CIは実Unity E2Eとは別である。
+
+|PR|実装Commit|成功Run|
+|---|---|---|
+|#195|`84c672e`|[38805286894](https://github.com/DarumaPPAP/UnityAgent/actions/runs/38805286894)|
+|#196|`0790a8d`|[38807469893](https://github.com/DarumaPPAP/UnityAgent/actions/runs/38807469893)|
+|#197|`067fdb3`|[38807521141](https://github.com/DarumaPPAP/UnityAgent/actions/runs/38807521141)|
+|#198|`661512c`|[38807711945](https://github.com/DarumaPPAP/UnityAgent/actions/runs/38807711945)|
+
+初回の#196/#197はwheel内包漏れで失敗し、修正後に成功した。CIにはwheel配布、Artist CLI Compile、既存P9 Fixture/Runner、PowerShell/UPM検証も含まれる。新規G1 Workflowは手動・Self-hostedのみで、ここから未確認RunnerへDispatchしていない。この後のEvidence/報告文書Commitの最新CI状態は各PRのChecksを参照する。
 
 ## 既知の制限と未解決Risk
 

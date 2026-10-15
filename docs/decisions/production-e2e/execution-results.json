@@ -202,12 +202,12 @@
     },
     "197": {
       "commit": "067fdb3a83b8562bfeca8721a13d30b1f78cc61c",
-      "status": "running",
+      "status": "passed",
       "run": 38807521141
     },
     "198": {
       "commit": "661512c8d717eed5d2947f844ad61da350331c05",
-      "status": "running",
+      "status": "passed",
       "run": 38807711945
     }
   }
