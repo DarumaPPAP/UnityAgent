@@ -74,32 +74,79 @@ CIのPython静的契約やHost Testが成功しても、**実Unity Editorでこ�
 別EditorのP9検証を実際に完了することは独立した観測が必要**です。
 未実行は`BLOCKED_NOT_RUN`として記録し、フルE2E完了とは扱いません。
 
-## 6. Editor Play Modeでの軽量Visual Capture（G1/G2の補助Evidence）
+## 6. Editor Play / Timeline 動画Evidence（G1/G2補助）
 
-通常のScene動作確認は、Player Buildを毎回行う代わりにEditor Play Modeで観測できます。
-Unity Editorのメニュー `UnityAgent > Play Evidence`、または既存の `UnityAgent > Setup` の
-`6. Play Mode確認（スクリーンショット / 録画）` から開きます。
+Player Buildを毎回行う代わりに、描画可能なUnity Editor上でPlay / Timelineを録画できます。
+`UnityAgent > Play Evidence`、または`UnityAgent > Setup`の
+`6. Play Mode確認（スクリーンショット / 録画）`から開きます。
 
-1. 確認したいSceneを開き、`Playを開始`する（すでにPlay中ならそのまま）。
-2. Game Viewを表示して `スクリーンショット取得（PNG）` を実行する。
-3. 動画が必要なら `録画を開始（MP4 / 15fps）` を押し、再現操作後に `録画を終了` する。
-4. `Evidenceフォルダを開く` で `play-evidence.json`、PNG、MP4とそれぞれのSHA-256を確認する。
-5. Console Error/Exception/Assert数と映像をレビューする。例外がある場合はCaptureのみ成功としても機能PASSにはしない。
+- Unity 6 / Windows・macOS Editor: 公式`UnityEditor.Media.MediaEncoder`でH.264 MP4を出力。
+  `com.unity.recorder`のインストールは不要。Linux EditorでH.264 MP4を要求した場合は
+  `PlatformNotSupported`で拒否し、別形式への黙示的Fallbackは行いません。
+- PNG: 標準`ScreenCapture.CaptureScreenshot`を使用。非同期保存があるためPNGヘッダーとサイズを検証。
+- 動画: `PlayVideoEncoder`がGame View / Device Simulator最終合成RTを1セッションだけ所有し、
+  `MediaEncoder.AddFrame`で記録します。H.264 High、入力解像度は表示Game View原寸または50%、
+  FPSは30/60、上限は5〜600秒。4Kで録る場合はGame View自体を4Kへ設定してください。
+- **重要:** Game View RT取得はUnity 6の非公開`PlayModeView.m_TargetTexture`を
+  Reflectionで使用するため、内部APIの存在と描画をG1で必ず実測。見つからない場合は録画開始を拒否。
+  同一EditorでCameraのみを再描画するFallbackはUI・URP Camera Stack・PostProcessの一致を保証しないため未導入。
+- 固定FPS MP4は実時間録画です。描画不足による重複フレーム数`repeated_frames`、
+  取得不能/エンコード失敗`skipped_frames`を記録します。フレーム完全同期ではなく、
+  `video_timing=realtime_not_frame_exact`を明示します。
+- MediaEncoderを閉じてからMP4ファイルサイズ・`ftyp`シグネチャ・SHA-256を検証します。
+  ファイルが再生できることや画質が一致することは、別途人間または映像デコードで検証します。
 
-録画は **Unity公式 `com.unity.recorder`（Unity 6対応の5.1系）をオプションとして利用**します。
-RecorderがないProjectでは録画ボタンを無効化します。UnityAgentはRecorderを自動導入せず、
-Package Managerからユーザーが明示的に導入する必要があります。PNGは標準ScreenCaptureなのでRecorder不要です。
-Unity Recorder 5.1は `-batchmode` の無描画環境では録画できません。
-録画の受入にはGame ViewとGPU/Displayのある対話型Editorが必要です（Headless CIの代替にはしない）。
+### Play録画
 
-Captureの保存先はOSの一時フォルダ `UnityAgentPlayEvidence/<run-id>/`。
-`Assets/`や`ProjectSettings/`に生成物を追加せず、Player Buildも起動しません。
-録画中はGPU Readback/Encoder負荷が増え、実ゲームの計測FPSを変える可能性があります。
-性能計測では録画なしのProfiler値を正として扱います。
+1. 対象SceneとGame Viewを開く。Playを開始する（既存のPlay中に起動してもよい）。
+2. `通常Playを録画 (MP4)`を選択。操作・描画後、`録画を終了して保存`を押す。
+3. PNGが必要なら`Screenshot (PNG)`を押す。Pause中のPNGは古い描画内容の可能性がある。
+4. `play-evidence.json`、MP4、PNG、Consoleエラー、`skipped_frames`、
+   `repeated_frames`を照合し、映像を実際に再生して品質を確認する。
 
-`play-evidence.json` の `CAPTURED` は **映像ファイルが保存されたことだけ**を示します。
-`visual_acceptance=human_review_required`、`e2e_gate=not_assessed` は固定し、
-Control Planeの正式なdurable Evidence、G1/G2のE2E完了、Player/実機結果へ自動昇格させません。
-G1/G2の正式PASSには別途、承認済みTask Scope、実行結果、例外監査、変更Diff、
-観測した再現条件とPersistenceへのEvidence appendが必要です。
-Unity EditorでのPlay/Recorder統合はまだ実Editorを使った受入検証が必要です。
+### Timeline録画
+
+1. **Play中**に`Timeline (任意)`へScene内の`PlayableDirector`を指定する。
+2. `Timelineを先頭から再生して録画 (MP4)`を押す。
+3. 対象Directorを停止→時刻0→`Evaluate()`→`Play()`で開始する。
+   Directorの`stopped`イベント、有限`duration`への到達、最大録画時間、
+   ユーザーの停止、Play終了、Window破棄またはDomain Reloadで録画を終了する。
+4. TimelineのCamera切替、Cinemachine、URP Camera Stack、PostProcess、
+   Screen Space Overlay UIを実録画で確認する。
+
+**非対応と今後のGate:** 非対話型Editorでの録画、ゲーム音声の合成、
+EXR/ProRes、高品質オフライン・フレーム単位Render、Timeline内のParticle/Physics/Audioの
+決定論的再現は未実装です。単に`PlayableDirector.Evaluate()`を呼んだだけでは保証できません。
+録画中のMain Thread・GPU Readback・Encoder負荷はProfilerで別途測定し、
+性能評価は録画を止めた状態をBaselineにしてください。
+
+### Evidence / 受入
+
+保存先: OS一時フォルダ `UnityAgentPlayEvidence/<run-id>/`。ProjectのAssets、
+ProjectSettings、Player Buildは触りません。
+
+Evidenceには`capture_kind=editor_play`、Run ID、Editor Version、Scene、Project、
+開始/更新時刻、Timeline Director/Asset、画像/動画PathとSHA-256、
+停止原因、FPS、解像度、エンコード・欠落・重複フレーム数、Console Error/Exception/Assert数を記録します。
+
+`CAPTURED`は**Captureファイルの取得確認のみ**を意味します。
+エラーや重複・欠落があれば`CAPTURED_WITH_RUNTIME_ERRORS`、
+`CAPTURED_WITH_TIMING_VARIATION`など別Statusで示します。
+`visual_acceptance=human_review_required`、
+`e2e_gate=not_assessed`は固定し、正式G1/G2/Persistenceへ自動昇格しません。
+実際のG1/G2 PASSにはScopeの承認、実行前Compile、具体的な期待結果、
+Runtime例外確認、Evidence Store append、必要な人間によるVisual判定が追加で必要です。
+
+#### G1実Unity Editor受入マトリクス（**未実施**）
+
+| 対象 | 合格条件 | 記録 |
+|---|---|---|
+| Unity 6000.3.x / URP | Console Compile Errorなし、30fpsのPNG/MP4出力 | PNG / MP4 / evidence.json / editor.log |
+| Unity 6000.6.x / Built-in | Game View描画を記録 | 同上 |
+| Unity 6000.3.x / Timeline | Scene内DirectorのCamera切替、開始停止、指定区間を確認 | 動画再生・停止理由 |
+| Unity 6000.3.x / URP UI | Overlay Canvas、色・上下向き・PostProcessの一致 | PNG/動画の目視比較 |
+| 異常系 | Game View未描画、Play終了、Domain Reload、解像度変更、Editorフォーカス喪失、録画上限 | Fail-Closed、終了理由、破損なし |
+| FPS | 30/60fpsの出力再生時間とフレーム数を外部デコーダで検証 | ffprobe等 / Editorログ |
+
+静的テストは`python -m unittest discover -s tests/packaging -p 'test_play_evidence_source.py'`。
+このテストだけではUnity Compileや映像品質を証明できません。
