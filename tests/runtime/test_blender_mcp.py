@@ -73,7 +73,7 @@ class RockControlPlaneTests(unittest.TestCase):
             client.tools = {'execute_blender_code'}
             def create_fixture(name, arguments):
                 folder = state/'blender-jobs/fixture-rock'
-                (folder/'Rock.fbx').write_bytes(b'fixture FBX; not production evidence')
+                (folder/'Rock.fbx').write_bytes(b'Kaydara FBX Binary  \x00\x1a\x00'+b'fixture-only-not-real-geometry'*80)
                 (folder/'artifact.json').write_text(json.dumps({'sha256':hashlib.sha256((folder/'Rock.fbx').read_bytes()).hexdigest(),
                     'vertices':42,'triangles':80,'scale':[1,1,1],'uv_layers':1,'texture_dependencies':[]}))
                 return {'content':[{'type':'text','text':'fixture'}]}
@@ -88,3 +88,26 @@ class RockControlPlaneTests(unittest.TestCase):
             ApprovalDecisionStore(state).revoke(approval['approval_decision_id'])
             with self.assertRaisesRegex(ValueError, 'revoked'):
                 apply_rock(plane, plan['plan_id'], approval['approval_decision_id'], client, definition_fingerprint=definition)
+
+
+class McpTransportTests(unittest.TestCase):
+    def test_real_stdio_handshake_and_allowlisted_tool_call(self):
+        import sys
+        from unityagent.runtime.tooling.providers.blender_mcp.stdio_client import McpStdioClient
+        with tempfile.TemporaryDirectory() as directory:
+            server=Path(directory)/'fixture_mcp.py'
+            server.write_text('''import json, sys
+for line in sys.stdin:
+    request=json.loads(line)
+    if 'id' not in request: continue
+    method=request['method']
+    if method=='initialize': result={'protocolVersion':'2024-11-05','serverInfo':{'name':'fixture','version':'1'}}
+    elif method=='tools/list': result={'tools':[{'name':'get_scene_info'},{'name':'execute_blender_code'}]}
+    else: result={'content':[{'type':'text','text':'fixture scene observation'}]}
+    print(json.dumps({'jsonrpc':'2.0','id':request['id'],'result':result}),flush=True)
+''')
+            with McpStdioClient([sys.executable,'-u',str(server)]) as client:
+                self.assertEqual(client.identity['serverInfo']['name'],'fixture')
+                self.assertTrue(client.tool('get_scene_info',{})['content'])
+                with self.assertRaises(ValueError): client.tool('arbitrary_python',{})
+            self.assertIsNotNone(client.process.poll())
