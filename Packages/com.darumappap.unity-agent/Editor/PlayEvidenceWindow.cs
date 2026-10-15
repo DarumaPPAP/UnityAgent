@@ -330,12 +330,13 @@ namespace DarumaPPAP.UnityAgent.Editor
                     activeTimeline = director;
                     recordedDirectorName = director.name;
                     recordedTimelinePath = AssetDatabase.GetAssetPath(director.playableAsset);
-                    // 既存再生を止めてから購読する。逆順だとStoppedイベントで録画が即終了する。
+                    // StopはPlayableGraphを破棄するため、Playで作り直してから0秒を評価する。
+                    // Stoppedの購読はリセット後に行い、古い停止イベントによる即終了を防ぐ。
                     director.Stop();
+                    director.Play();
                     director.time = 0;
                     director.Evaluate();
                     director.stopped += OnTimelineStopped;
-                    director.Play();
                 }
                 status = "RECORDING";
                 SaveEvidence();
