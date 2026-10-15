@@ -122,7 +122,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                 }
 
                 var recorderAvailable = FindRecorderType("UnityEditor.Recorder.RecorderController") != null;
-                using (new EditorGUI.DisabledScope(!recorderAvailable))
+                using (new EditorGUI.DisabledScope(!recorderAvailable || Application.isBatchMode))
                 {
                     if (GUILayout.Button(recording ? "録画を終了" : "録画を開始（MP4 / 15fps）",
                             GUILayout.Height(28)))
@@ -253,6 +253,10 @@ namespace DarumaPPAP.UnityAgent.Editor
             try
             {
                 BeginSession();
+                if (Application.isBatchMode)
+                {
+                    throw new InvalidOperationException("Unity Recorderは-batchmodeでは録画できません。");
+                }
                 if (recording)
                 {
                     return;
