@@ -73,3 +73,31 @@ Public RepositoryのPRからライセンス済みPCをSelf-hosted Runnerとし�
 CIのPython静的契約やHost Testが成功しても、**実Unity Editorでこの新しいUIがコンパイル・起動し、
 別EditorのP9検証を実際に完了することは独立した観測が必要**です。
 未実行は`BLOCKED_NOT_RUN`として記録し、フルE2E完了とは扱いません。
+
+## 6. Editor Play Modeでの軽量Visual Capture（G1/G2の補助Evidence）
+
+通常のScene動作確認は、Player Buildを毎回行う代わりにEditor Play Modeで観測できます。
+Unity Editorのメニュー `UnityAgent > Play Evidence`、または既存の `UnityAgent > Setup` の
+`6. Play Mode確認（スクリーンショット / 録画）` から開きます。
+
+1. 確認したいSceneを開き、`Playを開始`する（すでにPlay中ならそのまま）。
+2. Game Viewを表示して `スクリーンショット取得（PNG）` を実行する。
+3. 動画が必要なら `録画を開始（MP4 / 15fps）` を押し、再現操作後に `録画を終了` する。
+4. `Evidenceフォルダを開く` で `play-evidence.json`、PNG、MP4とそれぞれのSHA-256を確認する。
+5. Console Error/Exception/Assert数と映像をレビューする。例外がある場合はCaptureのみ成功としても機能PASSにはしない。
+
+録画は **Unity公式 `com.unity.recorder`（Unity 6対応の5.1系）をオプションとして利用**します。
+RecorderがないProjectでは録画ボタンを無効化します。UnityAgentはRecorderを自動導入せず、
+Package Managerからユーザーが明示的に導入する必要があります。PNGは標準ScreenCaptureなのでRecorder不要です。
+
+Captureの保存先はOSの一時フォルダ `UnityAgentPlayEvidence/<run-id>/`。
+`Assets/`や`ProjectSettings/`に生成物を追加せず、Player Buildも起動しません。
+録画中はGPU Readback/Encoder負荷が増え、実ゲームの計測FPSを変える可能性があります。
+性能計測では録画なしのProfiler値を正として扱います。
+
+`play-evidence.json` の `CAPTURED` は **映像ファイルが保存されたことだけ**を示します。
+`visual_acceptance=human_review_required`、`e2e_gate=not_assessed` は固定し、
+Control Planeの正式なdurable Evidence、G1/G2のE2E完了、Player/実機結果へ自動昇格させません。
+G1/G2の正式PASSには別途、承認済みTask Scope、実行結果、例外監査、変更Diff、
+観測した再現条件とPersistenceへのEvidence appendが必要です。
+Unity EditorでのPlay/Recorder統合はまだ実Editorを使った受入検証が必要です。
