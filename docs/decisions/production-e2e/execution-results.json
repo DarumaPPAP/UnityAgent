@@ -3,12 +3,6 @@
   "status": "blocked",
   "goal_complete": false,
   "baseline": "4747fd3f82e5a9c0be191d606f7827a16c8eef90",
-  "implementation_revisions": {
-    "feature/production-e2e-integration": "84c672ea89beb38a593f772a55cea43fc23ab8b6",
-    "feature/production-e2e-backends": "0790a8d0204e75c2ce6fe4ec5bf23a5e66a3bc8f",
-    "feature/production-e2e-g1": "067fdb3a83b8562bfeca8721a13d30b1f78cc61c",
-    "feature/production-e2e-hot-reload": "661512c8d717eed5d2947f844ad61da350331c05"
-  },
   "prs": {
     "195": "https://github.com/DarumaPPAP/UnityAgent/pull/195",
     "196": "https://github.com/DarumaPPAP/UnityAgent/pull/196",
@@ -18,12 +12,10 @@
   "host_validation": {
     "result": "passed",
     "suites": 13,
-    "test_executions": 724,
-    "skipped": [
-      "1"
-    ],
-    "passed_tests": 723,
-    "skipped_tests": 1
+    "test_executions": 725,
+    "passed_tests": 724,
+    "skipped_tests": 1,
+    "tested_source_commit": "7e02b629149d88ff7e8b6b76ab7f202873376a9d"
   },
   "installed_wheel_proof": {
     "status": "passed",
@@ -210,5 +202,26 @@
       "status": "passed",
       "run": 38807711945
     }
+  },
+  "initial_implementation_revisions": {
+    "feature/production-e2e-integration": "84c672ea89beb38a593f772a55cea43fc23ab8b6",
+    "feature/production-e2e-backends": "0790a8d0204e75c2ce6fe4ec5bf23a5e66a3bc8f",
+    "feature/production-e2e-g1": "067fdb3a83b8562bfeca8721a13d30b1f78cc61c",
+    "feature/production-e2e-hot-reload": "661512c8d717eed5d2947f844ad61da350331c05"
+  },
+  "implementation_revisions": {
+    "feature/production-e2e-integration": "84c672ea89beb38a593f772a55cea43fc23ab8b6",
+    "feature/production-e2e-backends": "e85892a12addbfa9dbd4672602b8dc7551cdca97",
+    "feature/production-e2e-g1": "5ce27a4dacbf9678867351fbee4ef900e041266a",
+    "feature/production-e2e-hot-reload": "443863196350873ccb87b0dcfcd13e86f0aadd29"
+  },
+  "session_binding_followup": {
+    "status": "host_verified; CI pending at report creation",
+    "source_commit": "7e02b629149d88ff7e8b6b76ab7f202873376a9d",
+    "requirements": [
+      "observed remote Blender session identity",
+      "Host shared Session lock across Persistence roots"
+    ],
+    "tests": 6
   }
 }

@@ -18,7 +18,7 @@ Baselineは `4747fd3f82e5a9c0be191d606f7827a16c8eef90`。main、Open PR、CIを�
 
 ## 実行した検証とEvidence
 
-- `PYTHONPATH=src python tools/validate_all.py`: **724実行、723成功、1 skip**（13 unittest suite）と標準のContract/Architecture/Policy/Golden/Layout検証が通過。[原ログ](evidence/host-validation.log)。
+- `PYTHONPATH=src python tools/validate_all.py`: **725実行、724成功、1 skip**（13 unittest suite）と標準のContract/Architecture/Policy/Golden/Layout検証が通過。[原ログ](evidence/host-validation.log)。
 - 作業コピー外のvenvへwheelをインストールし、CLI起動・Context・Profile・全258 Resource Hash・Doctorを検証。[結果](evidence/installed-wheel.json)。CIで見つかった共有Alias Moduleのwheel内包漏れを修正済み。
 - Blender **4.3.2** を `--background --factory-startup` で実行し、固定TemplateからFBX Export後、別Processで再Importした。**42頂点 / 80三角形 / UV 1層 / Scale 1 / 外部Texture依存なし**。FBX SHA-256は `b79d0237a8ecd453447db7a2f12d09992e1d213aeb71137d99789ce6f502038c`。[FBX](evidence/blender-template/Rock.fbx)、[Manifest](evidence/blender-template/artifact.json)、[再Import](evidence/blender-template/fbx-reimport.json)、[Exportログ](evidence/blender-template/export.log)、[Importログ](evidence/blender-template/fbx-reimport.log)。
 - 上記Blender実行は **Template/FBX検証**。Production MCP経由の成功ではない。MCPの実Process stdio試験とBroker統合はFixture serverで検証した。
@@ -28,7 +28,7 @@ Baselineは `4747fd3f82e5a9c0be191d606f7827a16c8eef90`。main、Open PR、CIを�
 
 ## CI
 
-実装Commitに対する **4本すべてのCanonical ValidationとWindows Project Leaseが成功**。完全なSHAとRunは `execution-results.json#ci`。CIは実Unity E2Eとは別である。
+初期実装Commitに対する **4本すべてのCanonical ValidationとWindows Project Leaseが成功**。完全なSHAとRunは `execution-results.json#ci`。CIは実Unity E2Eとは別である。
 
 |PR|実装Commit|成功Run|
 |---|---|---|
@@ -37,7 +37,7 @@ Baselineは `4747fd3f82e5a9c0be191d606f7827a16c8eef90`。main、Open PR、CIを�
 |#197|`067fdb3`|[38807521141](https://github.com/DarumaPPAP/UnityAgent/actions/runs/38807521141)|
 |#198|`661512c`|[38807711945](https://github.com/DarumaPPAP/UnityAgent/actions/runs/38807711945)|
 
-初回の#196/#197はwheel内包漏れで失敗し、修正後に成功した。CIにはwheel配布、Artist CLI Compile、既存P9 Fixture/Runner、PowerShell/UPM検証も含まれる。新規G1 Workflowは手動・Self-hostedのみで、ここから未確認RunnerへDispatchしていない。この後のEvidence/報告文書Commitの最新CI状態は各PRのChecksを参照する。
+初回の#196/#197はwheel内包漏れで失敗し、修正後に成功した。CIにはwheel配布、Artist CLI Compile、既存P9 Fixture/Runner、PowerShell/UPM検証も含まれる。新規G1 Workflowは手動・Self-hostedのみで、ここから未確認RunnerへDispatchしていない。追加のSession Binding強化（`7e02b62`、HostのMCP関連6件と標準検証725件で検証）と報告文書Commitについては、最新CI状態を各PRのChecksで確認する。
 
 ## 既知の制限と未解決Risk
 
