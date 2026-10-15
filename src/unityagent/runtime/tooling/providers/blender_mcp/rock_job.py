@@ -33,13 +33,18 @@ class RockJob:
             state = {'schema_version': '1.0', 'job_id': job_id, 'session_id': self.client.session_id,
                      'approval_ref': approval_ref, 'request_digest': digest, 'status': 'submitted',
                      'submitted_at': datetime.now(timezone.utc).isoformat(),
-                     'artifact_path': str(output), 'token_usage': 'unmeasured'}
+                     'artifact_path': str(output), 'token_usage': 'unmeasured',
+                     'backend_identity': getattr(self.client, 'identity', None),
+                     'addon_version': 'unmeasured'}
             atomic_write_json(state_path, state)
             try:
                 result = self.client.tool('execute_blender_code', {'code': code})
                 state['mcp_result'] = result
                 artifact = read_json(artifact_manifest)
-                measured_hash = hashlib.sha256(output.read_bytes()).hexdigest()
+                content = output.read_bytes()
+                if len(content) < 1024 or not content.startswith(b'Kaydara FBX Binary  \x00\x1a\x00'):
+                    raise ValueError('Expected binary FBX export is missing or truncated')
+                measured_hash = hashlib.sha256(content).hexdigest()
                 if artifact['sha256'] != measured_hash or artifact['vertices'] <= 0 or artifact['triangles'] <= 0:
                     raise ValueError('Artifact hash or geometry is invalid')
                 if artifact['scale'] != [1, 1, 1] or artifact['texture_dependencies'] or artifact['uv_layers'] < 1:
