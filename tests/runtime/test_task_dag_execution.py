@@ -97,3 +97,34 @@ class TaskDagTests(unittest.TestCase):
         result = self.run_tasks([self.task('a')])
         self.assertEqual(result['tasks']['a']['status'], 'blocked')
         self.assertNotEqual(result['status'], 'verified')
+
+    def test_preapproved_semantic_repair_is_bounded_and_keeps_required_gates(self):
+        original = self.execute_file
+        attempts = []
+        def repairable(request, context, arguments):
+            attempts.append(request)
+            if len(attempts) == 1:
+                return {'status':'failed','failure_class':'execution_failed','reason':'semantic validation failed','evidence':[]}
+            return original(request,context,arguments)
+        self.execute_file = repairable
+        task = self.task('repair')
+        task['repair_candidates'] = [self.task('candidate')['entry_request']]
+        task['semantic_repair_limit'] = 1
+        result = self.run_tasks([task])
+        self.assertEqual(result['status'],'verified',result)
+        self.assertEqual(len(attempts),2)
+        self.assertEqual(result['tasks']['repair']['semantic_retries'],1)
+        self.assertEqual(len(result['tasks']['repair']['handoff_history']),2)
+
+    def test_repeated_failure_and_unavailable_gate_do_not_loop(self):
+        attempts = []
+        def failing(*args):
+            attempts.append(1)
+            return {'status':'failed','failure_class':'execution_failed','reason':'same','evidence':[]}
+        self.execute_file = failing
+        task = self.task('repair')
+        task['repair_candidates'] = [self.task('r1')['entry_request'],self.task('r2')['entry_request']]
+        task['semantic_repair_limit'] = 2
+        result = self.run_tasks([task])
+        self.assertEqual(result['status'],'blocked')
+        self.assertEqual(len(attempts),2)

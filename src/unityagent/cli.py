@@ -67,6 +67,15 @@ def _default_state_root() -> Path:
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="UnityAgent Control Plane host")
     subparsers = parser.add_subparsers(dest="command", required=True)
+    hot = subparsers.add_parser("hot-reload", help="Optional CLI Loop V3; 通常Compile/QAは別Gate")
+    hot.add_argument("operation", choices=("plan", "approve", "apply"))
+    hot.add_argument("--project-path", required=True)
+    hot.add_argument("--state-root", type=Path, default=_default_state_root())
+    hot.add_argument("--file", action="append", default=[])
+    hot.add_argument("--runner-path", type=Path)
+    hot.add_argument("--runner-sha256")
+    hot.add_argument("--plan-id")
+    hot.add_argument("--approval-ref")
     rock = subparsers.add_parser("rock", help="承認済み固定TemplateによるBlender MCP岩制作")
     rock.add_argument("operation", choices=("plan", "approve", "apply"))
     rock.add_argument("--project-path", required=True)
@@ -108,6 +117,22 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = _parse_args()
+    if args.command == "hot-reload":
+        from unityagent.control_plane.hot_reload import plan_hot_reload, approve_hot_reload, apply_hot_reload
+        try:
+            if args.operation == "plan":
+                if not args.runner_path or not args.runner_sha256:
+                    raise ValueError("A reviewed installed project runner path and SHA-256 are required; setup is explicit")
+                result = {"status":"planned", **plan_hot_reload(args.project_path,args.state_root,
+                    args.file,args.runner_path,args.runner_sha256,_fingerprint())}
+            elif args.operation == "approve":
+                result = {"status":"approved", **approve_hot_reload(args.state_root,args.plan_id or "")}
+            else:
+                result = apply_hot_reload(UnityAgentControlPlane(args.state_root),args.plan_id or "",args.approval_ref or "", definition_fingerprint=_fingerprint())
+        except (ValueError, OSError, PersistenceError) as exc:
+            result = {"status":"blocked","reason":str(exc),"gate":"BLOCKED_NOT_RUN"}
+        print(json.dumps(result,ensure_ascii=False,indent=2))
+        return 0 if result["status"] in {"planned","approved"} or result.get("acceptance") == "verified" else 1
     if args.command == "rock":
         from unityagent.control_plane.rock_artifact import plan_rock, approve_rock, apply_rock
         from unityagent.runtime.tooling.providers.blender_mcp.stdio_client import McpStdioClient
