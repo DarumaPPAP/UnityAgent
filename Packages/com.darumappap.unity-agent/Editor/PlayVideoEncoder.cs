@@ -23,6 +23,7 @@ namespace DarumaPPAP.UnityAgent.Editor
         private bool disposed;
         private int encodedFrames;
         private int skippedFrames;
+        private int repeatedFrames;
         private double elapsedAtStop;
         private string stopReason;
 
@@ -32,6 +33,7 @@ namespace DarumaPPAP.UnityAgent.Editor
         internal int FrameRate => frameRate;
         internal int EncodedFrames => encodedFrames;
         internal int SkippedFrames => skippedFrames;
+        internal int RepeatedFrames => repeatedFrames;
         internal bool IsRecording => !disposed;
         internal string StopReason => stopReason;
         internal double ElapsedSeconds => disposed ? elapsedAtStop :
@@ -165,6 +167,11 @@ namespace DarumaPPAP.UnityAgent.Editor
                 if (encoder.AddFrame(frameTexture))
                 {
                     encodedFrames++;
+                    if (index > 0)
+                    {
+                        // 同じ描画結果を繰り返して固定FPSの動画時間を維持したことを明示する。
+                        repeatedFrames++;
+                    }
                 }
                 else
                 {
