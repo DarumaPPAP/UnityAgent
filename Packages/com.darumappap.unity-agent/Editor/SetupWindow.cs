@@ -128,6 +128,11 @@ namespace DarumaPPAP.UnityAgent.Editor
                     EditorGUILayout.Space(10);
                     SetupVerificationPanel.Draw();
                     EditorGUILayout.Space(10);
+                    if (GUILayout.Button("6. Play Mode確認（スクリーンショット / 録画）", GUILayout.Height(30f)))
+                    {
+                        PlayEvidenceWindow.Open();
+                    }
+                    EditorGUILayout.Space(10);
                     DrawStatusCard();
                     EditorGUILayout.Space(10);
                     DrawDiagnostics();
