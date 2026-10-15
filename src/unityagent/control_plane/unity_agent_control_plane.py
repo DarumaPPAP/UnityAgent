@@ -636,7 +636,7 @@ class UnityAgentControlPlane:
 
     def execute_tasks(self, tasks, *, run_id, definition_fingerprint, task_parameters, resume=False):
         """既存RuntimeへTask単位で渡し、固定Acceptanceを満たす依存だけを開く。"""
-        from unityagent.runtime.execution_control.task_execution import execute_task_dag
+        from unityagent.control_plane.task_execution import execute_task_dag
         from unityagent.persistence.store.atomic_store import exclusive_file_lock
         with exclusive_file_lock(self.state_store.layout.run_root(run_id) / "task-execution.lock"):
             return execute_task_dag(self, tasks, run_id=run_id,
