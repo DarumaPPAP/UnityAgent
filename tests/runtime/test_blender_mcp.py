@@ -6,6 +6,7 @@ from unityagent.runtime.tooling.providers.blender_mcp.rock_job import RockJob
 
 class Client:
     session_id = 'session-1'
+    blender_session_identity = 'fixture-observed-session-1'
     def __init__(self):
         self.calls = []
         self.timeout = False
@@ -21,7 +22,7 @@ class BlenderJobTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         self.client = Client()
-        self.job = RockJob(self.root, self.client, check_approval=lambda digest: None)
+        self.job = RockJob(self.root, self.client, check_approval=lambda digest: None, session_lock_root=self.root/'session-locks')
 
     def test_timeout_is_durable_and_does_not_resubmit(self):
         self.client.timeout = True
@@ -79,6 +80,11 @@ class RockControlPlaneTests(unittest.TestCase):
                 return {'content':[{'type':'text','text':'fixture'}]}
             client.tool = create_fixture
             plane = UnityAgentControlPlane(state)
+            client.blender_session_identity = None
+            blocked = apply_rock(plane, plan['plan_id'], approval['approval_decision_id'], client, definition_fingerprint=definition)
+            self.assertEqual(blocked['status'], 'blocked')
+            self.assertFalse((state/'blender-jobs/fixture-rock/job.json').exists())
+            client.blender_session_identity = 'fixture-observed-session-1'
             with patch('unityagent.runtime.dispatcher.tool_runtime_dispatcher.RuntimeProjectLease', side_effect=AssertionError('Unity Lease held during Blender')):
                 result = apply_rock(plane, plan['plan_id'], approval['approval_decision_id'], client, definition_fingerprint=definition)
             self.assertEqual(result['status'], 'completed', result)
@@ -108,6 +114,40 @@ for line in sys.stdin:
 ''')
             with McpStdioClient([sys.executable,'-u',str(server)]) as client:
                 self.assertEqual(client.identity['serverInfo']['name'],'fixture')
+                self.assertIsNone(client.blender_session_identity)
                 self.assertTrue(client.tool('get_scene_info',{})['content'])
                 with self.assertRaises(ValueError): client.tool('arbitrary_python',{})
             self.assertIsNotNone(client.process.poll())
+
+
+    def test_observed_session_excludes_different_persistence_roots(self):
+        import threading
+        import uuid
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            started1,started2,release=threading.Event(),threading.Event(),threading.Event()
+            first,second=Client(),Client()
+            first.session_id=second.session_id='fixture-'+uuid.uuid4().hex
+            def tool1(*args):
+                started1.set()
+                if not release.wait(3): raise TimeoutError('fixture synchronization failed')
+                return {'content':[]}
+            def tool2(*args):
+                started2.set()
+                return {'content':[]}
+            first.tool,second.tool=tool1,tool2
+            job1=RockJob(root/'state1',first,check_approval=lambda _:None)
+            job2=RockJob(root/'state2',second,check_approval=lambda _:None)
+            t1=threading.Thread(target=lambda:job1.run('a',approval_ref='a'))
+            t2=threading.Thread(target=lambda:job2.run('b',approval_ref='b'))
+            try:
+                t1.start()
+                self.assertTrue(started1.wait(2))
+                t2.start()
+                self.assertFalse(started2.wait(0.1))
+            finally:
+                release.set()
+                t1.join(3)
+                if t2.ident is not None: t2.join(3)
+            self.assertTrue(started2.is_set())
+            self.assertFalse(t1.is_alive() or t2.is_alive())
