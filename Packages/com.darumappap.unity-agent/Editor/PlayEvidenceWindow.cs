@@ -47,6 +47,7 @@ namespace DarumaPPAP.UnityAgent.Editor
             public int video_fps;
             public int encoded_frames;
             public int skipped_frames;
+            public int repeated_frames;
             public double video_elapsed_seconds;
         }
 
@@ -78,6 +79,7 @@ namespace DarumaPPAP.UnityAgent.Editor
         [SerializeField] private int videoFps;
         [SerializeField] private int encodedFrames;
         [SerializeField] private int skippedFrames;
+        [SerializeField] private int repeatedFrames;
         [SerializeField] private double videoElapsed;
         [SerializeField] private double screenshotDeadline;
 
@@ -192,8 +194,8 @@ namespace DarumaPPAP.UnityAgent.Editor
             EditorGUILayout.LabelField("Capture", recorder != null ? "RECORDING" : status);
             EditorGUILayout.LabelField("Error / Exception / Assert", errorCount.ToString());
             EditorGUILayout.LabelField("動画フレーム", recorder != null
-                ? recorder.EncodedFrames + " / 欠落 " + recorder.SkippedFrames
-                : encodedFrames + " / 欠落 " + skippedFrames);
+                ? recorder.EncodedFrames + " / 欠落 " + recorder.SkippedFrames + " / 複製 " + recorder.RepeatedFrames
+                : encodedFrames + " / 欠落 " + skippedFrames + " / 複製 " + repeatedFrames);
             if (!string.IsNullOrEmpty(captureError))
             {
                 EditorGUILayout.HelpBox(captureError, MessageType.Error);
@@ -259,7 +261,7 @@ namespace DarumaPPAP.UnityAgent.Editor
             errorCount = 0;
             observedFrames = 0;
             startingFrame = Time.frameCount;
-            videoWidth = videoHeight = videoFps = encodedFrames = skippedFrames = 0;
+            videoWidth = videoHeight = videoFps = encodedFrames = skippedFrames = repeatedFrames = 0;
             videoElapsed = 0;
             captureError = string.Empty;
             status = "INCOMPLETE";
@@ -328,11 +330,11 @@ namespace DarumaPPAP.UnityAgent.Editor
                     activeTimeline = director;
                     recordedDirectorName = director.name;
                     recordedTimelinePath = AssetDatabase.GetAssetPath(director.playableAsset);
-                    director.stopped += OnTimelineStopped;
-                    // Timelineを先頭から再生する操作はユーザーのボタンによってのみ行う。
+                    // 既存再生を止めてから購読する。逆順だとStoppedイベントで録画が即終了する。
                     director.Stop();
                     director.time = 0;
                     director.Evaluate();
+                    director.stopped += OnTimelineStopped;
                     director.Play();
                 }
                 status = "RECORDING";
@@ -374,6 +376,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                 videoFps = current.FrameRate;
                 encodedFrames = current.EncodedFrames;
                 skippedFrames = current.SkippedFrames;
+                repeatedFrames = current.RepeatedFrames;
                 videoElapsed = current.ElapsedSeconds;
                 stoppedBy = current.StopReason;
                 if (encodedFrames == 0)
@@ -480,7 +483,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                 status = !string.IsNullOrEmpty(captureError) ? "FAILED" :
                     !complete ? "INCOMPLETE" :
                     errorCount > 0 ? "CAPTURED_WITH_RUNTIME_ERRORS" :
-                    skippedFrames > 0 ? "CAPTURED_WITH_GAPS" : "CAPTURED";
+                    skippedFrames > 0 || repeatedFrames > 0 ? "CAPTURED_WITH_TIMING_VARIATION" : "CAPTURED";
 
                 var evidence = new CaptureEvidence
                 {
@@ -508,6 +511,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                     video_fps = videoFps,
                     encoded_frames = encodedFrames,
                     skipped_frames = skippedFrames,
+                    repeated_frames = repeatedFrames,
                     video_elapsed_seconds = videoElapsed,
                 };
                 File.WriteAllText(Path.Combine(outputDirectory, "play-evidence.json"),
