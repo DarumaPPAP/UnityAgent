@@ -86,6 +86,8 @@ namespace DarumaPPAP.UnityAgent.Editor
         private PlayVideoEncoder recorder;
         private PlayableDirector activeTimeline;
         private double nextPoll;
+        private long lastScreenshotSize;
+        private double screenshotSizeChangedAt;
 
         [MenuItem("UnityAgent/Play Evidence")]
         internal static void Open()
@@ -99,6 +101,11 @@ namespace DarumaPPAP.UnityAgent.Editor
             EditorApplication.playModeStateChanged += OnPlayModeChanged;
             EditorApplication.update += UpdateCapture;
             Application.logMessageReceived += OnLog;
+            // Play開始後にWindowを開いた場合も以前のRunに書き込まない。
+            if (EditorApplication.isPlaying)
+            {
+                StartNewSession();
+            }
         }
 
         private void OnDisable()
@@ -258,6 +265,8 @@ namespace DarumaPPAP.UnityAgent.Editor
             videoRequested = false;
             screenshotPaused = false;
             screenshotDeadline = 0;
+            lastScreenshotSize = 0;
+            screenshotSizeChangedAt = 0;
             errorCount = 0;
             observedFrames = 0;
             startingFrame = Time.frameCount;
@@ -289,6 +298,8 @@ namespace DarumaPPAP.UnityAgent.Editor
                 screenshotPath = Path.Combine(outputDirectory,
                     "game-view-" + Guid.NewGuid().ToString("N") + ".png");
                 screenshotHash = string.Empty;
+                lastScreenshotSize = 0;
+                screenshotSizeChangedAt = 0;
                 screenshotRequested = true;
                 screenshotPaused = EditorApplication.isPaused;
                 screenshotDeadline = EditorApplication.timeSinceStartup + ScreenshotTimeoutSeconds;
@@ -453,10 +464,27 @@ namespace DarumaPPAP.UnityAgent.Editor
             {
                 if (IsPlausiblePng(screenshotPath))
                 {
-                    screenshotHash = HashFile(screenshotPath);
-                    screenshotDeadline = 0;
+                    var currentSize = new FileInfo(screenshotPath).Length;
+                    if (currentSize != lastScreenshotSize)
+                    {
+                        lastScreenshotSize = currentSize;
+                        screenshotSizeChangedAt = EditorApplication.timeSinceStartup;
+                    }
+                    else if (EditorApplication.timeSinceStartup - screenshotSizeChangedAt >= 0.5)
+                    {
+                        try
+                        {
+                            // 書き込み途中のPNGをHashしてEvidenceに登録しない。
+                            screenshotHash = HashFile(screenshotPath);
+                            screenshotDeadline = 0;
+                        }
+                        catch (IOException)
+                        {
+                            // 保存元のファイルロックが解除された次のTickで再確認する。
+                        }
+                    }
                 }
-                else if (screenshotDeadline > 0 &&
+                if (string.IsNullOrEmpty(screenshotHash) && screenshotDeadline > 0 &&
                     EditorApplication.timeSinceStartup >= screenshotDeadline)
                 {
                     captureError = "PNGが保存されませんでした。";
@@ -550,10 +578,18 @@ namespace DarumaPPAP.UnityAgent.Editor
             {
                 return false;
             }
-            using (var file = File.OpenRead(path))
+            try
             {
-                return file.ReadByte() == 137 && file.ReadByte() == 80 &&
-                    file.ReadByte() == 78 && file.ReadByte() == 71;
+                using (var file = new FileStream(path, FileMode.Open, FileAccess.Read,
+                    FileShare.ReadWrite))
+                {
+                    return file.ReadByte() == 137 && file.ReadByte() == 80 &&
+                        file.ReadByte() == 78 && file.ReadByte() == 71;
+                }
+            }
+            catch (IOException)
+            {
+                return false;
             }
         }
 
