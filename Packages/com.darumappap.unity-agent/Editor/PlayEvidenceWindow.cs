@@ -61,8 +61,8 @@ namespace DarumaPPAP.UnityAgent.Editor
         private UnityEngine.Object controllerSettings;
         private UnityEngine.Object movieSettings;
         private bool recording;
-        private double screenshotDeadline;
-        private double videoDeadline;
+        [SerializeField] private double screenshotDeadline;
+        [SerializeField] private double videoDeadline;
         private double nextEvidenceRefresh;
         private long lastVideoFileSize;
         private double lastVideoSizeChange;
