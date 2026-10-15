@@ -1,0 +1,26 @@
+{
+  "baseline_commit": "4747fd3f82e5a9c0be191d606f7827a16c8eef90",
+  "definition_fingerprint": {
+    "schema_version": "1.0",
+    "architecture_version": "sha256:9e2e4cad7d40c74d",
+    "policy_revision": "sha256:7ecd6438af16a9cf",
+    "prompt_revision": "sha256:60fcb1c9fd9d37fb",
+    "context_revision": "sha256:8f921af9d6d75c55",
+    "graph_revision": "sha256:136d12e4113f927e",
+    "runtime_profile_revision": "sha256:8cbc651324fded9d",
+    "tool_schema_revision": "sha256:8a7ce4fb600e866c",
+    "checkpoint_schema_revision": "sha256:654b730daa36a4ce",
+    "evidence_schema_revision": "sha256:b60bb3ff2d97ff44",
+    "eval_contract_revision": "sha256:62363c8eae7c99f8"
+  },
+  "open_pull_requests": [],
+  "main_ci": {
+    "38798403595": "success",
+    "38798403600": "success",
+    "38798404299": "success"
+  },
+  "merged_prs": {
+    "193": "b412d495584043de5841b814f942bb2ae08b29a6",
+    "194": "4747fd3f82e5a9c0be191d606f7827a16c8eef90"
+  }
+}
