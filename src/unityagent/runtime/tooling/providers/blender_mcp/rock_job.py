@@ -8,10 +8,14 @@ from .rock_template import rock_template
 
 
 class RockJob:
-    def __init__(self, state_root, client, *, check_approval):
+    def __init__(self, state_root, client, *, check_approval, session_lock_root=None):
         self.root = Path(state_root).resolve()
         self.client = client
         self.check_approval = check_approval
+        if session_lock_root is None:
+            from unityagent.runtime.guardrails.project_lease import _default_lock_root
+            session_lock_root = _default_lock_root().parent / 'BlenderSessions'
+        self.session_lock_root = Path(session_lock_root)
 
     def run(self, job_id, *, approval_ref):
         if not approval_ref:
@@ -23,7 +27,7 @@ class RockJob:
         digest = sha256_json({'template': code, 'approval_ref': approval_ref})
         state_path = folder / 'job.json'
         # Unity Project Leaseは取得しない。Blender Sessionだけを排他する。
-        with exclusive_file_lock(self.root / 'blender-sessions' / (safe_id(self.client.session_id) + '.lock')):
+        with exclusive_file_lock(self.session_lock_root / (safe_id(self.client.session_id) + '.lock')):
             if state_path.exists():
                 state = read_json(state_path)
                 if state['request_digest'] != digest or state['session_id'] != self.client.session_id:

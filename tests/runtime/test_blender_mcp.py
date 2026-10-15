@@ -6,6 +6,7 @@ from unityagent.runtime.tooling.providers.blender_mcp.rock_job import RockJob
 
 class Client:
     session_id = 'session-1'
+    blender_session_identity = 'fixture-observed-session-1'
     def __init__(self):
         self.calls = []
         self.timeout = False
@@ -21,7 +22,7 @@ class BlenderJobTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         self.client = Client()
-        self.job = RockJob(self.root, self.client, check_approval=lambda digest: None)
+        self.job = RockJob(self.root, self.client, check_approval=lambda digest: None, session_lock_root=self.root/'session-locks')
 
     def test_timeout_is_durable_and_does_not_resubmit(self):
         self.client.timeout = True
@@ -108,6 +109,7 @@ for line in sys.stdin:
 ''')
             with McpStdioClient([sys.executable,'-u',str(server)]) as client:
                 self.assertEqual(client.identity['serverInfo']['name'],'fixture')
+                self.assertIsNone(client.blender_session_identity)
                 self.assertTrue(client.tool('get_scene_info',{})['content'])
                 with self.assertRaises(ValueError): client.tool('arbitrary_python',{})
             self.assertIsNotNone(client.process.poll())

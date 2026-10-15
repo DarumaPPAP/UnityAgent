@@ -64,7 +64,8 @@ def apply_rock(plane, plan_id, approval_ref, client, *, definition_fingerprint):
             raise ValueError('Rock approval is invalid, stale or revoked')
     check_approval(None)
     # 実接続のProtocol/Tool discoveryが完了したSessionだけを利用可能にする。
-    available = bool(getattr(client, 'identity', None) and 'execute_blender_code' in getattr(client, 'tools', set()))
+    available = bool(getattr(client, 'identity', None) and getattr(client, 'blender_session_identity', None)
+                     and 'execute_blender_code' in getattr(client, 'tools', set()))
     snapshot = discover_environment(project).to_dict()
     snapshot['blender_mcp'] = {'available': available, 'project_bound': True, 'reachable': available,
                              'binding_status': 'bound', 'bound_instance_id': client.session_id}
