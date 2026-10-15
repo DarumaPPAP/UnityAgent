@@ -57,7 +57,6 @@ jobs:
           python3 - <<'PY'
           import json
           import pathlib
-          import re
           import tomllib
 
           version = pathlib.Path("VERSION").read_text(encoding="utf-8").strip()
@@ -67,7 +66,6 @@ jobs:
           codex_plugin = json.loads(pathlib.Path(".agents/plugins/unity-agent/.codex-plugin/plugin.json").read_text(encoding="utf-8"))
           marketplace = json.loads(pathlib.Path(".agents/plugins/marketplace.json").read_text(encoding="utf-8"))
           pyproject = tomllib.loads(pathlib.Path("pyproject.toml").read_text(encoding="utf-8"))
-          lock = json.loads(pathlib.Path("src/unityagent/runtime/distribution/subagent-sources.lock.json").read_text(encoding="utf-8"))
           installer = pathlib.Path("src/unityagent/runtime/tooling/providers/installer/release_installer.py").read_text(encoding="utf-8")
 
           assert upm["version"] == version
@@ -75,13 +73,12 @@ jobs:
           assert codex_plugin["version"] == version
           assert pyproject["project"]["version"] == expected_python
           assert [item.get("name") for item in marketplace.get("plugins", [])] == ["unity-agent"]
-          assert lock["hub"]["repository"] == "DarumaPPAP/UnitySubAgentHub"
-          assert re.fullmatch(r"[0-9a-f]{40}", lock["hub"]["commit"])
+          assert pathlib.Path("subagent/registry.yaml").is_file()
           assert 'DISTRIBUTION_REPOSITORY = "DarumaPPAP/UnityAgent"' in installer
           assert f'DISTRIBUTION_TAG = "v{version}"' in installer
           assert f'ARCHIVE_NAME = "UnityAgent-ArtistSubAgent-host-windows-x64-{version}.zip"' in installer
           print(f"UnityAgent release: v{version}")
-          print(f"Pinned Hub source: {lock['hub']['repository']}@{lock['hub']['commit']}")
+          print("SubAgent source: UnityAgent checkout")
           PY
 
           if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
@@ -104,39 +101,23 @@ jobs:
             eval/regression/compare_baseline.py \
             tools/run_regression_gate.py
 
-      - name: Resolve pinned Hub source
-        id: hub-source
-        run: |
-          python3 tools/subagent_source_paths.py >> "$GITHUB_OUTPUT"
-
-      - name: Checkout pinned UnitySubAgentHub source
-        uses: actions/checkout@v7
-        with:
-          repository: ${{ steps.hub-source.outputs.repository }}
-          ref: ${{ steps.hub-source.outputs.commit }}
-          path: .release-sources/UnitySubAgentHub
-          fetch-depth: 0
-          fetch-tags: true
-          persist-credentials: false
-
-      - name: Verify pinned Hub source and contracts
+      - name: Verify co-located SubAgent source and contracts
         run: |
           set -euo pipefail
-          expected="${{ steps.hub-source.outputs.commit }}"
-          actual="$(git -C .release-sources/UnitySubAgentHub rev-parse HEAD)"
-          test "$actual" = "$expected"
-          python3 .release-sources/UnitySubAgentHub/${{ steps.hub-source.outputs.hub_validator }}
-          python3 -m unittest discover -s .release-sources/UnitySubAgentHub/${{ steps.hub-source.outputs.hub_tests }} -p 'test_*.py' -v
-          python3 .release-sources/UnitySubAgentHub/${{ steps.hub-source.outputs.artist_contract_verifier }}
-          python3 .release-sources/UnitySubAgentHub/${{ steps.hub-source.outputs.unity_api_verifier }}
+          python3 tools/validate_local_subagent_catalog.py
+          python3 subagent/tools/validate_registry.py
+          python3 -m unittest discover -s subagent/tests -p 'test_*.py' -v
+          python3 tools/validate_artist_product_identity.py
+          python3 ci/verify/validate_unity_fixtures.py
+          dotnet build cli/artist/UnityArtist.Cli.csproj --configuration Release
+          python3 -m unittest discover -s cli/artist/tests -p 'test_*.py' -v
 
-      - name: Build pinned SubAgent distribution
+      - name: Build co-located SubAgent distribution
         run: |
           set -euo pipefail
-          hub=".release-sources/UnitySubAgentHub"
           mkdir -p artifacts .release-build/artist-host-windows-x64
 
-          dotnet publish "$hub/${{ steps.hub-source.outputs.artist_cli_project }}" \
+          dotnet publish "cli/artist/UnityArtist.Cli.csproj" \
             --configuration Release \
             --runtime win-x64 \
             --self-contained true \
@@ -147,31 +128,30 @@ jobs:
           sha256sum "artifacts/$artist_archive" > "artifacts/$artist_archive.sha256"
 
           (
-            cd "$hub/Packages/com.darumappap.artist-subagent"
+            cd "Packages/com.darumappap.artist-subagent"
             npm pack --pack-destination "$GITHUB_WORKSPACE/artifacts"
           )
           artist_upm_source="$(find artifacts -maxdepth 1 -type f -name '*.tgz' -print -quit)"
           test -n "$artist_upm_source"
           mv "$artist_upm_source" "artifacts/UnityAgent-ArtistSubAgent-UPM-$RELEASE_VERSION.tgz"
 
-          python3 "$hub/${{ steps.hub-source.outputs.hub_exporter }}" \
+          python3 "subagent/tools/export_snapshot.py" \
             --output "artifacts/UnityAgent-SubAgent-Catalog-$RELEASE_VERSION.yaml"
-          cp "$hub/${{ steps.hub-source.outputs.hub_registry }}" "artifacts/UnityAgent-SubAgent-Registry-$RELEASE_VERSION.yaml"
+          cp "subagent/registry.yaml" "artifacts/UnityAgent-SubAgent-Registry-$RELEASE_VERSION.yaml"
 
           python3 - <<'PY'
           import json
           import os
           import pathlib
 
-          lock = json.loads(pathlib.Path("src/unityagent/runtime/distribution/subagent-sources.lock.json").read_text(encoding="utf-8"))
-          hub = pathlib.Path(".release-sources/UnitySubAgentHub")
-          package = json.loads((hub / "Packages/com.darumappap.artist-subagent/package.json").read_text(encoding="utf-8"))
+          package = json.loads(pathlib.Path("Packages/com.darumappap.artist-subagent/package.json").read_text(encoding="utf-8"))
           version = os.environ["RELEASE_VERSION"]
           provenance = {
               "schema_version": "1.0",
               "unity_agent_version": version,
-              "hub_repository": lock["hub"]["repository"],
-              "hub_commit": lock["hub"]["commit"],
+              "unity_agent_repository": "DarumaPPAP/UnityAgent",
+              "unity_agent_commit": os.environ["GITHUB_SHA"],
+              "subagent_source": "subagent/registry.yaml",
               "artist_backend_version": package["version"],
               "artist_package_id": package["name"],
           }
@@ -186,7 +166,7 @@ jobs:
           set -euo pipefail
           backend_version="$(python3 - <<'PY'
           import json
-          print(json.load(open(".release-sources/UnitySubAgentHub/Packages/com.darumappap.artist-subagent/package.json", encoding="utf-8"))["version"])
+          print(json.load(open("Packages/com.darumappap.artist-subagent/package.json", encoding="utf-8"))["version"])
           PY
           )"
           python3 - "$backend_version" <<'PY'
@@ -196,7 +176,7 @@ jobs:
           expected = sys.argv[1]
           token = f'BACKEND_VERSION = "{expected}"'
           if token not in source:
-              raise SystemExit(f"release installer backend version pin does not match bundled Hub source: {expected}")
+              raise SystemExit(f"release installer backend version pin does not match bundled UnityAgent source: {expected}")
           PY
 
       - name: Build Python distribution

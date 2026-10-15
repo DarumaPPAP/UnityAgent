@@ -43,6 +43,17 @@ Unknownや競合はBLOCKED / 待機にする。
 - RuntimeへのLease/Queue接続、SubAgentごとの変更権限付きE2E能力、
   互換のため残るLegacy Hub Source Lock/Import CLI撤去: 未完了。
 
+## Control Plane接続（2026-10-14）
+
+Entry v2の任意`requested_subagent`は既存Route担当と照合し、activation gateを維持する。
+Adaptive選択は実際のControl Plane実行に接続し、Orchestration decisionへ保存する。
+Project inspectionはFastで追加Agent/Worktreeを作らず、単一専門TaskはStandardとなる。
+現行Entryは1タスクだけを受け付けるため、DAG plannerのparallel提案を実行許可にしない。
+Control Plane同士の同一Project実行はOS file lockで排他し、Evidence保存まで保持する。
+別Persistence rootも同じHost/userのlease領域を使い、TTLだけで所有権を奪取しない。
+この外側のRun lockの競合は`blocked/resource_busy`。Queue/Device Lockは未接続。
+Releaseは同居sourceを使い、Python配布にはSubAgent定義も同梱する。
+
 ## Runtime Project排他（実装段階）
 
 `runtime/execution_control/resource_lease.py`はEditorを利用するCapabilityと
@@ -58,3 +69,8 @@ Mutation操作について、ユーザー領域のProject実体Path Hashに基�
 Task SchedulerのLease待ち行列、Console実機排他、E2E Mutation Grantまで
 完成したという意味ではない。Fast Pathのread-only source readは
 Leaseを取得せず、Tokenを増やすOrchestrationを追加しない。
+
+Control PlaneのRun lockとRuntimeのEditor leaseは別境界を保護する。
+取得順はRun lock → Provider単位のEditor lease。Run lockはEvidence永続化まで、
+Editor leaseはProvider実行中保持する。Runtime直呼出しはRun lockを取得しないため、
+Run lockをユーザー手動操作や全Runtime経路の保護として扱わない。

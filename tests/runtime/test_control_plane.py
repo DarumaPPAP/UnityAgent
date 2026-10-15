@@ -112,6 +112,10 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertEqual([item["capability"] for item in result["handoff"]["capability_requests"]], ["project.inspect"])
         proof = json.loads((plane.state_store.layout.root / result["orchestration_decision_ref"]).read_text(encoding="utf-8"))
         self.assertEqual(proof["route_decision"]["route_id"], "generic-planning")
+        self.assertEqual(proof["execution_plan"]["path"], "fast")
+        self.assertEqual(proof["execution_plan"]["subagent_ids"], [])
+        self.assertFalse(proof["execution_plan"]["parent_graph_required"])
+
         self.assertEqual(proof["capability_requests"], result["handoff"]["capability_requests"])
         self.assertTrue(result["handoff"]["context_id"].startswith("ctx-"))
         self.assertTrue(result["context_manifest_ref"])
@@ -138,6 +142,49 @@ class ControlPlaneTests(unittest.TestCase):
         payload_path.write_text(json.dumps({**observed, "result": {"invented": "fact"}}), encoding="utf-8")
         with self.assertRaisesRegex(PersistenceError, "digest"):
             plane.evidence_store.read_observation(evidence["evidence_id"], expected_run_id=result["run_id"], expected_project_root=str(self.project.resolve()), expected_capability="project.inspect")
+
+    def test_fast_inspection_does_not_load_parent_graph(self):
+        with mock.patch('unityagent.control_plane.unity_agent_control_plane.runtime_node_for_requests',
+                        side_effect=AssertionError('Fast inspection must not build a ParentGraph')):
+            result = UnityAgentControlPlane(self.root / 'fast-state').execute(
+                self.entry_request(), environment_snapshot=self.snapshot,
+                context=ResolutionContext(policy_allowed=True),
+                executors={'file': lambda *_: {'status': 'passed', 'provider_ref': 'file',
+                                               'evidence': ['project_fact']}},
+                definition_fingerprint=fingerprint())
+        self.assertEqual(result['status'], 'completed')
+
+    def test_project_lease_blocks_another_control_plane_before_dispatch(self):
+        from unityagent.runtime.guardrails.project_lease import acquire_project_lease
+        called = []
+        with acquire_project_lease(self.project, owner='external-run'):
+            result = UnityAgentControlPlane(self.root / 'other-state').execute(
+                self.entry_request(), environment_snapshot=self.snapshot,
+                context=ResolutionContext(policy_allowed=True),
+                executors={'file': lambda *_: called.append(True)}, definition_fingerprint=fingerprint())
+        self.assertEqual(result['status'], 'blocked')
+        self.assertEqual(result['failure_class'], 'resource_busy')
+        self.assertEqual(called, [])
+
+    def test_explicit_selection_cannot_override_route_ownership(self):
+        request = self.capture_request()
+        request['requested_subagent'] = 'graphics_subagent'
+        called = []
+        result = UnityAgentControlPlane(self.root / 'explicit-state').execute(
+            request, environment_snapshot=self.snapshot, context=ResolutionContext(policy_allowed=True),
+            executors={'file': lambda *_: called.append(True)}, definition_fingerprint=fingerprint())
+        self.assertEqual(result['status'], 'blocked')
+        self.assertIn('requested SubAgent', result['reason'])
+        self.assertEqual(called, [])
+
+    def test_matching_explicit_agent_does_not_bypass_installation(self):
+        request = self.capture_request()
+        request['requested_subagent'] = 'artist_subagent'
+        result = UnityAgentControlPlane(self.root / 'uninstalled-state').execute(
+            request, environment_snapshot=self.snapshot, context=ResolutionContext(policy_allowed=True),
+            executors={}, definition_fingerprint=fingerprint())
+        self.assertEqual(result['status'], 'blocked')
+        self.assertIn('unavailable', result['reason'])
 
     def test_v1_identity_cannot_execute_and_v2_cannot_supply_identity(self) -> None:
         plane = UnityAgentControlPlane(self.root / "identity-state")
@@ -244,6 +291,7 @@ class ControlPlaneTests(unittest.TestCase):
     def test_artist_capture_uses_assembled_context_and_measured_budget(self) -> None:
         self.make_artist_available()
         request = self.capture_request()
+        request["requested_subagent"] = "artist_subagent"
         plane = UnityAgentControlPlane(self.root / "artist-state")
         from unityagent.orchestration.routing.route_selector import resolve_specialist
         with mock.patch("unityagent.control_plane.unity_agent_control_plane.resolve_specialist", wraps=resolve_specialist) as selection:
@@ -270,6 +318,8 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertEqual(proof["active_conditions"], ["visual_evidence_needed"])
         self.assertEqual(proof["context_manifest_ref"], result["context_manifest_ref"])
         self.assertEqual(proof["selected_specialist_capability"], "visual.capture")
+        self.assertEqual(proof["execution_plan"]["path"], "standard")
+        self.assertEqual(proof["execution_plan"]["subagent_ids"], ["artist_subagent"])
 
     @staticmethod
     def artist_receipt_executor(request, context, arguments):

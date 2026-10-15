@@ -205,7 +205,7 @@ class Issue136HardeningTests(unittest.TestCase):
                 "project_facts": [], "bindings": {}, "specialist_items": [], "specialist_tags": set(),
                 "required_specialist_keys": set(),
             }), mock.patch.object(control_plane_module, "build_context_manifest", return_value={
-                "budget_report": {"decision": "within_budget"},
+                "budget_report": {"decision": "within_budget", "profile": "tight"},
                 "materialized_context": {"context_id": "ctx-generated", "context_fingerprint": {"value": "sha256:generated"},
                     "definition_fingerprint": {"policy_revision": "policy", "context_revision": "context"},
                     "unresolved_bindings": []},

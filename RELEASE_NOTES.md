@@ -24,7 +24,7 @@ Reasoning specialists execute through UnityAgent's CodexRunner contract and do n
 - Hub Snapshot v3 / Manifest v5 are accepted through the Offline Import Gate.
 - Hub registration is not treated as runtime installation, compatibility, project binding, eligibility or readiness.
 - UnitySubAgentHub and individual SubAgents do not publish independent releases.
-- This UnityAgent release pins `DarumaPPAP/UnitySubAgentHub@61d3fad2e0aef50b69fc76fbbd839aca076de19f` as source provenance.
+- SubAgent definitions, Artist CLI and optional UPM are built from the same UnityAgent checkout. Release provenance records `unity_agent_commit`; the old Hub pin is historical compatibility data only.
 - Artist backend host/package bytes and the consumer-neutral Hub Snapshot are built from that exact commit and published as UnityAgent release assets.
 
 ## Fixed Full E2E capability
@@ -77,3 +77,11 @@ codex plugin add unity-agent@unity-agent --json
 ```
 
 This remains a beta release and may include breaking changes before 1.0.
+
+## Co-located execution cutover
+
+- Python wheel/sdist include `subagent/` definitions, instructions and contracts with resource hashes.
+- Entry v2 accepts an optional canonical `requested_subagent`; incompatible ownership and unavailable activation fail closed.
+- Control Plane records Adaptive Fast/Standard selection without creating extra agents or worktrees for inspection.
+- OS-owned Project leases serialize cooperating Control Plane runs through execution and Evidence persistence.
+- Multi-task execution, device queues and mutating specialist E2E are not yet enabled; real Editor/console observations remain separate from host validation.
