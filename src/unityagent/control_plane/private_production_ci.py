@@ -337,7 +337,8 @@ def complete_stage(*, store_root, run_id, stage, checkout_revision, workflow_run
         return {"run_id": run_id, "stage": stage, "state": state["status"],
                 "checkpoint_id": checkpoint_id,
                 "g1_gates_observed": sum(len(STAGE_GATES[item["stage"]]) for item in state["completed"]),
-                "production_verified": state["status"] == "completed"}
+                "host_gate_contracts_complete": state["status"] == "completed",
+                "production_verified": False}
 
 
 def verifier_from_environment():
