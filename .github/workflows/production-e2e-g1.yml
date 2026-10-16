@@ -39,7 +39,7 @@ jobs:
           if (-not (Test-Path $env:UNITY_EDITOR)) { throw 'BLOCKED_NOT_RUN: UNITY_EDITOR must point to licensed Unity 6000.3.12f1' }
           if (-not (Test-Path $env:UNITYAGENT_G1_FBX)) { throw 'BLOCKED_NOT_RUN: Control Plane FBX unavailable' }
           if (-not (Test-Path $env:UNITYAGENT_G1_ARTIFACT)) { throw 'BLOCKED_NOT_RUN: Artifact manifest unavailable' }
-          $project = Join-Path $env:GITHUB_WORKSPACE 'ci/unity-projects/production-e2e'
+          $project = Join-Path $env:GITHUB_WORKSPACE 'tests/unity/projects/production-e2e'
           & $env:UNITY_EDITOR -batchmode -projectPath $project -runTests -testPlatform EditMode -testFilter UnityAgent.G1.RockProductionTests -testResults "$env:UNITYAGENT_G1_EVIDENCE/results.xml" -logFile "$env:UNITYAGENT_G1_EVIDENCE/Editor.log"
           if ($LASTEXITCODE -ne 0) { throw "Editor test failed: $LASTEXITCODE" }
       - name: Collect fail-closed Production Gate status
@@ -48,7 +48,7 @@ jobs:
         run: |
           $hash = 'unobserved'
           if (Test-Path $env:UNITYAGENT_G1_FBX) { $hash = (Get-FileHash -Algorithm SHA256 $env:UNITYAGENT_G1_FBX).Hash.ToLowerInvariant() }
-          python tools/production_e2e/collect_evidence.py --directory $env:UNITYAGENT_G1_EVIDENCE --source-revision $env:UNITYAGENT_SOURCE_REVISION --artifact-hash $hash --output "$env:UNITYAGENT_G1_EVIDENCE/acceptance.json"
+          python tests/unity/verify/collect_evidence.py --directory $env:UNITYAGENT_G1_EVIDENCE --source-revision $env:UNITYAGENT_SOURCE_REVISION --artifact-hash $hash --output "$env:UNITYAGENT_G1_EVIDENCE/acceptance.json"
       - uses: actions/upload-artifact@v7
         if: always()
         with:

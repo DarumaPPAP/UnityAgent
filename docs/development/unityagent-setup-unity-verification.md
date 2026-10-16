@@ -51,7 +51,7 @@ Hub Source Lock/Git clone/ユーザーScope Cacheを必要としません。
 必要なUnity Editor実行ファイル、Python 3.12+、GPUは別の前提条件です。
 
 独立した一時Projectで実行します。手元のゲームProject/Control Plane/Providerは変更しません。
-RunnerはUnityAgentの `ci/scripts/run-unity-tests.ps1` と同じ内容です。
+RunnerはUnityAgentの `tests/unity/scripts/run-unity-tests.ps1` と同じ内容です。
 
 ## 4. Evidenceと制約
 
@@ -64,7 +64,7 @@ ExitCode 0かつ`evidence.json`の`status=PASS, observation=observed`のみPASS�
 ExitCode 2かつ`status=BLOCKED_NOT_RUN, observation=not_observed`はBLOCKED。
 証跡なし・矛盾した結果はFAILです。Host Testや合成Evidenceを実Editor PASSと判断しません。
 
-現行UIは**Windows Editor用**で、P9 Linux入口はUnityAgentの `ci/scripts/run-unity-tests.sh` です。
+現行UIは**Windows Editor用**で、P9 Linux入口はUnityAgentの `tests/unity/scripts/run-unity-tests.sh` です。
 Canary、UnityAgent Control Plane → 実EditorのFull E2E、Player/実機は別検証Gateです。
 Public RepositoryのPRからライセンス済みPCをSelf-hosted Runnerとして実行させないでください。
 

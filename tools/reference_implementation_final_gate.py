@@ -154,12 +154,12 @@ def main() -> int:
         failures.append("UnityArtist namespace migration")
 
     static_commands = {
-        "artist_contract": [sys.executable, "ci/verify/verify_artist_backend_contract.py"],
-        "artist_api_compatibility": [sys.executable, "ci/verify/verify-unity-api-compatibility.py"],
-        "artist_cli_pipeline_gate": [sys.executable, "ci/verify/verify-cli-pipeline-gate-evidence.py"],
-        "artist_2022_bounded_fallback": [sys.executable, "ci/verify/verify-2022-3-bounded-fallback-evidence.py"],
-        "artist_semantic_names": [sys.executable, "ci/verify/verify-semantic-names.py"],
-        "artist_portable_paths": [sys.executable, "ci/verify/verify_portable_paths.py"],
+        "artist_contract": [sys.executable, "tests/unity/verify/verify_artist_backend_contract.py"],
+        "artist_api_compatibility": [sys.executable, "tests/unity/verify/verify-unity-api-compatibility.py"],
+        "artist_cli_pipeline_gate": [sys.executable, "tests/unity/verify/verify-cli-pipeline-gate-evidence.py"],
+        "artist_2022_bounded_fallback": [sys.executable, "tests/unity/verify/verify-2022-3-bounded-fallback-evidence.py"],
+        "artist_semantic_names": [sys.executable, "tests/unity/verify/verify-semantic-names.py"],
+        "artist_portable_paths": [sys.executable, "tests/unity/verify/verify_portable_paths.py"],
     }
     for name, command in static_commands.items():
         ok, output = _run(command, cwd=artist_root, env=env, timeout=300)
