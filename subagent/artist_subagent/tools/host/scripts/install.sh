@@ -2,8 +2,8 @@
 set -euo pipefail
 
 install_root="${1:-${HOME}/.local/lib/unity-artist/Beta}"
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-project="${repo_root}/cli/artist/UnityArtist.Cli.csproj"
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../../.." && pwd)"
+project="${repo_root}/subagent/artist_subagent/tools/host/UnityArtist.Tools.csproj"
 
 dotnet publish "${project}" --configuration Release --self-contained false --output "${install_root}"
 printf 'Installed unity-artist to %s\n' "${install_root}"

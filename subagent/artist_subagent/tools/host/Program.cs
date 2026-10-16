@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
-namespace UnityArtist.Cli;
+namespace UnityArtist.Tools;
 
 internal static class Program
 {

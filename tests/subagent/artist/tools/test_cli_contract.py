@@ -10,8 +10,8 @@ from pathlib import Path
 from unittest import mock
 
 
-ROOT = Path(__file__).resolve().parents[3]
-PROJECT = ROOT / "cli" / "artist" / "UnityArtist.Cli.csproj"
+ROOT = Path(__file__).resolve().parents[4]
+PROJECT = ROOT / "subagent" / "artist_subagent" / "tools" / "host" / "UnityArtist.Tools.csproj"
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
 

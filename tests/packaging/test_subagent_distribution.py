@@ -19,7 +19,7 @@ class SubagentDistributionTests(unittest.TestCase):
             copy(destination)
             registry_path = destination / 'subagent/registry.yaml'
             self.assertTrue(registry_path.is_file(), 'SubAgent registry missing from Python distribution')
-            self.assertTrue((destination / 'cli/artist/artist-backend-contract.yaml').is_file())
+            self.assertTrue((destination / 'subagent/artist_subagent/tools/host/artist-backend-contract.yaml').is_file())
             hashes = json.loads((destination / 'resource-manifest.json').read_text())
             registry = yaml.safe_load(registry_path.read_text())
             for entry in registry['entries']:
@@ -32,6 +32,16 @@ class SubagentDistributionTests(unittest.TestCase):
                     self.assertEqual((ROOT / ref).read_bytes(), (destination / ref).read_bytes())
                     self.assertEqual(hashes[ref], hashlib.sha256((destination / ref).read_bytes()).hexdigest())
 
+    def test_artist_tools_layout_preserves_host_binary_identity(self):
+        host = ROOT / 'subagent/artist_subagent/tools/host'
+        self.assertTrue((host / 'UnityArtist.Tools.csproj').is_file())
+        self.assertTrue((host / 'Program.cs').is_file())
+        self.assertTrue((ROOT / 'tests/subagent/artist/tools/test_cli_contract.py').is_file())
+        self.assertFalse((ROOT / 'cli/artist').exists())
+        project = (host / 'UnityArtist.Tools.csproj').read_text(encoding='utf-8')
+        self.assertIn('<AssemblyName>unity-artist</AssemblyName>', project)
+        self.assertIn('<RootNamespace>UnityArtist.Tools</RootNamespace>', project)
+
     def test_release_uses_same_checkout_for_artist_and_catalog(self):
         workflow = yaml.safe_load((ROOT / '.github/workflows/release-tag.yml').read_text())
         steps = workflow['jobs']['release']['steps']
@@ -39,7 +49,7 @@ class SubagentDistributionTests(unittest.TestCase):
         self.assertEqual(len(checkouts), 1, 'Release must not fetch another repository')
         scripts = '\n'.join(step.get('run', '') for step in steps)
         self.assertNotIn('.release-sources/UnitySubAgentHub', scripts)
-        self.assertIn('cli/artist/UnityArtist.Cli.csproj', scripts)
+        self.assertIn('subagent/artist_subagent/tools/host/UnityArtist.Tools.csproj', scripts)
         self.assertIn('subagent/tools/export_snapshot.py', scripts)
         self.assertIn('unity_agent_commit', scripts)
 
