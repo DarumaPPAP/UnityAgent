@@ -9,7 +9,7 @@ import uuid
 from unityagent.control_plane.task_execution import project_revision
 from unityagent.persistence.approval.approval_store import ApprovalDecisionStore
 from unityagent.persistence.store.atomic_store import (
-    read_json, safe_id, sha256_json, write_immutable_json,
+    read_json, safe_id, sha256_json, write_immutable_json, relative_ref,
 )
 from unityagent.persistence.evidence.runtime_adapter import append_runtime_execution_evidence
 from unityagent.runtime.evidence_capture.tool_runtime_evidence import normalize_provider_result
@@ -133,12 +133,17 @@ def _apply(plane, plan_id, approvals, *, action, definition_fingerprint, executo
         maximum_retry_attempts=0)
     run_id = 'rock-import-' + plan_id[:20] + ('-rollback' if action == 'rollback' else '')
     evidence_refs=[]
-    if result.get('resolution',{}).get('status') == 'resolved':
+    if (result.get('resolution') or {}).get('status') == 'resolved':
+        raw = plane.state_store.layout.snapshot(run_id, 'provider-result',
+            sha256_json(result['provider_result']))
+        write_immutable_json(raw, result['provider_result'])
+        raw_ref = relative_ref(state, raw)
         evidence = normalize_provider_result(
             provider_result=result['provider_result'],request=request,
             resolution=result['resolution'],environment_snapshot=environment,
             evidence_id=run_id+'-'+uuid.uuid4().hex[:12],run_id=run_id,
-            step_id='rock-'+action,definition_fingerprint=definition_fingerprint)
+            step_id='rock-'+action,definition_fingerprint=definition_fingerprint,
+            structured_result_ref=raw_ref,raw_refs=[raw_ref])
         persisted = append_runtime_execution_evidence(plane.evidence_store,evidence)
         evidence_refs.append(persisted['evidence_id'])
     plane._save_execution_state(run_id=run_id,step_id='rock-'+action,
