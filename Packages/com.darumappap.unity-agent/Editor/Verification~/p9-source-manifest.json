@@ -480,8 +480,8 @@
     },
     {
       "path": "tests/unity/projects/production-e2e/Assets/Editor/RockProductionTests.cs",
-      "sha1": "5097d286859ff97420465da7492882a2587ad2f9",
-      "size": 12118
+      "sha1": "846f0e49bf028a1b09350b9294d06fb9979bec1a",
+      "size": 12150
     },
     {
       "path": "tests/unity/projects/production-e2e/Assets/Editor/RockProductionTests.cs.meta",
@@ -489,12 +489,12 @@
       "size": 243
     },
     {
-      "path": "tests/unity/projects/production-e2e/Assets/Editor/UnityAgent.G1.Tests.asmdef",
-      "sha1": "1961397925a0c963030eda8e2f9712897ee1fa44",
-      "size": 218
+      "path": "tests/unity/projects/production-e2e/Assets/Editor/UnityAgent.Production.Tests.asmdef",
+      "sha1": "4084e93861451a43fca44ab77c0a962d9742accc",
+      "size": 226
     },
     {
-      "path": "tests/unity/projects/production-e2e/Assets/Editor/UnityAgent.G1.Tests.asmdef.meta",
+      "path": "tests/unity/projects/production-e2e/Assets/Editor/UnityAgent.Production.Tests.asmdef.meta",
       "sha1": "0fb6546d318526f7b52101327cecef25b9761b6a",
       "size": 166
     },
@@ -510,8 +510,8 @@
     },
     {
       "path": "tests/unity/projects/production-e2e/README.md",
-      "sha1": "01b20653d483fdeadda7da26dae171a1f5c26d9f",
-      "size": 1948
+      "sha1": "df170d839a16ba81ce95c02b5465bdf25ce011e5",
+      "size": 1980
     },
     {
       "path": "tests/unity/projects/README.md",

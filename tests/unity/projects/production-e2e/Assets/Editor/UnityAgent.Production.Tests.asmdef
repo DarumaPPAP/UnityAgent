@@ -1,5 +1,5 @@
 {
-  "name": "UnityAgent.G1.Tests",
+  "name": "UnityAgent.Production.Tests",
   "references": ["Unity.RenderPipelines.Universal.Runtime", "Unity.RenderPipelines.Core.Runtime"],
   "includePlatforms": ["Editor"],
   "optionalUnityReferences": ["TestAssemblies"]
