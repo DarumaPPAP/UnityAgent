@@ -9,8 +9,8 @@ All previously checked-in session, release audit, and production acceptance reco
 The canonical [6000.6 Artist E2E project](../unity-projects/artist-e2e/) preserves its scenes and resources. The [2022.3 project](../unity-projects/historical/2022.3/) is historical only. A disposable live check requires an explicitly targeted, licensed, connected Editor:
 
 ```powershell
-python cli/artist/scripts/run_minimal_live_smoke.py --project-path .\ci\unity-projects\artist-e2e
-.\cli\artist\scripts\verify-external-cli.ps1 -ProjectPath .\ci\unity-projects\artist-e2e
+python subagent/artist_subagent/tools/host/scripts/run_minimal_live_smoke.py --project-path .\ci\unity-projects\artist-e2e
+.\subagent\artist_subagent\tools\host\scripts\verify-external-cli.ps1 -ProjectPath .\ci\unity-projects\artist-e2e
 ```
 
 These mutation-capable checks are separate from host contracts and have not run during consolidation. UnityAgent must independently observe every manifest activation gate; archive integrity and Hub registration do not establish runtime readiness.
