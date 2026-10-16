@@ -23,6 +23,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Install canonical UnityAgent dependencies
+        run: python -m pip install --disable-pip-version-check -e .
       - name: Private CI approval and state contract tests (no Editor)
         env:
           PYTHONPATH: src
