@@ -194,13 +194,14 @@ for line in sys.stdin:
             if os.environ.get('BLENDER_MCP_SAFE_MODE')!='1':
                 raise RuntimeError('safe mode env missing')
             text='Code executed successfully: UNITYAGENT_SESSION_V1:'+json.dumps(
-                {'wm_pointer':2147483648,'blender_version':'4.3.2'})
+                {'nonce':'6a4c9cb0-b81b-44ed-bb02-a75decc8619c','blender_version':'4.3.2'})
         result={'content':[{'type':'text','text':text}]}
     print(json.dumps({'jsonrpc':'2.0','id':request['id'],'result':result}), flush=True)
 """)
             with McpStdioClient([sys.executable, '-u', str(script)]) as client:
                 self.assertIsNone(client.blender_session_identity)
                 first=client.bind_session()
+                self.assertNotIn('as_pointer()', client._text_result({'content':[{'type':'text','text':'safe'}]}))
                 self.assertTrue(first.startswith('blender-'))
                 self.assertEqual(client.addon_version,'1.4')
                 client.recheck_session()
