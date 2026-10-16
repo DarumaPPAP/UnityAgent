@@ -600,8 +600,8 @@
     },
     {
       "path": "tests/unity/verify/collect_evidence.py",
-      "sha1": "925a4a30abe375431bf4c95f8b03519b57c3845e",
-      "size": 3451
+      "sha1": "1347fc1bc8c5e3988777e4ac44075575a7d64b03",
+      "size": 3551
     },
     {
       "path": "tests/unity/verify/historical_evidence.py",

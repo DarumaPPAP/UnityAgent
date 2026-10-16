@@ -1,21 +1,25 @@
-# UnityAgent Production Rock Handoff (Draft PR #199)
+# Blender制作物をUnityへ取り込む実行契約
 
-## Scope
+承認済みの全体方針は [Production E2Eの決定事項](../decisions/production-e2e/approved-goal.md) を参照する。この文書は、既存のControl Planeから固定された岩モデルを取り込むための操作と安全条件を説明する。開発上の変更履歴やプルリクエスト番号を、実行仕様の識別子としては使わない。
 
-The Blender MCP tool output is a **Staging artifact**, not the Unity E2E verdict. Only UnityAgent Control Plane can select and dispatch `scene.mutate` through `native_rock_import`.
+## 適用範囲
 
-Dependency chain: #195 → #196 → #197 → #198 → #199. No merge, release, remote dependency install, or Production Unity E2E PASS is implied.
+Blender MCPの出力は**一時保管された制作物**であり、それ自体はUnityでの一連の検証結果ではない。Unity Editorへの変更処理 `scene.mutate` は、UnityAgentのControl Planeと既存の `native_rock_import` を経由する。
 
-### Blender MCP upstream compatibility
+ホスト上の契約検証、Unity Editorでの実動作、目視確認、復旧の成功は区別する。実行していない必須項目は `BLOCKED_NOT_RUN` のままとする。
 
-- Official `get_scene_info` returns formatted text; it does not expose `structuredContent.blender_session_identity`.
-- An approved *fixed* Session probe obtains Addon/Protocol status and establishes a cooperative nonce on the live Blender WindowManager ID. It is rechecked while holding the Host session lock. A nonce is **not** authenticated process attestation or OS isolation, and third-party Blender Socket clients can bypass UnityAgent locks. Use a dedicated, isolated Blender instance.
-- The launched MCP server receives `BLENDER_MCP_SAFE_MODE=1`. The fixed reviewed rock Template uses only Blender APIs, `math`, `json`, and allowed `mathutils`. It exports FBX; the host computes SHA-256 and writes `artifact.json`. Safe Mode is an AST filter, not a filesystem/socket sandbox.
-- Unknown Addon status, changed Session, invalid Template output, untrusted Job, or ambiguous timeout **stops without resubmission**.
+## Blender MCPとの互換性と安全条件
 
-### Explicit Import operations
+- 上流の `get_scene_info` が返すのは整形済みの文字列であり、`structuredContent.blender_session_identity` は含まれない。
+- 承認済みの固定セッション検証でアドオンと通信手順の状態を確認し、Blenderの `WindowManager` に協調的な識別値を設定する。ホスト側のセッション排他を保持した状態で再確認する。
+- この識別値はOSによるプロセス認証や隔離を保証しない。UnityAgentの排他を守らない別のSocketクライアントを防げないため、専用のBlender環境を使用する。
+- MCPサーバーへ `BLENDER_MCP_SAFE_MODE=1` を渡す。固定の制作スクリプトが使用するのは、許可済みのBlender API、`math`、`json`、`mathutils` に限定する。出力FBXのハッシュはホストが計算し、`artifact.json` に記録する。
+- Safe Modeは構文木の検査であり、ファイルシステムやネットワークを隔離する仕組みではない。
+- アドオン状態が不明、セッション変更、出力不整合、作業記録の信頼性不足、結果不明の時間切れの場合は**再送せず停止**する。
 
-First obtain the completed `rock apply` Job and its Staging FBX.
+## 取り込み手順
+
+最初に、完了済みの `rock apply` の作業記録と、一時保管されたFBXを取得する。
 
 ```sh
 unity-agent rock-import plan --project-path PROJECT --state-root OUTSIDE_PROJECT --job-id rock-g1
@@ -24,32 +28,38 @@ unity-agent rock-import approve --project-path PROJECT --state-root OUTSIDE_PROJ
 unity-agent rock-import apply --project-path PROJECT --state-root OUTSIDE_PROJECT --plan-id PLAN_ID --approval-ref MUTATION_REF --save-approval-ref SAVE_REF
 ```
 
-The `plan` requires a matching completed Job and Artifact SHA-256, an empty exact `Assets/UnityAgentRockG1` target, a bound Project revision and fixed Definition. All Import/Save actions require distinct unexpired approvals.
+`plan` の作成には、完了済み作業記録との一致、FBXのSHA-256、空の `Assets/UnityAgentRockG1`、プロジェクトRevision、固定された定義が必要となる。取り込みと保存には、それぞれ別の期限付き承認を要求する。
 
-The existing ToolBroker selects `native_rock_import` for `scene.mutate` qualified as `workflow=blender_rock_import`. Runtime acquires the project Editor lease. The bounded Provider stages only Rock.fbx and its current `.meta` preimage and invokes the **two allowlisted** fixed Unity Editor methods. There is no general-purpose `executeMethod` channel. The Editor process verifies its own approvals and writes a file-level Receipt for the importer, material, prefab and scene outputs.
+`workflow=blender_rock_import` が指定された `scene.mutate` を、既存のToolBrokerが `native_rock_import` に解決する。RuntimeはプロジェクトのEditor排他を取得し、許可済み範囲に `Rock.fbx` と既存の `.meta` の変更前情報を保管する。
 
-Visual review, target Player, G2 and G3 remain separate required gates. `production_import=completed` is not `verified=true`.
+Unity Editorで呼び出せるのは、事前に許可した**2つの固定メソッド**のみ。任意の `executeMethod` は受け付けない。Editor側も承認を再確認し、モデルの取り込み設定・マテリアル・Prefab・Sceneのファイル単位の受領記録を保存する。
 
-### Separately approved rollback
+`production_import=completed` は `verified=true` を意味しない。画面の目視確認、Player、G2、G3などは別の検証項目として維持する。
+
+## 別承認による復旧
 
 ```sh
 unity-agent rock-import approve --project-path PROJECT --state-root OUTSIDE_PROJECT --plan-id PLAN_ID --kind rollback
 unity-agent rock-import rollback --project-path PROJECT --state-root OUTSIDE_PROJECT --plan-id PLAN_ID --rollback-approval-ref ROLLBACK_REF
 ```
 
-The Unity Editor revalidates the immutable Receipt hash, every owned file hash/GUID, and absence of unowned files before `AssetDatabase.DeleteAsset` on the fixed directory. Any conflicts or Editor failure stop and require reconciliation; no `git reset --hard` or raw Scene/Prefab/Material YAML edit is used.
+Editorは取り込み時の受領記録のハッシュ、所有ファイルすべてのハッシュとGUID、所有範囲外のファイルが存在しないことを検証する。その後に限り、固定ディレクトリに対して `AssetDatabase.DeleteAsset` を呼び出す。
 
-## Required live validation
+他者による変更やEditorの失敗が見つかった場合は停止して、外部副作用を照合する。`git reset --hard` やScene・Prefab・Materialの生YAMLを直接変更する方法には切り替えない。
 
-The following are **BLOCKED_NOT_RUN** until a licensed Unity 6000.3.12f1 Editor, URP and a supported graphics-capable Windows runner are connected:
+## 実環境で確認が必要な事項
 
-- Real MCP Server + Addon version handshake + Session nonce through Safe Mode.
-- Real Editor assembly Compile of `RockImportBridge.cs`.
-- One Production Invoke of Blender → FBX → Broker → Editor → Material/Prefab/Scene → Receipt.
-- QA evidence, scene visual acceptance, failed import recovery, controlled rollback and concurrent manual edit conflict.
+Unity `6000.3.12f1` のライセンス、URP、グラフィックス処理に対応したWindows実行環境を接続するまでは、以下は `BLOCKED_NOT_RUN` とする。
 
-Host tests and CI prove only Contracts, finite request/approval control, staging/receipt rejection and source/package integrity. They cannot replace live G1 evidence.
+- 実際のBlender MCPサーバーとアドオンのバージョン確認、Safe Mode、セッション識別値の再照合。
+- `RockImportBridge.cs` のUnity Editorでのコンパイル。
+- BlenderからFBXを生成し、Broker経由でEditorへ取り込み、マテリアル・Prefab・Scene・受領記録まで生成する一連の実行。
+- QAの証拠、画面の目視確認、取り込み失敗からの復旧、限定Rollback、同時手動編集との競合。
 
-### Remaining caution
+ホストテストと通常CIで検証できるのは、入出力契約、有限の実行要求、承認、対象範囲の拒否、制作物のハッシュ、配布ソース整合性などに限られる。実機で観測した証拠には置き換えられない。
 
-The Blender addon socket can be reached by non-cooperating local processes; the Session nonce and Lock cannot protect against them. The fixed Script is a bounded reviewed operation, but the MCP Server/Addon still require proper OS-level workspace/process isolation before untrusted production workloads. The C# bridge uses a fixed fixture-only target. General target paths and QA reasoning orchestration are future work, not implied by this PR.
+## 運用上の制約
+
+BlenderアドオンのSocketへ別プロセスから接続できる場合、協調的なセッション識別値と排他制御だけでは操作を防止できない。信頼できない処理を実行する前に、OS側の作業領域・プロセス隔離を別途確保する。
+
+C#側の取り込み先は固定の検証用ディレクトリである。任意パスへの汎用化や、QAの推論結果から直接変更を実行する仕組みまで実装済みとみなさない。

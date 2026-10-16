@@ -1,4 +1,5 @@
 import importlib.util
+import hashlib
 import json
 from pathlib import Path
 import tempfile
@@ -15,6 +16,20 @@ class ProductionEvidenceTests(unittest.TestCase):
             result = collector.collect(root, source_revision='revision', artifact_hash='hash')
             self.assertEqual(result['status'], 'blocked')
             self.assertTrue(all(v['status']=='BLOCKED_NOT_RUN' for v in result['gates'].values()))
+
+    def test_g1_requires_nine_observed_gates_but_not_g2_g3(self):
+        with tempfile.TemporaryDirectory() as root:
+            for gate in collector.G1_GATES:
+                raw = Path(root) / (gate + '.raw')
+                raw.write_bytes(gate.encode())
+                (Path(root) / (gate + '.json')).write_text(json.dumps({
+                    'gate': gate, 'status': 'passed', 'source_revision': 'revision',
+                    'source_sha256': 'hash', 'evidence_level': 'production_runtime',
+                    'raw_refs': {raw.name: hashlib.sha256(raw.read_bytes()).hexdigest()}}))
+            result = collector.collect(root, source_revision='revision', artifact_hash='hash')
+            self.assertEqual(result['status'], 'verified')
+            self.assertEqual(result['gates']['g2']['status'], 'BLOCKED_NOT_RUN')
+            self.assertEqual(result['gates']['g3']['status'], 'BLOCKED_NOT_RUN')
 
     def test_fixture_success_wrong_revision_and_unhashed_files_cannot_pass(self):
         with tempfile.TemporaryDirectory() as root:

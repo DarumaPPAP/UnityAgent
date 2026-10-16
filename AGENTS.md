@@ -50,6 +50,12 @@ Policy追加の前にKnowledge / Retrieval / Tool / Harness / Eval / Architectur
 | Five-layer dependency contract | `src/unityagent/contracts/unityagent-layer-contract.yaml` / `tools/layer_boundary_validator/validate_layer_boundaries.py` |
 | Local Unity project use | `docs/local-project-development.md` / `docs/templates/DevelopmentRequest.md` |
 
+## ドキュメント作成・更新
+- `docs/` の説明文、見出し、表、図の表示文、手順は原則として**日本語**で記述する。既存英語文書を更新する場合も、変更箇所と関連説明を日本語へ揃える。
+- プルリクエストの番号・タイトル・一時的な依存順序を、恒久的な仕様文書の見出し・識別子・本文に使わない。代わりに安定したファイルパス、設計判断、契約名、Commit SHA、実行した検証の証拠へ参照を張る。
+- 型名、API、コード、環境変数、コマンド、ファイルパスなど機械的な識別子は改名せず、正確な表記を維持する。
+- 執筆・整理方針の詳細は `docs/README.md` を参照する。
+
 ## Completion and invariants
 - Policy defines; Orchestration decides; Context materializes; Runtime executes; Persistence remembers; Operations observes/controls; Eval measures/proposes.
 - Runtime capture becomes durable Evidence only after Persistence append. Checkpoint、Memory、Evidenceを混同しない。
