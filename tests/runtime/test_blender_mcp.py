@@ -1,4 +1,5 @@
 import tempfile
+import json
 import unittest
 from pathlib import Path
 from unityagent.runtime.tooling.providers.blender_mcp.rock_job import RockJob
@@ -156,3 +157,50 @@ for line in sys.stdin:
                 if t2.ident is not None: t2.join(3)
             self.assertTrue(started2.is_set())
             self.assertFalse(t1.is_alive() or t2.is_alive())
+
+
+class LiveBlenderContractTests(unittest.TestCase):
+    def test_safe_mode_rock_template_delegates_hash_and_manifest_to_host(self):
+        from unityagent.runtime.tooling.providers.blender_mcp.rock_template import rock_template
+        source = rock_template('C:/ApprovedStaging/Rock.fbx')
+        self.assertIn('export_scene.fbx', source)
+        self.assertNotIn('import hashlib', source)
+        self.assertNotIn('open(', source)
+        self.assertIn('UNITYAGENT_ROCK_V1:', source)
+
+    def test_mcp_session_binding_reads_text_only_upstream_observations(self):
+        import sys
+        from unityagent.runtime.tooling.providers.blender_mcp.stdio_client import McpStdioClient
+        with tempfile.TemporaryDirectory() as directory:
+            script = Path(directory)/'fixture_live.py'
+            script.write_text("""import os, json, sys
+for line in sys.stdin:
+    request=json.loads(line)
+    if 'id' not in request: continue
+    method=request['method']
+    if method=='initialize':
+        result={'protocolVersion':'2024-11-05','serverInfo':{'name':'fixture','version':'1'}}
+    elif method=='tools/list':
+        result={'tools':[{'name':name} for name in ('get_scene_info','get_addon_status','execute_blender_code')]}
+    else:
+        name=request['params']['name']
+        if name=='get_addon_status':
+            text=json.dumps({'up_to_date':True,'protocol_version':12,
+                'expected_protocol_version':12,'addon_version':'1.4',
+                'blender_version':'4.3.2'})
+        elif name=='get_scene_info':
+            text='Scene contains one cube'
+        else:
+            if os.environ.get('BLENDER_MCP_SAFE_MODE')!='1':
+                raise RuntimeError('safe mode env missing')
+            text='Code executed successfully: UNITYAGENT_SESSION_V1:'+json.dumps(
+                {'wm_pointer':2147483648,'blender_version':'4.3.2'})
+        result={'content':[{'type':'text','text':text}]}
+    print(json.dumps({'jsonrpc':'2.0','id':request['id'],'result':result}), flush=True)
+""")
+            with McpStdioClient([sys.executable, '-u', str(script)]) as client:
+                self.assertIsNone(client.blender_session_identity)
+                first=client.bind_session()
+                self.assertTrue(first.startswith('blender-'))
+                self.assertEqual(client.addon_version,'1.4')
+                client.recheck_session()
