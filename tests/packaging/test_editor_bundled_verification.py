@@ -14,7 +14,8 @@ def tracked_sources():
     paths += [x for x in ROOT.glob("tests/unity/verify/**/*") if x.is_file()]
     paths += [x for x in ROOT.glob("tests/unity/scripts/**/*") if x.is_file()]
     paths += [ROOT / "tests/unity/matrix.yaml"]
-    paths += [x for x in ROOT.glob("Packages/com.darumappap.artist-subagent/**/*") if x.is_file()]
+    paths += [x for x in ROOT.glob("subagent/artist_subagent/tools/editor/**/*") if x.is_file()]
+    paths += [x for x in ROOT.glob("tests/unity/editor/artist/**/*") if x.is_file()]
     return {x.relative_to(ROOT).as_posix(): x for x in paths}
 
 

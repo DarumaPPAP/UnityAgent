@@ -1,6 +1,6 @@
 # ArtistSubAgent Backend Unity Package
 
-`Packages/com.darumappap.artist-subagent/`は、ArtistSubAgentのためにUnity Editor内で提供するBackend Packageです。Package IDは`com.darumappap.artist-subagent`、Manifest上の専門Agent IDは`artist_subagent`、Backend IDは`unity_artist_cli`です。Package、Specialist、Backendは別の識別子です。
+`subagent/artist_subagent/tools/editor/`は、ArtistSubAgentのためにUnity Editor内で提供するBackend Packageです。Package IDは`com.darumappap.artist-subagent`、Manifest上の専門Agent IDは`artist_subagent`、Backend IDは`unity_artist_cli`です。Package、Specialist、Backendは別の識別子です。
 
 ## Backend command registrations
 
@@ -37,4 +37,4 @@ unity artist doctor --project-path <project> --format json --non-interactive
 unity artist install --project-path <project> --format json --non-interactive
 ```
 
-CLIの`unity-artist`実行ファイルと`unity_artist_cli`Backend IDは別の名称です。Backendを導入する操作はUser Setupとして明示され、Capability Resolution時の自動Installではありません。対応Version / Pipelineは[ArtistSubAgent Manifest](../../../subagent/artist_subagent/manifest.yaml)と[Compatibility Matrix](../../../ci/compatibility/support-matrix.yaml)を参照してください。
+CLIの`unity-artist`実行ファイルと`unity_artist_cli`Backend IDは別の名称です。Backendを導入する操作はUser Setupとして明示され、Capability Resolution時の自動Installではありません。対応Version / Pipelineは[ArtistSubAgent Manifest](../../../manifest.yaml)と[Compatibility Matrix](../../../../../ci/compatibility/support-matrix.yaml)を参照してください。

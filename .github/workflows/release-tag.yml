@@ -128,7 +128,7 @@ jobs:
           sha256sum "artifacts/$artist_archive" > "artifacts/$artist_archive.sha256"
 
           (
-            cd "Packages/com.darumappap.artist-subagent"
+            cd "subagent/artist_subagent/tools/editor"
             npm pack --pack-destination "$GITHUB_WORKSPACE/artifacts"
           )
           artist_upm_source="$(find artifacts -maxdepth 1 -type f -name '*.tgz' -print -quit)"
@@ -144,7 +144,7 @@ jobs:
           import os
           import pathlib
 
-          package = json.loads(pathlib.Path("Packages/com.darumappap.artist-subagent/package.json").read_text(encoding="utf-8"))
+          package = json.loads(pathlib.Path("subagent/artist_subagent/tools/editor/package.json").read_text(encoding="utf-8"))
           version = os.environ["RELEASE_VERSION"]
           provenance = {
               "schema_version": "1.0",
@@ -166,7 +166,7 @@ jobs:
           set -euo pipefail
           backend_version="$(python3 - <<'PY'
           import json
-          print(json.load(open("Packages/com.darumappap.artist-subagent/package.json", encoding="utf-8"))["version"])
+          print(json.load(open("subagent/artist_subagent/tools/editor/package.json", encoding="utf-8"))["version"])
           PY
           )"
           python3 - "$backend_version" <<'PY'
@@ -213,7 +213,7 @@ jobs:
               "package/Editor/Verification~/p9-source-manifest.json",
               "package/Editor/Verification~/tests/unity/scripts/run-unity-tests.ps1",
               "package/Editor/Verification~/tests/unity/matrix.yaml",
-              "package/Editor/Verification~/Packages/com.darumappap.artist-subagent/package.json",
+              "package/Editor/Verification~/subagent/artist_subagent/tools/editor/package.json",
               "package/Editor/Bootstrap~/install-control-plane.ps1",
           }
           with tarfile.open(archive, "r:gz") as package:

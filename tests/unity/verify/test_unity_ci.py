@@ -231,7 +231,7 @@ class FixtureTests(unittest.TestCase):
             project=ci.ROOT/row['project']
             manifest=json.loads((project/'Packages/manifest.json').read_text())
             location=manifest['dependencies']['com.darumappap.artist-subagent'][5:]
-            self.assertEqual((project/'Packages'/location).resolve(),ci.ROOT/'Packages/com.darumappap.artist-subagent')
+            self.assertEqual((project/'Packages'/location).resolve(),ci.ROOT/'subagent/artist_subagent/tools/editor')
             self.assertIn('[Test]',(project/'Assets/Editor/SmokeTests.cs').read_text())
             for asset in (project/'Assets').rglob('*'):
                 if asset.suffix!='.meta':self.assertTrue(Path(str(asset)+'.meta').is_file(),asset)

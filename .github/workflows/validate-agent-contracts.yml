@@ -196,7 +196,7 @@ jobs:
               "package/Editor/Verification~/p9-source-manifest.json",
               "package/Editor/Verification~/tests/unity/scripts/run-unity-tests.ps1",
               "package/Editor/Verification~/tests/unity/matrix.yaml",
-              "package/Editor/Verification~/Packages/com.darumappap.artist-subagent/package.json",
+              "package/Editor/Verification~/subagent/artist_subagent/tools/editor/package.json",
               "package/Editor/Bootstrap~/install-control-plane.ps1",
           }
           with tarfile.open(archive, "r:gz") as package:
