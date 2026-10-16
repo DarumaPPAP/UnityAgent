@@ -172,7 +172,7 @@ def register_run(*, store_root, plan_id: str, run_id: str, source_revision: str)
     return manifest
 
 
-def _load(root, run_id, checkout_revision):
+def _load(root, run_id, checkout_revision, *, require_project_revision=True):
     safe_id(run_id, "run_id")
     manifest = read_json(_manifest_path(root, run_id))
     state = read_json(_progress_path(root, run_id))
@@ -185,7 +185,7 @@ def _load(root, run_id, checkout_revision):
         raise ValueError("Plan or Definition changed")
     if _file_hash(manifest["source_path"]) != manifest["artifact_sha256"]:
         raise ValueError("Staged FBX hash changed")
-    if project_revision(manifest["project_root"]) != state["expected_project_revision"]:
+    if require_project_revision and project_revision(manifest["project_root"]) != state["expected_project_revision"]:
         raise ValueError("Project revision changed; reconciliation required")
     for entry in state["completed"]:
         receipt = read_json(resolve_ref(root, entry["receipt_ref"]))
@@ -287,7 +287,7 @@ def complete_stage(*, store_root, run_id, stage, checkout_revision, workflow_run
     if directory == root or not directory.is_relative_to(root):
         raise ValueError("Raw Evidence must be under the protected Persistence root")
     with exclusive_file_lock(_lock_path(root, run_id)):
-        manifest, state = _load(root, run_id, checkout_revision)
+        manifest, state = _load(root, run_id, checkout_revision, require_project_revision=False)
         active = state.get("active")
         if (state["status"] != "running" or not isinstance(active, dict)
                 or active.get("stage") != stage or active.get("workflow_run_id") != str(workflow_run_id)):
