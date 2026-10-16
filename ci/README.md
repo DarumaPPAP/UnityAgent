@@ -1,6 +1,6 @@
 # Unity CIをWindows / Linuxで実行する（P9）
 
-統合済みの [Fixture一覧](unity-matrix.yaml) と `ci/verify/unity_ci.py` を共通Runnerとして使用します。
+統合済みの [Fixture一覧](../tests/unity/matrix.yaml) と `tests/unity/verify/unity_ci.py` を共通Runnerとして使用します。
 Windows開発PCでもLinux CIでも同じEditModeテスト・証跡判定です。UnityAgentのRuntime機能ではなく、
 Repositoryの開発用CIです。UnityAgentのSource Lock、UPM、Fixture、Historical Evidenceは変更しません。
 
@@ -29,7 +29,7 @@ Repositoryルートで実行します。Execution Policyがスクリプトを制
 スクリプトを許可するか、後述のPython入口を使ってください。
 
 ```powershell
-python ci/verify/validate_unity_fixtures.py
+python tests/unity/verify/validate_unity_fixtures.py
 python -m unittest discover -s ci/verify -p 'test_unity_ci*.py' -v
 
 # ライセンス有効化済みの場合のみ設定する（trueでも実行成功を保証しません）
@@ -58,7 +58,7 @@ Outputの既定値はRepositoryの `artifacts/<fixture>`、指定した相対Out
 PowerShellスクリプトを使わずに同じRunnerを呼ぶこともできます。
 
 ```powershell
-python ci/verify/unity_ci.py --fixture minimal-6000.3 --output artifacts/minimal-6000.3 `
+python tests/unity/verify/unity_ci.py --fixture minimal-6000.3 --output artifacts/minimal-6000.3 `
   --editor-root 'C:\Program Files\Unity\Hub\Editor'
 ```
 
@@ -66,13 +66,13 @@ python ci/verify/unity_ci.py --fixture minimal-6000.3 --output artifacts/minimal
 
 ```bash
 export UNITY_LICENSE_READY=true  # ライセンス有効化後のみ
-bash ci/scripts/run-unity-tests.sh --fixture minimal-6000.6 --output artifacts/minimal-6000.6
-bash ci/scripts/run-unity-tests.sh --fixture canonical-full --output artifacts/canonical-full \
+bash tests/unity/scripts/run-unity-tests.sh --fixture minimal-6000.6 --output artifacts/minimal-6000.6
+bash tests/unity/scripts/run-unity-tests.sh --fixture canonical-full --output artifacts/canonical-full \
   --editor /opt/unity/6000.6.0f1/Editor/Unity
 
 export UNITY_GRAPHICS_READY=true  # GPU / Display / Driverの準備後のみ
 for fixture in builtin-smoke urp-smoke hdrp-smoke; do
-  bash ci/scripts/run-unity-tests.sh --fixture "$fixture" --output "artifacts/$fixture" || exit "$?"
+  bash tests/unity/scripts/run-unity-tests.sh --fixture "$fixture" --output "artifacts/$fixture" || exit "$?"
 done
 ```
 

@@ -37,7 +37,7 @@ class SetupEditorVerificationContractTests(unittest.TestCase):
         self.assertIn('EditorUtility.DisplayDialog("Unity検証を実行"', PANEL)
         self.assertIn('s_licenseConfirmed', PANEL)
         self.assertIn('s_graphicsConfirmed', PANEL)
-        self.assertIn('ci", "scripts", "run-unity-tests.ps1"', PANEL)
+        self.assertIn('tests", "unity", "scripts", "run-unity-tests.ps1"', PANEL)
         source = (EDITOR / "VerificationFixtureSource.cs").read_text(encoding="utf-8")
         self.assertIn("p9-source-manifest.json", source)
         self.assertIn("TryGetVerifiedSource", PANEL)

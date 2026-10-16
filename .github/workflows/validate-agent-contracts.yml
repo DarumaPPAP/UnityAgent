@@ -53,8 +53,8 @@ jobs:
 
       - name: Validate migrated Unity P9 fixtures and host runner
         run: |
-          python ci/verify/validate_unity_fixtures.py
-          python -m unittest discover -s ci/verify -p "test_unity_ci*.py" -v
+          python tests/unity/verify/validate_unity_fixtures.py
+          python -m unittest discover -s tests/unity/verify -p "test_unity_ci*.py" -v
 
       - name: Validate Unity Editor PackageInfo qualification
         run: |
@@ -194,8 +194,8 @@ jobs:
               "package/Editor/VerificationFixtureSource.cs",
               "package/Editor/VerificationFixtureSource.cs.meta",
               "package/Editor/Verification~/p9-source-manifest.json",
-              "package/Editor/Verification~/ci/scripts/run-unity-tests.ps1",
-              "package/Editor/Verification~/ci/unity-matrix.yaml",
+              "package/Editor/Verification~/tests/unity/scripts/run-unity-tests.ps1",
+              "package/Editor/Verification~/tests/unity/matrix.yaml",
               "package/Editor/Verification~/Packages/com.darumappap.artist-subagent/package.json",
               "package/Editor/Bootstrap~/install-control-plane.ps1",
           }

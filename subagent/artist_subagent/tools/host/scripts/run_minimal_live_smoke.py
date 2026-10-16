@@ -23,7 +23,7 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[5]
-DEFAULT_PROJECT = ROOT / "ci" / "unity-projects" / "artist-e2e"
+DEFAULT_PROJECT = ROOT / "tests" / "unity" / "projects" / "artist-e2e"
 
 
 class SmokeFailure(RuntimeError):

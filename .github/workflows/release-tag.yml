@@ -106,9 +106,9 @@ jobs:
           set -euo pipefail
           python3 tools/validate_local_subagent_catalog.py
           python3 subagent/tools/validate_registry.py
-          python3 -m unittest discover -s subagent/tests -p 'test_*.py' -v
+          python3 -m unittest discover -s tests/subagent -p 'test_*.py' -v
           python3 tools/validate_artist_product_identity.py
-          python3 ci/verify/validate_unity_fixtures.py
+          python3 tests/unity/verify/validate_unity_fixtures.py
           dotnet build subagent/artist_subagent/tools/host/UnityArtist.Tools.csproj --configuration Release
           python3 -m unittest discover -s tests/subagent/artist/tools -p 'test_*.py' -v
 
@@ -211,8 +211,8 @@ jobs:
               "package/Editor/VerificationFixtureSource.cs",
               "package/Editor/VerificationFixtureSource.cs.meta",
               "package/Editor/Verification~/p9-source-manifest.json",
-              "package/Editor/Verification~/ci/scripts/run-unity-tests.ps1",
-              "package/Editor/Verification~/ci/unity-matrix.yaml",
+              "package/Editor/Verification~/tests/unity/scripts/run-unity-tests.ps1",
+              "package/Editor/Verification~/tests/unity/matrix.yaml",
               "package/Editor/Verification~/Packages/com.darumappap.artist-subagent/package.json",
               "package/Editor/Bootstrap~/install-control-plane.ps1",
           }

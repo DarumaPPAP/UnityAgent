@@ -77,7 +77,7 @@ TEST_SUITES = (
     Path("tests/operations"),
     Path("tests/context_explorer"),
     Path("tests/architecture"),
-    Path("subagent/tests"),
+    Path("tests/subagent"),
     Path("tests/content_pilot"),
 )
 

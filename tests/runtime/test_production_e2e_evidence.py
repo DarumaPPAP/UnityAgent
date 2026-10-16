@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-spec = importlib.util.spec_from_file_location('collector', Path(__file__).parents[2]/'tools/production_e2e/collect_evidence.py')
+spec = importlib.util.spec_from_file_location('collector', Path(__file__).parents[2]/'tests/unity/verify/collect_evidence.py')
 collector = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(collector)
 
