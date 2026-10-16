@@ -5,8 +5,8 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$repoRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
-$project = Join-Path $repoRoot "cli\artist\UnityArtist.Cli.csproj"
+$repoRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))))
+$project = Join-Path $repoRoot "subagent\artist_subagent\tools\host\UnityArtist.Tools.csproj"
 
 dotnet publish $project --configuration Release --self-contained false --output $InstallRoot
 

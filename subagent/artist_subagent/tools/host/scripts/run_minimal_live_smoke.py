@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any
 
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[5]
 DEFAULT_PROJECT = ROOT / "ci" / "unity-projects" / "artist-e2e"
 
 
@@ -55,7 +55,7 @@ def run_unity(arguments: list[str], timeout: int = 60) -> tuple[int, dict[str, A
 
 def run_host(arguments: list[str], timeout: int = 60) -> tuple[int, dict[str, Any]]:
     completed = subprocess.run(
-        ["dotnet", "run", "--project", str(ROOT / "cli" / "artist" / "UnityArtist.Cli.csproj"), "--no-restore", "--", *arguments],
+        ["dotnet", "run", "--project", str(ROOT / "subagent" / "artist_subagent" / "tools" / "host" / "UnityArtist.Tools.csproj"), "--no-restore", "--", *arguments],
         cwd=ROOT,
         capture_output=True,
         text=True,

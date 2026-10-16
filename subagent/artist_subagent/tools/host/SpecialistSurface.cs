@@ -1,4 +1,4 @@
-namespace UnityArtist.Cli;
+namespace UnityArtist.Tools;
 
 /// <summary>
 /// Typed capability vocabulary used by the Runtime-owned specialist session.
