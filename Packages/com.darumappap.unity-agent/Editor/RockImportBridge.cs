@@ -33,6 +33,32 @@ namespace DarumaPPAP.UnityAgent.Editor
             public string receipt_path;
             public string receipt_sha256;
             public string result_path;
+            public string state_root;
+            public string plan_id;
+            public string mutation_approval_ref;
+            public string save_approval_ref;
+            public string rollback_approval_ref;
+        }
+
+        [Serializable]
+        private sealed class ApprovalDecision
+        {
+            public string approval_decision_id;
+            public string operation;
+            public string plan_id;
+            public string project_root;
+            public string status;
+            public string human_review;
+            public string expires_at;
+            public int revocation_epoch;
+        }
+
+        [Serializable]
+        private sealed class ApprovalRecord
+        {
+            public string schema_version;
+            public ApprovalDecision decision;
+            public int current_revocation_epoch;
         }
 
         [Serializable]
@@ -92,6 +118,29 @@ namespace DarumaPPAP.UnityAgent.Editor
             return ticket;
         }
 
+        private static void RequireApproval(Ticket ticket, string approvalRef, string kind)
+        {
+            if (string.IsNullOrEmpty(approvalRef) || !System.Text.RegularExpressions.Regex.IsMatch(
+                    approvalRef, @"^[A-Za-z0-9._-]+$") ||
+                string.IsNullOrEmpty(ticket.state_root) || !Path.IsPathRooted(ticket.state_root) ||
+                string.IsNullOrEmpty(ticket.plan_id))
+                throw new InvalidOperationException("Rock Editor requires trusted Approval record");
+            string file = Path.Combine(ticket.state_root, "approvals", "decisions", approvalRef + ".json");
+            if (!File.Exists(file)) throw new InvalidOperationException("Rock Approval record unavailable");
+            var record = JsonUtility.FromJson<ApprovalRecord>(File.ReadAllText(file));
+            var decision = record == null ? null : record.decision;
+            if (record == null || record.schema_version != "1.1" || decision == null ||
+                decision.approval_decision_id != approvalRef ||
+                decision.operation != "rock_import_" + kind ||
+                decision.plan_id != ticket.plan_id || decision.project_root != ProjectRoot ||
+                decision.status != "active" || decision.human_review != "approved" ||
+                decision.revocation_epoch != record.current_revocation_epoch ||
+                !DateTime.TryParse(decision.expires_at, null,
+                    System.Globalization.DateTimeStyles.RoundtripKind, out var expiry) ||
+                expiry.ToUniversalTime() <= DateTime.UtcNow)
+                throw new InvalidOperationException("Rock Editor Approval expired or revoked");
+        }
+
         private static string[] ExpectedFiles()
         {
             return new[]
@@ -123,6 +172,8 @@ namespace DarumaPPAP.UnityAgent.Editor
         public static void ApplyApproved()
         {
             var ticket = ReadTicket("apply");
+            RequireApproval(ticket, ticket.mutation_approval_ref, "mutation");
+            RequireApproval(ticket, ticket.save_approval_ref, "save");
             if (File.Exists(Absolute(Root + ".meta")) || File.Exists(Absolute(MaterialPath)) ||
                 File.Exists(Absolute(PrefabPath)) || File.Exists(Absolute(ScenePath)) ||
                 File.Exists(Absolute(ModelPath + ".meta")) ||
@@ -132,6 +183,8 @@ namespace DarumaPPAP.UnityAgent.Editor
             if (existing.Length != 1 || Path.GetFullPath(existing[0]) != Path.GetFullPath(Absolute(ModelPath)))
                 throw new InvalidOperationException("Unowned file in Rock import scope");
 
+            RequireApproval(ticket, ticket.mutation_approval_ref, "mutation");
+            RequireApproval(ticket, ticket.save_approval_ref, "save");
             AssetDatabase.ImportAsset(ModelPath, ImportAssetOptions.ForceSynchronousImport);
             var importer = AssetImporter.GetAtPath(ModelPath) as ModelImporter;
             if (importer == null) throw new InvalidOperationException("FBX importer unavailable");
@@ -170,6 +223,7 @@ namespace DarumaPPAP.UnityAgent.Editor
         public static void RollbackApproved()
         {
             var ticket = ReadTicket("rollback");
+            RequireApproval(ticket, ticket.rollback_approval_ref, "rollback");
             if (!File.Exists(ticket.receipt_path) || Hash(ticket.receipt_path) != ticket.receipt_sha256)
                 throw new InvalidOperationException("Rock import Receipt changed; manual reconciliation required");
             var receipt = JsonUtility.FromJson<Receipt>(File.ReadAllText(ticket.receipt_path));
@@ -191,6 +245,7 @@ namespace DarumaPPAP.UnityAgent.Editor
             var allowed = ExpectedFiles().Where(p => p.StartsWith(Root + "/", StringComparison.Ordinal)).OrderBy(x => x);
             if (!current.OrderBy(x => x).SequenceEqual(allowed))
                 throw new InvalidOperationException("Unowned file in Rock directory; refusing rollback");
+            RequireApproval(ticket, ticket.rollback_approval_ref, "rollback");
             if (!AssetDatabase.DeleteAsset(Root) || Directory.Exists(Absolute(Root)) ||
                 File.Exists(Absolute(Root + ".meta")))
                 throw new InvalidOperationException("Editor rollback did not remove owned Rock assets");
