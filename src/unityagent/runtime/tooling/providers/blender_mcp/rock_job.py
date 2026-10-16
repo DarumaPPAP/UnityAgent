@@ -25,10 +25,10 @@ def _observed_rock_record(mcp_reply):
             if not marker or not isinstance(payload, str):
                 raise ValueError('Invalid Blender response')
             decoder = json.JSONDecoder()
-            record, trailing = decoder.raw_decode(payload.lstrip())
-            if trailing.strip() and not trailing.strip().startswith(('\n',)):
-                # JSONDecoder.raw_decode returns a character offset, not a tail.
-                pass
+            document = payload.lstrip()
+            record, end = decoder.raw_decode(document)
+            if document[end:].strip():
+                raise ValueError('Unexpected trailing content after Blender Rock evidence')
             matches.append(record)
     if len(matches) != 1 or not isinstance(matches[0], dict):
         raise ValueError('Blender output lacks one trusted Rock observation')
@@ -90,7 +90,7 @@ class RockJob:
                 state['mcp_result'] = result
                 artifact = _observed_rock_record(result)
                 content = output.read_bytes()
-                if len(content) < 1024 or not content.startswith(b'Kaydara FBX Binary  \\x00\\x1a\\x00'):
+                if len(content) < 1024 or not content.startswith(b'Kaydara FBX Binary  \x00\x1a\x00'):
                     raise ValueError('Expected binary FBX export is missing or truncated')
                 measured_hash = hashlib.sha256(content).hexdigest()
                 artifact.update(sha256=measured_hash, blender_version=getattr(self.client, 'blender_version', 'unmeasured'),
