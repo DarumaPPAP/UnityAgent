@@ -60,7 +60,7 @@ Status: **Host contract + private workflow template. NOT deployed to a Private r
 | `running` | Complete reports every Stage-required observed Gate with hashed raw evidence, and rechecks GitHub approval | Immutable receipt + canonical State snapshot/Checkpoint; next `waiting` or final `completed` |
 | `running` interrupted, timed out or outcome unknown | No automatic redispatch. `RECONCILIATION_REQUIRED`; inspect Editor/Blender/Project side effects and evidence manually |
 | Any State | Changed Project/Source/Plan, missing or tampered Checkpoint, stale review, expired/revoked scope, invalid evidence | Refuse; never silently rewrite State or approve |
-| All four Stages | Nine G1 required Gates observed | `production_verified=true` at the **Host evidence-contract level**; actual Unity G1 still requires audited live observations |
+| All four Stages | Nine G1 required Gates observed | `host_gate_contracts_complete=true`; `production_verified=false` until independent live Unity/Blender/human evidence audit |
 
 The canonical `CheckpointStore` is State-only. Asset rollback is a separate, newly approved Editor operation with Receipt hash + GUID/ownership validation, not `CheckpointStore.restore`. Each new Stage has its own GitHub Workflow Run ID, while retaining the single logical `run_id`. Evidence files are hashed, but their raw filesystem provenance still needs a trusted operator-owned producer.
 
