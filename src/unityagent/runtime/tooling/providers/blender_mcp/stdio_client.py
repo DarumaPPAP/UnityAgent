@@ -72,13 +72,16 @@ class McpStdioClient:
         scene_text = self._text_result(self.tool('get_scene_info', {}))
         if not scene_text.strip() or scene_text.lstrip().startswith(('Error', 'Could not')):
             raise ValueError('Blender live scene observation unavailable')
-        # Upstream get_scene_info returns text, not structuredContent.blender_session_identity.
-        # Fixed read-only bpy script. Pointer is a process-bound hint, NOT OS attestation.
+        # Safe Mode forbids raw pointers. Instead create an approved runtime
+        # nonce on Blender's WindowManager ID. This is a bounded mutation and
+        # a cooperative lock identity, NOT an authenticated OS process ID.
         probe = (
-            'import bpy, json\n'
-            'print("UNITYAGENT_SESSION_V1:" + json.dumps({"wm_pointer": '
-            'bpy.context.window_manager.as_pointer(), '
-            '"blender_version": bpy.app.version_string}))'
+            'import bpy, json, uuid\n'
+            'wm = bpy.context.window_manager\n'
+            'if "UnityAgentSessionNonce" not in wm:\n'
+            '    wm["UnityAgentSessionNonce"] = str(uuid.uuid4())\n'
+            'print("UNITYAGENT_SESSION_V1:" + json.dumps({"nonce": '
+            'wm["UnityAgentSessionNonce"], "blender_version": bpy.app.version_string}))'
         )
         observed_text = self._text_result(self.tool('execute_blender_code', {'code': probe}))
         marker = 'UNITYAGENT_SESSION_V1:'
@@ -88,11 +91,12 @@ class McpStdioClient:
         observation, position = json.JSONDecoder().raw_decode(document)
         if document[position:].strip():
             raise ValueError('Blender runtime identity has trailing content')
-        if (not isinstance(observation, dict) or isinstance(observation.get('wm_pointer'), bool)
-                or not isinstance(observation.get('wm_pointer'), int) or observation['wm_pointer'] <= 0
+        if (not isinstance(observation, dict)
+                or not isinstance(observation.get('nonce'), str)
+                or len(observation['nonce']) != 36
                 or observation.get('blender_version') != status['blender_version']):
             raise ValueError('Blender runtime identity and addon status disagree')
-        return {'wm_pointer': observation['wm_pointer'], 'blender_version': status['blender_version'],
+        return {'nonce': observation['nonce'], 'blender_version': status['blender_version'],
                 'addon_version': status['addon_version'], 'protocol_version': status['protocol_version'],
                 'server': self.identity.get('serverInfo')}
 
