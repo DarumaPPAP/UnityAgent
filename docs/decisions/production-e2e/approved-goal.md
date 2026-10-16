@@ -41,8 +41,8 @@ https://github.com/DarumaPPAP/UnityAgent
 
 既にマージ済みの以下の変更を重複実装しない。
 
-- PR #193：SubAgent配布統合、明示選出、Control Plane Project排他
-- PR #194：Editor Play / Timeline動画Evidence
+- 既存のSubAgent配布統合、明示選出、Control PlaneのProject排他
+- 既存のEditor Play・Timeline動画の証拠取得機能
 
 ### 実装上の正本
 
@@ -128,7 +128,7 @@ Q-007相当のBlender制作経路も上記の方針として扱う。外部生�
 ## 実施内容
 
 1. 最新`main`、Open PR、CI結果を再取得する。
-2. PR #193・#194のマージ済み実装を確認する。
+2. SubAgent配布統合とEditor Play・Timeline動画の既存実装を確認する。
 3. Q-001〜Q-014のDecisionを既存文書体系に合わせて正本化する。
 4. 各機能を次の状態に分類する。
    - Implemented and Verified
@@ -234,7 +234,7 @@ CheckpointでRunを復元してもUnity Asset自体は復旧しないことを�
 
 ## Lease
 
-PR #193のControl Plane Project排他と、既存Runtime Leaseの責任範囲を監査する。
+既存Control PlaneのProject排他と、Runtime Leaseの責任範囲を監査する。
 
 二重LockやDeadlockを追加しない。
 
@@ -393,7 +393,7 @@ UnityAgentへ次のGoalを渡す。
 17. 競合時は自動復旧せず、安全に停止する。
 18. Required GateがPASSした場合のみVerifiedとする。
 
-## PR #194の実Unity検証
+## Editor Play・Timeline動画の実Unity検証
 
 マージ済みのPlay / Timeline動画Evidenceも必要に応じて検証する。
 
