@@ -265,7 +265,7 @@ jobs:
           fi
           mkdir -p .p9-evidence
           gh api "repos/$P9_REPO/actions/runs/$P9_RUN_ID" > .p9-evidence/run.json
-          python3 -c 'import json,os,sys; d=json.load(open(".p9-evidence/run.json")); sys.exit(0 if d.get("conclusion") == "success" and d.get("event") == "workflow_dispatch" and d.get("head_branch") == "main" and d.get("name") == "UnityAgent P9 Release Verification" and "/.github/workflows/p9-release-verification.yml@" in d.get("path", "") else 1)'
+          python3 -c 'import json,os,sys; d=json.load(open(".p9-evidence/run.json")); sys.exit(0 if d.get("conclusion") == "success" and d.get("event") == "workflow_dispatch" and d.get("head_branch") == "main" and d.get("name") == "UnityAgent P9 Release Verification" and d.get("path") == ".github/workflows/p9-release-verification.yml" else 1)'
           mkdir -p .p9-evidence/artifact
           gh run download "$P9_RUN_ID" --repo "$P9_REPO" --name unityagent-p9-lts-urp --dir .p9-evidence/artifact
           python3 tools/release/verify_p9_evidence.py \
