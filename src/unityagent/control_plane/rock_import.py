@@ -129,7 +129,7 @@ def _apply(plane, plan_id, approvals, *, action, definition_fingerprint, executo
         policy_allowed=True, approval_required=True, approval_complete=True),
         executors={'native_rock_import':provider.execute},
         provider_arguments={'native_rock_import':{'plan':plan,'action':action,
-                                                'approval_ref':approvals[required[0]]}},
+                                                'approval_ref':approvals[required[0]],'approvals':approvals}},
         maximum_retry_attempts=0)
     run_id = 'rock-import-' + plan_id[:20] + ('-rollback' if action == 'rollback' else '')
     evidence_refs=[]
