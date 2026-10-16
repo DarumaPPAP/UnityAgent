@@ -84,6 +84,16 @@ def _parse_args() -> argparse.Namespace:
     rock.add_argument("--plan-id")
     rock.add_argument("--approval-ref")
     rock.add_argument("--mcp-executable", type=Path)
+    rock_import = subparsers.add_parser("rock-import", help="承認済みFBXのProduction Editor Import/復旧")
+    rock_import.add_argument("operation", choices=("plan", "approve", "apply", "rollback"))
+    rock_import.add_argument("--project-path", required=True)
+    rock_import.add_argument("--state-root", type=Path, default=_default_state_root())
+    rock_import.add_argument("--job-id", default="rock-g1")
+    rock_import.add_argument("--plan-id")
+    rock_import.add_argument("--kind", choices=("mutation", "save", "rollback"))
+    rock_import.add_argument("--approval-ref")
+    rock_import.add_argument("--save-approval-ref")
+    rock_import.add_argument("--rollback-approval-ref")
     e2e = subparsers.add_parser("e2e", help="固定のUnity Editor Full E2E検証")
     e2e.add_argument("operation", choices=("plan", "approve", "approve-save", "apply"))
     e2e.add_argument("--project-path", required=True)
@@ -133,6 +143,28 @@ def main() -> int:
             result = {"status":"blocked","reason":str(exc),"gate":"BLOCKED_NOT_RUN"}
         print(json.dumps(result,ensure_ascii=False,indent=2))
         return 0 if result["status"] in {"planned","approved"} or result.get("acceptance") == "verified" else 1
+    if args.command == "rock-import":
+        from unityagent.control_plane.rock_import import (
+            plan_rock_import, approve_rock_import, apply_rock_import, rollback_rock_import)
+        try:
+            if args.operation == "plan":
+                result = {"status":"planned", **plan_rock_import(args.project_path,args.state_root,
+                    args.job_id,_fingerprint())}
+            elif args.operation == "approve":
+                decision = approve_rock_import(args.state_root,args.plan_id or "",args.kind or "")
+                result = {"status":"approved",**decision}
+            elif args.operation == "apply":
+                result = apply_rock_import(UnityAgentControlPlane(args.state_root),args.plan_id or "",
+                    args.approval_ref or "",args.save_approval_ref or "",
+                    definition_fingerprint=_fingerprint())
+            else:
+                result = rollback_rock_import(UnityAgentControlPlane(args.state_root),
+                    args.plan_id or "",args.rollback_approval_ref or "",
+                    definition_fingerprint=_fingerprint())
+        except (ValueError, OSError, PersistenceError) as exc:
+            result = {"status":"blocked","reason":str(exc),"gate":"BLOCKED_NOT_RUN"}
+        print(json.dumps(result,ensure_ascii=False,indent=2))
+        return 0 if result.get("status") in {"planned","approved","completed"} else 1
     if args.command == "rock":
         from unityagent.control_plane.rock_artifact import plan_rock, approve_rock, apply_rock
         from unityagent.runtime.tooling.providers.blender_mcp.stdio_client import McpStdioClient

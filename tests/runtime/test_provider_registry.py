@@ -23,7 +23,7 @@ from unityagent.runtime.tooling.provider_registry import RuntimeProviderRegistry
 class ProviderRegistryTests(unittest.TestCase):
     def test_canonical_registry_is_valid_and_complete(self):
         registry = load_provider_registry()
-        self.assertEqual(len(registry.providers), 10)
+        self.assertEqual(len(registry.providers), 11)
         self.assertEqual(len(registry.capability_requirements), 17)
         runtime = RuntimeProviderRegistry(registry=registry)
         self.assertGreater(
@@ -46,6 +46,9 @@ class ProviderRegistryTests(unittest.TestCase):
         self.assertEqual(e2e.required_qualifiers, ("workflow",))
         self.assertEqual(e2e.qualifiers_supported, {"workflow": ("full_e2e",)})
         self.assertTrue(e2e.production_enabled)
+        self.assertEqual(runtime.provider("native_rock_import").required_qualifiers, ("workflow",))
+        self.assertEqual(runtime.provider("native_rock_import").qualifiers_supported,
+                         {"workflow": ("blender_rock_import",)})
 
     def test_duplicate_yaml_key_is_rejected(self):
         text = """\

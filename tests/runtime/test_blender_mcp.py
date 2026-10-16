@@ -1,4 +1,5 @@
 import tempfile
+import json
 import unittest
 from pathlib import Path
 from unityagent.runtime.tooling.providers.blender_mcp.rock_job import RockJob
@@ -40,6 +41,8 @@ class BlenderJobTests(unittest.TestCase):
         code = self.client.calls[0][1]['code']
         self.assertIn('export_scene.fbx', code)
         self.assertNotIn('requests', code)
+        self.assertNotIn('import hashlib', code)
+        self.assertNotIn('open(', code)
         with self.assertRaises(TypeError):
             self.job.run('job-2', approval_ref='a', code='arbitrary')
 
@@ -75,9 +78,10 @@ class RockControlPlaneTests(unittest.TestCase):
             def create_fixture(name, arguments):
                 folder = state/'blender-jobs/fixture-rock'
                 (folder/'Rock.fbx').write_bytes(b'Kaydara FBX Binary  \x00\x1a\x00'+b'fixture-only-not-real-geometry'*80)
-                (folder/'artifact.json').write_text(json.dumps({'sha256':hashlib.sha256((folder/'Rock.fbx').read_bytes()).hexdigest(),
-                    'vertices':42,'triangles':80,'scale':[1,1,1],'uv_layers':1,'texture_dependencies':[]}))
-                return {'content':[{'type':'text','text':'fixture'}]}
+                return {'content':[{'type':'text','text':'Code executed successfully: UNITYAGENT_ROCK_V1:'+
+                    json.dumps({'schema_version':'1.0','object_name':'UnityAgentRock',
+                    'vertices':42,'triangles':80,'scale':[1,1,1],'uv_layers':1,
+                    'dimensions':[1.0,1.0,1.0],'texture_dependencies':[]})}]}
             client.tool = create_fixture
             plane = UnityAgentControlPlane(state)
             client.blender_session_identity = None
@@ -88,6 +92,8 @@ class RockControlPlaneTests(unittest.TestCase):
             with patch('unityagent.runtime.dispatcher.tool_runtime_dispatcher.RuntimeProjectLease', side_effect=AssertionError('Unity Lease held during Blender')):
                 result = apply_rock(plane, plan['plan_id'], approval['approval_decision_id'], client, definition_fingerprint=definition)
             self.assertEqual(result['status'], 'completed', result)
+            produced = json.loads((state/'blender-jobs/fixture-rock/artifact.json').read_text())
+            self.assertEqual(produced['sha256'], hashlib.sha256((state/'blender-jobs/fixture-rock/Rock.fbx').read_bytes()).hexdigest())
             self.assertEqual(len(result['evidence_refs']), 1)
             self.assertFalse(result['verified'])
             self.assertEqual(result['unity_import'], 'BLOCKED_NOT_RUN')
@@ -151,3 +157,51 @@ for line in sys.stdin:
                 if t2.ident is not None: t2.join(3)
             self.assertTrue(started2.is_set())
             self.assertFalse(t1.is_alive() or t2.is_alive())
+
+
+class LiveBlenderContractTests(unittest.TestCase):
+    def test_safe_mode_rock_template_delegates_hash_and_manifest_to_host(self):
+        from unityagent.runtime.tooling.providers.blender_mcp.rock_template import rock_template
+        source = rock_template('C:/ApprovedStaging/Rock.fbx')
+        self.assertIn('export_scene.fbx', source)
+        self.assertNotIn('import hashlib', source)
+        self.assertNotIn('open(', source)
+        self.assertIn('UNITYAGENT_ROCK_V1:', source)
+
+    def test_mcp_session_binding_reads_text_only_upstream_observations(self):
+        import sys
+        from unityagent.runtime.tooling.providers.blender_mcp.stdio_client import McpStdioClient
+        with tempfile.TemporaryDirectory() as directory:
+            script = Path(directory)/'fixture_live.py'
+            script.write_text("""import os, json, sys
+for line in sys.stdin:
+    request=json.loads(line)
+    if 'id' not in request: continue
+    method=request['method']
+    if method=='initialize':
+        result={'protocolVersion':'2024-11-05','serverInfo':{'name':'fixture','version':'1'}}
+    elif method=='tools/list':
+        result={'tools':[{'name':name} for name in ('get_scene_info','get_addon_status','execute_blender_code')]}
+    else:
+        name=request['params']['name']
+        if name=='get_addon_status':
+            text=json.dumps({'up_to_date':True,'protocol_version':12,
+                'expected_protocol_version':12,'addon_version':'1.4',
+                'blender_version':'4.3.2'})
+        elif name=='get_scene_info':
+            text='Scene contains one cube'
+        else:
+            if os.environ.get('BLENDER_MCP_SAFE_MODE')!='1':
+                raise RuntimeError('safe mode env missing')
+            text='Code executed successfully: UNITYAGENT_SESSION_V1:'+json.dumps(
+                {'nonce':'6a4c9cb0-b81b-44ed-bb02-a75decc8619c','blender_version':'4.3.2'})
+        result={'content':[{'type':'text','text':text}]}
+    print(json.dumps({'jsonrpc':'2.0','id':request['id'],'result':result}), flush=True)
+""")
+            with McpStdioClient([sys.executable, '-u', str(script)]) as client:
+                self.assertIsNone(client.blender_session_identity)
+                first=client.bind_session()
+                self.assertNotIn('as_pointer()', client._text_result({'content':[{'type':'text','text':'safe'}]}))
+                self.assertTrue(first.startswith('blender-'))
+                self.assertEqual(client.addon_version,'1.4')
+                client.recheck_session()
