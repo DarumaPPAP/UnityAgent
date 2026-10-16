@@ -1,0 +1,107 @@
+# 非公開の実行リポジトリの .github/workflows/production-e2e.yml に配置する。
+# 公開側のUnityAgentでは起動されない、配置用のひな形である。
+name: UnityAgent 非公開環境での段階実行
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 登録済みの実行ID。新しい実行を作成しない
+        required: true
+        type: string
+      stage:
+        description: 実行する段階（artifact / editor / visual / rollback）
+        required: true
+        type: choice
+        options: [artifact, editor, visual, rollback]
+      approval_pulls:
+        description: 操作種別と非公開の承認申請番号のJSON対応。editorにはmutationとsaveの両方が必要
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: private-production-${{ inputs.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  stage:
+    runs-on: [self-hosted, Windows, unity-6000.3.12f1, private-only]
+    timeout-minutes: 40
+    environment: production
+    env:
+      # これらは非公開リポジトリの保護された変数とし、手動起動入力から受け取らない。
+      UNITYAGENT_STATE_ROOT: ${{ vars.UNITYAGENT_STATE_ROOT }}
+      UNITYAGENT_APPROVED_SHA: ${{ vars.UNITYAGENT_APPROVED_SHA }}
+      UNITYAGENT_PRIVATE_APPROVERS: ${{ vars.UNITYAGENT_PRIVATE_APPROVERS }}
+      UNITYAGENT_PRIVATE_STAGE_DRIVER: ${{ vars.UNITYAGENT_PRIVATE_STAGE_DRIVER }}
+      UNITYAGENT_PRIVATE_GITHUB_REPOSITORY: ${{ github.repository }}
+      UNITYAGENT_PRIVATE_GITHUB_TOKEN: ${{ github.token }}
+      UNITYAGENT_REQUIRE_PRIVATE_APPROVAL: '1'
+      RUN_ID: ${{ inputs.run_id }}
+      REQUESTED_STAGE: ${{ inputs.stage }}
+      APPROVAL_PRS_JSON: ${{ inputs.approval_pulls }}
+      WORKFLOW_RUN_ID: ${{ github.run_id }}
+    steps:
+      - name: 承認申請ではなくレビュー済みソースRevisionを取得
+        uses: actions/checkout@v4
+        with:
+          repository: DarumaPPAP/UnityAgent
+          ref: ${{ vars.UNITYAGENT_APPROVED_SHA }}
+          persist-credentials: false
+          path: unityagent-source
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: レビュー済みControl Planeの依存関係を導入
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check -e unityagent-source
+          if ($LASTEXITCODE -ne 0) { throw 'Reviewed Control Plane dependencies unavailable' }
+      - name: ソースSHAと実行環境の必須条件を確認
+        shell: pwsh
+        run: |
+          if ($env:UNITYAGENT_APPROVED_SHA -notmatch '^[a-f0-9]{40}$') { throw 'Protected source SHA required' }
+          $actual = (git -C unityagent-source rev-parse HEAD).Trim()
+          if ($actual -cne $env:UNITYAGENT_APPROVED_SHA) { throw 'Wrong UnityAgent source checkout' }
+          if (-not (Test-Path $env:UNITYAGENT_STATE_ROOT -PathType Container)) { throw 'Persistent protected State unavailable' }
+          if (-not (Test-Path $env:UNITYAGENT_PRIVATE_STAGE_DRIVER -PathType Leaf)) { throw 'Private reviewed Stage Driver unavailable' }
+          if (-not (Test-Path $env:UNITY_EDITOR -PathType Leaf)) { throw 'BLOCKED_NOT_RUN: licensed Unity Editor unavailable' }
+      - name: 非公開の承認を検証して実行状態を保存
+        shell: pwsh
+        env:
+          PYTHONPATH: unityagent-source/src
+        run: |
+          $record = Join-Path $env:UNITYAGENT_STATE_ROOT ("runner-out/" + $env:RUN_ID + "/" + $env:REQUESTED_STAGE + "-begin.json")
+          python -m unityagent.control_plane.private_production_ci begin `
+            --state-root "$env:UNITYAGENT_STATE_ROOT" --run-id "$env:RUN_ID" `
+            --stage "$env:REQUESTED_STAGE" --source-revision "$env:UNITYAGENT_APPROVED_SHA" `
+            --workflow-run-id "$env:WORKFLOW_RUN_ID" --approvals-json "$env:APPROVAL_PRS_JSON" `
+            --output "$record"
+          if ($LASTEXITCODE -ne 0) { throw 'Approval, Revision or Resume Gate refused' }
+          "UNITYAGENT_BEGIN_RECEIPT=$record" >> $env:GITHUB_ENV
+      - name: 事前に監査して導入した段階実行処理のみを起動
+        shell: pwsh
+        run: |
+          # 段階実行処理は既存のControl PlaneとBrokerを通す。Providerを直接呼び出さない。
+          # 検証項目ごとのJSONと生データのハッシュをSTATE_ROOT/evidence/RUN_ID配下へ保存する。
+          $evidenceDir = Join-Path $env:UNITYAGENT_STATE_ROOT ("evidence/" + $env:RUN_ID)
+          & $env:UNITYAGENT_PRIVATE_STAGE_DRIVER -RunId $env:RUN_ID -Stage $env:REQUESTED_STAGE `
+            -StateRoot $env:UNITYAGENT_STATE_ROOT -BeginReceipt $env:UNITYAGENT_BEGIN_RECEIPT `
+            -EvidenceDirectory $evidenceDir
+          if ($LASTEXITCODE -ne 0) { throw 'RECONCILIATION_REQUIRED: Stage side effects must be inspected before retry' }
+      - name: 承認を再確認して証拠とチェックポイントを保存
+        shell: pwsh
+        env:
+          PYTHONPATH: unityagent-source/src
+        run: |
+          $evidenceDir = Join-Path $env:UNITYAGENT_STATE_ROOT ("evidence/" + $env:RUN_ID)
+          python -m unityagent.control_plane.private_production_ci complete `
+            --state-root "$env:UNITYAGENT_STATE_ROOT" --run-id "$env:RUN_ID" `
+            --stage "$env:REQUESTED_STAGE" --source-revision "$env:UNITYAGENT_APPROVED_SHA" `
+            --workflow-run-id "$env:WORKFLOW_RUN_ID" --evidence-directory "$evidenceDir"
+          if ($LASTEXITCODE -ne 0) { throw 'BLOCKED_NOT_RUN / FAILED: Stage never transitions to complete' }
+      # 永続状態とFBXは保護されたRunnerに保管する。Actionsの成果物は
+      # 監査用の複製であって正本ではない。承認トークンや状態保存領域はアップロードしない。
