@@ -2,6 +2,7 @@ name: UnityAgent CI
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
   push:
     branches: [main]
   workflow_dispatch:
@@ -32,6 +33,10 @@ jobs:
 
       - name: Validate pull request branch policy
         run: python tools/branch_policy/validate_branch_policy.py --branch "${{ github.head_ref || github.ref_name }}" --event "${{ github.event_name }}"
+
+      - name: Enforce Japanese PR title and required sections
+        if: github.event_name == 'pull_request'
+        run: python tools/pr_quality/validate_pr.py --event "$GITHUB_EVENT_PATH"
 
       - name: Validate canonical repository contracts
         run: python tools/validate_all.py
