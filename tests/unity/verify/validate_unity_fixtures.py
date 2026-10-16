@@ -5,10 +5,10 @@ from pathlib import Path
 import re
 import sys
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 
 def validate(root=ROOT):
-    config = json.loads((root / 'ci/unity-matrix.yaml').read_text())
+    config = json.loads((root / 'tests/unity/matrix.yaml').read_text())
     errors, guids = [], set()
     if config.get('observation') != 'not_observed':
         errors.append('Fixture inventory must not claim observed Editor evidence')

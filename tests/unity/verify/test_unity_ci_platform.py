@@ -118,7 +118,7 @@ with patch.object(ci.subprocess, 'run', side_effect=execute):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / 'artifacts'
             missing = Path(temporary) / '\u6210\u679c\u7269/Unity.exe'
-            result = subprocess.run([sys.executable, str(ci.ROOT / 'ci/verify/unity_ci.py'),
+            result = subprocess.run([sys.executable, str(ci.ROOT / 'tests/unity/verify/unity_ci.py'),
                 '--fixture', 'minimal-6000.6', '--output', str(output), '--editor', str(missing)],
                 env=dict(os.environ, UNITY_LICENSE_READY='true', PYTHONIOENCODING='ascii'),
                 capture_output=True, text=True, encoding='ascii', errors='replace', timeout=120)
@@ -146,7 +146,7 @@ class PowerShellEntrypointTests(unittest.TestCase):
             output = Path(temporary) / '成果物 with spaces'
             env = dict(os.environ, UNITY_LICENSE_READY='false')
             command = [shell, '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
-                       str(ci.ROOT / 'ci/scripts/run-unity-tests.ps1'), '-Fixture', 'minimal-6000.6',
+                       str(ci.ROOT / 'tests/unity/scripts/run-unity-tests.ps1'), '-Fixture', 'minimal-6000.6',
                        '-OutputDirectory', str(output), '-PythonCommand', sys.executable]
             result = subprocess.run(command, cwd=temporary, env=env, capture_output=True, text=True,
                                     encoding='utf-8', errors='replace', timeout=120)
@@ -162,7 +162,7 @@ class PowerShellEntrypointTests(unittest.TestCase):
             missing = Path(temporary) / 'Missing Unity Editor/Unity.exe'
             env = dict(os.environ, UNITY_LICENSE_READY='true', UNITY_EDITOR=sys.executable)
             result = subprocess.run([shell, '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
-                str(ci.ROOT / 'ci/scripts/run-unity-tests.ps1'), '-Fixture', 'minimal-6000.6',
+                str(ci.ROOT / 'tests/unity/scripts/run-unity-tests.ps1'), '-Fixture', 'minimal-6000.6',
                 '-OutputDirectory', str(output), '-EditorPath', str(missing), '-PythonCommand', sys.executable],
                 cwd=temporary, env=env, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=120)
             self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
@@ -176,7 +176,7 @@ class ShellEntrypointTests(unittest.TestCase):
     def test_blocked_exit_from_another_cwd_with_unicode_output(self):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / '成果物 with spaces'
-            result = subprocess.run(['bash', str(ci.ROOT / 'ci/scripts/run-unity-tests.sh'),
+            result = subprocess.run(['bash', str(ci.ROOT / 'tests/unity/scripts/run-unity-tests.sh'),
                 '--fixture', 'minimal-6000.6', '--output', str(output)], cwd=temporary,
                 env=dict(os.environ, UNITY_CI_PYTHON=sys.executable, UNITY_LICENSE_READY='false'),
                 capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=120)

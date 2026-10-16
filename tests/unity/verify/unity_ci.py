@@ -16,8 +16,8 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 
-ROOT = Path(__file__).resolve().parents[2]
-MATRIX = ROOT / 'ci/unity-matrix.yaml'  # JSON is a YAML 1.2 subset.
+ROOT = Path(__file__).resolve().parents[3]
+MATRIX = ROOT / 'tests/unity/matrix.yaml'  # JSON is a YAML 1.2 subset.
 
 def find_editor(version, editor=None, editor_root=None, system=None):
     """Select only the exact installation; a broken explicit override fails closed."""

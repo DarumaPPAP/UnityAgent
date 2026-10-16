@@ -6,8 +6,8 @@ import json
 import subprocess
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
-INDEX = ROOT / "ci/evidence/artist/historical/index.json"
+ROOT = Path(__file__).resolve().parents[3]
+INDEX = ROOT / "tests/unity/evidence/artist/historical/index.json"
 
 
 def validate_historical_evidence(path: Path | None = None) -> None:
