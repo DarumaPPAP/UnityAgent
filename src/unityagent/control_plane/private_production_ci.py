@@ -308,17 +308,26 @@ def complete_stage(*, store_root, run_id, stage, checkout_revision, workflow_run
         write_immutable_json(receipt_path, receipt)
         receipt_ref = relative_ref(root, receipt_path)
         store = StateStore(root)
+        # Keep any durable Blender / Editor Evidence produced by the canonical
+        # Control Plane. Stage Gate files are NOT automatically EvidenceRecords.
+        execution_path = store.layout.execution_state(run_id)
+        existing_execution = store.load_execution_state(run_id) if execution_path.exists() else {}
+        durable_refs = list(dict.fromkeys(existing_execution.get("evidence_refs", [])))
+        workflow_path = store.layout.workflow_state(run_id)
+        existing_workflow = store.load_workflow_state(run_id) if workflow_path.exists() else {}
+        shared_refs = list(dict.fromkeys([*existing_workflow.get("shared_state_refs", []), receipt_ref]))
         store.save_execution_state({"schema_version": "1.0", "run_id": run_id,
             "status": "waiting" if stage != "rollback" else "completed",
-            "current_step_id": stage, "current_action_id": None, "evidence_refs": [], "updated_at": now})
+            "current_step_id": stage, "current_action_id": None,
+            "evidence_refs": durable_refs, "updated_at": now})
         store.save_workflow_state({"schema_version": "1.0", "run_id": run_id,
             "parent_graph_id": "private-production-ci", "active_subgraph_id": None,
-            "active_node_id": stage, "shared_state_refs": [receipt_ref],
-            "gate_state_refs": [], "updated_at": now})
+            "active_node_id": stage, "shared_state_refs": shared_refs,
+            "gate_state_refs": existing_workflow.get("gate_state_refs", []), "updated_at": now})
         checkpoint_id = "ci-" + stage + "-" + digest.split(":")[1][:20]
         CheckpointStore(root).create(checkpoint_id=checkpoint_id, run_id=run_id,
             reason="Private CI Stage boundary (State only; no Unity asset rollback)", loop_ids=[],
-            evidence_refs=[], definition_fingerprint=manifest["definition_fingerprint"])
+            evidence_refs=durable_refs, definition_fingerprint=manifest["definition_fingerprint"])
         state["completed"].append({"stage": stage, "receipt_ref": receipt_ref,
                                    "receipt_digest": digest, "checkpoint_id": checkpoint_id})
         state["status"] = "waiting" if len(state["completed"]) < len(STAGE_GATES) else "completed"
