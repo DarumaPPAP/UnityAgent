@@ -70,7 +70,12 @@ class RockImportProvider:
 
     def _run_editor(self, method, ticket, *, run_id):
         native = self.editor_factory(self.project, self.snapshot)
-        failure = native._safe_mode_failure() or native._check_editor_conflict()
+        # A cold batch Editor has no live Safe Mode observation; refuse known
+        # Safe Mode, then require an actual OS process-conflict observation.
+        # Compile/executeMethod failure still fails closed and leaves receipts absent.
+        if (self.snapshot.get("unity_editor") or {}).get("safe_mode") is True:
+            raise ValueError("Unity Editor is in Safe Mode")
+        failure = native._check_editor_conflict()
         if failure:
             raise ValueError("Unity Editor preflight: " + str(failure))
         binary, failure = native._resolve_editor_executable()
