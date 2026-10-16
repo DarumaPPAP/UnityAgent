@@ -63,6 +63,20 @@ class PRQualityTests(unittest.TestCase):
         body=BODY.replace("evidence: none","evidence: platform").replace("evidence-status: none","evidence-status: platform=not_observed")
         body+="\n## Platform検証\nPlatform Switch。検証状態は未観測。実機 PASS。\n"
         self.assertTrue(check(body)[0])
+    def test_unfilled_templates_must_fail(self):
+        for kind, title in (
+            ("feature", "機能追加：新規操作を登録"),
+            ("fix", "不具合修正：初回適用時の問題を修正"),
+            ("performance", "性能改善：Draw Callを削減"),
+            ("visual", "表示変更：Prefab画面を変更"),
+            ("qa", "テスト整備：回帰テストを追加"),
+            ("infrastructure", "基盤変更：PR品質検証を追加"),
+            ("maintenance", "保守：古い規約を更新"),
+        ):
+            path = Path(__file__).resolve().parents[2] / ".github" / "PULL_REQUEST_TEMPLATE" / (kind + ".md")
+            errors, _ = check(path.read_text(encoding="utf-8"), title)
+            self.assertTrue(errors, kind)
+
     def test_event_cli(self):
         with tempfile.TemporaryDirectory() as tmp:
             path=Path(tmp)/"event.json"
