@@ -131,7 +131,8 @@ def _apply(plane, plan_id, approvals, *, action, definition_fingerprint, executo
         provider_arguments={'native_rock_import':{'plan':plan,'action':action,
                                                 'approval_ref':approvals[required[0]],'approvals':approvals}},
         maximum_retry_attempts=0)
-    run_id = 'rock-import-' + plan_id[:20] + ('-rollback' if action == 'rollback' else '')
+    # Preserve the originating Blender Task identity across the Editor handoff.
+    run_id = 'rock-' + plan['job_id'] + ('-rollback' if action == 'rollback' else '')
     evidence_refs=[]
     if (result.get('resolution') or {}).get('status') == 'resolved':
         raw = plane.state_store.layout.snapshot(run_id, 'provider-result',
@@ -146,10 +147,16 @@ def _apply(plane, plan_id, approvals, *, action, definition_fingerprint, executo
             structured_result_ref=raw_ref,raw_refs=[raw_ref])
         persisted = append_runtime_execution_evidence(plane.evidence_store,evidence)
         evidence_refs.append(persisted['evidence_id'])
+    from unityagent.orchestration.qa.task_acceptance import assess_task
+    qa = assess_task([plane.evidence_store.get(ref) for ref in evidence_refs],
+        required_gates={'editor_import':['editor_observation'],
+                        'asset_integrity':['mutation_evidence'],
+                        'visual_acceptance':['visual_capture']},
+        run_id=run_id,definition_fingerprint=dict(definition_fingerprint))
     plane._save_execution_state(run_id=run_id,step_id='rock-'+action,
         action_id='scene.mutate',status=result['status'],evidence_refs=evidence_refs)
     return {**result,'run_id':run_id,'evidence_refs':evidence_refs,
-            'verified':False,'visual_acceptance':'not_observed',
+            'qa':qa,'verified':False,'visual_acceptance':'not_observed',
             'production_import':'completed' if action == 'apply' and result.get('status') == 'completed'
                     else 'BLOCKED_NOT_RUN' if result.get('status') != 'completed' else 'rolled_back'}
 
