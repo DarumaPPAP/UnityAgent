@@ -40,6 +40,8 @@ class BlenderJobTests(unittest.TestCase):
         code = self.client.calls[0][1]['code']
         self.assertIn('export_scene.fbx', code)
         self.assertNotIn('requests', code)
+        self.assertNotIn('import hashlib', code)
+        self.assertNotIn('open(', code)
         with self.assertRaises(TypeError):
             self.job.run('job-2', approval_ref='a', code='arbitrary')
 
@@ -75,9 +77,10 @@ class RockControlPlaneTests(unittest.TestCase):
             def create_fixture(name, arguments):
                 folder = state/'blender-jobs/fixture-rock'
                 (folder/'Rock.fbx').write_bytes(b'Kaydara FBX Binary  \x00\x1a\x00'+b'fixture-only-not-real-geometry'*80)
-                (folder/'artifact.json').write_text(json.dumps({'sha256':hashlib.sha256((folder/'Rock.fbx').read_bytes()).hexdigest(),
-                    'vertices':42,'triangles':80,'scale':[1,1,1],'uv_layers':1,'texture_dependencies':[]}))
-                return {'content':[{'type':'text','text':'fixture'}]}
+                return {'content':[{'type':'text','text':'Code executed successfully: UNITYAGENT_ROCK_V1:'+
+                    json.dumps({'schema_version':'1.0','object_name':'UnityAgentRock',
+                    'vertices':42,'triangles':80,'scale':[1,1,1],'uv_layers':1,
+                    'dimensions':[1.0,1.0,1.0],'texture_dependencies':[]})}]}
             client.tool = create_fixture
             plane = UnityAgentControlPlane(state)
             client.blender_session_identity = None
@@ -88,6 +91,8 @@ class RockControlPlaneTests(unittest.TestCase):
             with patch('unityagent.runtime.dispatcher.tool_runtime_dispatcher.RuntimeProjectLease', side_effect=AssertionError('Unity Lease held during Blender')):
                 result = apply_rock(plane, plan['plan_id'], approval['approval_decision_id'], client, definition_fingerprint=definition)
             self.assertEqual(result['status'], 'completed', result)
+            produced = json.loads((state/'blender-jobs/fixture-rock/artifact.json').read_text())
+            self.assertEqual(produced['sha256'], hashlib.sha256((state/'blender-jobs/fixture-rock/Rock.fbx').read_bytes()).hexdigest())
             self.assertEqual(len(result['evidence_refs']), 1)
             self.assertFalse(result['verified'])
             self.assertEqual(result['unity_import'], 'BLOCKED_NOT_RUN')
