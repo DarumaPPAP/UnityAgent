@@ -10,8 +10,8 @@ import yaml
 from historical_evidence import validate_historical_evidence
 
 
-ROOT = Path(__file__).resolve().parents[2]
-EVIDENCE = ROOT / "ci/evidence/artist/historical/cli-pipeline-gate-evidence.yaml"
+ROOT = Path(__file__).resolve().parents[3]
+EVIDENCE = ROOT / "tests/unity/evidence/artist/historical/cli-pipeline-gate-evidence.yaml"
 EXPECTED_VERSIONS = {
     "0.6.0-exp.1",
     "0.5.0-exp.1",

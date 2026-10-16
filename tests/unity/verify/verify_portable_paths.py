@@ -7,7 +7,7 @@ import subprocess
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 FORBIDDEN_MACHINE_PATH = re.compile(r"(?i)\b[A-Z]:[\\/](?:Users|home)[\\/]|/(?:Users|home)/")
 
 

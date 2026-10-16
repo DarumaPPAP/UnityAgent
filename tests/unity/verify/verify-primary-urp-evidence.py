@@ -11,8 +11,8 @@ import yaml
 from historical_evidence import validate_historical_evidence
 
 
-ROOT = Path(__file__).resolve().parents[2]
-EVIDENCE = ROOT / "ci/evidence/artist/historical/unity6-urp-primary-visual-evidence.yaml"
+ROOT = Path(__file__).resolve().parents[3]
+EVIDENCE = ROOT / "tests/unity/evidence/artist/historical/unity6-urp-primary-visual-evidence.yaml"
 
 
 def fail(message: str) -> None:
