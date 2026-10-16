@@ -6,7 +6,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 _RUN_ID_RE = re.compile(r"^[A-Za-z0-9._-]+$")
-REPOSITORY_EXECUTE_METHOD_ALLOWLIST: frozenset[str] = frozenset()
+REPOSITORY_EXECUTE_METHOD_ALLOWLIST: frozenset[str] = frozenset({
+    "DarumaPPAP.UnityAgent.Editor.RockImportBridge.ApplyApproved",
+    "DarumaPPAP.UnityAgent.Editor.RockImportBridge.RollbackApproved",
+})
 
 
 @dataclass(frozen=True)

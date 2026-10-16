@@ -63,6 +63,9 @@ def apply_rock(plane, plan_id, approval_ref, client, *, definition_fingerprint):
                 or datetime.fromisoformat(decision['expires_at']) <= datetime.now(timezone.utc)):
             raise ValueError('Rock approval is invalid, stale or revoked')
     check_approval(None)
+    bind = getattr(client, 'bind_session', None)
+    if callable(bind):
+        bind()  # actual MCP observation only after explicit approval
     # 実接続のProtocol/Tool discoveryが完了したSessionだけを利用可能にする。
     available = bool(getattr(client, 'identity', None) and getattr(client, 'blender_session_identity', None)
                      and 'execute_blender_code' in getattr(client, 'tools', set()))
