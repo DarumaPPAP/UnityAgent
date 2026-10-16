@@ -10,7 +10,9 @@ GATES = ('production_runtime', 'blender_mcp', 'artifact_integrity', 'unity_compi
          'rollback', 'lease_conflict', 'video_decode', 'hot_reload_comparison', 'g2', 'g3')
 
 
-G1_GATES = GATES[:9]  # G2/G3/video/hot-reload are independently reported, not G1 blockers.\n\ndef collect(directory, *, source_revision, artifact_hash):
+G1_GATES = GATES[:9]  # G2/G3/video/hot-reload are independently reported, not G1 blockers.
+
+def collect(directory, *, source_revision, artifact_hash):
     directory = Path(directory)
     results = {}
     for gate in GATES:
@@ -55,7 +57,8 @@ def main():
     args = parser.parse_args()
     result = collect(args.directory, source_revision=args.source_revision, artifact_hash=args.artifact_hash)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(result, indent=2, ensure_ascii=False) + '\n')
+    args.output.write_text(json.dumps(result, indent=2, ensure_ascii=False) + '
+')
     print(json.dumps({'status': result['status'], 'gates': {k:v['status'] for k,v in result['gates'].items()}}))
     return 0 if result['status'] == 'verified' else 1
 
