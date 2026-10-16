@@ -26,7 +26,7 @@
 - Hot Reload preflightはレビュー済みの導入済みRunnerがなく `BLOCKED_NOT_RUN`。[結果](evidence/hot-reload-preflight.json)。通常Compileとの実測ペアは **0件**、Latency/median/p95/Tokenは **unmeasured**。[比較結果](evidence/hot-reload-comparison.json)。
 - Unity Editor / Player / Target Deviceは実行していない。[独立Gate結果](evidence/acceptance.json)。既存のPlay・Timeline録画機能についても、デコードと実画面品質を未観測。
 
-## CI
+## 自動検証の記録
 
 初期実装Commitに対する **4本すべてのCanonical ValidationとWindows Project Leaseが成功**。完全なSHAとRunは `execution-results.json#ci`。CIは実Unity E2Eとは別である。
 
