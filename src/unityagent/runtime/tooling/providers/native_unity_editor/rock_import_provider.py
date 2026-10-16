@@ -104,6 +104,7 @@ class RockImportProvider:
             receipt_path = work / "receipt.json"
             artifact_path = Path(plan["source_path"])
             source_hash = plan["source_sha256"]
+            grants = arguments["approvals"]
             if action == "apply":
                 if result_path.exists() or receipt_path.exists():
                     raise ValueError("Existing Editor result requires manual reconciliation")
@@ -115,12 +116,14 @@ class RockImportProvider:
                 staged = StagedAssets(self.project, self.state_root, plan["plan_id"],
                                       check_approval=lambda digest, phase: self.check_approvals(plan, phase))
                 transaction = staged.prepare({MODEL: artifact_path.read_bytes()},
-                                              approval_ref=plan["approval_ref"],
+                                              approval_ref=grants["mutation"],
                                               mutation_scope=plan["mutation_scope"])
                 staged.apply(transaction)
                 ticket = {"schema_version":"1.0", "project_root":str(self.project),
                           "action":"apply", "source_sha256":source_hash,
-                          "receipt_path":str(receipt_path), "result_path":str(result_path)}
+                          "receipt_path":str(receipt_path), "result_path":str(result_path),
+                          "state_root":str(self.state_root), "plan_id":plan["plan_id"],
+                          "mutation_approval_ref":grants["mutation"], "save_approval_ref":grants["save"]}
                 atomic_write_json(ticket_path, ticket)
                 response = self._run_editor(
                     "DarumaPPAP.UnityAgent.Editor.RockImportBridge.ApplyApproved",
@@ -146,7 +149,8 @@ class RockImportProvider:
                 ticket = {"schema_version":"1.0","project_root":str(self.project),
                           "action":"rollback", "source_sha256":source_hash,
                           "receipt_path":str(receipt_path), "receipt_sha256":_hash(receipt_path),
-                          "result_path":str(result_path)}
+                          "result_path":str(result_path), "state_root":str(self.state_root),
+                          "plan_id":plan["plan_id"], "rollback_approval_ref":grants["rollback"]}
                 atomic_write_json(ticket_path,ticket)
                 response = self._run_editor(
                     "DarumaPPAP.UnityAgent.Editor.RockImportBridge.RollbackApproved",
