@@ -40,7 +40,7 @@ class P9GateTests(unittest.TestCase):
         (source/"evidence.json").write_text(json.dumps(evidence))
         run={"id":RUN,"repository":{"full_name":REPO},"name":"UnityAgent P9 Release Verification",
              "event":"workflow_dispatch","head_branch":"main","status":"completed","conclusion":"success",
-             "path":REPO+"/.github/workflows/p9-release-verification.yml@refs/heads/main"}
+             "path":".github/workflows/p9-release-verification.yml"}
         return run, evidence
     def test_valid_measured_p9_passes_without_g1(self):
         with tempfile.TemporaryDirectory() as root:
