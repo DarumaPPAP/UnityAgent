@@ -54,4 +54,4 @@ The adapter's exact response contract still requires live verification against t
 
 `eval/production_e2e/compare_iterations.py` validates paired identical Task/Environment trials and reports median/nearest-rank p95, completion rate, retries, fallbacks, token totals, runtime side effects and regression rate. Missing token measurements stay `unmeasured`; fewer than five pairs do not support the improvement recommendation. Caller-supplied samples require durable evidence review separately. Nothing auto-enables Hot Reload.
 
-`tools/production_e2e/collect_evidence.py` keeps Production, Blender MCP, compile, Editor import, render, visual review, rollback, lease conflict, video decoding, Hot Reload comparison, G2 and G3 separate. A missing gate becomes `BLOCKED_NOT_RUN`; fixture-only success cannot establish Production success.
+`tests/unity/verify/collect_evidence.py` keeps Production, Blender MCP, compile, Editor import, render, visual review, rollback, lease conflict, video decoding, Hot Reload comparison, G2 and G3 separate. A missing gate becomes `BLOCKED_NOT_RUN`; fixture-only success cannot establish Production success.

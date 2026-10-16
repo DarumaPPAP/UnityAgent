@@ -26,7 +26,7 @@ import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ARTIST_ROOT = ROOT
-DEFAULT_PROJECT = DEFAULT_ARTIST_ROOT / "ci" / "unity-projects" / "artist-e2e"
+DEFAULT_PROJECT = DEFAULT_ARTIST_ROOT / "tests" / "unity" / "projects" / "artist-e2e"
 DEFAULT_SCENE_PATH = "Assets/ReferenceCameraFovGolden.unity"
 UNITY_VERSION = "6000.6.0f1"
 DEFAULT_EDITOR = Path("C:/Program Files/Unity/Hub/Editor/6000.6.0f1/Editor/Unity.exe")
