@@ -1,7 +1,7 @@
 {
   "dependencies": {
     "com.darumappap.artist-subagent": {
-      "version": "file:../../../../../Packages/com.darumappap.artist-subagent",
+      "version": "file:../../../../../subagent/artist_subagent/tools/editor",
       "depth": 0,
       "source": "local",
       "dependencies": {}

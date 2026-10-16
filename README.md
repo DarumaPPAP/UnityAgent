@@ -87,7 +87,7 @@ EntryからProviderを直接呼び出したり、ProviderがPolicyやdurable sta
 ### 統合SubAgent
 
 4つのSubAgentの正本はUnityAgentの `subagent/` にあります。Artistのoptional Unity Packageは
-`Packages/com.darumappap.artist-subagent/`、CLIは `subagent/artist_subagent/tools/host/` に配置しています。
+`subagent/artist_subagent/tools/editor/`、Host Toolは `subagent/artist_subagent/tools/host/` に配置しています。
 Releaseは同じUnityAgent checkoutから全成果物を生成し、Python配布にも定義・Instructions・Contractsを同梱します。
 [旧UnitySubAgentHub](https://github.com/DarumaPPAP/UnitySubAgentHub) は移行履歴・互換検証用です。
 現在のReleaseは旧Hubを取得しません。旧HubのArchiveは実Editor移行検証後に別途行います。

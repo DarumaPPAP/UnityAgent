@@ -122,7 +122,7 @@ def test_evidence(path):
 
 def stage_artist_tests(package_root, project):
     """Expose the baseline package's unassembled tests only in the disposable copy."""
-    source = package_root / 'Tests/Editor'
+    source = ROOT / 'tests/unity/editor/artist'
     tests = sorted(source.rglob('*.cs'))
     if not tests:
         raise RuntimeError('Canonical full suite has no Artist Editor test sources')
@@ -135,7 +135,7 @@ def stage_artist_tests(package_root, project):
         target = destination / test.relative_to(source)
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(test, target)
-        inventory.append({'source': str(test.relative_to(package_root)),
+        inventory.append({'source': str(test.relative_to(ROOT)),
                           'sha256': hashlib.sha256(test.read_bytes()).hexdigest()})
     (destination / 'CiArtistPackageTests.asmdef').write_text(json.dumps({
         'name': 'UnityCi.ArtistPackage.Tests', 'references': ['DarumaPPAP.UnityArtist.Editor'],

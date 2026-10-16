@@ -13,10 +13,10 @@ import yaml
 from historical_evidence import validate_historical_evidence
 
 ROOT = Path(__file__).resolve().parents[3]
-PACKAGE_PATH = ROOT / "Packages/com.darumappap.artist-subagent/package.json"
+PACKAGE_PATH = ROOT / "subagent/artist_subagent/tools/editor/package.json"
 CLI_PROJECT = ROOT / "subagent/artist_subagent/tools/host/UnityArtist.Tools.csproj"
 CLI_SOURCE = ROOT / "subagent/artist_subagent/tools/host/Program.cs"
-EDITOR_ROOT = ROOT / "Packages/com.darumappap.artist-subagent/Editor"
+EDITOR_ROOT = ROOT / "subagent/artist_subagent/tools/editor/Editor"
 MATRIX_PATH = ROOT / "ci/compatibility/support-matrix.yaml"
 GATE_EVIDENCE_PATH = ROOT / "tests/unity/evidence/artist/historical/cli-pipeline-gate-evidence.yaml"
 CLI_REFERENCE_AUDIT_PATH = ROOT / "tests/unity/evidence/artist/historical/unity-cli-reference-audit.yaml"
@@ -134,7 +134,7 @@ def check_editor_surface(errors: list[str]) -> None:
         if token not in sources:
             error(errors, f"current Editor source is missing bounded Artist/Cinematic contract token: {token}")
     compatibility = EDITOR_ROOT / "Compatibility/ArtistCompatibility.cs"
-    compatibility_tests = ROOT / "Packages/com.darumappap.artist-subagent/Tests/Editor/ArtistCompatibilityTests.cs"
+    compatibility_tests = ROOT / "tests/unity/editor/artist/ArtistCompatibilityTests.cs"
     for path in (compatibility, compatibility_tests):
         if not path.is_file() or not Path(str(path) + ".meta").is_file():
             error(errors, f"compatibility asset or .meta is missing: {path.relative_to(ROOT)}")

@@ -1,200 +1,190 @@
 {
   "schema_version": "1.0",
   "kind": "unityagent_embedded_p9_sources",
-  "source": "UnityAgent tests and Artist package source, bundled for offline setup verification",
+  "source": "Canonical UnityAgent tests and Artist Editor package, bundled for offline verification",
   "files": [
     {
-      "path": "Packages/com.darumappap.artist-subagent/Documentation~.meta",
+      "path": "subagent/artist_subagent/tools/editor/Documentation~.meta",
       "sha1": "a182a0a02d9c4e963e5840493b7a5d2a6a8a1e86",
       "size": 169
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Documentation~/README.md",
-      "sha1": "6e90d5d8f023b9966156411d3c6e470a79c0c1df",
-      "size": 2972
+      "path": "subagent/artist_subagent/tools/editor/Documentation~/README.md",
+      "sha1": "ee6af1f0976e4d5fa07ca25d61b071000c4e5423",
+      "size": 2951
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Documentation~/README.md.meta",
+      "path": "subagent/artist_subagent/tools/editor/Documentation~/README.md.meta",
       "sha1": "c9bb33d0a0ffd5092d26cc9a32a20a4e75459ad9",
       "size": 155
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Editor.meta",
+      "path": "subagent/artist_subagent/tools/editor/Editor.meta",
       "sha1": "2a457deafd4021ea8529beac667583eb7558e166",
       "size": 169
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Editor/AssemblyInfo.cs",
+      "path": "subagent/artist_subagent/tools/editor/Editor/AssemblyInfo.cs",
       "sha1": "f905558474aa643d0968df2f378c829ec37c37f4",
       "size": 113
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Editor/AssemblyInfo.cs.meta",
+      "path": "subagent/artist_subagent/tools/editor/Editor/AssemblyInfo.cs.meta",
       "sha1": "95fab1f4c63ce6e78e42b172f6a1d3f2490dce81",
       "size": 240
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Editor/Batch.meta",
+      "path": "subagent/artist_subagent/tools/editor/Editor/Batch.meta",
       "sha1": "e6dcb5ed7c57797447fe40b4bfba79397291f604",
       "size": 169
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Editor/Batch/UnityArtistBatchCommands.cs",
+      "path": "subagent/artist_subagent/tools/editor/Editor/Batch/UnityArtistBatchCommands.cs",
       "sha1": "4398f6c448addd1829e69187f688fb30c4ce250d",
       "size": 6536
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Editor/Batch/UnityArtistBatchCommands.cs.meta",
+      "path": "subagent/artist_subagent/tools/editor/Editor/Batch/UnityArtistBatchCommands.cs.meta",
       "sha1": "c2878e656c8531b26ff356408bb447a8f1e5ef26",
       "size": 240
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Editor/Capture.meta",
+      "path": "subagent/artist_subagent/tools/editor/Editor/Capture.meta",
       "sha1": "74e81e9dd4439886cbdf1f589aae30a7862ec1f7",
       "size": 172
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Editor/Cinematic.meta",
+      "path": "subagent/artist_subagent/tools/editor/Editor/Cinematic.meta",
       "sha1": "336416db5c8986fce276887969169ae8eae0538a",
       "size": 172
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Editor/Commands.meta",
+      "path": "subagent/artist_subagent/tools/editor/Editor/Commands.meta",
       "sha1": "64648654e236587c5508d8844194d2be9357d7ad",
       "size": 169
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Editor/Commands/ArtistPipelineCommands.cs",
+      "path": "subagent/artist_subagent/tools/editor/Editor/Commands/ArtistPipelineCommands.cs",
       "sha1": "6b6b0486bd95df053bf9661ee79f9880d2a993ce",
       "size": 65441
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Editor/Commands/ArtistPipelineCommands.cs.meta",
+      "path": "subagent/artist_subagent/tools/editor/Editor/Commands/ArtistPipelineCommands.cs.meta",
       "sha1": "87938cc801c0c0b523ec5872e91092fdc61a7c51",
       "size": 240
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Editor/Compatibility.meta",
+      "path": "subagent/artist_subagent/tools/editor/Editor/Compatibility.meta",
       "sha1": "a80394a2718e3d4023576f4cfb21ed5ca5dfb792",
       "size": 169
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Editor/Compatibility/ArtistCompatibility.cs",
+      "path": "subagent/artist_subagent/tools/editor/Editor/Compatibility/ArtistCompatibility.cs",
       "sha1": "d95cdd31238f22e7ea97c06d6bcdf398d0aa987d",
       "size": 1089
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Editor/Compatibility/ArtistCompatibility.cs.meta",
+      "path": "subagent/artist_subagent/tools/editor/Editor/Compatibility/ArtistCompatibility.cs.meta",
       "sha1": "0d2ca2c3ddcccb0619331e248b126e439237882c",
       "size": 240
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Editor/Environment.meta",
+      "path": "subagent/artist_subagent/tools/editor/Editor/Environment.meta",
       "sha1": "e5c997c85b2f384b0e5622d036bfa6e52d5df601",
       "size": 172
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Editor/Lighting.meta",
+      "path": "subagent/artist_subagent/tools/editor/Editor/Lighting.meta",
       "sha1": "d54e7fd6a88c5a7bf63d0112694e8255af6b25d2",
       "size": 172
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Editor/LookDev.meta",
+      "path": "subagent/artist_subagent/tools/editor/Editor/LookDev.meta",
       "sha1": "c37381e45c347a7aa44b42304a7cb6a6356b6462",
       "size": 172
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Editor/Pipeline.meta",
+      "path": "subagent/artist_subagent/tools/editor/Editor/Pipeline.meta",
       "sha1": "db4018f171ea904d615c4541668a29d08849745b",
       "size": 169
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Editor/Pipeline/ArtistPipelineCommandRegistration.cs",
+      "path": "subagent/artist_subagent/tools/editor/Editor/Pipeline/ArtistPipelineCommandRegistration.cs",
       "sha1": "b3f93f28d5230d38bb7c21c20ce8015e3e7c2131",
       "size": 3678
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Editor/Pipeline/ArtistPipelineCommandRegistration.cs.meta",
+      "path": "subagent/artist_subagent/tools/editor/Editor/Pipeline/ArtistPipelineCommandRegistration.cs.meta",
       "sha1": "2b1ee061e10d56560227c5e993c2f4c54d12723e",
       "size": 240
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Editor/Pipeline/UnityArtist.Pipeline.Editor.asmdef",
+      "path": "subagent/artist_subagent/tools/editor/Editor/Pipeline/UnityArtist.Pipeline.Editor.asmdef",
       "sha1": "0084ed8cf52ecffe89ab81e5d6ff16ab3c28133e",
       "size": 587
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Editor/Pipeline/UnityArtist.Pipeline.Editor.asmdef.meta",
+      "path": "subagent/artist_subagent/tools/editor/Editor/Pipeline/UnityArtist.Pipeline.Editor.asmdef.meta",
       "sha1": "e9c2eb57ffc6a41538851e3f6f23bb837cf9e22f",
       "size": 163
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Editor/Reference.meta",
+      "path": "subagent/artist_subagent/tools/editor/Editor/Reference.meta",
       "sha1": "03215ef3894828208d81efed948f08283d0ea098",
       "size": 169
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Editor/Reference/CameraFovWorkflowAdapter.cs",
+      "path": "subagent/artist_subagent/tools/editor/Editor/Reference/CameraFovWorkflowAdapter.cs",
       "sha1": "9da1d858e3d37dc65472ca446476405d8455ae0f",
       "size": 3480
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Editor/Reference/CameraFovWorkflowAdapter.cs.meta",
+      "path": "subagent/artist_subagent/tools/editor/Editor/Reference/CameraFovWorkflowAdapter.cs.meta",
       "sha1": "83d51230e0c2724477e9e9537a31b8fb45542096",
       "size": 240
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Editor/Timeline.meta",
+      "path": "subagent/artist_subagent/tools/editor/Editor/Timeline.meta",
       "sha1": "b3f7b07a7e850bb235bde4f1cfc5dc06ae860014",
       "size": 172
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Editor/UnityArtist.Editor.asmdef",
+      "path": "subagent/artist_subagent/tools/editor/Editor/UnityArtist.Editor.asmdef",
       "sha1": "585afef47bccefc0fe90c14cee91a1c997dae880",
       "size": 366
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Editor/UnityArtist.Editor.asmdef.meta",
+      "path": "subagent/artist_subagent/tools/editor/Editor/UnityArtist.Editor.asmdef.meta",
       "sha1": "8f454eeea156a89c0c3f30f6edbb64581fb7aee7",
       "size": 163
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/LICENSE.md",
+      "path": "subagent/artist_subagent/tools/editor/LICENSE.md",
       "sha1": "4cb5a769839c329645a2102c24859a0d4a111727",
       "size": 272
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/LICENSE.md.meta",
+      "path": "subagent/artist_subagent/tools/editor/LICENSE.md.meta",
       "sha1": "39f9e5d2ba17cc9d489a07c20dd503db00feef83",
       "size": 155
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/package.json",
+      "path": "subagent/artist_subagent/tools/editor/package.json",
       "sha1": "0c2ab804f6a0a6a60e965d6f985f2c49c6056ed2",
       "size": 568
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/package.json.meta",
+      "path": "subagent/artist_subagent/tools/editor/package.json.meta",
       "sha1": "109f77028c428442618d2b4e4b2316c6334725c0",
       "size": 155
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Tests.meta",
-      "sha1": "7d8fcb6ab493b8599af3d593b097c4bbff5b1b41",
-      "size": 169
-    },
-    {
-      "path": "Packages/com.darumappap.artist-subagent/Tests/Editor.meta",
-      "sha1": "dee846e43496d65444efea61ff5b3567a5d6e9f8",
-      "size": 169
-    },
-    {
-      "path": "Packages/com.darumappap.artist-subagent/Tests/Editor/ArtistCompatibilityTests.cs",
+      "path": "tests/unity/editor/artist/ArtistCompatibilityTests.cs",
       "sha1": "8aaab50220cb6af995e8b17bffe1395ccd58daec",
       "size": 855
     },
     {
-      "path": "Packages/com.darumappap.artist-subagent/Tests/Editor/ArtistCompatibilityTests.cs.meta",
+      "path": "tests/unity/editor/artist/ArtistCompatibilityTests.cs.meta",
       "sha1": "6f8f6a3994904f2475bd401e1ac2df47af1fee9f",
       "size": 240
     },
@@ -245,13 +235,13 @@
     },
     {
       "path": "tests/unity/projects/artist-e2e/Packages/manifest.json",
-      "sha1": "fbbcdca6d0c787f7e82fe19f84c4a47a534fcba4",
-      "size": 210
+      "sha1": "a7f26c399be53218118eaa26aa7b3eb2e4241f2a",
+      "size": 208
     },
     {
       "path": "tests/unity/projects/artist-e2e/Packages/packages-lock.json",
-      "sha1": "d7b3be89c28c410189eeb18fbb853d8998b1e02a",
-      "size": 3106
+      "sha1": "6fff61b8b56432e0a4a77dd93f255ea80a433294",
+      "size": 3104
     },
     {
       "path": "tests/unity/projects/artist-e2e/ProjectSettings.meta",
@@ -315,8 +305,8 @@
     },
     {
       "path": "tests/unity/projects/historical/2022.3/Packages/manifest.json",
-      "sha1": "d74674d9c8ce5a899ad9a3e2b8862af277e11419",
-      "size": 173
+      "sha1": "032f5027afc146c09a963f7b38a26798ee570570",
+      "size": 171
     },
     {
       "path": "tests/unity/projects/historical/2022.3/ProjectSettings/ProjectVersion.txt",
@@ -370,8 +360,8 @@
     },
     {
       "path": "tests/unity/projects/pipelines/builtin/Packages/manifest.json",
-      "sha1": "dd6f07b7217991684d779ca8c01002e23f5fd716",
-      "size": 272
+      "sha1": "5d59f2f0d72353cb43f113714e5e95c27f5921f6",
+      "size": 270
     },
     {
       "path": "tests/unity/projects/pipelines/builtin/ProjectSettings/ProjectVersion.txt",
@@ -420,8 +410,8 @@
     },
     {
       "path": "tests/unity/projects/pipelines/hdrp/Packages/manifest.json",
-      "sha1": "dd6f07b7217991684d779ca8c01002e23f5fd716",
-      "size": 272
+      "sha1": "5d59f2f0d72353cb43f113714e5e95c27f5921f6",
+      "size": 270
     },
     {
       "path": "tests/unity/projects/pipelines/hdrp/ProjectSettings/ProjectVersion.txt",
@@ -470,8 +460,8 @@
     },
     {
       "path": "tests/unity/projects/pipelines/urp/Packages/manifest.json",
-      "sha1": "dd6f07b7217991684d779ca8c01002e23f5fd716",
-      "size": 272
+      "sha1": "5d59f2f0d72353cb43f113714e5e95c27f5921f6",
+      "size": 270
     },
     {
       "path": "tests/unity/projects/pipelines/urp/ProjectSettings/ProjectVersion.txt",
@@ -555,8 +545,8 @@
     },
     {
       "path": "tests/unity/projects/versions/6000.3/Packages/manifest.json",
-      "sha1": "f4e9a5c5c269bdee4ec44ce2275f0444aa115150",
-      "size": 231
+      "sha1": "d5e6ab07290d3234675ca618cbcb7c5398ef8a2d",
+      "size": 229
     },
     {
       "path": "tests/unity/projects/versions/6000.3/ProjectSettings/ProjectVersion.txt",
@@ -590,8 +580,8 @@
     },
     {
       "path": "tests/unity/projects/versions/6000.6/Packages/manifest.json",
-      "sha1": "dd6f07b7217991684d779ca8c01002e23f5fd716",
-      "size": 272
+      "sha1": "5d59f2f0d72353cb43f113714e5e95c27f5921f6",
+      "size": 270
     },
     {
       "path": "tests/unity/projects/versions/6000.6/ProjectSettings/ProjectVersion.txt",
@@ -625,13 +615,13 @@
     },
     {
       "path": "tests/unity/verify/test_unity_ci.py",
-      "sha1": "55ac19f5f4c2c70a5b2d0e322446daf74a035871",
-      "size": 22680
+      "sha1": "31171b7ffedd129e54d54417a30db608b1e0baf1",
+      "size": 22678
     },
     {
       "path": "tests/unity/verify/unity_ci.py",
-      "sha1": "7b018f0ec8f73e816c3e0b79e4a7c710af3150f8",
-      "size": 25975
+      "sha1": "f70f05a6a1b23bc063fe015be4da3fe573f760c2",
+      "size": 25972
     },
     {
       "path": "tests/unity/verify/validate_unity_fixtures.py",
@@ -640,8 +630,8 @@
     },
     {
       "path": "tests/unity/verify/verify_artist_backend_contract.py",
-      "sha1": "c534757c6a5b54d374a29fef63d1d350d27503f9",
-      "size": 16908
+      "sha1": "1c6c89dbfb8730832edb919dba2cb3856e3a613f",
+      "size": 16877
     },
     {
       "path": "tests/unity/verify/verify_portable_paths.py",
@@ -685,13 +675,13 @@
     },
     {
       "path": "tests/unity/verify/verify-semantic-names.py",
-      "sha1": "929bc5b2b599bb651600d0678b45031ad0fe54b8",
-      "size": 1035
+      "sha1": "5ff534b05548742a5966608c52c45e548d4a4833",
+      "size": 1058
     },
     {
       "path": "tests/unity/verify/verify-unity-api-compatibility.py",
-      "sha1": "3996db6910b19ee66d497e490fc63e3c46d9ef7d",
-      "size": 3287
+      "sha1": "7dcd442bde6246fa59f6ce617e095b76aa6d4840",
+      "size": 3258
     }
   ]
 }

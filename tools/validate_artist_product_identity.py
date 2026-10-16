@@ -19,7 +19,7 @@ def validate() -> list[str]:
         errors.append("Artist manifest identity/execution kind changed")
     if manifest["installation"].get("auto_install") or manifest["installation"].get("required"):
         errors.append("Artist must not auto-install or become mandatory")
-    package_root = ROOT / "Packages/com.darumappap.artist-subagent"
+    package_root = ROOT / "subagent/artist_subagent/tools/editor"
     package = json.loads((package_root / "package.json").read_text(encoding="utf-8"))
     if package.get("name") != "com.darumappap.artist-subagent" or package.get("version") != version or package.get("unity") != "6000.0":
         errors.append("Artist UPM identity/version/unity mismatch")
