@@ -84,7 +84,7 @@ class RockImportContractTests(unittest.TestCase):
         class MissingEditor:
             def __init__(self,*a,**k): pass
             def _safe_mode_failure(self): return {'status':'failed','reason':'no Unity Editor'}
-            def _check_editor_conflict(self): return None
+            def _check_editor_conflict(self): return {'status':'failed','reason':'no Unity Editor'}
         provider=RockImportProvider(self.project,self.state,snapshot={},check_approvals=checks,
                                     editor_factory=MissingEditor)
         request={'schema_version':'1.0','capability':'scene.mutate','operation_kind':'editor_mutation',
