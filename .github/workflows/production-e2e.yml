@@ -39,5 +39,6 @@ jobs:
           for job in workflow['jobs'].values():
               assert 'self-hosted' not in str(job.get('runs-on'))
           triggers = workflow.get('on', workflow.get(True, {}))
-          assert 'staged_fbx' not in triggers.get('workflow_dispatch', {}).get('inputs', {})
+          dispatch = triggers.get('workflow_dispatch') or {}
+          assert 'staged_fbx' not in (dispatch.get('inputs') or {})
           PY
