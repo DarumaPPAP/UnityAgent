@@ -55,6 +55,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Install matching reviewed Control Plane
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check -e unityagent-source
+          if ($LASTEXITCODE -ne 0) { throw 'Reviewed Control Plane dependencies unavailable' }
       - name: Verify SHA and protected Runner prerequisites
         shell: pwsh
         run: |
