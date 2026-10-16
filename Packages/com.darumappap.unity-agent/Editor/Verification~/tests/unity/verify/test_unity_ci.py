@@ -216,6 +216,17 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(code,2);self.assertEqual(evidence['status'],'BLOCKED_NOT_RUN')
 
 class FixtureTests(unittest.TestCase):
+    def test_p9_lts_is_canonical_and_does_not_run_g1_rock_workflow(self):
+        config = json.loads(ci.MATRIX.read_text())
+        self.assertEqual(config['canonical_editor'], '6000.3.12f1')
+        fixture = next(f for f in config['fixtures'] if f['id'] == 'p9-lts-urp')
+        self.assertEqual(fixture['editor'], '6000.3.12f1')
+        self.assertEqual(fixture['test_filter'], 'UnityAgent.Production.LtsPreflightTests.UrpRenderGraphCapture')
+        self.assertTrue(fixture['requires_graphics'])
+        self.assertNotIn('RockProductionTests', fixture['test_filter'])
+        self.assertNotIn('srp_package', fixture)
+
+
     def test_63_fixture_exact_official_provenance_and_narrow_compile_scope(self):
         config=json.loads(ci.MATRIX.read_text())
         row=next(row for row in config['fixtures'] if row['id']=='minimal-6000.3')
