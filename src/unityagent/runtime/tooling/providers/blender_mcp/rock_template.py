@@ -1,12 +1,13 @@
-"""レビュー対象を固定した決定的な岩制作Template。任意コード入力を受けない。"""
+"""レビュー済み岩Template。BlenderはGeometry/FBXのみを制作し、Hash/ManifestはHostが確定する。"""
 import json
 
+ROCK_MARKER = "UNITYAGENT_ROCK_V1:"
 
-def rock_template(fbx_path, manifest_path):
-    return '''import bpy, json, math, hashlib
+def rock_template(fbx_path, manifest_path=None):
+    """Blender MCP Safe Mode互換: hashlib/open/os/任意Scriptは実行しない。"""
+    return """import bpy, json, math
 from mathutils import Vector
-output = ''' + repr(str(fbx_path)) + '''
-manifest = ''' + repr(str(manifest_path)) + '''
+output = """ + repr(str(fbx_path)) + """
 name = "UnityAgentRock"
 if bpy.data.objects.get(name) is not None:
     raise RuntimeError("Existing UnityAgentRock; scene reconciliation required")
@@ -27,17 +28,15 @@ bpy.ops.object.mode_set(mode='EDIT')
 bpy.ops.mesh.select_all(action='SELECT')
 bpy.ops.uv.smart_project()
 bpy.ops.object.mode_set(mode='OBJECT')
+bpy.ops.object.select_all(action='DESELECT')
+rock.select_set(True)
+bpy.context.view_layer.objects.active = rock
 bpy.ops.export_scene.fbx(filepath=output, use_selection=True, object_types={'MESH'},
     global_scale=1.0, apply_unit_scale=True, axis_forward='-Z', axis_up='Y',
     use_mesh_modifiers=True, add_leaf_bones=False, bake_anim=False, path_mode='AUTO')
-with open(output, 'rb') as file:
-    digest = hashlib.sha256(file.read()).hexdigest()
 record = {"schema_version":"1.0", "object_name":name, "vertices":len(rock.data.vertices),
     "triangles":sum(len(p.vertices)-2 for p in rock.data.polygons),
     "dimensions":list(rock.dimensions), "scale":list(rock.scale),
-    "uv_layers":len(rock.data.uv_layers), "texture_dependencies":[],
-    "sha256":digest, "blender_version":bpy.app.version_string, "artifact":output}
-with open(manifest, 'w', encoding='utf-8') as file:
-    json.dump(record, file, sort_keys=True)
-print(json.dumps(record))
-'''
+    "uv_layers":len(rock.data.uv_layers), "texture_dependencies":[]}
+print("UNITYAGENT_ROCK_V1:" + json.dumps(record, sort_keys=True))
+"""

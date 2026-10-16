@@ -19,6 +19,8 @@ required:
   - profile_hint
   - binding_fingerprint
 properties:
+  unity_cli_loop:
+    $ref: "#/$defs/provider_binding"
   blender_mcp:
     type: object
     additionalProperties: false

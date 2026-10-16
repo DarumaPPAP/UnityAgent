@@ -1,0 +1,5 @@
+{
+  "status": "blocked",
+  "reason": "A reviewed installed project runner path and SHA-256 are required; setup is explicit",
+  "gate": "BLOCKED_NOT_RUN"
+}
