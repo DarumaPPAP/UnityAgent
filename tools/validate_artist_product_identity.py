@@ -23,10 +23,10 @@ def validate() -> list[str]:
     package = json.loads((package_root / "package.json").read_text(encoding="utf-8"))
     if package.get("name") != "com.darumappap.artist-subagent" or package.get("version") != version or package.get("unity") != "6000.0":
         errors.append("Artist UPM identity/version/unity mismatch")
-    csproj = (ROOT / "cli/artist/UnityArtist.Cli.csproj").read_text(encoding="utf-8")
+    csproj = (ROOT / "subagent/artist_subagent/tools/host/UnityArtist.Tools.csproj").read_text(encoding="utf-8")
     if f"<Version>{version}</Version>" not in csproj or "<AssemblyName>unity-artist</AssemblyName>" not in csproj:
         errors.append("Artist CLI csproj identity/version mismatch")
-    program = (ROOT / "cli/artist/Program.cs").read_text(encoding="utf-8")
+    program = (ROOT / "subagent/artist_subagent/tools/host/Program.cs").read_text(encoding="utf-8")
     constants = re.findall(r'private const string (?:Version|SemanticVersion) = "([^"]+)";', program)
     if constants != [version, version]:
         errors.append("Artist Program.Version and SemanticVersion must match the manifest")

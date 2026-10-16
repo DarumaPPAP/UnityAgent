@@ -109,15 +109,15 @@ jobs:
           python3 -m unittest discover -s subagent/tests -p 'test_*.py' -v
           python3 tools/validate_artist_product_identity.py
           python3 ci/verify/validate_unity_fixtures.py
-          dotnet build cli/artist/UnityArtist.Cli.csproj --configuration Release
-          python3 -m unittest discover -s cli/artist/tests -p 'test_*.py' -v
+          dotnet build subagent/artist_subagent/tools/host/UnityArtist.Tools.csproj --configuration Release
+          python3 -m unittest discover -s tests/subagent/artist/tools -p 'test_*.py' -v
 
       - name: Build co-located SubAgent distribution
         run: |
           set -euo pipefail
           mkdir -p artifacts .release-build/artist-host-windows-x64
 
-          dotnet publish "cli/artist/UnityArtist.Cli.csproj" \
+          dotnet publish "subagent/artist_subagent/tools/host/UnityArtist.Tools.csproj" \
             --configuration Release \
             --runtime win-x64 \
             --self-contained true \

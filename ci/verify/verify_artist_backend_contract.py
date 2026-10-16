@@ -14,15 +14,15 @@ from historical_evidence import validate_historical_evidence
 
 ROOT = Path(__file__).resolve().parents[2]
 PACKAGE_PATH = ROOT / "Packages/com.darumappap.artist-subagent/package.json"
-CLI_PROJECT = ROOT / "cli/artist/UnityArtist.Cli.csproj"
-CLI_SOURCE = ROOT / "cli/artist/Program.cs"
+CLI_PROJECT = ROOT / "subagent/artist_subagent/tools/host/UnityArtist.Tools.csproj"
+CLI_SOURCE = ROOT / "subagent/artist_subagent/tools/host/Program.cs"
 EDITOR_ROOT = ROOT / "Packages/com.darumappap.artist-subagent/Editor"
 MATRIX_PATH = ROOT / "ci/compatibility/support-matrix.yaml"
 GATE_EVIDENCE_PATH = ROOT / "ci/evidence/artist/historical/cli-pipeline-gate-evidence.yaml"
 CLI_REFERENCE_AUDIT_PATH = ROOT / "ci/evidence/artist/historical/unity-cli-reference-audit.yaml"
 MANIFEST_PATH = ROOT / "Hub/SubAgents/artist_subagent/manifest.yaml"
 SURFACE_PATH = ROOT / "Hub/SubAgents/artist_subagent/contracts/backend-surface-contract.yaml"
-BACKEND_CONTRACT_PATH = ROOT / "cli/artist/artist-backend-contract.yaml"
+BACKEND_CONTRACT_PATH = ROOT / "subagent/artist_subagent/tools/host/artist-backend-contract.yaml"
 REPO_SKILLS_ROOT = ROOT / ".agents/skills"
 LEGACY_PLUGIN_ROOT = ROOT / ".agents/plugins/unity-artist"
 

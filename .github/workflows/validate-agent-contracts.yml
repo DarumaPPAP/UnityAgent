@@ -48,8 +48,8 @@ jobs:
 
       - name: Compile co-located Artist CLI and validate contracts
         run: |
-          dotnet build cli/artist/UnityArtist.Cli.csproj --configuration Release
-          python -m unittest discover -s cli/artist/tests -p "test_*.py" -v
+          dotnet build subagent/artist_subagent/tools/host/UnityArtist.Tools.csproj --configuration Release
+          python -m unittest discover -s tests/subagent/artist/tools -p "test_*.py" -v
 
       - name: Validate migrated Unity P9 fixtures and host runner
         run: |

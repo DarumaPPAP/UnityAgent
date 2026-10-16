@@ -19,7 +19,7 @@ class SubagentDistributionTests(unittest.TestCase):
             copy(destination)
             registry_path = destination / 'subagent/registry.yaml'
             self.assertTrue(registry_path.is_file(), 'SubAgent registry missing from Python distribution')
-            self.assertTrue((destination / 'cli/artist/artist-backend-contract.yaml').is_file())
+            self.assertTrue((destination / 'subagent/artist_subagent/tools/host/artist-backend-contract.yaml').is_file())
             hashes = json.loads((destination / 'resource-manifest.json').read_text())
             registry = yaml.safe_load(registry_path.read_text())
             for entry in registry['entries']:
@@ -39,7 +39,7 @@ class SubagentDistributionTests(unittest.TestCase):
         self.assertEqual(len(checkouts), 1, 'Release must not fetch another repository')
         scripts = '\n'.join(step.get('run', '') for step in steps)
         self.assertNotIn('.release-sources/UnitySubAgentHub', scripts)
-        self.assertIn('cli/artist/UnityArtist.Cli.csproj', scripts)
+        self.assertIn('subagent/artist_subagent/tools/host/UnityArtist.Tools.csproj', scripts)
         self.assertIn('subagent/tools/export_snapshot.py', scripts)
         self.assertIn('unity_agent_commit', scripts)
 
