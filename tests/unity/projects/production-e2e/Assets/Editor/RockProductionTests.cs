@@ -12,7 +12,7 @@ using UnityEngine.Rendering.Universal;
 using UnityEngine.TestTools;
 using Object = UnityEngine.Object;
 
-namespace UnityAgent.G1
+namespace UnityAgent.Production
 {
     public sealed class RockProductionTests
     {
@@ -61,7 +61,7 @@ namespace UnityAgent.G1
             previousScenes = EditorSceneManager.GetSceneManagerSetup();
             for (int i = 0; i < UnityEngine.SceneManagement.SceneManager.sceneCount; i++)
                 Assert.IsFalse(UnityEngine.SceneManagement.SceneManager.GetSceneAt(i).isDirty, "Unsaved scene must be saved before test");
-            evidenceDirectory = Environment.GetEnvironmentVariable("UNITYAGENT_G1_EVIDENCE");
+            evidenceDirectory = Environment.GetEnvironmentVariable("UNITYAGENT_PRODUCTION_EVIDENCE");
             Assert.IsNotEmpty(evidenceDirectory, "BLOCKED_NOT_RUN: evidence directory is required");
             Assert.IsFalse(Path.GetFullPath(evidenceDirectory).StartsWith(Path.GetFullPath(Application.dataPath), StringComparison.OrdinalIgnoreCase));
             Directory.CreateDirectory(evidenceDirectory);
@@ -85,8 +85,8 @@ namespace UnityAgent.G1
         [UnityTest]
         public IEnumerator ImportPrefabSceneReimportRenderAndUndo()
         {
-            string fbx = Environment.GetEnvironmentVariable("UNITYAGENT_G1_FBX");
-            string manifest = Environment.GetEnvironmentVariable("UNITYAGENT_G1_ARTIFACT");
+            string fbx = Environment.GetEnvironmentVariable("UNITYAGENT_PRODUCTION_FBX");
+            string manifest = Environment.GetEnvironmentVariable("UNITYAGENT_PRODUCTION_ARTIFACT");
             Assert.IsTrue(File.Exists(fbx), "BLOCKED_NOT_RUN: Control Plane Staging FBX missing");
             Assert.IsTrue(File.Exists(manifest), "BLOCKED_NOT_RUN: Artifact manifest missing");
             var artifact = JsonUtility.FromJson<Artifact>(File.ReadAllText(manifest));
