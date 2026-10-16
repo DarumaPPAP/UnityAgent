@@ -112,10 +112,12 @@ class PrivateCIContractTests(unittest.TestCase):
             begin_stage(store_root=self.state, run_id=self.run, stage="editor",
                 checkout_revision=self.sha, workflow_run_id="903",
                 approval_pulls={"mutation": 15, "save": 16}, verifier=self.verifier)
+        evidence = self.state / "evidence"
+        evidence.mkdir()
         with self.assertRaisesRegex(ValueError, "checkout"):
             complete_stage(store_root=self.state, run_id=self.run, stage="artifact",
                 checkout_revision="f"*40, workflow_run_id="902",
-                evidence_directory=self.state, verifier=self.verifier)
+                evidence_directory=evidence, verifier=self.verifier)
 
     def _write_evidence(self, stage):
         directory = self.state / "evidence" / stage
