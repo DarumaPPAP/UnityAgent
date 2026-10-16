@@ -6,14 +6,14 @@
   "fixtures": [
     {
       "id": "canonical-full",
-      "project": "ci/unity-projects/artist-e2e",
+      "project": "tests/unity/projects/artist-e2e",
       "editor": "6000.6.0f1",
       "pipeline": "builtin",
       "scope": "full"
     },
     {
       "id": "minimal-6000.6",
-      "project": "ci/unity-projects/versions/6000.6",
+      "project": "tests/unity/projects/versions/6000.6",
       "editor": "6000.6.0f1",
       "pipeline": "builtin",
       "scope": "compile-import",
@@ -21,7 +21,7 @@
     },
     {
       "id": "minimal-6000.3",
-      "project": "ci/unity-projects/versions/6000.3",
+      "project": "tests/unity/projects/versions/6000.3",
       "editor": "6000.3.12f1",
       "pipeline": "builtin",
       "scope": "compile-import",
@@ -35,7 +35,7 @@
     },
     {
       "id": "builtin-smoke",
-      "project": "ci/unity-projects/pipelines/builtin",
+      "project": "tests/unity/projects/pipelines/builtin",
       "editor": "6000.6.0f1",
       "pipeline": "builtin",
       "scope": "scene-native-api-smoke",
@@ -48,7 +48,7 @@
     },
     {
       "id": "urp-smoke",
-      "project": "ci/unity-projects/pipelines/urp",
+      "project": "tests/unity/projects/pipelines/urp",
       "editor": "6000.6.0f1",
       "pipeline": "urp",
       "scope": "scene-native-api-smoke",
@@ -62,7 +62,7 @@
     },
     {
       "id": "hdrp-smoke",
-      "project": "ci/unity-projects/pipelines/hdrp",
+      "project": "tests/unity/projects/pipelines/hdrp",
       "editor": "6000.6.0f1",
       "pipeline": "hdrp",
       "scope": "scene-native-api-smoke",
