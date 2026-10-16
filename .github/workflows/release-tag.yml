@@ -275,6 +275,7 @@ jobs:
             --repository "$P9_REPO" \
             --run-id "$P9_RUN_ID"
 
+      - name: Configure Git identity
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
