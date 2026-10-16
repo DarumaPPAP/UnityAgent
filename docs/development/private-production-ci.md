@@ -1,75 +1,107 @@
-# Private Production CI — Approval / durable State / Stage Resume
+# 非公開CIの承認・永続状態・段階的再開
 
-Status: **Host contract + private workflow template. NOT deployed to a Private repository; licensed Unity G1 remains BLOCKED_NOT_RUN.** This document does not establish Production E2E success.
+## 現在の対応範囲
 
-## Boundary and ownership
+UnityAgent側には、承認の検証、段階ごとの状態保存、チェックポイント照合、再開時の拒否条件を実装している。非公開リポジトリで動かすワークフローのひな形は `ci/private/production-e2e.yml` に配置した。
 
-- Public UnityAgent: reviewed source/Control Plane/Persistence, tests, and the **non-executable** workflow template at `ci/private/production-e2e.yml`.
-- Private execution repository: protected workflow, private approval PRs and reviewer policy, its own Windows self-hosted runner. Never run the licensed runner from a public pull request. The public `.github/workflows/production-e2e.yml` now runs **Host contracts only**.
-- Durable authority: `UNITYAGENT_STATE_ROOT` on an access-restricted, persistent Windows volume **outside** the Unity Project. It includes the canonical rock-import Plan, Blender Job/FBX, approvals, runs, snapshots, and Checkpoints. GitHub/Actions Artifact is **audit/backup only**, not authoritative State. Do not upload project assets, license files or tokens.
-- Runner source: exactly one reviewed `main` commit SHA (`UNITYAGENT_APPROVED_SHA`), checked out to an isolated workspace. It is compared against the immutable Run registration. This is Development revision pinning, **not** Release.
-- Control Plane remains the authority; Private Workflow cannot approve/dispatch mutations merely by accepting `workflow_dispatch` strings. Stage driver must invoke the existing Broker/Provider guarded operation. Local `rock-import approve` commands are **not** substitutes for Private approvals (`UNITYAGENT_REQUIRE_PRIVATE_APPROVAL=1`).
+**非公開リポジトリへの配置、ライセンス付きUnity Editorでの実行、Blender MCPとの実接続は未実施（`BLOCKED_NOT_RUN`）。** ホスト側の契約テストが成功しても、実環境での一連の動作が成功したことにはならない。
 
-## Setup (operator-controlled; not workflow_dispatch)
+## 責務と保管場所
 
-1. Create a **private** execution repository and attach only isolated, graphics-capable, licensed Windows runners with labels `self-hosted, Windows, unity-6000.3.12f1, private-only`. Restrict the runner group to this repository. Protect its default branch, approval directory and production Environment. Do not share the runner with Public PR jobs.
-2. Copy `ci/private/production-e2e.yml` to the Private repo's `.github/workflows/production-e2e.yml`. Configure protected vars `UNITYAGENT_STATE_ROOT`, `UNITYAGENT_APPROVED_SHA`, `UNITYAGENT_PRIVATE_APPROVERS` (explicit GitHub usernames), and `UNITYAGENT_PRIVATE_STAGE_DRIVER` (operator-installed, reviewed private script absolute path). `GITHUB_TOKEN` needs read access to private PR reviews, contents and collaborator metadata; unavailable/403 APIs deny approval. Token is never persisted or logged. For write-free access, no `contents:write` permission is required.
-3. On the trusted host, create the Blender Job and `rock-import plan` with the existing Control Plane. Before dispatch, register once from the reviewed checkout:
+| 対象 | 責務・制約 |
+|---|---|
+| 公開側のUnityAgent | Control Plane、承認照合、実行制限、永続化、テストの正本 |
+| 非公開の実行リポジトリ | 承認用のプルリクエスト、保護されたワークフロー、専用のWindows実行環境 |
+| `UNITYAGENT_STATE_ROOT` | 実行環境のアクセス制限された永続領域。Unityプロジェクトの**外側**に置く |
+| GitHub Actionsの成果物 | 監査・複製用。再開時に参照する正本状態として採用しない |
+| `UNITYAGENT_APPROVED_SHA` | レビュー済みソースの固定Commit SHA。開発版のRevision整合に使用し、Releaseとは区別する |
 
-   ```powershell
-   $env:PYTHONPATH = "C:\reviewed\UnityAgent\src"
-   python -m unityagent.control_plane.private_production_ci register `
-       --state-root "D:\UnityAgentState" --run-id "rock-rock-g1" `
-       --plan-id "<plan_id_from_rock_import_plan>" `
-       --source-revision "<reviewed_40_character_main_SHA>"
-   ```
+実行状態、Blenderの作業記録とFBX、承認判断、証拠、チェックポイントは、既存のUnityAgent永続化層で扱う。UnityのAsset、ライセンス情報、アクセストークンを公開側やActionsの成果物に含めない。
 
-   The Run ID is fixed as `rock-` + the Blender `job_id`; registration refuses mismatching FBX hash, Plan/Project Revision or pre-existing Run. Store registration/protected files under the runner account's restrictive ACL. State creation must not be callable by arbitrary dispatch inputs.
+実行権限の最終判断はUnityAgentのControl Planeが持つ。ワークフロー入力の文字列を承認と見なさない。独立した実行制御層は増設せず、段階実行用の処理も既存のBroker経由で呼び出す。
 
-4. Submit a new approval PR **in the Private repository itself**, including `approvals/<run_id>/<stage>/<kind>.json`. Kinds: `artifact:stage`, `editor:mutation` **and separate** `editor:save`, `visual:stage`, `rollback:rollback`. The JSON contains exactly:
+## 非公開の実行環境を用意する
 
-   ```json
-   {
-     "schema_version": "1.0",
-     "run_id": "rock-rock-g1",
-     "requested_stage": "editor",
-     "kind": "mutation",
-     "plan_id": "<exact_persisted_plan_id>",
-     "plan_digest": "sha256:<exact_persisted_plan_hash>",
-     "source_revision": "<reviewed_public_main_SHA>",
-     "artifact_sha256": "<exact_staged_FBX_SHA256>",
-     "project_revision": "sha256:<last_completed_stage_Project_hash>",
-     "scope_paths": ["<exact_paths_from_immutable_Plan>"],
-     "expires_at": "<RFC3339/ISO8601_UTC_expiry>"
-   }
-   ```
+1. 非公開の実行リポジトリに、グラフィックス処理とUnity `6000.3.12f1` のライセンスを利用できる専用Windows Runnerを接続する。ラベルは `self-hosted`、`Windows`、`unity-6000.3.12f1`、`private-only` とし、公開プルリクエストのジョブとは共有しない。Runnerグループ、既定ブランチ、承認ファイル、実行用Environmentを保護する。
+2. `ci/private/production-e2e.yml` を非公開リポジトリの `.github/workflows/production-e2e.yml` に配置する。
+3. 保護された変数に `UNITYAGENT_STATE_ROOT`、`UNITYAGENT_APPROVED_SHA`、`UNITYAGENT_PRIVATE_APPROVERS`（承認可能なGitHubユーザー名）、`UNITYAGENT_PRIVATE_STAGE_DRIVER`（事前に監査して導入した段階実行スクリプトの絶対パス）を設定する。
+4. `GITHUB_TOKEN`には非公開リポジトリ内のレビュー・ファイル・共同作業者権限の**読み取り権限**が必要。取得失敗や権限不足では承認を拒否する。トークンを永続状態やログに記録しない。
+5. 信頼できる実行環境で既存のBlender作業記録と `rock-import plan` を作成する。その後、レビュー済みソースから**一度だけ**実行を登録する。
 
-   These are **illustrative placeholders**, not production values. Take values from the immutable local Manifest/current Progress; do not type or infer paths or hashes. A reviewer on the configured allowlist with current write-level access must approve the **current PR head commit**. The PR author cannot self-approve. Changed head, dismissed review, changes requested, expired approval, mismatched Run/Plan/Scope, API failure and absent permission all block. Each operation requires its own PR number; local Decisions retain the GitHub attestation and are rechecked at Editor dispatch.
+```powershell
+$env:PYTHONPATH = "C:\reviewed\UnityAgent\src"
+python -m unityagent.control_plane.private_production_ci register `
+    --state-root "D:\UnityAgentState" --run-id "rock-rock-g1" `
+    --plan-id "<保存済みの計画ID>" `
+    --source-revision "<レビュー済みの40文字Commit_SHA>"
+```
 
-5. Trigger Private workflow with **existing** `run_id`, `stage` and `approval_pulls` JSON (e.g., `{"mutation":42,"save":43}`). Never provide local artifact paths, scripts, Provider IDs, arbitrary C# or Python via dispatch. The fixed stage order is:
+`run_id` は `rock-` とBlenderの `job_id` を連結した値に固定する。計画、FBXのハッシュ、プロジェクトRevision、ソースSHAが一致しなければ登録できない。同じ実行を再登録して状態を初期化することも拒否する。
 
-   `artifact → editor → visual → rollback`.
+## 操作ごとの承認
 
-   The operator-installed Stage driver is responsible for actual observed Gate JSON + hashed raw files in `<StateRoot>/evidence/<run_id>`. The bridge does **not** synthesize those observations. The private sample workflow refuses to run without this driver or Unity Editor.
+非公開リポジトリ内で、次の配置に承認内容を記載したプルリクエストを作る。
 
-## Stage transitions / Resume
+`approvals/<run_id>/<stage>/<kind>.json`
 
-| State | Condition | Result |
+必要な承認種別は、成果物の確認で `stage`、Unityへの適用で `mutation` と `save` の**別承認**、目視確認で `stage`、復旧で `rollback` とする。
+
+記録例は次のとおり。山括弧で示した値は例示であり、実行時には保存済みの計画・現在の進捗から正確な値を転記する。
+
+```json
+{
+  "schema_version": "1.0",
+  "run_id": "rock-rock-g1",
+  "requested_stage": "editor",
+  "kind": "mutation",
+  "plan_id": "<保存済みの計画ID>",
+  "plan_digest": "sha256:<計画のハッシュ>",
+  "source_revision": "<固定済みのCommit_SHA>",
+  "artifact_sha256": "<FBXのSHA256>",
+  "project_revision": "sha256:<直前段階のプロジェクトハッシュ>",
+  "scope_paths": ["<計画で許可した正確なパス>"],
+  "expires_at": "<タイムゾーン付き有効期限>"
+}
+```
+
+承認者は明示された許可リストに含まれ、対象リポジトリに書き込み以上の権限を持つ必要がある。申請者本人の承認では通過しない。GitHub APIから**最新のプルリクエスト先頭Commitに対するレビュー**と、そのCommitに含まれる承認ファイルを取得し直す。
+
+承認の取り消し、対象Commitの変更、変更要求、期限切れ、計画・対象範囲・Revisionの不一致、APIの失敗はすべて拒否する。適用と保存は別々の承認が必要で、Editorへ渡す直前にも確認し直す。既存の `rock-import approve` コマンドだけでは、非公開CIの承認を代替できない（`UNITYAGENT_REQUIRE_PRIVATE_APPROVAL=1`）。
+
+## 段階実行と再開
+
+ワークフローには既存の `run_id`、次の `stage`、承認用プルリクエスト番号の対応を示す `approval_pulls` だけを渡す。例えば `{"mutation":42,"save":43}` のような対応を用いる。数値は例であり、ドキュメントの識別番号や固定の運用番号ではない。
+
+段階の実行順序は以下に固定する。
+
+`artifact → editor → visual → rollback`
+
+| 状態 | 確認条件 | 結果 |
 |---|---|---|
-| `waiting` | Correct next Stage + new GitHub review + matching source/Plan/Project/Artifact + verified previous Checkpoints | `running`; durable unique Workflow Run ID and authenticated approval refs |
-| `running` | Complete reports every Stage-required observed Gate with hashed raw evidence, and rechecks GitHub approval | Immutable receipt + canonical State snapshot/Checkpoint; next `waiting` or final `completed` |
-| `running` interrupted, timed out or outcome unknown | No automatic redispatch. `RECONCILIATION_REQUIRED`; inspect Editor/Blender/Project side effects and evidence manually |
-| Any State | Changed Project/Source/Plan, missing or tampered Checkpoint, stale review, expired/revoked scope, invalid evidence | Refuse; never silently rewrite State or approve |
-| All four Stages | Nine G1 required Gates observed | `host_gate_contracts_complete=true`; `production_verified=false` until independent live Unity/Blender/human evidence audit |
+| `waiting` | 次の段階であること、承認・計画・Revision・過去のチェックポイントが有効 | `running` に移行し、GitHub実行IDと承認参照を保存 |
+| `running` | 必須の観測ファイルとハッシュが揃い、承認を再検証できる | 不変の受領記録とチェックポイントを作成し、次段階へ進む |
+| `running` の中断・時間切れ・結果不明 | 外部副作用が確定していない | `RECONCILIATION_REQUIRED` として停止。**自動再送しない** |
+| すべての状態 | プロジェクト・計画・ソースの変更、証拠欠落、承認無効、チェックポイント破損 | 拒否。既存状態を黙って書き換えない |
+| 全4段階の終了 | 必須の観測資料を収集 | `host_gate_contracts_complete=true`。独立した実環境監査までは `production_verified=false` |
 
-The canonical `CheckpointStore` is State-only. Asset rollback is a separate, newly approved Editor operation with Receipt hash + GUID/ownership validation, not `CheckpointStore.restore`. Each new Stage has its own GitHub Workflow Run ID, while retaining the single logical `run_id`. Evidence files are hashed, but their raw filesystem provenance still needs a trusted operator-owned producer.
+段階ごとにGitHub Actionsの実行IDは変わるが、UnityAgent内の `run_id` は維持する。
 
-G1 required Gates: `production_runtime`, `blender_mcp`, `artifact_integrity`, `unity_compile`, `import_prefab_scene_guid`, `render_capture`, `visual_acceptance`, `rollback`, `lease_conflict`. `video_decode`, `hot_reload_comparison`, `g2`, and `g3` remain separately reported and do **not** block G1 by definition.
+`CheckpointStore` が復元するのは**状態のみ**。Unity Assetの復旧には、別の承認を受けたEditor操作でハッシュ・GUID・所有範囲を照合する必要がある。チェックポイントの復元や `git reset --hard` をAssetの復旧手段として使用しない。
 
-## Tests and current limitations
+段階実行スクリプトは、`<StateRoot>/evidence/<run_id>` に各検証項目のJSONと、ハッシュ付きの生データを記録する。接続用コードは**観測データを捏造しない**。記録元の真正性の確認は、信頼された実行環境と独立監査が必要。
+
+### G1で必須とする検証
+
+`production_runtime`、`blender_mcp`、`artifact_integrity`、`unity_compile`、`import_prefab_scene_guid`、`render_capture`、`visual_acceptance`、`rollback`、`lease_conflict` の9項目。
+
+`video_decode`、`hot_reload_comparison`、`g2`、`g3` は別々に報告し、G1の完了条件には含めない。
+
+## 契約テストと未検証事項
 
 ```sh
 PYTHONPATH=src python -m unittest tests.runtime.test_private_production_ci tests.runtime.test_production_e2e_evidence -v
 ```
 
-This is Host contract coverage (review/expiry/revocation/Run/Scope/Resume/Evidence and G1 aggregation), not a real Private GitHub approval, Unity Editor execution, visual human acceptance or operational failover test. Actual Private repo provisioning, Runner ACL verification, driver provisioning and live G1 evidence are **BLOCKED_NOT_RUN** until the Private deployment environment is available. The sample workflow alone must not be considered Production ready. Missing real Unity/Blender observations remain BLOCKED_NOT_RUN; never mark a fixture as Production success.
+このテストで確認するのは、承認・期限・取消・対象範囲・実行の同一性・再開拒否・証拠照合などの**ホスト側の契約**に限る。
+
+非公開リポジトリの作成・配置、Runnerのアクセス権確認、段階実行スクリプトの実接続、Unity Editor、Blender MCP、目視確認と実Rollbackは `BLOCKED_NOT_RUN` のままである。ひな形が配置されただけで、本番運用に使えるとは判定しない。
