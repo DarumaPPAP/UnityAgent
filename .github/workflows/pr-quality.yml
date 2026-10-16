@@ -1,0 +1,26 @@
+name: PR Quality
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  pr-quality:
+    name: Japanese PR Format and Evidence Status
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Test PR Validator
+        run: python -m unittest discover -s tools/pr_quality -p "test_*.py" -v
+      - name: Check PR metadata
+        run: python tools/pr_quality/validate_pr.py --event "$GITHUB_EVENT_PATH"
