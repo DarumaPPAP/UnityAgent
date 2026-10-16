@@ -1,57 +1,38 @@
-name: Production E2E (licensed Windows runner)
+name: Production E2E Contract (public)
 on:
+  pull_request:
+    paths:
+      - 'src/unityagent/control_plane/private_production_ci.py'
+      - 'src/unityagent/control_plane/rock_import.py'
+      - 'tests/runtime/test_private_production_ci.py'
+      - 'tests/runtime/test_production_e2e_evidence.py'
+      - 'tests/unity/verify/collect_evidence.py'
+      - 'ci/private/**'
+      - '.github/workflows/production-e2e.yml'
   workflow_dispatch:
-    inputs:
-      staged_fbx:
-        description: Approved Control Plane Staging FBX path on the runner
-        required: true
-        type: string
-      artifact_manifest:
-        description: Matching Staging artifact.json path on the runner
-        required: true
-        type: string
+
 permissions:
   contents: read
+
 jobs:
-  editor:
-    runs-on: [self-hosted, Windows, unity-6000.3.12f1]
-    timeout-minutes: 35
-    env:
-      UNITYAGENT_PRODUCTION_FBX: ${{ inputs.staged_fbx }}
-      UNITYAGENT_PRODUCTION_ARTIFACT: ${{ inputs.artifact_manifest }}
-      UNITYAGENT_SOURCE_REVISION: ${{ github.sha }}
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Initialize evidence before checking prerequisites
-        shell: pwsh
+      - name: Private CI approval and state contract tests (no Editor)
+        env:
+          PYTHONPATH: src
         run: |
-          $env:UNITYAGENT_PRODUCTION_EVIDENCE = Join-Path $env:RUNNER_TEMP "unityagent-production-${{ github.run_id }}"
-          "UNITYAGENT_PRODUCTION_EVIDENCE=$env:UNITYAGENT_PRODUCTION_EVIDENCE" >> $env:GITHUB_ENV
-          New-Item -ItemType Directory -Force $env:UNITYAGENT_PRODUCTION_EVIDENCE | Out-Null
-          $record = @{status='BLOCKED_NOT_RUN';reason='Editor validation has not completed';source_revision=$env:UNITYAGENT_SOURCE_REVISION}
-          $record | ConvertTo-Json | Set-Content (Join-Path $env:UNITYAGENT_PRODUCTION_EVIDENCE 'preflight.json')
-      - name: Run fixed G1 Editor fixture (graphics required)
-        shell: pwsh
+          python -m unittest tests.runtime.test_private_production_ci tests.runtime.test_production_e2e_evidence -v
+      - name: Public workflow must not dispatch onto a licensed self-hosted runner
         run: |
-          if (-not (Test-Path $env:UNITY_EDITOR)) { throw 'BLOCKED_NOT_RUN: UNITY_EDITOR must point to licensed Unity 6000.3.12f1' }
-          if (-not (Test-Path $env:UNITYAGENT_PRODUCTION_FBX)) { throw 'BLOCKED_NOT_RUN: Control Plane FBX unavailable' }
-          if (-not (Test-Path $env:UNITYAGENT_PRODUCTION_ARTIFACT)) { throw 'BLOCKED_NOT_RUN: Artifact manifest unavailable' }
-          $project = Join-Path $env:GITHUB_WORKSPACE 'tests/unity/projects/production-e2e'
-          & $env:UNITY_EDITOR -batchmode -projectPath $project -runTests -testPlatform EditMode -testFilter UnityAgent.Production.RockProductionTests -testResults "$env:UNITYAGENT_PRODUCTION_EVIDENCE/results.xml" -logFile "$env:UNITYAGENT_PRODUCTION_EVIDENCE/Editor.log"
-          if ($LASTEXITCODE -ne 0) { throw "Editor test failed: $LASTEXITCODE" }
-      - name: Collect fail-closed Production Gate status
-        if: always()
-        shell: pwsh
-        run: |
-          $hash = 'unobserved'
-          if (Test-Path $env:UNITYAGENT_PRODUCTION_FBX) { $hash = (Get-FileHash -Algorithm SHA256 $env:UNITYAGENT_PRODUCTION_FBX).Hash.ToLowerInvariant() }
-          python tests/unity/verify/collect_evidence.py --directory $env:UNITYAGENT_PRODUCTION_EVIDENCE --source-revision $env:UNITYAGENT_SOURCE_REVISION --artifact-hash $hash --output "$env:UNITYAGENT_PRODUCTION_EVIDENCE/acceptance.json"
-      - uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: production-e2e-${{ github.run_id }}
-          path: ${{ env.UNITYAGENT_PRODUCTION_EVIDENCE }}
-          if-no-files-found: error
+          python - <<'PY'
+          from pathlib import Path
+          content = Path('.github/workflows/production-e2e.yml').read_text()
+          assert 'self-hosted' not in content.split('jobs:', 1)[1].split('steps:', 1)[0]
+          assert 'staged_fbx:' not in content
+          PY
