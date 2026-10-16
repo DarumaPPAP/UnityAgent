@@ -1,6 +1,6 @@
-# UnityAgent — Production E2E Integration Goal（Phase 0〜4）
+# UnityAgentの一連の実行機能：確定要件と実装段階
 
-## 最終Goal
+## 最終目標
 
 UnityAgentの確定済み設計Decisionを現行コードへ実装し、**Unity 6.3 LTS（6000.3.x）＋URP**をG1検証基準として、以下をProduction Runtime上で成立させる。
 
@@ -25,9 +25,9 @@ Cloudで可能な実装、Fixture、Unit Test、Integration Test、CI、PR作成
 
 ---
 
-## 0. Repositoryと作業開始条件
+## 0. リポジトリと作業開始条件
 
-### 正本Repository
+### 正本リポジトリ
 
 https://github.com/DarumaPPAP/UnityAgent
 
@@ -64,11 +64,11 @@ https://github.com/DarumaPPAP/UnityAgent
 
 ---
 
-## 1. 確定済みDecision
+## 1. 確定済みの設計判断
 
 以下は承認済みの設計方針である。実装都合で変更しない。
 
-### Core Architecture
+### 中核構造
 
 - **UnityAgentが唯一のControl Plane**である。
 - Policy、Approval、Orchestration、Runtime、Persistence、EvalのAuthorityを分離する。
@@ -119,7 +119,7 @@ Q-007相当のBlender制作経路も上記の方針として扱う。外部生�
 
 ---
 
-# Phase 0 — 設計凍結・現行実装との差分監査
+# 第0段階 — 設計の確定と実装差分の監査
 
 ## 目的
 
@@ -153,9 +153,9 @@ Phase 0の文書化だけで全体GoalをCompleteとしない。
 
 ---
 
-# Phase 1 — Control PlaneとE2E Runtime基盤
+# 第1段階 — Control Planeと一連の実行基盤
 
-## Task Ownership
+## 作業の担当と責任
 
 Taskに以下を関連付ける。
 
@@ -173,7 +173,7 @@ Taskに以下を関連付ける。
 
 既存のTask ContractとState / Persistenceを利用し、重複する管理基盤を作らない。
 
-## Task DAGとRuntime
+## 作業の依存関係と実行処理
 
 既存のAdaptive ExecutionおよびDAG Plannerを監査し、plan-onlyの判断を実Runtimeへ接続する。
 
@@ -185,7 +185,7 @@ Taskに以下を関連付ける。
 
 独立Taskは必要に応じて並列化する。ただし並列効果は実測する。
 
-## Acceptance / QA
+## 受け入れ条件と品質確認
 
 Task開始時にRequired Gateを確定する。
 
@@ -200,7 +200,7 @@ QAが都合よく必須Gateを削除したり、未観測結果をPASSへ変更�
 
 Taskの作業結果を報告できても、必須Gateが未検証ならVerifiedにはしない。
 
-## Retry / Recovery
+## 再試行と復旧
 
 インフラRetryと専門SubAgentによる意味的修正Retryを分離する。
 
@@ -210,7 +210,7 @@ Taskの作業結果を報告できても、必須Gateが未検証ならVerified�
 
 無限再試行、同じ失敗への無意味な再実行、外部APIの二重課金を防ぐ。
 
-## Evidence / Checkpoint
+## 証拠とチェックポイント
 
 Runtimeが観測した結果をPersistenceに保存し、Task・Revision・Approvalと対応付ける。
 
@@ -218,7 +218,7 @@ CheckpointでRunを復元してもUnity Asset自体は復旧しないことを�
 
 中断後はRevisionと外部副作用を照合してからResumeする。
 
-## Staging / Rollback
+## 一時保管と変更の復旧
 
 適用前に以下を記録する。
 
@@ -232,7 +232,7 @@ CheckpointでRunを復元してもUnity Asset自体は復旧しないことを�
 
 ほかのユーザーやProcessによる変更がある場合は自動上書きしない。
 
-## Lease
+## 排他制御
 
 既存Control PlaneのProject排他と、Runtime Leaseの責任範囲を監査する。
 
@@ -259,7 +259,7 @@ Stale Leaseを根拠なく自動奪取しない。
 
 ---
 
-# Phase 2 — SubAgentとBackend統合
+# 第2段階 — SubAgentと実行手段の統合
 
 ## 2-1. QASubAgent
 
@@ -303,7 +303,7 @@ Blender MCP Firstを維持する。
 
 Blender Pythonは型付きCapabilityまたはレビュー済みTemplateを優先し、任意Pythonを既存Policyの`arbitrary_code`禁止から迂回させない。
 
-## 2-3. Blender Session / Job
+## 2-3. Blenderのセッションと作業記録
 
 以下を管理する。
 
@@ -325,7 +325,7 @@ Blender MCPの内部Pending機構を再利用しつつ、UnityAgent側でもTask
 
 生成完了時のBlender Scene Importは副作用として扱う。
 
-## 2-4. Optional Backend / Setup
+## 2-4. 任意実行機能と導入手順
 
 既存Setup / Doctorに以下を追加する。
 
@@ -352,9 +352,9 @@ Setupは次の経路を維持する。
 
 ---
 
-# Phase 3 — Unity 6.3実E2E
+# 第3段階 — Unity 6.3での一連の実動作確認
 
-## 検証Project
+## 検証用プロジェクト
 
 独立したG1専用Fixtureを使う。
 
@@ -366,7 +366,7 @@ Setupは次の経路を維持する。
 - Packages / ProjectSettingsをGit管理
 - 機密ゲームAssetを使用しない
 
-## 必須E2Eシナリオ
+## 必須の一連の検証手順
 
 UnityAgentへ次のGoalを渡す。
 
@@ -420,7 +420,7 @@ Cloud環境にUnity Editor、Blender GUI、ライセンス、必要なGraphics�
 
 ---
 
-# Phase 4 — Hot Reload・性能測定・G2/G3
+# 第4段階 — 差分適用・性能測定・G2/G3
 
 ## 4-1. Unity CLI Loop Hot Reload
 
@@ -447,7 +447,7 @@ Unity CLI Loop V3をOptional Adapterとして追加する。
 
 Hot Reloadで差し替えたコードを元に戻しても、ソース変更や実行中の副作用が復旧するとは限らないため、Q-010のRollbackとは区別する。
 
-## 4-2. Baseline比較
+## 4-2. 基準状態との比較
 
 同じ変更Taskを、以下の2条件で比較する。
 
@@ -482,7 +482,7 @@ Switch / PS5 / PS4等のSDK、ライセンス、機密Assetは、必要な承認
 
 ---
 
-# Git / PR運用
+# Gitと変更提案の運用
 
 - `main`から既存規約に沿った短命Branchで作業する。
 - 変更は依存関係ごとにレビュー可能なPRへ分割する。
@@ -498,7 +498,7 @@ Switch / PS5 / PS4等のSDK、ライセンス、機密Assetは、必要な承認
 
 ---
 
-# 最終Acceptance
+# 最終受け入れ条件
 
 | Phase | 完了条件 |
 |---|---|
