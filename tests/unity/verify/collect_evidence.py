@@ -10,7 +10,7 @@ GATES = ('production_runtime', 'blender_mcp', 'artifact_integrity', 'unity_compi
          'rollback', 'lease_conflict', 'video_decode', 'hot_reload_comparison', 'g2', 'g3')
 
 
-def collect(directory, *, source_revision, artifact_hash):
+G1_GATES = GATES[:9]  # G2/G3/video/hot-reload are independently reported, not G1 blockers.\n\ndef collect(directory, *, source_revision, artifact_hash):
     directory = Path(directory)
     results = {}
     for gate in GATES:
@@ -42,7 +42,7 @@ def collect(directory, *, source_revision, artifact_hash):
                 result = {'status': 'failed', 'reason': str(exc)}
         results[gate] = result
     return {'schema_version': '1.0', 'source_revision': source_revision, 'artifact_hash': artifact_hash,
-            'status': 'verified' if all(v['status'] == 'passed' for v in results.values()) else 'blocked',
+            'status': 'verified' if all(results[gate]['status'] == 'passed' for gate in G1_GATES) else 'blocked',
             'gates': results, 'token_usage': 'unmeasured', 'latency_comparison': 'unmeasured'}
 
 
