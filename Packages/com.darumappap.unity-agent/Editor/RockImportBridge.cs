@@ -209,6 +209,17 @@ namespace DarumaPPAP.UnityAgent.Editor
             Object.DestroyImmediate(go);
             var placed = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
             placed.name = "UnityAgentRock";
+            var importedMesh = placed.GetComponentsInChildren<MeshFilter>(true);
+            if (importedMesh.Length == 0 || importedMesh.Any(m => m.sharedMesh == null) ||
+                placed.GetComponentsInChildren<Renderer>(true).Any(r =>
+                    r.sharedMaterials.Any(m => m == null || m.shader == null || !m.shader.isSupported)) ||
+                placed.GetComponentsInChildren<Transform>(true).Any(t =>
+                    GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(t.gameObject) != 0))
+                throw new InvalidOperationException("Rock prefab references/mesh/material failed QA");
+            string guidBefore = AssetDatabase.AssetPathToGUID(ModelPath);
+            AssetDatabase.ImportAsset(ModelPath, ImportAssetOptions.ForceSynchronousImport);
+            if (guidBefore != AssetDatabase.AssetPathToGUID(ModelPath))
+                throw new InvalidOperationException("Rock FBX GUID changed on re-import");
             if (!EditorSceneManager.SaveScene(scene, ScenePath))
                 throw new InvalidOperationException("Rock Scene save failed");
             AssetDatabase.SaveAssets();
