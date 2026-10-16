@@ -625,8 +625,8 @@
     },
     {
       "path": "tests/unity/verify/test_unity_ci.py",
-      "sha1": "9f68b6a1bfd5eacd1db879cf799d00e7c83bd12d",
-      "size": 23302
+      "sha1": "dc84537a01b1b7434070fb87530c76a9e591c600",
+      "size": 23933
     },
     {
       "path": "tests/unity/verify/unity_ci.py",

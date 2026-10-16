@@ -241,6 +241,15 @@ class FixtureTests(unittest.TestCase):
         for row in config['fixtures'][1:]:
             project=ci.ROOT/row['project']
             manifest=json.loads((project/'Packages/manifest.json').read_text())
+            if row['id']=='p9-lts-urp':
+                location=manifest['dependencies']['com.darumappap.unity-agent'][5:]
+                self.assertEqual((project/'Packages'/location).resolve(),
+                                 ci.ROOT/'Packages/com.darumappap.unity-agent')
+                preflight=(project/'Assets/Editor/LtsPreflightTests.cs').read_text()
+                self.assertIn('pixelVariation = variation',preflight)
+                self.assertIn('RenderPipeline.SubmitRenderRequest',preflight)
+                self.assertTrue((project/'Assets/Editor/LtsPreflightTests.cs.meta').is_file())
+                continue
             location=manifest['dependencies']['com.darumappap.artist-subagent'][5:]
             self.assertEqual((project/'Packages'/location).resolve(),ci.ROOT/'subagent/artist_subagent/tools/editor')
             self.assertIn('[Test]',(project/'Assets/Editor/SmokeTests.cs').read_text())
