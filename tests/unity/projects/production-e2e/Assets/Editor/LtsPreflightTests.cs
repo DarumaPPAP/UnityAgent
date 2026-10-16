@@ -100,15 +100,18 @@ namespace UnityAgent.Production
                 pixels.ReadPixels(new Rect(0, 0, 128, 128), 0, 0);
                 pixels.Apply();
                 var colors = pixels.GetPixels32();
-                bool varied = colors.Any(p => p.r != colors[0].r || p.g != colors[0].g || p.b != colors[0].b);
-                Assert.IsTrue(varied, "URP capture has no spatial variation");
+                float variation = colors.Max(p => Mathf.Max(
+                    Mathf.Abs(p.r - colors[0].r),
+                    Mathf.Abs(p.g - colors[0].g),
+                    Mathf.Abs(p.b - colors[0].b))) / 255f;
+                Assert.Greater(variation, 0.1f, "URP capture has insufficient spatial variation");
                 File.WriteAllBytes(Path.Combine(evidence, "pipeline-smoke.png"), pixels.EncodeToPNG());
                 File.WriteAllText(Path.Combine(evidence, "graphics-device.json"),
                     JsonUtility.ToJson(new GraphicsObservation
                     {
                         editorVersion = Application.unityVersion,
                         deviceType = SystemInfo.graphicsDeviceType.ToString(),
-                        pixelVariation = 1f
+                        pixelVariation = variation
                     }, true));
             }
             finally
