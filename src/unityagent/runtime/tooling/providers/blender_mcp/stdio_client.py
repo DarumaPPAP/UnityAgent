@@ -138,7 +138,7 @@ class McpStdioClient:
                 return message['result']
 
     def tool(self, name, arguments):
-        if name not in {'get_scene_info', 'execute_blender_code'} or name not in self.tools:
+        if name not in {'get_scene_info', 'get_addon_status', 'execute_blender_code'} or name not in self.tools:
             raise ValueError('Required reviewed Blender MCP tool is unavailable')
         result = self.request('tools/call', {'name': name, 'arguments': arguments})
         if result.get('isError'):
