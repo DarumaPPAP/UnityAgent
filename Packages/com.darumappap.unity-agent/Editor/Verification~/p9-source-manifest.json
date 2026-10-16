@@ -680,8 +680,8 @@
     },
     {
       "path": "ci/verify/verify_artist_backend_contract.py",
-      "sha1": "9c83fd3b274bc1bce705a1db1b85f5c6a60a7128",
-      "size": 16813
+      "sha1": "0eab8a7d8b2e71e49895ce6fce3ef616dabd8bfe",
+      "size": 16890
     },
     {
       "path": "ci/verify/verify_portable_paths.py",
