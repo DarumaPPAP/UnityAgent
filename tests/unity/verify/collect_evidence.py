@@ -57,8 +57,7 @@ def main():
     args = parser.parse_args()
     result = collect(args.directory, source_revision=args.source_revision, artifact_hash=args.artifact_hash)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(result, indent=2, ensure_ascii=False) + '
-')
+    args.output.write_text(json.dumps(result, indent=2, ensure_ascii=False) + '\n')
     print(json.dumps({'status': result['status'], 'gates': {k:v['status'] for k,v in result['gates'].items()}}))
     return 0 if result['status'] == 'verified' else 1
 
