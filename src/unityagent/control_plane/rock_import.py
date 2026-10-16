@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 import hashlib
+import os
 from pathlib import Path
 import uuid
 
@@ -97,6 +98,17 @@ def _check_approval(state_root, plan, approval_ref, kind):
             or sha256_json({k:v for k,v in decision.items() if k != 'decision_digest'}) != decision.get('decision_digest')
             or datetime.fromisoformat(decision['expires_at']) <= datetime.now(timezone.utc)):
         raise ValueError('Rock Import Approval invalid, changed, expired or revoked')
+    # Private Runner decisions are authenticated again at each Editor/Provider
+    # handoff. GitHub API unavailability is a hard denial.
+    attestation = decision.get('github_attestation')
+    if os.environ.get('UNITYAGENT_REQUIRE_PRIVATE_APPROVAL') == '1' and not attestation:
+        raise ValueError('Private GitHub approval attestation required')
+    if attestation:
+        from unityagent.control_plane.private_production_ci import verifier_from_environment
+        verifier = verifier_from_environment()
+        fresh = verifier.verify(attestation['pull_number'], attestation['expected'])
+        if fresh != attestation:
+            raise ValueError('Private GitHub approval changed or revoked')
     return decision
 
 
