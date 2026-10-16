@@ -1,0 +1,102 @@
+# Copy this file to .github/workflows/production-e2e.yml in the PRIVATE execution repository.
+# This is deliberately NOT an active workflow in the public UnityAgent repository.
+name: UnityAgent Private Production Stage
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Existing registered logical run_id (no new Run is created here)
+        required: true
+        type: string
+      stage:
+        description: One of artifact / editor / visual / rollback
+        required: true
+        type: choice
+        options: [artifact, editor, visual, rollback]
+      approval_pulls:
+        description: JSON map of approval kinds to private PR numbers; editor needs mutation AND save
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: private-production-${{ inputs.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  stage:
+    runs-on: [self-hosted, Windows, unity-6000.3.12f1, private-only]
+    timeout-minutes: 40
+    environment: production
+    env:
+      # Protected Private repository variables, never workflow_dispatch inputs.
+      UNITYAGENT_STATE_ROOT: ${{ vars.UNITYAGENT_STATE_ROOT }}
+      UNITYAGENT_APPROVED_SHA: ${{ vars.UNITYAGENT_APPROVED_SHA }}
+      UNITYAGENT_PRIVATE_APPROVERS: ${{ vars.UNITYAGENT_PRIVATE_APPROVERS }}
+      UNITYAGENT_PRIVATE_STAGE_DRIVER: ${{ vars.UNITYAGENT_PRIVATE_STAGE_DRIVER }}
+      UNITYAGENT_PRIVATE_GITHUB_REPOSITORY: ${{ github.repository }}
+      UNITYAGENT_PRIVATE_GITHUB_TOKEN: ${{ github.token }}
+      UNITYAGENT_REQUIRE_PRIVATE_APPROVAL: '1'
+      RUN_ID: ${{ inputs.run_id }}
+      REQUESTED_STAGE: ${{ inputs.stage }}
+      APPROVAL_PRS_JSON: ${{ inputs.approval_pulls }}
+      WORKFLOW_RUN_ID: ${{ github.run_id }}
+    steps:
+      - name: Checkout the reviewed source revision, not the approval PR
+        uses: actions/checkout@v4
+        with:
+          repository: DarumaPPAP/UnityAgent
+          ref: ${{ vars.UNITYAGENT_APPROVED_SHA }}
+          persist-credentials: false
+          path: unityagent-source
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify SHA and protected Runner prerequisites
+        shell: pwsh
+        run: |
+          if ($env:UNITYAGENT_APPROVED_SHA -notmatch '^[a-f0-9]{40}$') { throw 'Protected source SHA required' }
+          $actual = (git -C unityagent-source rev-parse HEAD).Trim()
+          if ($actual -cne $env:UNITYAGENT_APPROVED_SHA) { throw 'Wrong UnityAgent source checkout' }
+          if (-not (Test-Path $env:UNITYAGENT_STATE_ROOT -PathType Container)) { throw 'Persistent protected State unavailable' }
+          if (-not (Test-Path $env:UNITYAGENT_PRIVATE_STAGE_DRIVER -PathType Leaf)) { throw 'Private reviewed Stage Driver unavailable' }
+          if (-not (Test-Path $env:UNITY_EDITOR -PathType Leaf)) { throw 'BLOCKED_NOT_RUN: licensed Unity Editor unavailable' }
+      - name: Verify private GitHub approvals and enter durable Stage
+        shell: pwsh
+        env:
+          PYTHONPATH: unityagent-source/src
+        run: |
+          $record = Join-Path $env:UNITYAGENT_STATE_ROOT ("runner-out/" + $env:RUN_ID + "/" + $env:REQUESTED_STAGE + "-begin.json")
+          python -m unityagent.control_plane.private_production_ci begin `
+            --state-root "$env:UNITYAGENT_STATE_ROOT" --run-id "$env:RUN_ID" `
+            --stage "$env:REQUESTED_STAGE" --source-revision "$env:UNITYAGENT_APPROVED_SHA" `
+            --workflow-run-id "$env:WORKFLOW_RUN_ID" --approvals-json "$env:APPROVAL_PRS_JSON" `
+            --output "$record"
+          if ($LASTEXITCODE -ne 0) { throw 'Approval, Revision or Resume Gate refused' }
+          "UNITYAGENT_BEGIN_RECEIPT=$record" >> $env:GITHUB_ENV
+      - name: Run only the installed, reviewed private Stage driver
+        shell: pwsh
+        run: |
+          # Driver must use existing Control Plane / Broker, never call a Provider directly.
+          # It must write per-Gate JSON and hashed raw observations below STATE_ROOT/evidence/RUN_ID.
+          $evidenceDir = Join-Path $env:UNITYAGENT_STATE_ROOT ("evidence/" + $env:RUN_ID)
+          & $env:UNITYAGENT_PRIVATE_STAGE_DRIVER -RunId $env:RUN_ID -Stage $env:REQUESTED_STAGE `
+            -StateRoot $env:UNITYAGENT_STATE_ROOT -BeginReceipt $env:UNITYAGENT_BEGIN_RECEIPT `
+            -EvidenceDirectory $evidenceDir
+          if ($LASTEXITCODE -ne 0) { throw 'RECONCILIATION_REQUIRED: Stage side effects must be inspected before retry' }
+      - name: Recheck approval, hash Evidence, checkpoint, release runner
+        shell: pwsh
+        env:
+          PYTHONPATH: unityagent-source/src
+        run: |
+          $evidenceDir = Join-Path $env:UNITYAGENT_STATE_ROOT ("evidence/" + $env:RUN_ID)
+          python -m unityagent.control_plane.private_production_ci complete `
+            --state-root "$env:UNITYAGENT_STATE_ROOT" --run-id "$env:RUN_ID" `
+            --stage "$env:REQUESTED_STAGE" --source-revision "$env:UNITYAGENT_APPROVED_SHA" `
+            --workflow-run-id "$env:WORKFLOW_RUN_ID" --evidence-directory "$evidenceDir"
+          if ($LASTEXITCODE -ne 0) { throw 'BLOCKED_NOT_RUN / FAILED: Stage never transitions to complete' }
+      # Persistence state and FBX remain on the protected Runner; Actions artifacts are
+      # non-authoritative audit copies only. Never upload approval tokens or StateRoot.
