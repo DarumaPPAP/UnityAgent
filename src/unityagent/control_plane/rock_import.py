@@ -147,15 +147,21 @@ def _apply(plane, plan_id, approvals, *, action, definition_fingerprint, executo
             structured_result_ref=raw_ref,raw_refs=[raw_ref])
         persisted = append_runtime_execution_evidence(plane.evidence_store,evidence)
         evidence_refs.append(persisted['evidence_id'])
+    # Blender generation and Editor import share one Run identity. Preserve
+    # earlier durable Evidence instead of replacing its execution-state references.
+    run_state_path = plane.state_store.layout.execution_state(run_id)
+    earlier_refs = (plane.state_store.load_execution_state(run_id).get('evidence_refs', [])
+                    if run_state_path.is_file() else [])
+    combined_refs = list(dict.fromkeys([*earlier_refs, *evidence_refs]))
     from unityagent.orchestration.qa.task_acceptance import assess_task
-    qa = assess_task([plane.evidence_store.get(ref) for ref in evidence_refs],
+    qa = assess_task([plane.evidence_store.get(ref) for ref in combined_refs],
         required_gates={'editor_import':['editor_observation'],
                         'asset_integrity':['mutation_evidence'],
                         'visual_acceptance':['visual_capture']},
         run_id=run_id,definition_fingerprint=dict(definition_fingerprint))
     plane._save_execution_state(run_id=run_id,step_id='rock-'+action,
-        action_id='scene.mutate',status=result['status'],evidence_refs=evidence_refs)
-    return {**result,'run_id':run_id,'evidence_refs':evidence_refs,
+        action_id='scene.mutate',status=result['status'],evidence_refs=combined_refs)
+    return {**result,'run_id':run_id,'evidence_refs':combined_refs,
             'qa':qa,'verified':False,'visual_acceptance':'not_observed',
             'production_import':'completed' if action == 'apply' and result.get('status') == 'completed'
                     else 'BLOCKED_NOT_RUN' if result.get('status') != 'completed' else 'rolled_back'}
