@@ -29,7 +29,7 @@ def verify(evidence_directory: Path, run_metadata: dict, source_sha: str, repo: 
             or run_metadata.get("head_branch") != "main"
             or run_metadata.get("conclusion") != "success"
             or run_metadata.get("status") != "completed"
-            or "/.github/workflows/p9-release-verification.yml@" not in run_metadata.get("path", "")):
+            or "".github/workflows/p9-release-verification.yml" != run_metadata.get("path")):
         raise ValueError("P9 evidence is not from an approved, completed private workflow_dispatch on main")
     report_path = evidence_directory / "evidence.json"
     if not report_path.is_file():
