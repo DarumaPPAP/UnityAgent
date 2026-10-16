@@ -54,7 +54,7 @@ jobs:
       - name: Validate migrated Unity P9 fixtures and host runner
         run: |
           python tests/unity/verify/validate_unity_fixtures.py
-          python -m unittest discover -s ci/verify -p "test_unity_ci*.py" -v
+          python -m unittest discover -s tests/unity/verify -p "test_unity_ci*.py" -v
 
       - name: Validate Unity Editor PackageInfo qualification
         run: |
