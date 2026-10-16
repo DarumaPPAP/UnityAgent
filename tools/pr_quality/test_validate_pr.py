@@ -77,6 +77,13 @@ class PRQualityTests(unittest.TestCase):
             errors, _ = check(path.read_text(encoding="utf-8"), title)
             self.assertTrue(errors, kind)
 
+    def test_required_canonical_gate_includes_pr_validator(self):
+        path=Path(__file__).resolve().parents[2]/".github"/"workflows"/"validate-agent-contracts.yml"
+        content=path.read_text(encoding="utf-8")
+        self.assertIn('Enforce Japanese PR title and required sections',content)
+        self.assertIn('python tools/pr_quality/validate_pr.py --event "$GITHUB_EVENT_PATH"',content)
+        self.assertIn('edited, ready_for_review',content)
+
     def test_event_cli(self):
         with tempfile.TemporaryDirectory() as tmp:
             path=Path(tmp)/"event.json"
