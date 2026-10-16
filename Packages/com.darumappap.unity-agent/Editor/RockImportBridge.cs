@@ -174,13 +174,21 @@ namespace DarumaPPAP.UnityAgent.Editor
             var ticket = ReadTicket("apply");
             RequireApproval(ticket, ticket.mutation_approval_ref, "mutation");
             RequireApproval(ticket, ticket.save_approval_ref, "save");
-            if (File.Exists(Absolute(Root + ".meta")) || File.Exists(Absolute(MaterialPath)) ||
+            // Unity can automatically create Rock.fbx.meta and the parent directory
+            // .meta when it scans staged Assets BEFORE -executeMethod starts.
+            // The host verified both absent under its Project Lease before staging.
+            // Here allow only those two auto-import side effects; exact hashes/GUIDs
+            // are fixed in the post-Editor ownership Receipt.
+            if (File.Exists(Absolute(MaterialPath)) ||
                 File.Exists(Absolute(PrefabPath)) || File.Exists(Absolute(ScenePath)) ||
-                File.Exists(Absolute(ModelPath + ".meta")) ||
                 !File.Exists(Absolute(ModelPath)) || Hash(Absolute(ModelPath)) != ticket.source_sha256)
                 throw new InvalidOperationException("Rock preimage or staged FBX hash changed");
-            var existing = Directory.GetFiles(Absolute(Root), "*", SearchOption.AllDirectories);
-            if (existing.Length != 1 || Path.GetFullPath(existing[0]) != Path.GetFullPath(Absolute(ModelPath)))
+            var existing = Directory.GetFiles(Absolute(Root), "*", SearchOption.AllDirectories)
+                .Select(Path.GetFullPath).ToArray();
+            var allowedPreimages = new[] { Absolute(ModelPath), Absolute(ModelPath + ".meta") }
+                .Select(Path.GetFullPath).ToArray();
+            if (!existing.Contains(Path.GetFullPath(Absolute(ModelPath))) ||
+                existing.Any(path => !allowedPreimages.Contains(path)))
                 throw new InvalidOperationException("Unowned file in Rock import scope");
 
             RequireApproval(ticket, ticket.mutation_approval_ref, "mutation");
