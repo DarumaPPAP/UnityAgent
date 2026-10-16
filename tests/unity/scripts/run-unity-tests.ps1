@@ -13,8 +13,8 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-$runner = Join-Path $repositoryRoot 'ci/verify/unity_ci.py'
+$repositoryRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
+$runner = Join-Path $repositoryRoot 'tests/unity/verify/unity_ci.py'
 if (-not $OutputDirectory) {
     $OutputDirectory = Join-Path $repositoryRoot "artifacts/$Fixture"
 }

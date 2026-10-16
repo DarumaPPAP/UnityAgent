@@ -172,7 +172,7 @@ namespace DarumaPPAP.UnityAgent.Editor
             if (Application.platform != RuntimePlatform.WindowsEditor)
             {
                 s_status = "BLOCKED_NOT_RUN";
-                s_message = "このSetup入口はWindows Editor専用です。LinuxはUnityAgent内ci/scripts/run-unity-tests.shを利用してください。";
+                s_message = "このSetup入口はWindows Editor専用です。LinuxはUnityAgent内tests/unity/scripts/run-unity-tests.shを利用してください。";
                 return;
             }
 
@@ -228,7 +228,7 @@ namespace DarumaPPAP.UnityAgent.Editor
         private static Result Execute(string root, string fixture, string output,
             string editor, bool graphicsReady)
         {
-            var script = Path.Combine(root, "ci", "scripts", "run-unity-tests.ps1");
+            var script = Path.Combine(root, "tests", "unity", "scripts", "run-unity-tests.ps1");
             var arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File " +
                 Quote(script) + " -Fixture " + Quote(fixture) + " -OutputDirectory " + Quote(output);
             if (!string.IsNullOrWhiteSpace(editor))

@@ -108,7 +108,7 @@ with patch.object(ci.subprocess, 'run', side_effect=execute):
 '''
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / '\u6210\u679c\u7269 with spaces'
-            result = subprocess.run([sys.executable, '-c', script, str(ci.ROOT / 'ci/verify'), str(output)],
+            result = subprocess.run([sys.executable, '-c', script, str(ci.ROOT / 'tests/unity/verify'), str(output)],
                 env=dict(os.environ, UNITY_LICENSE_READY='true', PYTHONIOENCODING='ascii', GITHUB_SHA='f'*40),
                 capture_output=True, text=True, encoding='ascii', errors='replace', timeout=120)
             self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
