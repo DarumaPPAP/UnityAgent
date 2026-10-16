@@ -172,10 +172,10 @@ profiles:
           any_of: []
           receipt_required: false
       supported_targets: *id001
-  performance_subagent:
-    profile_id: performance_subagent
-    display_name: PerformanceSubAgent
-    audience: performance_subagent
+  qa_subagent:
+    profile_id: qa_subagent
+    display_name: QASubAgent
+    audience: qa_subagent
     goal_type: performance.analyze
     capabilities:
     - performance.analyze
@@ -193,7 +193,7 @@ profiles:
     evidence:
       source_type: reasoning_execution
       producer: Runtime/CodexRunner
-      provenance_token: performance_subagent
+      provenance_token: qa_subagent
     execution:
       kind: reasoning
       reasoning_runtime: codex_runner
@@ -204,8 +204,8 @@ profiles:
       instructions_ref: .agents/skills/performance-analysis/SKILL.md
       output_contract_ref: src/unityagent/runtime/contracts/performance-analysis-result.schema.json
       hub_contract_refs:
-        instructions_ref: SubAgents/performance_subagent/instructions.md
-        output_contract_ref: SubAgents/performance_subagent/contracts/performance-analysis-result.schema.json
+        instructions_ref: SubAgents/qa_subagent/instructions.md
+        output_contract_ref: SubAgents/qa_subagent/contracts/performance-analysis-result.schema.json
     selection:
       compatibility:
         unity_version_prefixes:

@@ -28,8 +28,8 @@ class AnalysisReasoningOutputTests(unittest.TestCase):
 
     def performance(self):
         captures = [capture("before", 12.0), capture("after", 9.0)]
-        manifest = context("performance_subagent", "performance.analyze", [("profiler", "profiler.observe", {"measurements": captures}, ["profiler_capture"])])
-        result = {**common("performance_subagent", "performance.analyze"), "measurements": [{"source_ref": "evidence:profiler", **item} for item in captures], "bottleneck_classification": "gpu", "classification_basis": [{"source_ref": "evidence:profiler", "capture_id": "after", "metric_names": ["GPU frame"]}], "comparison": {"baseline": {"source_ref": "evidence:profiler", "capture_id": "before"}, "candidate": {"source_ref": "evidence:profiler", "capture_id": "after"}, "deltas": [{"name": "GPU frame", "value": -3.0, "unit": "ms", "category": "gpu"}]}, "recommendations": ["Investigate rendering cost using controlled captures"]}
+        manifest = context("qa_subagent", "performance.analyze", [("profiler", "profiler.observe", {"measurements": captures}, ["profiler_capture"])])
+        result = {**common("qa_subagent", "performance.analyze"), "measurements": [{"source_ref": "evidence:profiler", **item} for item in captures], "bottleneck_classification": "gpu", "classification_basis": [{"source_ref": "evidence:profiler", "capture_id": "after", "metric_names": ["GPU frame"]}], "comparison": {"baseline": {"source_ref": "evidence:profiler", "capture_id": "before"}, "candidate": {"source_ref": "evidence:profiler", "capture_id": "after"}, "deltas": [{"name": "GPU frame", "value": -3.0, "unit": "ms", "category": "gpu"}]}, "recommendations": ["Investigate rendering cost using controlled captures"]}
         return manifest, copy.deepcopy(result)
 
     def test_graphics_and_performance_are_allowlisted_reasoning_contracts(self):

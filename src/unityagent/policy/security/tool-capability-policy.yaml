@@ -54,6 +54,12 @@ operation_kinds:
     default_permission: prohibited
 
 capabilities:
+  editor.hot_reload:
+    operation_kind: editor_mutation
+    minimum_required_evidence: [editor_observation, mutation_evidence]
+  world.create:
+    operation_kind: editor_mutation
+    minimum_required_evidence: [domain_result, mutation_evidence]
   project.inspect:
     operation_kind: read
     minimum_required_evidence: [project_fact]

@@ -1,7 +1,7 @@
 schema_version: "1.0"
 kind: performance_read_only_candidate_contract
 status: pilot_unregistered
-identity: performance_subagent
+identity: qa_subagent
 compatibility:
   unity_version: Unity 6.x+
 capabilities:

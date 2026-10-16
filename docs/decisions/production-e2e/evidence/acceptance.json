@@ -1,0 +1,62 @@
+{
+  "schema_version": "1.0",
+  "source_revision": "f313b2e86c5dcca17d6c6edc8bed75b7830b848e",
+  "artifact_hash": "b79d0237a8ecd453447db7a2f12d09992e1d213aeb71137d99789ce6f502038c",
+  "status": "blocked",
+  "gates": {
+    "production_runtime": {
+      "status": "BLOCKED_NOT_RUN",
+      "reason": "Required observation not available"
+    },
+    "blender_mcp": {
+      "status": "BLOCKED_NOT_RUN",
+      "reason": "Required observation not available"
+    },
+    "artifact_integrity": {
+      "status": "BLOCKED_NOT_RUN",
+      "reason": "Required observation not available"
+    },
+    "unity_compile": {
+      "status": "BLOCKED_NOT_RUN",
+      "reason": "Required observation not available"
+    },
+    "import_prefab_scene_guid": {
+      "status": "BLOCKED_NOT_RUN",
+      "reason": "Required observation not available"
+    },
+    "render_capture": {
+      "status": "BLOCKED_NOT_RUN",
+      "reason": "Required observation not available"
+    },
+    "visual_acceptance": {
+      "status": "BLOCKED_NOT_RUN",
+      "reason": "Required observation not available"
+    },
+    "rollback": {
+      "status": "BLOCKED_NOT_RUN",
+      "reason": "Required observation not available"
+    },
+    "lease_conflict": {
+      "status": "BLOCKED_NOT_RUN",
+      "reason": "Required observation not available"
+    },
+    "video_decode": {
+      "status": "BLOCKED_NOT_RUN",
+      "reason": "Required observation not available"
+    },
+    "hot_reload_comparison": {
+      "status": "BLOCKED_NOT_RUN",
+      "reason": "Required observation not available"
+    },
+    "g2": {
+      "status": "BLOCKED_NOT_RUN",
+      "reason": "Required observation not available"
+    },
+    "g3": {
+      "status": "BLOCKED_NOT_RUN",
+      "reason": "Required observation not available"
+    }
+  },
+  "token_usage": "unmeasured",
+  "latency_comparison": "unmeasured"
+}

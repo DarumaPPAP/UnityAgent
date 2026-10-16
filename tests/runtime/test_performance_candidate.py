@@ -21,8 +21,8 @@ class PerformanceCandidateTests(unittest.TestCase):
         self.items = [{"category": category, "key": key, "value": value, "freshness": {"status": "current"}} for category, key, value in (("project_fact", "unity_version", "6000.3.15f1"), ("platform_fact", "requested_target", "Windows"), ("task_fact", "performance_symptom", "Main Thread frame time is high"), ("task_fact", "requested_scope", "Scene/Main"))]
 
     def test_profile_and_route_select_one_read_only_candidate_capability(self) -> None:
-        profile = load_candidate_profile("performance_subagent")
-        self.assertEqual((profile["profile_id"], profile["display_name"]), ("performance_subagent", "PerformanceSubAgent"))
+        profile = load_candidate_profile("qa_subagent")
+        self.assertEqual((profile["profile_id"], profile["display_name"]), ("qa_subagent", "QASubAgent"))
         self.assertEqual(profile["capabilities"], ["performance.analyze"])
         self.assertEqual(profile["required_evidence"], ["performance_analysis"])
         production = build_capability_requests(route_id="performance-experiment", project_root="/fixture", active_conditions={"project_fact_needed"})
@@ -33,10 +33,10 @@ class PerformanceCandidateTests(unittest.TestCase):
         self.assertEqual([request["capability"] for request in semantic], ["performance.analyze"])
         self.assertEqual(select_specialist_capability("performance-experiment", production + semantic), "performance.analyze")
         selected = resolve_specialist("performance-experiment", "performance.analyze", self.snapshot, context_items=self.items)
-        self.assertEqual((selected["status"], selected["profile_id"], selected["receipt_required"]), ("selected", "performance_subagent", True))
+        self.assertEqual((selected["status"], selected["profile_id"], selected["receipt_required"]), ("selected", "qa_subagent", True))
         registry = yaml.safe_load((ROOT / "src/unityagent/runtime/tooling/provider_registry.yaml").read_text(encoding="utf-8"))
         self.assertFalse(any("performance.analyze" in provider.get("capabilities", {}) for provider in registry["providers"].values()))
-        self.assertFalse(any("performance_subagent" in str(provider) for provider in registry["providers"].values()))
+        self.assertFalse(any("qa_subagent" in str(provider) for provider in registry["providers"].values()))
 
     def test_missing_context_unsupported_version_and_disabled_pilot_are_distinct(self) -> None:
         missing = resolve_specialist("performance-experiment", "performance.analyze", self.snapshot, context_items=self.items[:1])
@@ -51,7 +51,7 @@ class PerformanceCandidateTests(unittest.TestCase):
 
     def test_pinned_hub_contract_matches_consumer_boundary(self) -> None:
         hub = yaml.safe_load((ROOT / "tests/runtime/fixtures/hub-performance-candidate-contract.yaml").read_text(encoding="utf-8"))
-        profile = load_candidate_profile("performance_subagent")
+        profile = load_candidate_profile("qa_subagent")
         self.assertEqual(hub["status"], "pilot_unregistered")
         self.assertEqual(hub["identity"], profile["profile_id"])
         self.assertEqual(set(hub["capabilities"]), set(profile["capabilities"]))

@@ -250,7 +250,8 @@ class UnityAgentControlPlane:
             route_decision = select_route(task_fingerprint, route_catalog)
             route_id = str(route_decision["route_id"])
             assigned_subagent = route_catalog['routes'][route_id].get('specialist_profile')
-            requested_subagent = entry_request.get('requested_subagent')
+            from unityagent.orchestration.routing.subagent_identity import canonical_subagent_id
+            requested_subagent = canonical_subagent_id(entry_request.get('requested_subagent'))
             if requested_subagent is not None and requested_subagent != assigned_subagent:
                 raise ValueError('requested SubAgent is incompatible with resolved task ownership')
             conditions = conditions_for_intent(intent, task_fingerprint)
@@ -633,6 +634,14 @@ class UnityAgentControlPlane:
             "state_ref": state_ref,
             "workflow_state_ref": workflow_state_ref,
         }
+
+    def execute_tasks(self, tasks, *, run_id, definition_fingerprint, task_parameters, resume=False):
+        """既存RuntimeへTask単位で渡し、固定Acceptanceを満たす依存だけを開く。"""
+        from unityagent.control_plane.task_execution import execute_task_dag
+        from unityagent.persistence.store.atomic_store import exclusive_file_lock
+        with exclusive_file_lock(self.state_store.layout.run_root(run_id) / "task-execution.lock"):
+            return execute_task_dag(self, tasks, run_id=run_id,
+                definition_fingerprint=definition_fingerprint, task_parameters=task_parameters, resume=resume)
 
     def setup(
         self,

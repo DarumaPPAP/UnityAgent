@@ -17,6 +17,8 @@ properties:
     const: "1.0"
   capability:
     enum:
+      - editor.hot_reload
+      - world.create
       - project.inspect
       - source.read
       - source.patch

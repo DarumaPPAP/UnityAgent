@@ -69,6 +69,18 @@ class StateStore:
             raise PersistenceError("state_identity_mismatch", "LoopControlState identity does not match path")
         return record
 
+    def save_task_state(self, record: dict[str, Any]) -> str:
+        _require(record, {"schema_version", "run_id", "contract_digest", "definition_fingerprint", "tasks", "project_revisions"}, "TaskState")
+        path = self.layout.run_root(record["run_id"]) / "current/task-state.json"
+        atomic_write_json(path, deepcopy(record))
+        return relative_ref(self.layout.root, path)
+
+    def load_task_state(self, run_id: str) -> dict[str, Any]:
+        record = read_json(self.layout.run_root(run_id) / "current/task-state.json")
+        if record.get("run_id") != run_id:
+            raise PersistenceError("state_identity_mismatch", "TaskState run_id differs")
+        return record
+
     def snapshot_run(self, run_id: str, loop_ids: list[str]) -> tuple[dict[str, str], dict[str, str]]:
         """Snapshot current state to content-addressed immutable files."""
         records: dict[str, dict[str, Any]] = {

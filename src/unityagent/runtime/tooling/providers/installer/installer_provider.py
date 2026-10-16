@@ -28,6 +28,8 @@ PRODUCTS = frozenset({
     "unity_artist_cli",
     "codex_cli",
     "unity_agent_codex_plugin",
+    "blender_mcp",
+    "unity_cli_loop",
 })
 PACKAGE_IDS = ("com.darumappap.artist-subagent",)
 CHANNEL = "0.0.8-beta"
@@ -227,6 +229,14 @@ class InstallerProvider:
         }
 
     def _product_observation(self, product: str, request: Mapping[str, Any]) -> dict[str, Any]:
+        if product in {"blender_mcp", "unity_cli_loop"}:
+            executable = self.which_fn("blender-mcp" if product == "blender_mcp" else "uloop")
+            return {"product": product, "status": "installed" if executable else "unavailable",
+                    "version": None, "location": executable, "source": "PATH", "sha256": None,
+                    "protocol": "unknown", "project_binding": "unknown", "revision": "unknown",
+                    "capabilities": [], "connection": "not_observed",
+                    "reason": "live_probe_required" if executable else "optional_backend_unavailable",
+                    "message": "Discovery does not authorize installation or execution; live protocol/binding probe required."}
         if product == "official_unity_cli":
             executable = self.which_fn("unity") or self.which_fn("unity-cli")
             available = bool(executable)
@@ -318,7 +328,7 @@ class InstallerProvider:
             return "blocked_by_observation"
         if status == "verified":
             return "verify"
-        if product == "codex_cli":
+        if product in {"codex_cli", "blender_mcp", "unity_cli_loop"}:
             return "manual_required"
         if product == "unity_agent_codex_plugin" and entry.get("reason") in {
             "codex_cli_unavailable",

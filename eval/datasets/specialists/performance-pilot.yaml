@@ -1,6 +1,6 @@
 schema_version: '1.0'
 kind: specialist_pilot_cases
-specialist_candidate: performance_subagent
+specialist_candidate: qa_subagent
 status: pending_live_evaluation
 promotion_decision: requires_human_review
 comparison_arms:

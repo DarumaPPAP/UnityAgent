@@ -27,6 +27,8 @@ PRODUCTS = (
     "unity_artist_cli",
     "codex_cli",
     "unity_agent_codex_plugin",
+    "blender_mcp",
+    "unity_cli_loop",
 )
 CHANNEL = "0.0.8-beta"
 
@@ -65,6 +67,33 @@ def _default_state_root() -> Path:
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="UnityAgent Control Plane host")
     subparsers = parser.add_subparsers(dest="command", required=True)
+    hot = subparsers.add_parser("hot-reload", help="Optional CLI Loop V3; 通常Compile/QAは別Gate")
+    hot.add_argument("operation", choices=("plan", "approve", "apply"))
+    hot.add_argument("--project-path", required=True)
+    hot.add_argument("--state-root", type=Path, default=_default_state_root())
+    hot.add_argument("--file", action="append", default=[])
+    hot.add_argument("--runner-path", type=Path)
+    hot.add_argument("--runner-sha256")
+    hot.add_argument("--plan-id")
+    hot.add_argument("--approval-ref")
+    rock = subparsers.add_parser("rock", help="承認済み固定TemplateによるBlender MCP岩制作")
+    rock.add_argument("operation", choices=("plan", "approve", "apply"))
+    rock.add_argument("--project-path", required=True)
+    rock.add_argument("--state-root", type=Path, default=_default_state_root())
+    rock.add_argument("--job-id", default="rock-g1")
+    rock.add_argument("--plan-id")
+    rock.add_argument("--approval-ref")
+    rock.add_argument("--mcp-executable", type=Path)
+    rock_import = subparsers.add_parser("rock-import", help="承認済みFBXのProduction Editor Import/復旧")
+    rock_import.add_argument("operation", choices=("plan", "approve", "apply", "rollback"))
+    rock_import.add_argument("--project-path", required=True)
+    rock_import.add_argument("--state-root", type=Path, default=_default_state_root())
+    rock_import.add_argument("--job-id", default="rock-g1")
+    rock_import.add_argument("--plan-id")
+    rock_import.add_argument("--kind", choices=("mutation", "save", "rollback"))
+    rock_import.add_argument("--approval-ref")
+    rock_import.add_argument("--save-approval-ref")
+    rock_import.add_argument("--rollback-approval-ref")
     e2e = subparsers.add_parser("e2e", help="固定のUnity Editor Full E2E検証")
     e2e.add_argument("operation", choices=("plan", "approve", "approve-save", "apply"))
     e2e.add_argument("--project-path", required=True)
@@ -98,6 +127,64 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = _parse_args()
+    if args.command == "hot-reload":
+        from unityagent.control_plane.hot_reload import plan_hot_reload, approve_hot_reload, apply_hot_reload
+        try:
+            if args.operation == "plan":
+                if not args.runner_path or not args.runner_sha256:
+                    raise ValueError("A reviewed installed project runner path and SHA-256 are required; setup is explicit")
+                result = {"status":"planned", **plan_hot_reload(args.project_path,args.state_root,
+                    args.file,args.runner_path,args.runner_sha256,_fingerprint())}
+            elif args.operation == "approve":
+                result = {"status":"approved", **approve_hot_reload(args.state_root,args.plan_id or "")}
+            else:
+                result = apply_hot_reload(UnityAgentControlPlane(args.state_root),args.plan_id or "",args.approval_ref or "", definition_fingerprint=_fingerprint())
+        except (ValueError, OSError, PersistenceError) as exc:
+            result = {"status":"blocked","reason":str(exc),"gate":"BLOCKED_NOT_RUN"}
+        print(json.dumps(result,ensure_ascii=False,indent=2))
+        return 0 if result["status"] in {"planned","approved"} or result.get("acceptance") == "verified" else 1
+    if args.command == "rock-import":
+        from unityagent.control_plane.rock_import import (
+            plan_rock_import, approve_rock_import, apply_rock_import, rollback_rock_import)
+        try:
+            if args.operation == "plan":
+                result = {"status":"planned", **plan_rock_import(args.project_path,args.state_root,
+                    args.job_id,_fingerprint())}
+            elif args.operation == "approve":
+                decision = approve_rock_import(args.state_root,args.plan_id or "",args.kind or "")
+                result = {"status":"approved",**decision}
+            elif args.operation == "apply":
+                result = apply_rock_import(UnityAgentControlPlane(args.state_root),args.plan_id or "",
+                    args.approval_ref or "",args.save_approval_ref or "",
+                    definition_fingerprint=_fingerprint())
+            else:
+                result = rollback_rock_import(UnityAgentControlPlane(args.state_root),
+                    args.plan_id or "",args.rollback_approval_ref or "",
+                    definition_fingerprint=_fingerprint())
+        except (ValueError, OSError, PersistenceError) as exc:
+            result = {"status":"blocked","reason":str(exc),"gate":"BLOCKED_NOT_RUN"}
+        print(json.dumps(result,ensure_ascii=False,indent=2))
+        return 0 if result.get("status") in {"planned","approved","completed"} else 1
+    if args.command == "rock":
+        from unityagent.control_plane.rock_artifact import plan_rock, approve_rock, apply_rock
+        from unityagent.runtime.tooling.providers.blender_mcp.stdio_client import McpStdioClient
+        import shutil
+        try:
+            if args.operation == "plan":
+                result = {"status": "planned", **plan_rock(args.project_path, args.state_root, args.job_id, _fingerprint())}
+            elif args.operation == "approve":
+                result = {"status": "approved", **approve_rock(args.state_root, args.plan_id or "")}
+            else:
+                executable = str(args.mcp_executable) if args.mcp_executable else shutil.which("blender-mcp")
+                if not executable or not Path(executable).is_file():
+                    raise ValueError("Blender MCP server unavailable; installation requires explicit setup approval")
+                with McpStdioClient([executable]) as client:
+                    result = apply_rock(UnityAgentControlPlane(args.state_root), args.plan_id or "",
+                        args.approval_ref or "", client, definition_fingerprint=_fingerprint())
+        except (ValueError, OSError, PersistenceError) as exc:
+            result = {"status": "blocked", "reason": str(exc), "gate": "BLOCKED_NOT_RUN"}
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0 if result["status"] in {"planned", "approved", "completed"} else 1
     if args.command == "e2e":
         try:
             if args.operation == "plan":

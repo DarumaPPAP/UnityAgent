@@ -1,0 +1,227 @@
+{
+  "schema_version": "1.0",
+  "status": "blocked",
+  "goal_complete": false,
+  "baseline": "4747fd3f82e5a9c0be191d606f7827a16c8eef90",
+  "prs": {
+    "195": "https://github.com/DarumaPPAP/UnityAgent/pull/195",
+    "196": "https://github.com/DarumaPPAP/UnityAgent/pull/196",
+    "197": "https://github.com/DarumaPPAP/UnityAgent/pull/197",
+    "198": "https://github.com/DarumaPPAP/UnityAgent/pull/198"
+  },
+  "host_validation": {
+    "result": "passed",
+    "suites": 13,
+    "test_executions": 725,
+    "passed_tests": 724,
+    "skipped_tests": 1,
+    "tested_source_commit": "7e02b629149d88ff7e8b6b76ab7f202873376a9d"
+  },
+  "installed_wheel_proof": {
+    "status": "passed",
+    "resource_hashes_verified": 258
+  },
+  "blender_template": {
+    "status": "passed",
+    "evidence_level": "blender_template_validation",
+    "production_mcp": "BLOCKED_NOT_RUN",
+    "vertices": 42,
+    "triangles": 80,
+    "dimensions": [
+      1.0679830312728882,
+      0.8199999332427979,
+      0.7434189319610596
+    ],
+    "uv_layers": 1,
+    "sha256": "b79d0237a8ecd453447db7a2f12d09992e1d213aeb71137d99789ce6f502038c",
+    "blender_version": "4.3.2"
+  },
+  "production_acceptance": {
+    "schema_version": "1.0",
+    "source_revision": "f313b2e86c5dcca17d6c6edc8bed75b7830b848e",
+    "artifact_hash": "b79d0237a8ecd453447db7a2f12d09992e1d213aeb71137d99789ce6f502038c",
+    "status": "blocked",
+    "gates": {
+      "production_runtime": {
+        "status": "BLOCKED_NOT_RUN",
+        "reason": "Required observation not available"
+      },
+      "blender_mcp": {
+        "status": "BLOCKED_NOT_RUN",
+        "reason": "Required observation not available"
+      },
+      "artifact_integrity": {
+        "status": "BLOCKED_NOT_RUN",
+        "reason": "Required observation not available"
+      },
+      "unity_compile": {
+        "status": "BLOCKED_NOT_RUN",
+        "reason": "Required observation not available"
+      },
+      "import_prefab_scene_guid": {
+        "status": "BLOCKED_NOT_RUN",
+        "reason": "Required observation not available"
+      },
+      "render_capture": {
+        "status": "BLOCKED_NOT_RUN",
+        "reason": "Required observation not available"
+      },
+      "visual_acceptance": {
+        "status": "BLOCKED_NOT_RUN",
+        "reason": "Required observation not available"
+      },
+      "rollback": {
+        "status": "BLOCKED_NOT_RUN",
+        "reason": "Required observation not available"
+      },
+      "lease_conflict": {
+        "status": "BLOCKED_NOT_RUN",
+        "reason": "Required observation not available"
+      },
+      "video_decode": {
+        "status": "BLOCKED_NOT_RUN",
+        "reason": "Required observation not available"
+      },
+      "hot_reload_comparison": {
+        "status": "BLOCKED_NOT_RUN",
+        "reason": "Required observation not available"
+      },
+      "g2": {
+        "status": "BLOCKED_NOT_RUN",
+        "reason": "Required observation not available"
+      },
+      "g3": {
+        "status": "BLOCKED_NOT_RUN",
+        "reason": "Required observation not available"
+      }
+    },
+    "token_usage": "unmeasured",
+    "latency_comparison": "unmeasured"
+  },
+  "hot_reload_comparison": {
+    "status": "BLOCKED_NOT_RUN",
+    "reason": "No measured paired trials",
+    "enable_by_default": false,
+    "tokens": "unmeasured",
+    "latency": "unmeasured"
+  },
+  "evidence_files": {
+    "/workspace/unityagent-evidence/wheel-proof.log": {
+      "bytes": 5850,
+      "sha256": "aafc9b92c8578f574e4314c2cec94fd68c368975a5e61422d8ee807aff0b1652"
+    },
+    "/workspace/unityagent-evidence/hot-reload-preflight.json": {
+      "bytes": 155,
+      "sha256": "d826aceb8547be74d4407a5ffe4ea6250f0c6477c749d8f1cc7ce503cffa086b"
+    },
+    "/workspace/unityagent-evidence/acceptance.json": {
+      "bytes": 1830,
+      "sha256": "6c26174b4c4e9708c947b06cefe1f786a6dd644c3438a0f60aa1a13716fc30a8"
+    },
+    "/workspace/unityagent-evidence/validation.log": {
+      "bytes": 7586,
+      "sha256": "b5e15160e97ae332cb09dfcd44c9e6b9228337959d53ef2cdaad6609c7389595"
+    },
+    "/workspace/unityagent-evidence/doctor.json": {
+      "bytes": 2749,
+      "sha256": "4a619e0354731ae79a3d3c5d557c097febf68beac0913881be0e5585b295bc79"
+    },
+    "/workspace/unityagent-evidence/hot-reload-comparison.json": {
+      "bytes": 158,
+      "sha256": "3467c42df78421886be876e907555d720ec6d2e8383688ba280b2605546838c1"
+    },
+    "/workspace/unityagent-evidence/wheel-build.log": {
+      "bytes": 264667,
+      "sha256": "21f08811082492ae4a836f69485d68d47bcdab05fa1ad916318ad5928e5a8689"
+    },
+    "/workspace/unityagent-evidence/iteration-samples.json": {
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    "/workspace/unityagent-evidence/blender-template/export.log": {
+      "bytes": 558,
+      "sha256": "0c1c2caccd1de0fc8af0ec6640b65af42c5730945fbe1c9ad9f5477de4f366ef"
+    },
+    "/workspace/unityagent-evidence/blender-template/Rock.fbx": {
+      "bytes": 18332,
+      "sha256": "b79d0237a8ecd453447db7a2f12d09992e1d213aeb71137d99789ce6f502038c"
+    },
+    "/workspace/unityagent-evidence/blender-template/make_rock.py": {
+      "bytes": 1908,
+      "sha256": "29546075de7eb23e527d6dced893962e72b60a9a2a98e5101a6c24ddb527eafc"
+    },
+    "/workspace/unityagent-evidence/blender-template/artifact.json": {
+      "bytes": 415,
+      "sha256": "9da02cc410cf07c5c79cd8db0cbff92b3ce63853ae7d17a9aef207c5c7009710"
+    },
+    "/workspace/unityagent-evidence/blender-template/fbx-reimport.log": {
+      "bytes": 384,
+      "sha256": "36fea25e912b986f66f6c4f7fb7fedae6b6ed4f635d32ea9595fdcf60e8fb350"
+    },
+    "/workspace/unityagent-evidence/blender-template/inspect_fbx.py": {
+      "bytes": 985,
+      "sha256": "65f3913b1ed6ba71b7a22dd5500af1525ef5c2f3cd2c15c941a743f73fe53526"
+    },
+    "/workspace/unityagent-evidence/blender-template/fbx-reimport.json": {
+      "bytes": 374,
+      "sha256": "0c3bfd3f227dfa33ff8d3fd7dcb8d1b0caf7a778f48c2c2d92559bb072b4862c"
+    }
+  },
+  "definition_fingerprint": {
+    "schema_version": "1.0",
+    "architecture_version": "sha256:9e2e4cad7d40c74d",
+    "policy_revision": "sha256:7ecd6438af16a9cf",
+    "prompt_revision": "sha256:60fcb1c9fd9d37fb",
+    "context_revision": "sha256:8f921af9d6d75c55",
+    "graph_revision": "sha256:136d12e4113f927e",
+    "runtime_profile_revision": "sha256:5d09245f5ffb8533",
+    "tool_schema_revision": "sha256:c0b2e898eda3b490",
+    "checkpoint_schema_revision": "sha256:654b730daa36a4ce",
+    "evidence_schema_revision": "sha256:b60bb3ff2d97ff44",
+    "eval_contract_revision": "sha256:62363c8eae7c99f8"
+  },
+  "portable_evidence_root": "docs/decisions/production-e2e/evidence",
+  "ci": {
+    "195": {
+      "commit": "84c672ea89beb38a593f772a55cea43fc23ab8b6",
+      "status": "passed",
+      "run": 38805286894
+    },
+    "196": {
+      "commit": "0790a8d0204e75c2ce6fe4ec5bf23a5e66a3bc8f",
+      "status": "passed",
+      "run": 38807469893
+    },
+    "197": {
+      "commit": "067fdb3a83b8562bfeca8721a13d30b1f78cc61c",
+      "status": "passed",
+      "run": 38807521141
+    },
+    "198": {
+      "commit": "661512c8d717eed5d2947f844ad61da350331c05",
+      "status": "passed",
+      "run": 38807711945
+    }
+  },
+  "initial_implementation_revisions": {
+    "feature/production-e2e-integration": "84c672ea89beb38a593f772a55cea43fc23ab8b6",
+    "feature/production-e2e-backends": "0790a8d0204e75c2ce6fe4ec5bf23a5e66a3bc8f",
+    "feature/production-e2e-g1": "067fdb3a83b8562bfeca8721a13d30b1f78cc61c",
+    "feature/production-e2e-hot-reload": "661512c8d717eed5d2947f844ad61da350331c05"
+  },
+  "implementation_revisions": {
+    "feature/production-e2e-integration": "84c672ea89beb38a593f772a55cea43fc23ab8b6",
+    "feature/production-e2e-backends": "e85892a12addbfa9dbd4672602b8dc7551cdca97",
+    "feature/production-e2e-g1": "5ce27a4dacbf9678867351fbee4ef900e041266a",
+    "feature/production-e2e-hot-reload": "443863196350873ccb87b0dcfcd13e86f0aadd29"
+  },
+  "session_binding_followup": {
+    "status": "host_verified; CI pending at report creation",
+    "source_commit": "7e02b629149d88ff7e8b6b76ab7f202873376a9d",
+    "requirements": [
+      "observed remote Blender session identity",
+      "Host shared Session lock across Persistence roots"
+    ],
+    "tests": 6
+  }
+}

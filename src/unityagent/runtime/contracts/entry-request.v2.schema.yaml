@@ -75,4 +75,4 @@ properties:
         target_scope: {const: Assets/UnityAgentE2E}
   approval_ref: {type: [string, 'null'], minLength: 1}
   requested_subagent:
-    enum: [artist_subagent, graphics_subagent, performance_subagent, world_creator_subagent]
+    enum: [artist_subagent, graphics_subagent, qa_subagent, performance_subagent, world_creator_subagent]
