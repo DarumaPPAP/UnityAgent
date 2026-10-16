@@ -85,3 +85,10 @@ This remains a beta release and may include breaking changes before 1.0.
 - Control Plane records Adaptive Fast/Standard selection without creating extra agents or worktrees for inspection.
 - OS-owned Project leases serialize cooperating Control Plane runs through execution and Evidence persistence.
 - Multi-task execution, device queues and mutating specialist E2E are not yet enabled; real Editor/console observations remain separate from host validation.
+
+## Release qualification and G1 status
+
+- Beta release requires G0 contracts plus Unity 6.3 LTS P9 Editor evidence for the exact release commit.
+- P9 evidence does **not** verify the Blender → FBX → Unity → QA → rollback production workflow.
+- G1 remains `BLOCKED_NOT_RUN` until separate, independent Private CI approvals and all nine gates are observed.
+- Unverified Production E2E capabilities must not be advertised or automatically enabled as verified production functionality.

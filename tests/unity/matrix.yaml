@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "canonical_editor": "6000.6.0f1",
+  "canonical_editor": "6000.3.12f1",
   "observation": "not_observed",
   "package_policy": "official-registry-stable-17-exact-editor-stream",
   "fixtures": [
@@ -32,6 +32,19 @@
         "path": "Templates/com.unity.template-hd/ProjectSettings/ProjectVersion.txt",
         "revision": "fca03ac9b0d5"
       }
+    },
+    {
+      "id": "p9-lts-urp",
+      "project": "tests/unity/projects/production-e2e",
+      "editor": "6000.3.12f1",
+      "pipeline": "urp",
+      "scope": "lts-preflight",
+      "test_filter": "UnityAgent.Production.LtsPreflightTests.UrpRenderGraphCapture",
+      "requires_graphics": true,
+      "required_artifacts": [
+        "pipeline-smoke.png",
+        "graphics-device.json"
+      ]
     },
     {
       "id": "builtin-smoke",

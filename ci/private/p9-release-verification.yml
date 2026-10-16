@@ -1,0 +1,55 @@
+# 非公開の実行リポジトリでだけ使用する、G1とは独立したP9証跡生成。
+# Public PRやG1 Production E2E workflowには接続しない。
+name: UnityAgent P9 Release Verification
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p9-release-verification
+  cancel-in-progress: false
+
+jobs:
+  editor:
+    runs-on: [self-hosted, Windows, unity-6000.3.12f1, private-only]
+    timeout-minutes: 90
+    environment: p9-verification
+    steps:
+      - name: レビュー済みUnityAgentの固定Commitを取得
+        uses: actions/checkout@v4
+        with:
+          repository: DarumaPPAP/UnityAgent
+          ref: ${{ vars.UNITYAGENT_APPROVED_SHA }}
+          persist-credentials: false
+          path: unityagent-source
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Editor、ソース、同一ユーザーの実行環境を確認
+        shell: pwsh
+        run: |
+          $expected = "${{ vars.UNITYAGENT_APPROVED_SHA }}"
+          if ($expected -cnotmatch '^[a-f0-9]{40}$') { throw 'Approved SHA must be a full 40-character commit' }
+          $actual = (git -C unityagent-source rev-parse HEAD).Trim()
+          if ($actual -cne $expected) { throw 'Source checkout is not the reviewed SHA' }
+          if (-not (Test-Path $env:UNITY_EDITOR -PathType Leaf)) { throw 'BLOCKED_NOT_RUN: Unity Editor unavailable' }
+          if ($env:UNITY_LICENSE_READY -ne 'true' -or $env:UNITY_GRAPHICS_READY -ne 'true') {
+            throw 'BLOCKED_NOT_RUN: actual license and graphics preparation are required'
+          }
+      - name: P9 Unity 6.3 LTS実Editor・URP・RenderGraph描画
+        shell: pwsh
+        run: |
+          # テストのsource_identityはPrivate側RepoのGITHUB_SHAではなく、検証したUnityAgent SHA。
+          $env:GITHUB_SHA = "${{ vars.UNITYAGENT_APPROVED_SHA }}"
+          python unityagent-source/tests/unity/verify/unity_ci.py --fixture p9-lts-urp --output "$env:RUNNER_TEMP/p9-lts-urp" --editor "$env:UNITY_EDITOR"
+          if ($LASTEXITCODE -ne 0) { throw "P9 failed or blocked (exit=$LASTEXITCODE)" }
+      - name: 個人情報・ゲームAssetを含まないP9検証証跡のみを保存
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unityagent-p9-lts-urp
+          path: ${{ runner.temp }}/p9-lts-urp/
+          if-no-files-found: error
+          retention-days: 30

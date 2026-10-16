@@ -8,6 +8,10 @@ on:
         required: true
         type: boolean
         default: false
+      p9_evidence_run_id:
+        description: Private P9 verification run ID for this exact UnityAgent commit
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -244,7 +248,33 @@ jobs:
             done
           )
 
-      - name: Configure Git identity
+      - name: Verify private P9 Unity 6.3 LTS Editor evidence (fail closed before tag)
+        env:
+          GH_TOKEN: ${{ secrets.UNITYAGENT_P9_EVIDENCE_TOKEN }}
+          P9_REPO: ${{ vars.UNITYAGENT_P9_REPOSITORY }}
+          P9_RUN_ID: ${{ inputs.p9_evidence_run_id }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$P9_RUN_ID" =~ ^[1-9][0-9]{0,15}$ ]]; then
+            echo "::error::P9 run ID must be a positive decimal GitHub Actions run ID"
+            exit 1
+          fi
+          if [[ ! "$P9_REPO" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || [[ -z "$GH_TOKEN" ]]; then
+            echo "::error::Private P9 evidence repository and read-only token are required"
+            exit 1
+          fi
+          mkdir -p .p9-evidence
+          gh api "repos/$P9_REPO/actions/runs/$P9_RUN_ID" > .p9-evidence/run.json
+          python3 -c 'import json,os,sys; d=json.load(open(".p9-evidence/run.json")); sys.exit(0 if d.get("conclusion") == "success" and d.get("event") == "workflow_dispatch" and d.get("head_branch") == "main" and d.get("name") == "UnityAgent P9 Release Verification" and "/.github/workflows/p9-release-verification.yml@" in d.get("path", "") else 1)'
+          mkdir -p .p9-evidence/artifact
+          gh run download "$P9_RUN_ID" --repo "$P9_REPO" --name unityagent-p9-lts-urp --dir .p9-evidence/artifact
+          python3 tools/release/verify_p9_evidence.py \
+            --evidence .p9-evidence/artifact \
+            --run-metadata .p9-evidence/run.json \
+            --source-sha "$GITHUB_SHA" \
+            --repository "$P9_REPO" \
+            --run-id "$P9_RUN_ID"
+
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
