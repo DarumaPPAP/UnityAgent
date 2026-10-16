@@ -32,7 +32,7 @@
     },
     "profile_id": {
       "type": "string",
-      "const": "performance_subagent"
+      "const": "qa_subagent"
     },
     "capability": {
       "type": "string",

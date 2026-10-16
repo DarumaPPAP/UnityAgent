@@ -25,7 +25,7 @@ class ColocatedSubagentSourceTests(unittest.TestCase):
         snapshot = export_hub_snapshot(ROOT)
         self.assertEqual(
             {item["manifest"]["identity"]["id"] for item in snapshot["specialists"]},
-            {"artist_subagent", "graphics_subagent", "performance_subagent", "world_creator_subagent"},
+            {"artist_subagent", "graphics_subagent", "qa_subagent", "world_creator_subagent"},
         )
         for item in snapshot["specialists"]:
             self.assertIsNotNone(HUB_MANIFEST_REF.fullmatch(item["manifest_ref"]))
@@ -39,7 +39,7 @@ class ColocatedSubagentSourceTests(unittest.TestCase):
         self.assertTrue(_same_hub_contract_ref(old, canonical))
         self.assertTrue(_same_hub_contract_ref(canonical, legacy))
         self.assertFalse(_same_hub_contract_ref(
-            "subagent/performance_subagent/instructions.md", old))
+            "subagent/qa_subagent/instructions.md", old))
 
 if __name__ == "__main__":
     unittest.main()

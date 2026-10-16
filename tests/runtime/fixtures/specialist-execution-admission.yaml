@@ -23,7 +23,7 @@ specialists:
       reasoning_only: rejected_rendering_claims_require_observations
       reasoning_with_tools: admitted
     known_limitations: [runtime_levels_require_matching_observation, no_visual_acceptance, no_mutation]
-  - profile_id: performance_subagent
+  - profile_id: qa_subagent
     semantic_capabilities: [performance.analyze]
     execution_model: reasoning
     required_observation_capabilities: [profiler.observe]

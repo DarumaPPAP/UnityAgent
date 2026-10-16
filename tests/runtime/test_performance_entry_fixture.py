@@ -75,7 +75,7 @@ class PerformanceEntryFixtureTests(unittest.TestCase):
         self.assertFalse(any(item["key"] == "requested_target" for item in inputs["specialist_items"]))
         self.assertTrue(all(item["tags"] == ["performance"] for item in inputs["specialist_items"]))
         self.assertIn("task_fact:analysis_mode", {f"{item['category']}:{item['key']}" for item in inputs["specialist_items"]})
-        selection = resolve_candidate(load_candidate_profile("performance_subagent"), capability, unknown, pilot_enabled=True, context_items=inputs["specialist_items"])
+        selection = resolve_candidate(load_candidate_profile("qa_subagent"), capability, unknown, pilot_enabled=True, context_items=inputs["specialist_items"])
         self.assertEqual(selection["reason_code"], "required_context_missing")
 
     def test_production_control_plane_blocks_unavailable_observation_environment(self) -> None:
@@ -88,13 +88,13 @@ class PerformanceEntryFixtureTests(unittest.TestCase):
         entry = self.entry("GPU frame time is high after RendererFeature pass")
         _, route, conditions, production, candidate, capability, inputs = self.route_and_context(entry)
         self.assertEqual((route["route_id"], [item["capability"] for item in candidate]), ("performance-experiment", ["performance.analyze"]))
-        selection = resolve_candidate(load_candidate_profile("performance_subagent"), capability, self.snapshot, pilot_enabled=True, context_items=inputs["specialist_items"])
+        selection = resolve_candidate(load_candidate_profile("qa_subagent"), capability, self.snapshot, pilot_enabled=True, context_items=inputs["specialist_items"])
         self.assertEqual(selection["status"], "selected")
         manifest = build_context_manifest("performance-fixture", route["route_id"], project_facts=inputs["project_facts"], bindings=inputs["bindings"], capability_ids=[item["capability"] for item in production], active_conditions=conditions, specialist_selection=selection, specialist_items=inputs["specialist_items"], specialist_tags=inputs["specialist_tags"], required_specialist_keys=inputs["required_specialist_keys"])
         view = manifest["materialized_context"]
         transported = {"context_id": view["context_id"], "context_fingerprint": view["context_fingerprint"]["value"], "specialist_context": copy.deepcopy(view["specialist_context"])}
         metadata = {"measurement_source": "none", "unity_version": "6000.3.15f1", "platform": "Windows", "graphics_api": "unknown", "capture_mode": "none", "build_type": "unknown", "scene_or_scope": "Scene/Main", "measurement_window": "unknown", "known_limitations": ["No GPU timing capture"], "validity": "not_measured"}
-        result = {"status": "completed", "profile_id": "performance_subagent", "capability": "performance.analyze", "confirmed_facts": ["User reports high GPU frame time"], "measurement_summary": {"metadata": metadata, "metrics": [], "baseline": None, "candidate": None, "delta": None}, "bottleneck_classification": "unknown", "hypotheses": ["RendererFeature may contribute to GPU cost"], "rejected_hypotheses": [], "required_observations": ["Capture GPU frame timing on target device"], "recommendations": ["Measure before changing Shader or RendererFeature"], "observed_evidence": [{"type": "performance_analysis", "source_ref": "fixture:performance-symptom", "observation": "Static analysis of user report only"}], "evidence_level": "static", "known_limitations": ["No live profiler, player, or target device result"], "received_context_id": view["context_id"], "received_context_fingerprint": view["context_fingerprint"]["value"], "runtime_evaluation": "NOT_EVALUATED_RUNTIME"}
+        result = {"status": "completed", "profile_id": "qa_subagent", "capability": "performance.analyze", "confirmed_facts": ["User reports high GPU frame time"], "measurement_summary": {"metadata": metadata, "metrics": [], "baseline": None, "candidate": None, "delta": None}, "bottleneck_classification": "unknown", "hypotheses": ["RendererFeature may contribute to GPU cost"], "rejected_hypotheses": [], "required_observations": ["Capture GPU frame timing on target device"], "recommendations": ["Measure before changing Shader or RendererFeature"], "observed_evidence": [{"type": "performance_analysis", "source_ref": "fixture:performance-symptom", "observation": "Static analysis of user report only"}], "evidence_level": "static", "known_limitations": ["No live profiler, player, or target device result"], "received_context_id": view["context_id"], "received_context_fingerprint": view["context_fingerprint"]["value"], "runtime_evaluation": "NOT_EVALUATED_RUNTIME"}
         self.assertEqual(verify_performance_read_only(manifest, transported, result)["receipt_integrity"], "verified")
         with self.assertRaisesRegex(PerformancePilotContractError, "received"):
             verify_performance_read_only(manifest, transported, {**result, "received_context_fingerprint": "sha256:wrong"})

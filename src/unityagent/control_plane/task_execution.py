@@ -23,20 +23,9 @@ def _acceptance(plane, result, gates, definition):
     effective = result.get('handoff', {}).get('definition_fingerprint', definition)
     if any(effective.get(k) != v for k, v in definition.items() if k not in {'policy_revision', 'context_revision'}):
         raise ValueError('Runtime definition revision differs')
-    observations = set()
-    failed = unavailable = False
-    for ref in result.get('evidence_refs', []):
-        record = plane.evidence_store.get(ref)
-        if record['run_id'] != result['run_id'] or record['definition_fingerprint'] != effective:
-            raise ValueError('Evidence task or definition revision mismatch')
-        status = record['verification_status']
-        failed |= status == 'failed'
-        unavailable |= status == 'unavailable'
-        if status == 'passed' and record.get('observation_state') == 'observed' and record.get('completion') == 'verified':
-            observations.update(record.get('observed_evidence', []))
-    return {gate: 'passed' if set(required) <= observations else
-            'failed' if failed else 'unavailable' if unavailable else 'not_observed'
-            for gate, required in gates.items()}
+    from unityagent.orchestration.qa.task_acceptance import assess_task
+    return assess_task([plane.evidence_store.get(ref) for ref in result.get('evidence_refs', [])],
+        required_gates=gates, run_id=result['run_id'], definition_fingerprint=effective)['gates']
 
 
 def execute_task_dag(plane, tasks, *, run_id, definition_fingerprint, task_parameters, resume=False):
@@ -71,6 +60,14 @@ def execute_task_dag(plane, tasks, *, run_id, definition_fingerprint, task_param
             raise ValueError('Task goal is required')
         if identifier not in task_parameters or set(task_parameters[identifier]) & {'run_id', 'definition_fingerprint', 'entry_request'}:
             raise ValueError('Task runtime parameters missing or override identity')
+        candidates = task.get('repair_candidates', [])
+        repair_limit = task.get('semantic_repair_limit', 2)
+        if not isinstance(candidates, list) or isinstance(repair_limit, bool) or not isinstance(repair_limit, int) or repair_limit < 0:
+            raise ValueError('Semantic repair requires finite Task budget and fixed candidates')
+        for candidate in candidates:
+            validate_entry_request(candidate)
+            if Path(candidate['project_root']).resolve() != Path(project):
+                raise ValueError('Semantic repair cannot change Task Project')
         by_id[identifier] = task
     contract_digest = sha256_json(tasks)
     projects = sorted({str(Path(t['workspace']).resolve()) for t in tasks})
@@ -113,20 +110,53 @@ def execute_task_dag(plane, tasks, *, run_id, definition_fingerprint, task_param
                 raise ValueError('Project revision changed before Task dispatch')
             record['status'] = 'running'
             plane.state_store.save_task_state(state)
-            start = time.monotonic()
-            result = plane.execute(task['entry_request'], run_id=f'{run_id}-{identifier}',
-                                   definition_fingerprint=definition, **task_parameters[identifier])
-            record['latency_ms'] = (time.monotonic() - start) * 1000
-            record['result'] = result
-            record['gates'] = _acceptance(plane, result, task['required_gates'], definition)
-            record['status'] = 'verified' if result['status'] == 'completed' and all(
-                g == 'passed' for g in record['gates'].values()) else 'blocked'
-            proof = result.get('orchestration_decision_ref')
-            record['handoff_history'].append({'run_id': result['run_id'], 'decision_ref': proof,
-                                               'requested_subagent': task['entry_request'].get('requested_subagent')})
+            from unityagent.runtime.reference_implementation.authority import RuntimeBudgetLedger
+            from unityagent.orchestration.loop.semantic_loop import decide_semantic_loop
+            candidates = [task['entry_request'], *task.get('repair_candidates', [])]
+            ledger = RuntimeBudgetLedger({'max_global_replans': task.get('semantic_repair_limit', 2)})
+            prior_failure = None
+            for attempt, candidate in enumerate(candidates):
+                if attempt > task.get('semantic_repair_limit', 2):
+                    break
+                child_run = f'{run_id}-{identifier}' + (f'-repair{attempt}' if attempt else '')
+                safe_id(child_run, 'task_run_id')
+                record['status'] = 'running'
+                plane.state_store.save_task_state(state)
+                start = time.monotonic()
+                result = plane.execute(candidate, run_id=child_run,
+                    definition_fingerprint=definition, **task_parameters[identifier])
+                record['latency_ms'] = record.get('latency_ms', 0) + (time.monotonic() - start) * 1000
+                record['result'] = result
+                record['gates'] = _acceptance(plane, result, task['required_gates'], definition)
+                record['status'] = 'verified' if result['status'] == 'completed' and all(
+                    g == 'passed' for g in record['gates'].values()) else 'blocked'
+                record['handoff_history'].append({'run_id': result['run_id'],
+                    'decision_ref': result.get('orchestration_decision_ref'),
+                    'requested_subagent': candidate.get('requested_subagent')})
+                state['evidence_refs'].extend(result.get('evidence_refs', []))
+                state['project_revisions'] = {p: project_revision(p) for p in projects}
+                plane.state_store.save_task_state(state)
+                failures = [item.get('provider_result') or {} for item in result.get('results', [])]
+                failure = sha256_json([{'failure_class': f.get('failure_class'), 'reason': f.get('reason')} for f in failures])
+                # 不確定な外部副作用/環境不足/権限拒否は意味的修正で再送しない。
+                repairable = (record['status'] != 'verified' and 'failed' in record['gates'].values()
+                    and all(r.get('operation_kind') == 'read' for r in result.get('handoff', {}).get('capability_requests', []))
+                    and any(f.get('failure_class') == 'execution_failed' for f in failures)
+                    and all(f.get('failure_class') in {None, 'execution_failed'} for f in failures))
+                decision = decide_semantic_loop(
+                    {'id': identifier, 'continue_on': ['validation_failed'], 'replan_on': [], 'exit_on': ['passed']},
+                    outcome='passed' if record['status'] == 'verified' else 'validation_failed',
+                    semantic_attempt=attempt, progress_marker=failure,
+                    progress_made=failure != prior_failure, blocked=not repairable and record['status'] != 'verified')
+                record['semantic_decision'] = decision
+                if (decision['decision'] != 'continue' or attempt + 1 >= len(candidates)
+                        or attempt >= task.get('semantic_repair_limit', 2)):
+                    break
+                ledger.consume('global_replans')
+                record['semantic_retries'] += 1
+                prior_failure = failure
+            record['budget_counts'] = ledger.snapshot()
             state['execution_order'].append(identifier)
-            state['evidence_refs'].extend(result.get('evidence_refs', []))
-            state['project_revisions'] = {p: project_revision(p) for p in projects}
             plane.state_store.save_task_state(state)
     state['status'] = 'verified' if all(t['status'] == 'verified' for t in state['tasks'].values()) else 'blocked'
     state['updated_at'] = datetime.now(timezone.utc).isoformat()

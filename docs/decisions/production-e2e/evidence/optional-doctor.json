@@ -1,0 +1,38 @@
+{
+  "status": "completed",
+  "entries": [
+    {
+      "product": "blender_mcp",
+      "status": "unavailable",
+      "version": null,
+      "location": null,
+      "source": "PATH",
+      "sha256": null,
+      "protocol": "unknown",
+      "project_binding": "unknown",
+      "revision": "unknown",
+      "capabilities": [],
+      "connection": "not_observed",
+      "reason": "optional_backend_unavailable",
+      "message": "Discovery does not authorize installation or execution; live protocol/binding probe required."
+    },
+    {
+      "product": "unity_cli_loop",
+      "status": "unavailable",
+      "version": null,
+      "location": null,
+      "source": "PATH",
+      "sha256": null,
+      "protocol": "unknown",
+      "project_binding": "unknown",
+      "revision": "unknown",
+      "capabilities": [],
+      "connection": "not_observed",
+      "reason": "optional_backend_unavailable",
+      "message": "Discovery does not authorize installation or execution; live protocol/binding probe required."
+    }
+  ],
+  "evidence_refs": [
+    "run-doctor-7107-2b3d8219f4db-evidence-1"
+  ]
+}

@@ -1,6 +1,6 @@
-profile_id: performance_subagent
-display_name: PerformanceSubAgent
-audience: performance_subagent
+profile_id: qa_subagent
+display_name: QASubAgent
+audience: qa_subagent
 goal_type: performance.analyze
 capabilities: [performance.analyze]
 required_evidence: [performance_analysis]

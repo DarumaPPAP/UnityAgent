@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 class PerformancePilotDatasetTests(unittest.TestCase):
     def test_dataset_is_ready_for_three_arm_run_without_promotion_claim(self) -> None:
         dataset = yaml.safe_load((ROOT / "eval/datasets/specialists/performance-pilot.yaml").read_text(encoding="utf-8"))
-        self.assertEqual(dataset["specialist_candidate"], "performance_subagent")
+        self.assertEqual(dataset["specialist_candidate"], "qa_subagent")
         self.assertEqual(dataset["status"], "pending_live_evaluation")
         self.assertEqual(dataset["promotion_decision"], "requires_human_review")
         self.assertEqual(set(dataset["comparison_arms"]), {"A", "B", "C"})

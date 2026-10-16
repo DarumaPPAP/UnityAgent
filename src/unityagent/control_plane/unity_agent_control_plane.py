@@ -250,7 +250,8 @@ class UnityAgentControlPlane:
             route_decision = select_route(task_fingerprint, route_catalog)
             route_id = str(route_decision["route_id"])
             assigned_subagent = route_catalog['routes'][route_id].get('specialist_profile')
-            requested_subagent = entry_request.get('requested_subagent')
+            from unityagent.orchestration.routing.subagent_identity import canonical_subagent_id
+            requested_subagent = canonical_subagent_id(entry_request.get('requested_subagent'))
             if requested_subagent is not None and requested_subagent != assigned_subagent:
                 raise ValueError('requested SubAgent is incompatible with resolved task ownership')
             conditions = conditions_for_intent(intent, task_fingerprint)

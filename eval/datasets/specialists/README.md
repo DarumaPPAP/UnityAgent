@@ -2,7 +2,7 @@
 
 `graphics-pilot.yaml` はGraphicsSubAgentの評価ケース定義、`graphics-pilot-instructions.md` はC Arm専用のRead-only指示です。状態は `pending_live_evaluation` であり、Editor、Player、Target Deviceの実測結果を含みません。対象Unity Projectを決め、同じTaskと条件でA: UnityAgentのみ、B: Skill + deterministic Tool、C: Specialistを実行します。
 
-`performance-pilot.yaml` はPerformanceSubAgent候補のA/B/C評価ケース、`performance-pilot-instructions.md` はC ArmのRead-only指示です。CPU / GPU / GC / Memory / 比較 / Target固有の6ケースを定義します。DatasetとComparator入力だけを用意しており、Live実行とProduction昇格判断は未実施です。Promotionは`requires_human_review`です。
+`performance-pilot.yaml` はQASubAgent候補のA/B/C評価ケース、`performance-pilot-instructions.md` はC ArmのRead-only指示です。CPU / GPU / GC / Memory / 比較 / Target固有の6ケースを定義します。DatasetとComparator入力だけを用意しており、Live実行とProduction昇格判断は未実施です。Promotionは`requires_human_review`です。
 
 `world-creator-pilot.yaml`はWorldCreatorのDungeon / Boss Arena / Live Stage / Multi-zone / Existing Sceneの5ケースです。AはUnityAgent generic planning、BはWorld planning Skill、CはWorldCreator候補を比較します。Providerless C ArmではProvider Receiptを要求せず、Plan Artifactのsource Context ID / Fingerprintを検証します。Live評価は未実施で、Promotionは`requires_human_review`です。
 

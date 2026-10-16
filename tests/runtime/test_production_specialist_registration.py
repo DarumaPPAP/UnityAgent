@@ -26,7 +26,7 @@ class ProductionSpecialistRegistrationTests(unittest.TestCase):
 
     def test_registered_reasoning_profiles_have_no_semantic_tool_backends(self):
         self.assertEqual(CATALOG.schema_version, "3.0")
-        for identity, required in (("graphics_subagent", ["project.inspect", "source.read"]), ("world_creator_subagent", []), ("performance_subagent", ["profiler.observe"])):
+        for identity, required in (("graphics_subagent", ["project.inspect", "source.read"]), ("world_creator_subagent", []), ("qa_subagent", ["profiler.observe"])):
             with self.subTest(identity=identity):
                 profile = CATALOG.get(identity)
                 self.assertIsNone(profile.provider_id)
@@ -35,7 +35,7 @@ class ProductionSpecialistRegistrationTests(unittest.TestCase):
                 require_reasoning_output_contract(profile.execution["output_contract_ref"])
                 self.assertTrue((ROOT / profile.execution["instructions_ref"]).is_file())
         self.assertEqual(CATALOG.get("artist_subagent").provider_id, "unity_artist_cli")
-        self.assertTrue(CATALOG.get("performance_subagent").selection["capability_context"]["performance.analyze"]["receipt_required"])
+        self.assertTrue(CATALOG.get("qa_subagent").selection["capability_context"]["performance.analyze"]["receipt_required"])
 
     def test_production_routes_use_registered_semantic_owner(self):
         routes = yaml.safe_load((ROOT / "src/unityagent/orchestration/routing/task-routes.yaml").read_text(encoding="utf-8"))["routes"]

@@ -42,9 +42,9 @@ Entry、SubAgent、ProviderはこのAuthorityを迂回しません。
 | `artist_subagent` | provider-backed | `artist.camera.inspect`, `artist.camera.refine`, `visual.capture` | Artist backend activation facts |
 | `graphics_subagent` | reasoning | `graphics.inspect`, `graphics.diagnose`, `graphics.validate` | `project.inspect`, `source.read` |
 | `world_creator_subagent` | reasoning | `world.plan` | none |
-| `performance_subagent` | reasoning | `performance.analyze` | `profiler.observe` |
+| `qa_subagent` | reasoning | `performance.analyze` | `profiler.observe` |
 
-Graphics / WorldCreator / PerformanceはConsumer Catalog v3へ登録済みです。Hub Manifest v5 / Snapshot v3との整合は固定fixtureで検証します。
+Graphics / WorldCreator / QAのPerformance分析はConsumer Catalog v3へ登録済みです。Hub Manifest v5 / Snapshot v3との整合は固定fixtureで検証します。
 
 **登録済み != Live Production Verified** です。Repository fixtureやSchema PASSだけでEditor / Player / Target Device / Visual / Performance成功を主張しません。
 

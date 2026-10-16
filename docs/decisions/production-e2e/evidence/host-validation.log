@@ -1,0 +1,210 @@
+/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/site-packages/setuptools/config/_apply_pyprojecttoml.py:82: SetuptoolsDeprecationWarning: `project.license` as a TOML table is deprecated
+!!
+
+        ********************************************************************************
+        Please use a simple string containing a SPDX expression for `project.license`. You can also use `project.license-files`. (Both options available on setuptools>=77.0.0).
+
+        By 2027-Feb-18, you need to update your project and remove deprecated calls
+        or your builds will no longer be supported.
+
+        See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#license for details.
+        ********************************************************************************
+
+!!
+  corresp(dist, value, root_dir)
+running build_resources
+Repository layout: PASS
+SubAgent Hub contract: 0 error(s)
+Artist co-located backend identity: PASS
+Canonical user policy integrity: OK
+Stale legacy path guard: OK
+Loop Engineering validation passed.
+Capability contract foundation validation: OK
+Catalog Import Gate validation passed (checked-in catalog is a read-only no-op).
+Co-located SubAgent Catalog Gate PASS: co-located://subagent/registry.yaml
+Production Tool Runtime validation passed.
+UnityAgent five-layer validation passed.
+Repository authority validation: 0 error(s)
+Branch policy contract validation passed.
+Active documentation validation passed: 89 Markdown files.
+Context Explorer validation passed: 14 contexts / 6 relations / 7 concepts.
+Validated 31 Skills: 0 error(s), 0 warning(s), mode=advisory.
+Validated 17 Skill eval case(s) across 2 suite(s): 0 error(s).
+Validated 7 knowledge contract(s) and 15 task contract(s): 0 error(s), 0 warning(s).
+Context Pack validation passed: canonical catalog, packs, policy, skills and task contracts are coherent.
+Gate Catalog validation passed: 44 referenced gates / 44 catalog gates.
+Required Knowledge validation passed: 4 route contracts declare machine-readable knowledge requirements.
+Golden Task validation passed: 54 cases / 27 boundary pairs.
+Naming grader validation passed.
+Typed Context Golden validation passed: 4 cases / 2 boundary pairs.
+Context Budget v1 Golden validation passed: 6 cases / 3 boundary pairs.
+Behavior eval validation passed: eval grades only; Runtime executes; compatibility execution shim is removed.
+Policy provenance validation passed: historical fixture leaf identity plus canonical provenance, leaf derivation, mismatch rejection, and policy prefix normalization.
+Naming Production contract validation passed: engineering_principles provenance is canonicalized, explicit Naming Review semantics are enforced, the no-new-Type prompt is explicit, and observed C# sources provide complete naming coverage.
+Mutation Production contract validation passed: one unambiguous source-proven compile fix, canonical policy provenance, isolated fail-closed verification, no Golden leak, and 5/5 deterministic patch evidence.
+Production smoke contract validation passed: Phase 1.1 four-case contract is fail-closed.
+Behavior eval run integrity validation passed: immutable root and path confinement.
+Canonical repository cutover validation passed.
+Parent Graph Mermaid projection is current.
+..........................
+----------------------------------------------------------------------
+Ran 26 tests in 0.304s
+
+OK
+..
+----------------------------------------------------------------------
+Ran 2 tests in 0.013s
+
+OK
+......................
+----------------------------------------------------------------------
+Ran 22 tests in 0.822s
+
+OK
+...............................................................................................................................................................................................................................................................................................................................................................................................................................
+----------------------------------------------------------------------
+Ran 415 tests in 44.003s
+
+OK
+..........................s............
+----------------------------------------------------------------------
+Ran 39 tests in 0.714s
+
+OK (skipped=1)
+..............................................
+----------------------------------------------------------------------
+Ran 46 tests in 0.407s
+
+OK
+...................................
+----------------------------------------------------------------------
+Ran 35 tests in 0.278s
+
+OK
+.............................................................................
+----------------------------------------------------------------------
+Ran 77 tests in 2.118s
+
+OK
+...................
+----------------------------------------------------------------------
+Ran 19 tests in 0.061s
+
+OK
+.................
+----------------------------------------------------------------------
+Ran 17 tests in 0.446s
+
+OK
+.................
+----------------------------------------------------------------------
+Ran 17 tests in 0.140s
+
+OK
+......
+----------------------------------------------------------------------
+Ran 6 tests in 0.023s
+
+OK
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.000s
+
+OK
+
+== package-resource-refresh ==
+YAML syntax validation passed.
+
+== tools/validate_layout.py ==
+
+== subagent/tools/validate_registry.py ==
+
+== tools/validate_artist_product_identity.py ==
+
+== tools/policy_validator/validate_user_policy_integrity.py ==
+
+== tools/context_validator/validate_stale_paths.py ==
+
+== tools/orchestration_validator/validate_loops.py ==
+
+== src/unityagent/runtime/contracts/capability_contract.py ==
+
+== tools/validate_catalog_import_gate.py ==
+
+== tools/validate_local_subagent_catalog.py ==
+
+== tools/production_tool_runtime/validate_production_tool_runtime.py ==
+
+== tools/layer_boundary_validator/validate_layer_boundaries.py ==
+
+== tools/repository_authority_validator/validate_repository_authority.py ==
+
+== tools/branch_policy/validate_branch_policy.py ==
+
+== tools/documentation_validator/validate_documentation.py ==
+
+== tools/context_explorer/validate.py ==
+
+== tools/skill_validator/validate_skills.py ==
+
+== tools/skill_eval/validate_skill_evals.py ==
+
+== tools/contract_validator/validate_contracts.py ==
+
+== tools/context_pack_validator/validate_context_packs.py ==
+
+== eval/golden/validate_gate_catalog.py ==
+
+== eval/golden/validate_required_knowledge.py ==
+
+== eval/golden/validate_golden_tasks.py ==
+
+== eval/golden/validate_naming_grader.py ==
+
+== eval/golden/validate_typed_context_v3.py ==
+
+== eval/golden/validate_context_budget_v1.py ==
+
+== eval/behavior/validate_behavior_eval.py ==
+
+== eval/behavior/validate_policy_provenance.py ==
+
+== eval/behavior/validate_naming_production_contract.py ==
+
+== eval/behavior/validate_mutation_production_contract.py ==
+
+== eval/behavior/validate_production_smoke.py ==
+
+== eval/behavior/validate_run_integrity.py ==
+
+== eval/behavior/validate_cutover.py ==
+
+== parent-graph-mermaid ==
+
+== unittest:tests/packaging ==
+
+== unittest:tests/policy ==
+
+== unittest:tests/context ==
+
+== unittest:tests/runtime ==
+
+== unittest:tests/runtime/reference_implementation ==
+
+== unittest:tests/orchestration ==
+
+== unittest:tests/persistence ==
+
+== unittest:tests/eval ==
+
+== unittest:tests/operations ==
+
+== unittest:tests/context_explorer ==
+
+== unittest:tests/architecture ==
+
+== unittest:subagent/tests ==
+
+== unittest:tests/content_pilot ==
+
+UnityAgent canonical local validation passed.
