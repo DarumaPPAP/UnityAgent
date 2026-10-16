@@ -59,6 +59,6 @@ PR Templateは .github/PULL_REQUEST_TEMPLATE.md（通常）と .github/PULL_REQU
 
 ## CIの責務・限界
 
-tools/pr_quality/validate_pr.py は形式、必須欄、追加Evidence項目の構造、検出可能な誤PASS主張を検査。Evidence不足なら警告。passedと宣言したのに最低限の構造さえなければFAIL。メディア内容の真偽、Profilerの統計品質、Unity Editor／Player／Target Device実動作はCIでは検証不能であり、既存QA／Task Contractが判断する。GitHub Actionsはpull_request、read-only、本文データをShellコマンドとして評価しない。Merge・Release・Archive・破壊的削除は明示指示が必要。
+tools/pr_quality/validate_pr.py は形式、必須欄、追加Evidence項目の構造、検出可能な誤PASS主張を検査。Evidence不足なら警告。passedと宣言したのに最低限の構造さえなければFAIL。メディア内容の真偽、Profilerの統計品質、Unity Editor／Player／Target Device実動作はCIでは検証不能であり、既存QA／Task Contractが判断する。GitHub Actionsはpull_request、read-only、本文データをShellコマンドとして評価しない。main-protectionの現行必須Status CheckはCanonical Validationであるため、既存のvalidate-agent-contracts.yml内からもPR形式Validatorを呼び出し、PR作成・更新・本文編集時に形式違反をマージ阻止する。独立PR Qualityは分類テストと見やすい表示を担当する。Canonical全体の再実行コストは残るため、将来GitHub側で独立PR Qualityを必須Status Checkへ切り替えたら重複Gateを見直す。Merge・Release・Archive・破壊的削除は明示指示が必要。
 
 外部参考：GitHub公式 PR Template（https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/creating-a-pull-request-template-for-your-repository）、GitHub CLI Media（https://docs.github.com/en/github-cli/github-cli/attaching-files-with-github-cli）、Unity Profiling（https://unity.com/how-to/best-practices-for-profiling-game-performance）。
