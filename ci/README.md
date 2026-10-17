@@ -1,5 +1,8 @@
 # Unity CIをWindows / Linuxで実行する（P9）
 
+標準P9はUnity 6.3 LTS (6000.3.12f1)、Unity 6.6は互換性テストに限定します。G1は同じUnity 6.3上でも別承認・別Gateです。
+Release前の実Editor Gateは [P9 Release Qualification](../docs/development/p9-release-qualification.md) を参照してください。
+
 統合済みの [Fixture一覧](../tests/unity/matrix.yaml) と `tests/unity/verify/unity_ci.py` を共通Runnerとして使用します。
 Windows開発PCでもLinux CIでも同じEditModeテスト・証跡判定です。UnityAgentのRuntime機能ではなく、
 Repositoryの開発用CIです。UnityAgentのSource Lock、UPM、Fixture、Historical Evidenceは変更しません。
@@ -14,11 +17,12 @@ Repositoryの開発用CIです。UnityAgentのSource Lock、UPM、Fixture、Hist
 
 | Fixture ID | Editor | 内容 |
 |---|---|---|
-| `canonical-full` | `6000.6.0f1` | 既存Artist EditMode全体（接続TransportのE2Eではありません） |
-| `minimal-6000.6` | `6000.6.0f1` | Version / Importの最小テスト |
+| `canonical-full` | `6000.6.0f1` | 既存Artistの互換性Suite（Preserved fixture） |
+| `minimal-6000.6` | `6000.6.0f1` | Unity 6.6互換性テスト（Version / Import） |
 | `minimal-6000.3` | `6000.3.12f1` | Version / Importの最小テスト |
+| `p9-lts-urp` | **`6000.3.12f1`** | **Release前必須**：G1独立FixtureでURP/RenderGraph・描画の実Editor検証（岩生成は実行しない） |
 | `builtin-smoke` | `6000.6.0f1` | Built-in Scene / Native API / 描画PNG |
-| `urp-smoke` | `6000.6.0f1` | URP Scene / Native API / 描画PNG |
+| `urp-smoke` | `6000.6.0f1` | Unity 6.6互換性：URP Scene / Native API / 描画PNG |
 | `hdrp-smoke` | `6000.6.0f1` | HDRP Scene / Native API / 描画PNG |
 
 この表は実行対象の宣言です。実Editorでの成功やProduction Supportの追加を意味しません。

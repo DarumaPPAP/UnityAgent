@@ -190,8 +190,8 @@
     },
     {
       "path": "tests/unity/matrix.yaml",
-      "sha1": "328d59f4ca2e2fc1f670e4c2ac5659001bfbec28",
-      "size": 2388
+      "sha1": "42c461177dad70620d84079d0a887704f62abf7e",
+      "size": 2790
     },
     {
       "path": "tests/unity/projects/artist-e2e/Assets.meta",
@@ -479,6 +479,16 @@
       "size": 172
     },
     {
+      "path": "tests/unity/projects/production-e2e/Assets/Editor/LtsPreflightTests.cs",
+      "sha1": "a4ed045a4b751115d3486f5e2555f02211a22bd0",
+      "size": 7092
+    },
+    {
+      "path": "tests/unity/projects/production-e2e/Assets/Editor/LtsPreflightTests.cs.meta",
+      "sha1": "0bbdc5e844bf3f1b0beeaaea283c0da000a0062c",
+      "size": 240
+    },
+    {
       "path": "tests/unity/projects/production-e2e/Assets/Editor/RockProductionTests.cs",
       "sha1": "846f0e49bf028a1b09350b9294d06fb9979bec1a",
       "size": 12150
@@ -615,8 +625,8 @@
     },
     {
       "path": "tests/unity/verify/test_unity_ci.py",
-      "sha1": "31171b7ffedd129e54d54417a30db608b1e0baf1",
-      "size": 22678
+      "sha1": "dc84537a01b1b7434070fb87530c76a9e591c600",
+      "size": 23933
     },
     {
       "path": "tests/unity/verify/unity_ci.py",
