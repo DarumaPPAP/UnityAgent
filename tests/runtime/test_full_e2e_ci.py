@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-RUNNER = Path(__file__).resolve().parents[1] / "unity" / "verify" / "full_e2e_ci.py"
+RUNNER = Path(__file__).resolve().parents[2] / "tools" / "full_e2e" / "run.py"
 SPEC = importlib.util.spec_from_file_location("full_e2e_ci", RUNNER)
 assert SPEC and SPEC.loader
 HARNESS = importlib.util.module_from_spec(SPEC)
