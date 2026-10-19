@@ -75,6 +75,11 @@ def verify(evidence_directory: Path, run_metadata: dict, source_sha: str, repo: 
         raise ValueError("P9 URP package version does not match G1-compatible LTS baseline")
     if report.get("resolved_packages", {}).get("com.unity.render-pipelines.universal", {}).get("version") != package_version:
         raise ValueError("Reported and locked URP versions disagree")
+    test_framework = packages.get("dependencies", {}).get("com.unity.test-framework", {})
+    if test_framework.get("version") != "1.6.0" or test_framework.get("source") != "builtin":
+        raise ValueError("P9 requires Editor-bundled Test Framework 1.6.0")
+    if report.get("resolved_packages", {}).get("com.unity.test-framework") != test_framework:
+        raise ValueError("Reported and locked built-in Test Framework disagree")
     return {"source_sha": source_sha, "editor": EDITOR, "fixture": FIXTURE,
             "p9_run_id": run_id, "p9_private_repo": repo, "tests_passed": len(cases),
             "status": "P9_EDITOR_VERIFIED", "g1_status": "BLOCKED_NOT_RUN"}

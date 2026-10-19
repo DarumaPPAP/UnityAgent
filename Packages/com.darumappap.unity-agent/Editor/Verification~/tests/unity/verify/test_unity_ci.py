@@ -1,12 +1,12 @@
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import tempfile
 import unittest
 import argparse
 import subprocess
 import sys
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 import unity_ci as ci
 
 class ReleaseResolverTests(unittest.TestCase):
@@ -83,7 +83,7 @@ class TestStagingTests(unittest.TestCase):
             self.assertFalse((source/'CiArtistPackageTests.asmdef').exists())
 
 class RunnerTests(unittest.TestCase):
-    def run_fake(self, mode):
+    def run_fake(self, mode, cleanup_error=None):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             project = root / 'fixture'
@@ -129,6 +129,9 @@ class RunnerTests(unittest.TestCase):
                 if mode in {'pass','source-mutation','assertion-fail'} or mode.startswith('render-'):
                     Path(command[command.index('-testResults')+1]).write_text('<test-run result="Passed" total="1" passed="1"><test-case result="Passed"/></test-run>')
                     copied = Path(command[command.index('-projectPath')+1])
+                    self.assertEqual(copied.name, 'p')
+                    self.assertTrue(copied.parent.name.startswith('ua-'))
+                    self.assertEqual(copied.parent.parent, output)
                     (copied / 'Packages/packages-lock.json').write_text('{"dependencies":{"com.unity.test-framework":{"version":"1.3.9"}}}')
                 if mode == 'assertion-fail':
                     Path(command[command.index('-testResults')+1]).write_text('<test-run result="Failed" total="1" passed="0"><test-case result="Failed"/></test-run>')
@@ -140,13 +143,101 @@ class RunnerTests(unittest.TestCase):
                     (output/'graphics-device.json').write_text(json.dumps({'editorVersion':'6000.6.0f1','deviceType':'Null' if mode=='render-null' else 'Vulkan','pixelVariation':0.7}))
                 return subprocess.CompletedProcess(command,0)
             with patch.object(ci,'ROOT',root), patch.object(ci,'MATRIX',matrix), patch.object(ci.subprocess,'run',side_effect=execute), patch.dict(os.environ,{'UNITY_EDITOR':sys.executable,'UNITY_LICENSE_READY':'true','UNITY_GRAPHICS_READY':'true','GITHUB_SHA':'f'*40}):
-                code = ci.run(argparse.Namespace(fixture='fake',output=str(output),canary=False))
+                if cleanup_error is None:
+                    code = ci.run(argparse.Namespace(fixture='fake',output=str(output),canary=False))
+                else:
+                    with patch.object(ci, 'cleanup_workspace', side_effect=cleanup_error):
+                        code = ci.run(argparse.Namespace(fixture='fake',output=str(output),canary=False))
             self.assertEqual((output/'project/unowned.txt').read_text(),'preserve')
-            self.assertEqual(list(output.glob('unity-ci-owned-*')),[])
+            if cleanup_error is None:
+                self.assertEqual(list(output.glob('ua-*')),[])
             evidence = json.loads((output / 'evidence.json').read_text())
             evidence['_stdout'] = (output / 'editor.stdout.log').read_text()
             evidence['_stderr'] = (output / 'editor.stderr.log').read_text()
             return code, evidence
+    def test_short_windows_workspace_path_avoids_observed_packagecache_maxpath(self):
+        # Regression for the real Windows failure at p9-retry-4.
+        base = PureWindowsPath(r'D:\UnityAgent\artifacts\p9-retry-5')
+        nested = (r'Library\PackageCache\com.unity.collections@12999e356c23'
+                  r'\Unity.Collections.LowLevel.ILSupport\source~'
+                  r'\Unity.Collections.LowLevel.ILSupport.CodeGen'
+                  r'\Unity.Collections.LowLevel.ILSupport.CodeGen.asmdef.meta')
+        old = base / 'unity-ci-owned-exs85ins' / 'project' / nested
+        short = base / 'ua-abcdefgh' / 'p' / nested
+        self.assertGreaterEqual(len(str(old)), 260)
+        self.assertLess(len(str(short)), 260)
+
+    def test_workspace_is_within_approved_output_and_cleans_only_owned_path(self):
+        with tempfile.TemporaryDirectory() as root:
+            output = Path(root) / 'evidence'
+            output.mkdir()
+            outside = output / 'project'
+            outside.mkdir()
+            sentinel = outside / 'user-owned.txt'
+            sentinel.write_text('preserve')
+            workspace, project = ci.create_workspace(output)
+            try:
+                self.assertEqual(project.name, 'p')
+                self.assertTrue(project.parent.name.startswith('ua-'))
+                self.assertEqual(project.parent.parent, output)
+                project.mkdir()
+                (project / 'test.txt').write_text('fixture')
+            finally:
+                ci.cleanup_workspace(workspace)
+            self.assertEqual(sentinel.read_text(), 'preserve')
+            self.assertEqual(list(output.glob('ua-*')), [])
+
+    def test_persistent_winerror_145_remains_failure_after_bounded_retries(self):
+        retryable = OSError(145, 'directory not empty')
+        retryable.winerror = 145
+        temporary = Mock()
+        temporary.cleanup.side_effect = retryable
+        with patch.object(ci.time, 'sleep') as sleep, self.assertRaises(OSError):
+            ci.cleanup_workspace(temporary)
+        self.assertEqual(temporary.cleanup.call_count, 7)
+        self.assertEqual(sleep.call_count, 6)
+
+    def test_cleanup_winerror_145_is_retried_but_other_errors_fail_immediately(self):
+        retryable = OSError(145, 'directory not empty')
+        retryable.winerror = 145
+        temporary = Mock()
+        temporary.cleanup.side_effect = [retryable, retryable, None]
+        with patch.object(ci.time, 'sleep') as sleep:
+            self.assertEqual(ci.cleanup_workspace(temporary), 2)
+        self.assertEqual(temporary.cleanup.call_count, 3)
+        self.assertEqual(sleep.call_count, 2)
+
+        denied = OSError(13, 'permission denied')
+        denied.winerror = 5
+        temporary.cleanup.side_effect = denied
+        temporary.cleanup.reset_mock()
+        with patch.object(ci.time, 'sleep') as sleep, self.assertRaises(OSError):
+            ci.cleanup_workspace(temporary)
+        self.assertEqual(temporary.cleanup.call_count, 1)
+        sleep.assert_not_called()
+
+    def test_cleanup_failure_preserves_original_editor_failure_in_evidence(self):
+        blocked = OSError(145, 'directory not empty')
+        blocked.winerror = 145
+        code, evidence = self.run_fake('assertion-fail', cleanup_error=blocked)
+        self.assertEqual(code, 1)
+        self.assertEqual(evidence['status'], 'FAIL')
+        self.assertEqual(evidence['pre_cleanup_outcome']['status'], 'FAIL')
+        self.assertIn('Editor returned exit code 1', evidence['pre_cleanup_outcome']['reason'])
+        self.assertIn('directory not empty', evidence['workspace_cleanup_error'])
+        self.assertIn('editor.log', evidence['artifact_hashes'])
+        self.assertIn('results.xml', evidence['artifact_hashes'])
+
+    def test_cleanup_failure_revokes_otherwise_passing_run(self):
+        blocked = OSError(145, 'directory not empty')
+        blocked.winerror = 145
+        code, evidence = self.run_fake('pass', cleanup_error=blocked)
+        self.assertEqual(code, 1)
+        self.assertEqual(evidence['status'], 'FAIL')
+        self.assertEqual(evidence['pre_cleanup_outcome']['status'], 'PASS')
+        self.assertEqual(evidence['pre_cleanup_outcome']['exit_code'], 0)
+        self.assertIn('Temporary Unity workspace cleanup failed', evidence['reason'])
+
     def test_launch_error_is_not_an_observed_test_failure(self):
         code, evidence = self.run_fake('launch-error')
         self.assertEqual(code, 2)
@@ -215,6 +306,31 @@ class RunnerTests(unittest.TestCase):
         code,evidence=self.run_fake('graphics')
         self.assertEqual(code,2);self.assertEqual(evidence['status'],'BLOCKED_NOT_RUN')
 
+class PackageResolutionTests(unittest.TestCase):
+    def test_p9_builtin_test_framework_160_matches_editor(self):
+        requested = {'com.unity.render-pipelines.universal': '17.3.0',
+                     'com.unity.test-framework': '1.6.0'}
+        resolved = {'com.unity.render-pipelines.universal': {'version': '17.3.0', 'source': 'registry'},
+                    'com.unity.test-framework': {'version': '1.6.0', 'source': 'builtin'}}
+        ci.validate_resolved_dependencies(requested, resolved, 'p9-lts-urp')
+
+    def test_p9_rejects_version_drift_and_nonbuiltin_framework(self):
+        requested = {'com.unity.render-pipelines.universal': '17.3.0',
+                     'com.unity.test-framework': '1.6.0'}
+        for changed in ('version', 'source', 'urp'):
+            with self.subTest(changed=changed):
+                resolved = {'com.unity.render-pipelines.universal': {'version': '17.3.0', 'source': 'registry'},
+                            'com.unity.test-framework': {'version': '1.6.0', 'source': 'builtin'}}
+                if changed == 'version':
+                    resolved['com.unity.test-framework']['version'] = '1.3.9'
+                elif changed == 'source':
+                    resolved['com.unity.test-framework']['source'] = 'registry'
+                else:
+                    resolved['com.unity.render-pipelines.universal']['version'] = '17.4.0'
+                with self.assertRaises(ValueError):
+                    ci.validate_resolved_dependencies(requested, resolved, 'p9-lts-urp')
+
+
 class FixtureTests(unittest.TestCase):
     def test_p9_lts_is_canonical_and_does_not_run_g1_rock_workflow(self):
         config = json.loads(ci.MATRIX.read_text())
@@ -225,6 +341,17 @@ class FixtureTests(unittest.TestCase):
         self.assertTrue(fixture['requires_graphics'])
         self.assertNotIn('RockProductionTests', fixture['test_filter'])
         self.assertNotIn('srp_package', fixture)
+        dependencies = json.loads(
+            (ci.ROOT / fixture['project'] / 'Packages/manifest.json').read_text())['dependencies']
+        self.assertEqual(dependencies['com.unity.test-framework'], '1.6.0')
+        self.assertEqual(dependencies['com.unity.render-pipelines.universal'], '17.3.0')
+        preflight = (ci.ROOT / fixture['project'] / 'Assets/Editor/LtsPreflightTests.cs').read_text()
+        # Host static contract only; real no-scene batch-mode behavior requires Editor E2E.
+        self.assertIn('scene.isLoaded && scene.isActive', preflight)
+        self.assertIn('if (hasRestorableSceneSetup)', preflight)
+        self.assertIn('EditorSceneManager.RestoreSceneManagerSetup(previousScenes);', preflight)
+        self.assertIn('if (ownsAssets)', preflight)
+        self.assertIn('AssetDatabase.DeleteAsset(TemporaryRoot);', preflight)
 
 
     def test_63_fixture_exact_official_provenance_and_narrow_compile_scope(self):

@@ -43,6 +43,10 @@ namespace UnityAgent.Production
             Directory.CreateDirectory(evidence);
 
             var previousScenes = EditorSceneManager.GetSceneManagerSetup();
+            // BatchModeでは元々activeな読み込み済みSceneが存在しない場合がある。
+            // そのSceneSetupを復元するとInvalid SceneManagerSetupでテスト結果が失敗に上書きされる。
+            bool hasRestorableSceneSetup = previousScenes != null &&
+                previousScenes.Any(scene => scene.isLoaded && scene.isActive);
             var previousGraphics = GraphicsSettings.defaultRenderPipeline;
             var previousQuality = QualitySettings.renderPipeline;
             var previousActive = RenderTexture.active;
@@ -133,8 +137,21 @@ namespace UnityAgent.Production
                 if (pixels != null) Object.DestroyImmediate(pixels);
                 GraphicsSettings.defaultRenderPipeline = previousGraphics;
                 QualitySettings.renderPipeline = previousQuality;
-                if (previousScenes != null) EditorSceneManager.RestoreSceneManagerSetup(previousScenes);
-                if (ownsAssets) AssetDatabase.DeleteAsset(TemporaryRoot);
+                try
+                {
+                    if (hasRestorableSceneSetup)
+                    {
+                        EditorSceneManager.RestoreSceneManagerSetup(previousScenes);
+                    }
+                }
+                finally
+                {
+                    // Scene復元に失敗しても、テストが生成したAssetは削除する。
+                    if (ownsAssets)
+                    {
+                        AssetDatabase.DeleteAsset(TemporaryRoot);
+                    }
+                }
             }
         }
     }

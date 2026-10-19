@@ -480,8 +480,8 @@
     },
     {
       "path": "tests/unity/projects/production-e2e/Assets/Editor/LtsPreflightTests.cs",
-      "sha1": "a4ed045a4b751115d3486f5e2555f02211a22bd0",
-      "size": 7092
+      "sha1": "45e9f41806dd8b3301f737955d8800594b8b54e2",
+      "size": 7835
     },
     {
       "path": "tests/unity/projects/production-e2e/Assets/Editor/LtsPreflightTests.cs.meta",
@@ -510,7 +510,7 @@
     },
     {
       "path": "tests/unity/projects/production-e2e/Packages/manifest.json",
-      "sha1": "3884386abe4bfb4e1188e151775ddd362ae9c91a",
+      "sha1": "5595433c8e515359b6a07b996891042a36a26323",
       "size": 215
     },
     {
@@ -625,13 +625,13 @@
     },
     {
       "path": "tests/unity/verify/test_unity_ci.py",
-      "sha1": "dc84537a01b1b7434070fb87530c76a9e591c600",
-      "size": 23933
+      "sha1": "6e08e064dc2debda2dd551d014826b597e61f81e",
+      "size": 31121
     },
     {
       "path": "tests/unity/verify/unity_ci.py",
-      "sha1": "f70f05a6a1b23bc063fe015be4da3fe573f760c2",
-      "size": 25972
+      "sha1": "7fb5de30a1db77a48d016435a9da7986c7131a69",
+      "size": 28632
     },
     {
       "path": "tests/unity/verify/validate_unity_fixtures.py",
