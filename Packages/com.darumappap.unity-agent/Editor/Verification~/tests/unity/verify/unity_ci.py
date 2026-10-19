@@ -235,14 +235,30 @@ def input_hashes(root, source, local_packages, matrix):
 
 def cleanup_workspace(workspace):
     """Retry only Windows ERROR_DIR_NOT_EMPTY (145); never hide a persistent failure."""
-    for attempt in range(4):
+    # The Unity PackageCache can still receive filesystem activity after the Editor exits.
+    # Give Windows bounded time to settle; a persistent error must remain FAIL.
+    delays = (1, 2, 3, 5, 8, 12)
+    for attempt in range(len(delays) + 1):
         try:
             workspace.cleanup()
             return attempt
         except OSError as error:
-            if getattr(error, 'winerror', None) != 145 or attempt == 3:
+            if getattr(error, 'winerror', None) != 145 or attempt == len(delays):
                 raise
-            time.sleep(0.25 * (attempt + 1))
+            time.sleep(delays[attempt])
+
+
+def validate_resolved_dependencies(requested, resolved, fixture):
+    """Keep exact package checks; P9 must use the Editor-owned Test Framework."""
+    for name, requirement in requested.items():
+        dependency = resolved.get(name, {})
+        version = dependency.get('version')
+        if not version or (not requirement.startswith('file:') and version != requirement):
+            raise ValueError('Resolved package lock does not match requested exact dependency: ' + name)
+    if fixture == 'p9-lts-urp':
+        test_framework = resolved.get('com.unity.test-framework', {})
+        if test_framework.get('version') != '1.6.0' or test_framework.get('source') != 'builtin':
+            raise ValueError('P9 requires Unity 6000.3.12f1 built-in com.unity.test-framework@1.6.0')
 
 
 def commit_identity():
@@ -396,10 +412,8 @@ def run(args):
             raise ValueError('Resolved package lock missing')
         shutil.copy2(lock, output / 'packages-lock.json')
         evidence['resolved_packages'] = json.loads(lock.read_text(encoding='utf-8'))['dependencies']
-        for package, requested in manifest['dependencies'].items():
-            resolved = evidence['resolved_packages'].get(package, {}).get('version')
-            if not resolved or (not requested.startswith('file:') and resolved != requested):
-                raise ValueError('Resolved package lock does not match requested exact dependency: ' + package)
+        validate_resolved_dependencies(manifest['dependencies'], evidence['resolved_packages'],
+                                       fixture['id'])
         for name in fixture.get('required_artifacts', []):
             artifact = output / name
             if not artifact.is_file() or artifact.stat().st_size == 0:

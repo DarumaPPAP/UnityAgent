@@ -510,7 +510,7 @@
     },
     {
       "path": "tests/unity/projects/production-e2e/Packages/manifest.json",
-      "sha1": "3884386abe4bfb4e1188e151775ddd362ae9c91a",
+      "sha1": "5595433c8e515359b6a07b996891042a36a26323",
       "size": 215
     },
     {
@@ -625,13 +625,13 @@
     },
     {
       "path": "tests/unity/verify/test_unity_ci.py",
-      "sha1": "012cd68e92806cdcab7cfa720e789df410103109",
-      "size": 26964
+      "sha1": "41cd27b150056d071d0ae8a3fd8c68d5a472064b",
+      "size": 29268
     },
     {
       "path": "tests/unity/verify/unity_ci.py",
-      "sha1": "892e63540cc5105b4ff68ce358b7c7f35bcb4e53",
-      "size": 27527
+      "sha1": "a01b3978563b5a5e8e848647d077b9bef0e5df9b",
+      "size": 28326
     },
     {
       "path": "tests/unity/verify/validate_unity_fixtures.py",

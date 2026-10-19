@@ -152,6 +152,16 @@ class RunnerTests(unittest.TestCase):
             evidence['_stdout'] = (output / 'editor.stdout.log').read_text()
             evidence['_stderr'] = (output / 'editor.stderr.log').read_text()
             return code, evidence
+    def test_persistent_winerror_145_remains_failure_after_bounded_retries(self):
+        retryable = OSError(145, 'directory not empty')
+        retryable.winerror = 145
+        temporary = Mock()
+        temporary.cleanup.side_effect = retryable
+        with patch.object(ci.time, 'sleep') as sleep, self.assertRaises(OSError):
+            ci.cleanup_workspace(temporary)
+        self.assertEqual(temporary.cleanup.call_count, 7)
+        self.assertEqual(sleep.call_count, 6)
+
     def test_cleanup_winerror_145_is_retried_but_other_errors_fail_immediately(self):
         retryable = OSError(145, 'directory not empty')
         retryable.winerror = 145
@@ -261,6 +271,31 @@ class RunnerTests(unittest.TestCase):
         code,evidence=self.run_fake('graphics')
         self.assertEqual(code,2);self.assertEqual(evidence['status'],'BLOCKED_NOT_RUN')
 
+class PackageResolutionTests(unittest.TestCase):
+    def test_p9_builtin_test_framework_160_matches_editor(self):
+        requested = {'com.unity.render-pipelines.universal': '17.3.0',
+                     'com.unity.test-framework': '1.6.0'}
+        resolved = {'com.unity.render-pipelines.universal': {'version': '17.3.0', 'source': 'registry'},
+                    'com.unity.test-framework': {'version': '1.6.0', 'source': 'builtin'}}
+        ci.validate_resolved_dependencies(requested, resolved, 'p9-lts-urp')
+
+    def test_p9_rejects_version_drift_and_nonbuiltin_framework(self):
+        requested = {'com.unity.render-pipelines.universal': '17.3.0',
+                     'com.unity.test-framework': '1.6.0'}
+        for changed in ('version', 'source', 'urp'):
+            with self.subTest(changed=changed):
+                resolved = {'com.unity.render-pipelines.universal': {'version': '17.3.0', 'source': 'registry'},
+                            'com.unity.test-framework': {'version': '1.6.0', 'source': 'builtin'}}
+                if changed == 'version':
+                    resolved['com.unity.test-framework']['version'] = '1.3.9'
+                elif changed == 'source':
+                    resolved['com.unity.test-framework']['source'] = 'registry'
+                else:
+                    resolved['com.unity.render-pipelines.universal']['version'] = '17.4.0'
+                with self.assertRaises(ValueError):
+                    ci.validate_resolved_dependencies(requested, resolved, 'p9-lts-urp')
+
+
 class FixtureTests(unittest.TestCase):
     def test_p9_lts_is_canonical_and_does_not_run_g1_rock_workflow(self):
         config = json.loads(ci.MATRIX.read_text())
@@ -271,6 +306,10 @@ class FixtureTests(unittest.TestCase):
         self.assertTrue(fixture['requires_graphics'])
         self.assertNotIn('RockProductionTests', fixture['test_filter'])
         self.assertNotIn('srp_package', fixture)
+        dependencies = json.loads(
+            (ci.ROOT / fixture['project'] / 'Packages/manifest.json').read_text())['dependencies']
+        self.assertEqual(dependencies['com.unity.test-framework'], '1.6.0')
+        self.assertEqual(dependencies['com.unity.render-pipelines.universal'], '17.3.0')
         preflight = (ci.ROOT / fixture['project'] / 'Assets/Editor/LtsPreflightTests.cs').read_text()
         # Host static contract only; real no-scene batch-mode behavior requires Editor E2E.
         self.assertIn('scene.isLoaded && scene.isActive', preflight)
