@@ -480,8 +480,8 @@
     },
     {
       "path": "tests/unity/projects/production-e2e/Assets/Editor/LtsPreflightTests.cs",
-      "sha1": "a4ed045a4b751115d3486f5e2555f02211a22bd0",
-      "size": 7092
+      "sha1": "45e9f41806dd8b3301f737955d8800594b8b54e2",
+      "size": 7835
     },
     {
       "path": "tests/unity/projects/production-e2e/Assets/Editor/LtsPreflightTests.cs.meta",
@@ -625,8 +625,8 @@
     },
     {
       "path": "tests/unity/verify/test_unity_ci.py",
-      "sha1": "a1be50034831d4da2787f3a27a1d0bf150a8a852",
-      "size": 26409
+      "sha1": "012cd68e92806cdcab7cfa720e789df410103109",
+      "size": 26964
     },
     {
       "path": "tests/unity/verify/unity_ci.py",

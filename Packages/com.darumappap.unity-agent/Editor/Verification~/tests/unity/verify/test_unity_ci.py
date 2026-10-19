@@ -271,6 +271,13 @@ class FixtureTests(unittest.TestCase):
         self.assertTrue(fixture['requires_graphics'])
         self.assertNotIn('RockProductionTests', fixture['test_filter'])
         self.assertNotIn('srp_package', fixture)
+        preflight = (ci.ROOT / fixture['project'] / 'Assets/Editor/LtsPreflightTests.cs').read_text()
+        # Host static contract only; real no-scene batch-mode behavior requires Editor E2E.
+        self.assertIn('scene.isLoaded && scene.isActive', preflight)
+        self.assertIn('if (hasRestorableSceneSetup)', preflight)
+        self.assertIn('EditorSceneManager.RestoreSceneManagerSetup(previousScenes);', preflight)
+        self.assertIn('if (ownsAssets)', preflight)
+        self.assertIn('AssetDatabase.DeleteAsset(TemporaryRoot);', preflight)
 
 
     def test_63_fixture_exact_official_provenance_and_narrow_compile_scope(self):
