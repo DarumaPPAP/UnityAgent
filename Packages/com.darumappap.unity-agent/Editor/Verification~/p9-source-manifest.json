@@ -625,13 +625,13 @@
     },
     {
       "path": "tests/unity/verify/test_unity_ci.py",
-      "sha1": "41cd27b150056d071d0ae8a3fd8c68d5a472064b",
-      "size": 29268
+      "sha1": "6e08e064dc2debda2dd551d014826b597e61f81e",
+      "size": 31121
     },
     {
       "path": "tests/unity/verify/unity_ci.py",
-      "sha1": "a01b3978563b5a5e8e848647d077b9bef0e5df9b",
-      "size": 28326
+      "sha1": "7fb5de30a1db77a48d016435a9da7986c7131a69",
+      "size": 28632
     },
     {
       "path": "tests/unity/verify/validate_unity_fixtures.py",

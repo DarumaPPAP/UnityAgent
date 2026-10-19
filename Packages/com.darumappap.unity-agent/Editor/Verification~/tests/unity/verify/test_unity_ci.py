@@ -1,6 +1,6 @@
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import tempfile
 import unittest
 import argparse
@@ -129,6 +129,9 @@ class RunnerTests(unittest.TestCase):
                 if mode in {'pass','source-mutation','assertion-fail'} or mode.startswith('render-'):
                     Path(command[command.index('-testResults')+1]).write_text('<test-run result="Passed" total="1" passed="1"><test-case result="Passed"/></test-run>')
                     copied = Path(command[command.index('-projectPath')+1])
+                    self.assertEqual(copied.name, 'p')
+                    self.assertTrue(copied.parent.name.startswith('ua-'))
+                    self.assertEqual(copied.parent.parent, output)
                     (copied / 'Packages/packages-lock.json').write_text('{"dependencies":{"com.unity.test-framework":{"version":"1.3.9"}}}')
                 if mode == 'assertion-fail':
                     Path(command[command.index('-testResults')+1]).write_text('<test-run result="Failed" total="1" passed="0"><test-case result="Failed"/></test-run>')
@@ -147,11 +150,43 @@ class RunnerTests(unittest.TestCase):
                         code = ci.run(argparse.Namespace(fixture='fake',output=str(output),canary=False))
             self.assertEqual((output/'project/unowned.txt').read_text(),'preserve')
             if cleanup_error is None:
-                self.assertEqual(list(output.glob('unity-ci-owned-*')),[])
+                self.assertEqual(list(output.glob('ua-*')),[])
             evidence = json.loads((output / 'evidence.json').read_text())
             evidence['_stdout'] = (output / 'editor.stdout.log').read_text()
             evidence['_stderr'] = (output / 'editor.stderr.log').read_text()
             return code, evidence
+    def test_short_windows_workspace_path_avoids_observed_packagecache_maxpath(self):
+        # Regression for the real Windows failure at p9-retry-4.
+        base = PureWindowsPath(r'D:\UnityAgent\artifacts\p9-retry-5')
+        nested = (r'Library\PackageCache\com.unity.collections@12999e356c23'
+                  r'\Unity.Collections.LowLevel.ILSupport\source~'
+                  r'\Unity.Collections.LowLevel.ILSupport.CodeGen'
+                  r'\Unity.Collections.LowLevel.ILSupport.CodeGen.asmdef.meta')
+        old = base / 'unity-ci-owned-exs85ins' / 'project' / nested
+        short = base / 'ua-abcdefgh' / 'p' / nested
+        self.assertGreaterEqual(len(str(old)), 260)
+        self.assertLess(len(str(short)), 260)
+
+    def test_workspace_is_within_approved_output_and_cleans_only_owned_path(self):
+        with tempfile.TemporaryDirectory() as root:
+            output = Path(root) / 'evidence'
+            output.mkdir()
+            outside = output / 'project'
+            outside.mkdir()
+            sentinel = outside / 'user-owned.txt'
+            sentinel.write_text('preserve')
+            workspace, project = ci.create_workspace(output)
+            try:
+                self.assertEqual(project.name, 'p')
+                self.assertTrue(project.parent.name.startswith('ua-'))
+                self.assertEqual(project.parent.parent, output)
+                project.mkdir()
+                (project / 'test.txt').write_text('fixture')
+            finally:
+                ci.cleanup_workspace(workspace)
+            self.assertEqual(sentinel.read_text(), 'preserve')
+            self.assertEqual(list(output.glob('ua-*')), [])
+
     def test_persistent_winerror_145_remains_failure_after_bounded_retries(self):
         retryable = OSError(145, 'directory not empty')
         retryable.winerror = 145

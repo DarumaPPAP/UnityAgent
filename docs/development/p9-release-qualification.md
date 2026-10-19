@@ -51,6 +51,6 @@ $env:UNITY_GRAPHICS_READY = 'true' # GPU/Displayが利用できることを確�
 ```
 
 PowerShellの改行継続はバッククォートを使用するか、1行で実行する。実際のEditor Pathは設置先に合わせる。
-一時Projectの`Library/PackageCache`削除時にWindowsの`WinError 145`が発生する場合は、最大31秒の段階的再試行後も未解決なら`FAIL`を記録し、元の実Editor結果を`pre_cleanup_outcome`へ残す。削除失敗を黙ってPASSにはしない。
+Unity 6.3.12f1の実Windows検証では、従来の`unity-ci-owned-*/project`配下の`Library/PackageCache`に生成されたファイルパスが264〜269文字となり、Python／Windows PowerShell双方で削除失敗した。Windowsの従来`MAX_PATH=260`制限が原因候補のため、**所有する一時Projectのみ** `ua-*/p` に短縮する。Evidence出力先は変えず、ユーザー所有領域を削除しない。長い出力先や別パッケージで再発する場合は、`-OutputDirectory`へ短いパスを指定する。削除失敗時の最大31秒の段階的再試行、`FAIL`と`pre_cleanup_outcome`の記録は維持する。
 
 手元でP9が成功しても、Private workflow経由の**同一SHA証跡をRelease Gateが受領**するまではRelease不可。G1のProduction Verifiedは独立のまま。

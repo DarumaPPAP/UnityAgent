@@ -233,6 +233,16 @@ def input_hashes(root, source, local_packages, matrix):
     return dict(algorithm='sha256', digest=digest, files=inventory)
 
 
+def create_workspace(output):
+    """Keep Unity's deeply nested PackageCache below legacy Windows MAX_PATH.
+
+    The tempdir always remains inside the approved evidence output directory;
+    only the returned owned TemporaryDirectory object may be cleaned up.
+    """
+    workspace = tempfile.TemporaryDirectory(prefix='ua-', dir=output)
+    return workspace, Path(workspace.name) / 'p'
+
+
 def cleanup_workspace(workspace):
     """Retry only Windows ERROR_DIR_NOT_EMPTY (145); never hide a persistent failure."""
     # The Unity PackageCache can still receive filesystem activity after the Editor exits.
@@ -330,8 +340,7 @@ def run(args):
             raise RuntimeError('Installed Editor version does not match requested exact version')
         evidence['observed_editor'] = version
         # Separate workspace copies preserve canonical source and leave no stale results.
-        workspace = tempfile.TemporaryDirectory(prefix='unity-ci-owned-', dir=output)
-        project = Path(workspace.name) / 'project'
+        workspace, project = create_workspace(output)
         project.mkdir()
         for directory in ('Assets', 'ProjectSettings'):
             if (source / directory).is_dir():
