@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -232,6 +233,18 @@ def input_hashes(root, source, local_packages, matrix):
     return dict(algorithm='sha256', digest=digest, files=inventory)
 
 
+def cleanup_workspace(workspace):
+    """Retry only Windows ERROR_DIR_NOT_EMPTY (145); never hide a persistent failure."""
+    for attempt in range(4):
+        try:
+            workspace.cleanup()
+            return attempt
+        except OSError as error:
+            if getattr(error, 'winerror', None) != 145 or attempt == 3:
+                raise
+            time.sleep(0.25 * (attempt + 1))
+
+
 def commit_identity():
     supplied = os.getenv('GITHUB_SHA', '')
     if re.fullmatch(r'[a-fA-F0-9]{40,64}', supplied):
@@ -416,12 +429,29 @@ def run(args):
         except (OSError, ValueError) as error:
             evidence['status'], evidence['reason'], code = 'FAIL', 'Input rehash failed: ' + str(error), 1
         if project is not None and project.exists():
-            for name in ('manifest.json', 'packages-lock.json'):
-                path = project / 'Packages' / name
-                if path.exists():
-                    shutil.copy2(path, output / name)
+            try:
+                for name in ('manifest.json', 'packages-lock.json'):
+                    path = project / 'Packages' / name
+                    if path.exists():
+                        shutil.copy2(path, output / name)
+            except OSError as error:
+                evidence['pre_cleanup_outcome'] = dict(status=evidence['status'],
+                    reason=evidence['reason'], exit_code=code)
+                evidence['status'], evidence['reason'], code = (
+                    'FAIL', 'Could not retain Unity package evidence: ' + str(error), 1)
         if workspace is not None:
-            workspace.cleanup()
+            try:
+                evidence['cleanup_retries'] = cleanup_workspace(workspace)
+            except OSError as error:
+                # Unity PackageCache may still be changing after Editor exits.
+                # Never turn a real Editor failure into argparse "unsafe paths".
+                # Keep the original outcome and write evidence even if cleanup fails.
+                evidence['pre_cleanup_outcome'] = dict(status=evidence['status'],
+                    reason=evidence['reason'], exit_code=code)
+                evidence['workspace_cleanup_error'] = str(error)
+                evidence['workspace_cleanup_path'] = workspace.name
+                evidence['status'], evidence['reason'], code = (
+                    'FAIL', 'Temporary Unity workspace cleanup failed: ' + str(error), 1)
         if not (output / 'editor.log').exists():
             (output / 'editor.log').write_text(evidence['status'] + ': ' + evidence['reason'] + '\n', encoding='utf-8')
         for name in ('editor.stdout.log', 'editor.stderr.log'):

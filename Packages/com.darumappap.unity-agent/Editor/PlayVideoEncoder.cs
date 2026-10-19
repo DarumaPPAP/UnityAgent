@@ -19,7 +19,7 @@ namespace DarumaPPAP.UnityAgent.Editor
 
         // Editor内部API解決はDomain Reloadごとに一度だけ行う。
         private static readonly Type s_viewType =
-            typeof(Editor).Assembly.GetType("UnityEditor.PlayModeView");
+            typeof(UnityEditor.Editor).Assembly.GetType("UnityEditor.PlayModeView");
         private static readonly MethodInfo s_getMainView = s_viewType?.GetMethod(
             "GetMainPlayModeView", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
         private static readonly FieldInfo s_targetTexture = s_viewType?.GetField(
@@ -92,7 +92,7 @@ namespace DarumaPPAP.UnityAgent.Editor
 
             var h264 = new H264EncoderAttributes
             {
-                gopSize = fps,
+                gopSize = (uint)fps,
                 numConsecutiveBFrames = 2,
                 profile = VideoEncodingProfile.H264High,
             };

@@ -6,7 +6,7 @@ import unittest
 import argparse
 import subprocess
 import sys
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 import unity_ci as ci
 
 class ReleaseResolverTests(unittest.TestCase):
@@ -83,7 +83,7 @@ class TestStagingTests(unittest.TestCase):
             self.assertFalse((source/'CiArtistPackageTests.asmdef').exists())
 
 class RunnerTests(unittest.TestCase):
-    def run_fake(self, mode):
+    def run_fake(self, mode, cleanup_error=None):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             project = root / 'fixture'
@@ -140,13 +140,59 @@ class RunnerTests(unittest.TestCase):
                     (output/'graphics-device.json').write_text(json.dumps({'editorVersion':'6000.6.0f1','deviceType':'Null' if mode=='render-null' else 'Vulkan','pixelVariation':0.7}))
                 return subprocess.CompletedProcess(command,0)
             with patch.object(ci,'ROOT',root), patch.object(ci,'MATRIX',matrix), patch.object(ci.subprocess,'run',side_effect=execute), patch.dict(os.environ,{'UNITY_EDITOR':sys.executable,'UNITY_LICENSE_READY':'true','UNITY_GRAPHICS_READY':'true','GITHUB_SHA':'f'*40}):
-                code = ci.run(argparse.Namespace(fixture='fake',output=str(output),canary=False))
+                if cleanup_error is None:
+                    code = ci.run(argparse.Namespace(fixture='fake',output=str(output),canary=False))
+                else:
+                    with patch.object(ci, 'cleanup_workspace', side_effect=cleanup_error):
+                        code = ci.run(argparse.Namespace(fixture='fake',output=str(output),canary=False))
             self.assertEqual((output/'project/unowned.txt').read_text(),'preserve')
-            self.assertEqual(list(output.glob('unity-ci-owned-*')),[])
+            if cleanup_error is None:
+                self.assertEqual(list(output.glob('unity-ci-owned-*')),[])
             evidence = json.loads((output / 'evidence.json').read_text())
             evidence['_stdout'] = (output / 'editor.stdout.log').read_text()
             evidence['_stderr'] = (output / 'editor.stderr.log').read_text()
             return code, evidence
+    def test_cleanup_winerror_145_is_retried_but_other_errors_fail_immediately(self):
+        retryable = OSError(145, 'directory not empty')
+        retryable.winerror = 145
+        temporary = Mock()
+        temporary.cleanup.side_effect = [retryable, retryable, None]
+        with patch.object(ci.time, 'sleep') as sleep:
+            self.assertEqual(ci.cleanup_workspace(temporary), 2)
+        self.assertEqual(temporary.cleanup.call_count, 3)
+        self.assertEqual(sleep.call_count, 2)
+
+        denied = OSError(13, 'permission denied')
+        denied.winerror = 5
+        temporary.cleanup.side_effect = denied
+        temporary.cleanup.reset_mock()
+        with patch.object(ci.time, 'sleep') as sleep, self.assertRaises(OSError):
+            ci.cleanup_workspace(temporary)
+        self.assertEqual(temporary.cleanup.call_count, 1)
+        sleep.assert_not_called()
+
+    def test_cleanup_failure_preserves_original_editor_failure_in_evidence(self):
+        blocked = OSError(145, 'directory not empty')
+        blocked.winerror = 145
+        code, evidence = self.run_fake('assertion-fail', cleanup_error=blocked)
+        self.assertEqual(code, 1)
+        self.assertEqual(evidence['status'], 'FAIL')
+        self.assertEqual(evidence['pre_cleanup_outcome']['status'], 'FAIL')
+        self.assertIn('Editor returned exit code 1', evidence['pre_cleanup_outcome']['reason'])
+        self.assertIn('directory not empty', evidence['workspace_cleanup_error'])
+        self.assertIn('editor.log', evidence['artifact_hashes'])
+        self.assertIn('results.xml', evidence['artifact_hashes'])
+
+    def test_cleanup_failure_revokes_otherwise_passing_run(self):
+        blocked = OSError(145, 'directory not empty')
+        blocked.winerror = 145
+        code, evidence = self.run_fake('pass', cleanup_error=blocked)
+        self.assertEqual(code, 1)
+        self.assertEqual(evidence['status'], 'FAIL')
+        self.assertEqual(evidence['pre_cleanup_outcome']['status'], 'PASS')
+        self.assertEqual(evidence['pre_cleanup_outcome']['exit_code'], 0)
+        self.assertIn('Temporary Unity workspace cleanup failed', evidence['reason'])
+
     def test_launch_error_is_not_an_observed_test_failure(self):
         code, evidence = self.run_fake('launch-error')
         self.assertEqual(code, 2)
