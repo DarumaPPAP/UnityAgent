@@ -17,7 +17,13 @@ import time
 import venv
 
 ROOT = Path(__file__).resolve().parents[3]
-SOURCE_PATHS = ("src/unityagent", "Packages/com.darumappap.unity-agent", "tests/unity/projects/production-e2e")
+SOURCE_PATHS = (
+    "src/unityagent",
+    "Packages/com.darumappap.unity-agent",
+    "tests/unity/projects/production-e2e",
+    "tests/unity/verify/full_e2e_ci.py",
+    "tests/unity/scripts/run-full-e2e.ps1",
+)
 EXPECTED_ASSETS = {
     "Assets/UnityAgentE2E.meta",
     "Assets/UnityAgentE2E/FullE2EScene.unity",
@@ -74,7 +80,7 @@ def prepare_workspace(repo: Path, workspace: Path) -> Path:
     dependencies = manifest.get("dependencies", {})
     if "com.darumappap.unity-agent" not in dependencies:
         raise RuntimeError("Fixture manifest lacks the UnityAgent dependency")
-    # UPM file: path is resolved relative to the Project's Packages directory.
+    # UPMのfile:参照はProjectのPackagesフォルダを基準に解決される。
     dependencies["com.darumappap.unity-agent"] = "file:../../upm/com.darumappap.unity-agent"
     manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     template = repo / "src/unityagent/control_plane/resources/FullE2EProbe.txt"
