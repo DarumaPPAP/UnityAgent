@@ -12,22 +12,24 @@ P9とは独立に **Control Plane → ToolBroker → EditorでScene/Material/C#�
 
 ## 実行
 
+Host専用Runnerは `tools/full_e2e/` に置き、UPMへMirrorされる `tests/unity/` の正本Fixtureを読み取り再利用する。Runner自体はUPM Verification Bundleへ同梱しない。
+
 Windows、Unity `6000.3.12f1`、有効なライセンス、Python 3.12、Gitが必要。初回のCLI依存パッケージ導入にはネットワークが必要となる場合がある。
 PowerShellの未署名スクリプト制限を緩めず、Pythonから直接実行できる。
 
 ```powershell
 cd D:\UnityAgent
-py -3.12 tests\unity\verify\full_e2e_ci.py --expected-sha (git rev-parse HEAD)
+py -3.12 tools\full_e2e\run.py --expected-sha (git rev-parse HEAD)
 ```
 
 ここで `(git rev-parse HEAD)` は現在の開発Revisionを表示するだけで、外部レビュー済みSHAであることを証明しない。
 レビュー済みの40文字SHAを明示すると、その値とGit HEADが異なる場合は起動前に停止する。
-PowerShellラッパー `tests/unity/scripts/run-full-e2e.ps1` も同梱。署名必須環境では無理に実行しない。
+PowerShellラッパー `tools/full_e2e/run.ps1` も同梱。署名必須環境では無理に実行しない。
 
 Planのみ確認する場合：
 
 ```powershell
-py -3.12 tests\unity\verify\full_e2e_ci.py --plan-only --expected-sha (git rev-parse HEAD)
+py -3.12 tools\full_e2e\run.py --plan-only --expected-sha (git rev-parse HEAD)
 ```
 
 ## 実行と承認
