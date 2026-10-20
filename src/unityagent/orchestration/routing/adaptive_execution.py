@@ -134,9 +134,10 @@ DAG_FACT_FIELDS = ('simple_task', 'risk', 'design_review', 'requires_replan', 'p
                    'scope_known', 'requested_subagent', 'required_subagents', 'resource_conflict', 'context_profile')
 
 
-def build_dag_inputs(tasks, state, *, task_facts=None, current_path=None, failure_classes=(), uncertain_side_effects=False):
+def build_dag_inputs(tasks, state, *, task_facts=None, current_path=None, failure_classes=(), uncertain_side_effects=False, task_failure_classes=None):
     """固定DAGの残作業を意味付けする。子Taskの経路を親の現在戦略へ代入しない。"""
     task_facts = task_facts or {}
+    task_failure_classes = task_failure_classes or {}
     by_id = {task['id']:task for task in tasks}
     if set(by_id) != set(state['tasks']):
         raise ValueError('Task state and contract differ')
@@ -162,7 +163,7 @@ def build_dag_inputs(tasks, state, *, task_facts=None, current_path=None, failur
             category = 'verified'
         elif status == 'running':
             category = 'running'
-        elif status == 'unavailable' or 'unavailable' in item['gates'].values():
+        elif status == 'unavailable' or 'unavailable' in item['gates'].values() or any('unavailable' in failure or failure in {'unknown','unhealthy','ambiguous_binding','unsupported','backend_not_implemented','timeout'} for failure in task_failure_classes.get(name, ())):
             category = 'unavailable'
         elif repair_ready:
             category = 'repair_pending'
@@ -224,7 +225,7 @@ def build_dag_inputs(tasks, state, *, task_facts=None, current_path=None, failur
             else:
                 missing.append({'task_id':None, 'field':field, 'reason':'incompatible_explicit_requests'})
     unknown_effects = uncertain_side_effects or any(s['category']=='running' for s in summaries.values())
-    failures = sorted(set(failure_classes))
+    failures = sorted(set(failure_classes).union(failure for values in task_failure_classes.values() for failure in values))
     if any(item['category'] in {'failed','unavailable','blocked_dependency'} for item in summaries.values()) and not failures:
         failures.append('task_acceptance_blocked')
     proposal = {'current_path':current_path if current_path in PATHS else None, 'proposed_path':None,
@@ -277,3 +278,79 @@ def facts_from_boundary(task, proof, manifest, semantic_decision, *, attempt, sa
     return {'values':values, 'provenance':provenance,
         'freshness':'same_project_revision' if same_revision else 'project_revision_changed',
         'requires_revalidation':[field for field in DAG_FACT_FIELDS if field not in values] if same_revision else ['all_selection_facts']}
+
+
+def read_dag_decision(persistence_root, ref, *, run_id):
+    """Persistenceの参照検証後、同じOrchestration関数でFactと判断を再現する。"""
+    from unityagent.persistence.state.dag_decision import read_dag_record
+    from unityagent.persistence.store.atomic_store import sha256_json
+    record, state, contract, sources = read_dag_record(persistence_root, ref, run_id=run_id)
+    task_states = state['task_states']
+    boundary = record['boundary']
+    from unityagent.orchestration.qa.task_acceptance import assess_task
+    from unityagent.orchestration.graph.resource_planning import plan_task_batches
+    order = [name for batch in plan_task_batches(contract['tasks'])['batches'] for name in batch['task_ids']]
+    boundary_index = order.index(boundary['task_id'])
+    for task in contract['tasks']:
+        name = task['id']
+        item = task_states[name]
+        history = item['handoff_history']
+        index = order.index(name)
+        if index > boundary_index and (history or item['status'] != 'pending'):
+            raise ValueError('DAG future Task has execution state')
+        if not history:
+            if item['status'] not in {'pending', 'blocked_dependency'} or any(value != 'not_observed' for value in item['gates'].values()) or item['semantic_retries'] != 0:
+                raise ValueError('DAG unexecuted Task state differs')
+            # 固定の直列順で既に処理したTaskは、依存阻害以外の理由で未実行へ戻せない。
+            dependencies_passed = all(task_states[dep]['status'] == 'verified' for dep in task.get('depends_on', []))
+            if index == boundary_index or (index < boundary_index and (dependencies_passed or item['status'] != 'blocked_dependency')):
+                raise ValueError('DAG prior Attempt or dependency blocker is missing')
+            continue
+        attempt = len(history) - 1
+        child = f'{run_id}-{name}' + (f'-repair{attempt}' if attempt else '')
+        if any(entry['run_id'] != f'{run_id}-{name}' + (f'-repair{index}' if index else '') for index,entry in enumerate(history)) or item['semantic_retries'] != attempt:
+            raise ValueError('DAG Task history differs')
+        related = [source for source in record['sources'] if source['task_id'] == name]
+        if any(source['run_id'] != child or source['attempt'] != attempt for source in related):
+            raise ValueError('DAG latest Attempt sources differ')
+        observations = [sources[source['ref']] for source in related if source['kind'] == 'strategy-observation']
+        if len(observations) != 1:
+            raise ValueError('DAG child observation is missing or duplicated')
+        observation = observations[0]
+        evidence_sources = [source for source in related if source['kind'] == 'evidence']
+        if set(observation['evidence_refs']) != {source['evidence_id'] for source in evidence_sources}:
+            raise ValueError('DAG Evidence source set differs')
+        if observation['orchestration_decision_ref'] not in sources or observation['context_manifest_ref'] not in sources:
+            raise ValueError('DAG child Context or proof source is missing')
+        gates = assess_task([sources[source['ref']] for source in evidence_sources], required_gates=task['required_gates'],
+            run_id=child, definition_fingerprint=observation['definition_fingerprint'])['gates']
+        verified = observation['result_status'] == 'completed' and all(value == 'passed' for value in gates.values())
+        semantic = item['semantic_decision']
+        if item['gates'] != gates or item['status'] != ('verified' if verified else 'blocked') or semantic['outcome'] != ('passed' if verified else 'validation_failed'):
+            raise ValueError('DAG Acceptance differs from verified Evidence')
+        if semantic['semantic_attempt'] != attempt + (1 if semantic['decision'] in {'continue','replan'} else 0):
+            raise ValueError('DAG semantic Attempt differs')
+    if task_states[boundary['task_id']]['semantic_decision'] != boundary['semantic_decision']:
+        raise ValueError('DAG semantic boundary differs')
+    observed = {}
+    failures = {}
+    uncertain = False
+    same_revision = state['dispatch_project_revisions'] == record['project_revisions']
+    for source in record['sources']:
+        value = sources[source['ref']]
+        if source['kind'] == 'strategy-observation':
+            uncertain = uncertain or value['uncertain_side_effects']
+            if task_states[source['task_id']]['status'] != 'verified' and value['failure_class']:
+                failures.setdefault(source['task_id'], []).append(value['failure_class'])
+        if source['kind'] == 'orchestration-decision' and source['task_id'] == boundary['task_id'] and source['attempt'] == boundary['attempt']:
+            task = next(task for task in contract['tasks'] if task['id'] == boundary['task_id'])
+            observed[task['id']] = facts_from_boundary(task, value, sources[value['context_manifest_ref']], boundary['semantic_decision'],
+                attempt=boundary['attempt'], same_revision=same_revision, proof_ref=source['ref'], manifest_ref=value['context_manifest_ref'])
+    if sha256_json(observed) != sha256_json(record['observed_facts']):
+        raise ValueError('DAG facts differ from verified sources')
+    # 現在の子TaskのFactを残Taskへ転用しない。再現時も保存時と同じ欠測を保持する。
+    expected = build_dag_inputs(contract['tasks'], {'tasks':task_states}, task_failure_classes=failures, uncertain_side_effects=uncertain)
+    decision = expected.pop('decision')
+    if sha256_json(expected) != sha256_json(record['inputs']) or decision != record['decision']:
+        raise ValueError('DAG decision differs from confirmed inputs')
+    return record

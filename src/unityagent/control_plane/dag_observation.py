@@ -4,8 +4,8 @@ from pathlib import Path
 
 from jsonschema import ValidationError
 
-from unityagent.orchestration.routing.adaptive_execution import build_dag_inputs, facts_from_boundary
-from unityagent.persistence.state.dag_decision import decision_snapshot, read_dag_decision
+from unityagent.orchestration.routing.adaptive_execution import build_dag_inputs, facts_from_boundary, read_dag_decision
+from unityagent.persistence.state.dag_decision import decision_snapshot
 from unityagent.persistence.store.atomic_store import PersistenceError, relative_ref, sha256_json, write_immutable_json
 
 
@@ -18,7 +18,7 @@ def observe_dag_boundary(plane, tasks, state, *, task_id, attempt, dispatch_revi
         contract = decision_snapshot(layout, state['contract_ref'], state['run_id'], 'task-contract')
         if contract != {'tasks':tasks, 'definition_fingerprint':state['definition_fingerprint']}:
             raise ValueError('DAG contract differs')
-        failures = []
+        failures = {}
         uncertain = False
         for task in tasks:
             name = task['id']
@@ -74,14 +74,14 @@ def observe_dag_boundary(plane, tasks, state, *, task_id, attempt, dispatch_revi
                     'run_id':child,'task_id':name,'attempt':child_attempt})
                 uncertain = uncertain or observation['uncertain_side_effects']
                 if item['status'] != 'verified' and observation['failure_class']:
-                    failures.append(observation['failure_class'])
+                    failures.setdefault(name, []).append(observation['failure_class'])
             if name != task_id or not proof or not manifest:
                 continue
             observed[name] = facts_from_boundary(task, proof, manifest, item['semantic_decision'],
                 attempt=attempt, same_revision=dispatch_revisions == state['project_revisions'],
                 proof_ref=result['orchestration_decision_ref'], manifest_ref=result['context_manifest_ref'])
         # 未実行Taskや別の修復候補には、今回実行したTaskの情報を転用しない。
-        inputs = build_dag_inputs(tasks, state, failure_classes=failures, uncertain_side_effects=uncertain)
+        inputs = build_dag_inputs(tasks, state, task_failure_classes=failures, uncertain_side_effects=uncertain)
         decision = inputs.pop('decision')
         boundary = {'kind':'task_attempt_acceptance','task_id':task_id,'attempt':attempt,
                     'result_run_id':state['tasks'][task_id]['result']['run_id'],
@@ -91,6 +91,12 @@ def observe_dag_boundary(plane, tasks, state, *, task_id, attempt, dispatch_revi
             'definition_fingerprint':deepcopy(state['definition_fingerprint']), 'project_revisions':revisions,
             'inputs':inputs,'observed_facts':observed,'sources':sources,
             'dispatch_project_revisions':{sha256_json(project):revision for project,revision in dispatch_revisions.items()}}
+        # current更新後も残作業・予算を再計算できる最小状態だけを残す。結果本文は複製しない。
+        snapshot['task_states'] = {name:{'status':item['status'], 'gates':deepcopy(item['gates']),
+            'semantic_retries':item.get('semantic_retries', 0),
+            'handoff_history':[{'run_id':entry['run_id']} for entry in item.get('handoff_history', [])],
+            'semantic_decision':{key:item['semantic_decision'][key] for key in ('decision','semantic_attempt','outcome')} if item.get('semantic_decision') else {}}
+            for name,item in state['tasks'].items()}
         phase = 'dag_decision_persistence_failed'
         path = layout.snapshot(state['run_id'],'dag-boundary',sha256_json(snapshot))
         write_immutable_json(path,snapshot)

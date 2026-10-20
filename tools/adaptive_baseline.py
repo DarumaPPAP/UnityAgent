@@ -14,7 +14,7 @@ import yaml
 
 from unityagent.persistence.contracts.definition_fingerprint import validate_definition_fingerprint
 from unityagent.persistence.evidence.evidence_store import EvidenceStore
-from unityagent.persistence.state.dag_decision import read_dag_decision
+from unityagent.orchestration.routing.adaptive_execution import read_dag_decision
 from unityagent.persistence.store.atomic_store import PersistenceError, read_json, relative_ref, resolve_ref, safe_id, sha256_json
 from unityagent.persistence.store.layout import PersistenceLayout
 from unityagent.resources import resource_root

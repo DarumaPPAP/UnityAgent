@@ -36,6 +36,8 @@ Complexは説明上の呼称に限ります。既存execution profile、Context 
 
 現在Taskのrisk・Review・専門担当・Context profile・binding／Scopeは、検証済みのOrchestration proof、Context manifest、同一Project revision、既存の意味的継続判定から取得できる項目だけを記録します。Evidenceは `EvidenceStore.verify_record` でevent chainとRun・定義を確認します。Project変更後のFactは有効扱いせず、欠測と参照不整合は別に診断します。生の結果・Provider引数・Source全文を新しいsnapshotへ複製しません。
 
+保存参照の読取検証はPersistenceの `read_dag_record`、Fact・入力・判定結果の再計算はOrchestrationの `adaptive_execution.read_dag_decision` が担当します。利用側は後者を通し、出所の存在だけでなく値の一致も確認します。境界snapshotには再計算に必要な最小Task状態を保持し、Task単位の停止理由からRunner／環境の利用不可を実行失敗と区別します。
+
 未実行Taskや別の修復候補には完了TaskのFactを転用しません。将来TaskのContext生成や追加Project走査も行いません。残作業に必要な選択条件は項目ごとの不足理由を持ち、全項目が確認済みの場合だけ既存selectorで候補を求めます。現在の親DAGには比較可能な戦略値がないため `current_path` はnullです。子Taskのfastと親DAGの調整を比べて昇格・降格とは記録しません。実行への適用は引き続きfalseです。
 
 補助保存失敗は `dag_decision_diagnostics` にTask／Attempt付きで記録し、Provider・モデルを再送しません。Resumeで完了済み境界を再生成しません。Baselineの任意 `dag_decisions` に親の観測完全性を出し、従来の子Attemptの品質分母・経路分布は維持します。P0〜P1形式だけのRunも従来どおり読めます。

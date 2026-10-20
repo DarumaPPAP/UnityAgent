@@ -23,7 +23,7 @@ def decision_snapshot(layout, ref, owner, kind):
     return value
 
 
-def read_dag_decision(persistence_root, ref, *, run_id):
+def read_dag_record(persistence_root, ref, *, run_id):
     """currentの再読込やProvider再送をせず、保存時点の対応関係を検証する。"""
     layout = PersistenceLayout(persistence_root)
     record = decision_snapshot(layout, ref, run_id, 'dag-decision')
@@ -100,4 +100,4 @@ def read_dag_decision(persistence_root, ref, *, run_id):
             raise ValueError('DAG fact Project revision differs')
         if any(ref not in verified_sources and ref != 'boundary.semantic_decision' for ref in facts['provenance'].values()):
             raise ValueError('DAG fact provenance differs')
-    return record
+    return record, state, contract, verified_sources

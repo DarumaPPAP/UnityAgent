@@ -214,7 +214,7 @@ class TaskDagTests(unittest.TestCase):
         self.assertEqual(sum(g['completion']['total'] for g in baseline['groups']), len(result['tasks']))
 
     def dag_records(self, result):
-        from unityagent.persistence.state.dag_decision import read_dag_decision
+        from unityagent.orchestration.routing.adaptive_execution import read_dag_decision
         return [read_dag_decision(self.plane.state_store.layout.root, ref, run_id='dag-test')
                 for ref in result['dag_decision_refs']]
 
@@ -296,7 +296,7 @@ class TaskDagTests(unittest.TestCase):
         self.assertEqual(records[1]['inputs']['tasks']['dependent']['dependencies_satisfied'],False)
 
     def test_parent_record_rejects_tampered_evidence_and_cross_attempt_references(self):
-        from unityagent.persistence.state.dag_decision import read_dag_decision
+        from unityagent.orchestration.routing.adaptive_execution import read_dag_decision
         from unityagent.persistence.store.atomic_store import read_json,write_immutable_json
         result=self.run_tasks([self.task('parent')])
         record=self.dag_records(result)[0]
@@ -342,7 +342,7 @@ class TaskDagTests(unittest.TestCase):
 
     def test_parent_project_change_does_not_reuse_old_facts(self):
         from unityagent.control_plane.dag_observation import observe_dag_boundary
-        from unityagent.persistence.state.dag_decision import read_dag_decision
+        from unityagent.orchestration.routing.adaptive_execution import read_dag_decision
         tasks=[self.task('parent')]
         self.run_tasks(tasks)
         state=self.plane.state_store.load_task_state('dag-test')
@@ -365,3 +365,96 @@ class TaskDagTests(unittest.TestCase):
         self.assertNotIn('secret-not-to-persist-in-decision',json.dumps(records))
         root=self.plane.state_store.layout.root
         self.assertNotIn('secret-not-to-persist-in-decision',(root/records[0]['state_ref']).read_text())
+
+    def test_parent_reader_rejects_decision_unrelated_to_inputs(self):
+        from copy import deepcopy
+        from unityagent.orchestration.routing.adaptive_execution import read_dag_decision
+        from unityagent.persistence.store.atomic_store import relative_ref, write_immutable_json
+        result = self.run_tasks([self.task('parent'), self.task('child', ['parent'])])
+        record = deepcopy(self.dag_records(result)[0])
+        record['decision'].update(recommendation='blocked', reason_codes=['invented_failure'], candidate_path='fast')
+        layout = self.plane.state_store.layout
+        path = layout.snapshot('dag-test', 'dag-decision', sha256_json(record))
+        write_immutable_json(path, record)
+        with self.assertRaises(ValueError):
+            read_dag_decision(layout.root, relative_ref(layout.root, path), run_id='dag-test')
+
+    def test_parent_reader_rejects_facts_unrelated_to_proof(self):
+        from copy import deepcopy
+        from unityagent.orchestration.routing.adaptive_execution import read_dag_decision
+        from unityagent.persistence.store.atomic_store import read_json, relative_ref, write_immutable_json
+        result = self.run_tasks([self.task('parent')])
+        record = deepcopy(self.dag_records(result)[0])
+        layout = self.plane.state_store.layout
+        boundary = read_json(layout.root / record['state_ref'])
+        for value in (record, boundary):
+            value['observed_facts']['parent']['values'].update(risk='critical', scope_known=False)
+        path = layout.snapshot('dag-test', 'dag-boundary', sha256_json(boundary))
+        write_immutable_json(path, boundary)
+        record['state_ref'] = relative_ref(layout.root, path)
+        path = layout.snapshot('dag-test', 'dag-decision', sha256_json(record))
+        write_immutable_json(path, record)
+        with self.assertRaises(ValueError):
+            read_dag_decision(layout.root, relative_ref(layout.root, path), run_id='dag-test')
+
+    def test_parent_runner_unavailable_is_not_execution_failure(self):
+        from tests.runtime.test_reasoning_runtime_handoff import ReasoningRuntimeHandoffTests, ReadOnlyBroker, fingerprint
+        from unityagent.runtime.tooling.capability_resolver import ResolutionContext
+        fixture = ReasoningRuntimeHandoffTests()
+        fixture.setUp()
+        self.addCleanup(fixture.doCleanups)
+        plane = UnityAgentControlPlane(fixture.root / 'state', broker=ReadOnlyBroker())
+        task = {'id':'plan', 'workspace':str(fixture.project), 'depends_on':[], 'goal':'plan world', 'write_set':[], 'resource_claims':[],
+                'required_gates':{'plan':['world_plan']}, 'entry_request':fixture.entry}
+        with patch('unityagent.runtime.guardrails.project_lease._default_lock_root', return_value=fixture.root / 'locks'):
+            result = plane.execute_tasks([task], run_id='dag-runner', definition_fingerprint=fingerprint(),
+                task_parameters={'plan':{'environment_snapshot':fixture.snapshot, 'context':ResolutionContext(policy_allowed=True), 'executors':{}, 'specialist_pilot_enabled':True}})
+        from unityagent.orchestration.routing.adaptive_execution import read_dag_decision
+        record = read_dag_decision(plane.state_store.layout.root, result['dag_decision_refs'][0], run_id='dag-runner')
+        self.assertIn('runner_unavailable', record['decision']['reason_codes'])
+        self.assertEqual(record['inputs']['tasks']['plan']['category'], 'unavailable')
+
+    def test_parent_reader_rejects_acceptance_forged_in_boundary_state(self):
+        from copy import deepcopy
+        from unityagent.orchestration.routing.adaptive_execution import build_dag_inputs, read_dag_decision
+        from unityagent.persistence.store.atomic_store import read_json, relative_ref, write_immutable_json
+        task = self.task('parent', gates={'visual':['visual_capture']})
+        result = self.run_tasks([task])
+        record = deepcopy(self.dag_records(result)[0])
+        layout = self.plane.state_store.layout
+        boundary = read_json(layout.root / record['state_ref'])
+        boundary['task_states']['parent'].update(status='verified', gates={'visual':'passed'})
+        inputs = build_dag_inputs([task], {'tasks':boundary['task_states']})
+        record['decision'] = inputs.pop('decision')
+        record['inputs'] = boundary['inputs'] = inputs
+        record['input_digest'] = sha256_json(inputs)
+        path = layout.snapshot('dag-test', 'dag-boundary', sha256_json(boundary))
+        write_immutable_json(path, boundary)
+        record['state_ref'] = relative_ref(layout.root, path)
+        path = layout.snapshot('dag-test', 'dag-decision', sha256_json(record))
+        write_immutable_json(path, record)
+        with self.assertRaises(ValueError):
+            read_dag_decision(layout.root, relative_ref(layout.root, path), run_id='dag-test')
+
+    def test_parent_reader_rejects_erased_prior_attempt_and_sources(self):
+        from copy import deepcopy
+        from unityagent.orchestration.routing.adaptive_execution import build_dag_inputs, read_dag_decision
+        from unityagent.persistence.store.atomic_store import read_json, relative_ref, write_immutable_json
+        tasks = [self.task('a', gates={'visual':['visual_capture']}), self.task('b')]
+        result = self.run_tasks(tasks)
+        record = deepcopy(self.dag_records(result)[-1])
+        layout = self.plane.state_store.layout
+        boundary = read_json(layout.root / record['state_ref'])
+        boundary['task_states']['a'].update(status='pending', gates={'visual':'not_observed'}, handoff_history=[], semantic_retries=0, semantic_decision={})
+        record['sources'] = boundary['sources'] = [source for source in record['sources'] if source['task_id'] != 'a']
+        inputs = build_dag_inputs(tasks, {'tasks':boundary['task_states']})
+        record['decision'] = inputs.pop('decision')
+        record['inputs'] = boundary['inputs'] = inputs
+        record['input_digest'] = sha256_json(inputs)
+        path = layout.snapshot('dag-test', 'dag-boundary', sha256_json(boundary))
+        write_immutable_json(path, boundary)
+        record['state_ref'] = relative_ref(layout.root, path)
+        path = layout.snapshot('dag-test', 'dag-decision', sha256_json(record))
+        write_immutable_json(path, record)
+        with self.assertRaises(ValueError):
+            read_dag_decision(layout.root, relative_ref(layout.root, path), run_id='dag-test')
