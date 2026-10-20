@@ -83,7 +83,9 @@ Providerless Specialist reasoningでは同じControl Planeから別のRuntime Ac
  Structured Artifact          Provider
 ```
 
-Graphics / WorldCreator / PerformanceはConsumer Catalog v3のProduction Reasoning Profileとして登録済みです。Graphicsは`project.inspect` / `source.read`、Performanceは`profiler.observe`の検証済みObservationをReasoning前に要求し、WorldCreatorは`world.plan`のplanning-only Handoffを使います。Reasoning ProfileはTool Providerを持たず、既存CodexRunnerで構造化Artifactを生成します。登録済みであることとLive ProjectでProduction Verifiedであることは別であり、未観測Evidenceを成功へ昇格しません。Policy defines; Orchestration decides; Context materializes; Runtime executes; Persistence remembers; eval measures、という責務境界を維持します。
+Graphics / WorldCreator / QA（性能分析）はConsumer Catalog v3のProduction Reasoning Profileとして登録済みです。Graphicsは`project.inspect` / `source.read`、QAの`performance.analyze`は`profiler.observe`の検証済みObservationをReasoning前に要求し、WorldCreatorは`world.plan`のplanning-only Handoffを使います。Reasoning ProfileはTool Providerを持たず、既存CodexRunnerで構造化Artifactを生成します。登録済みであることとLive ProjectでProduction Verifiedであることは別であり、未観測Evidenceを成功へ昇格しません。Policy defines; Orchestration decides; Context materializes; Runtime executes; Persistence remembers; eval measures、という責務境界を維持します。
+
+初期戦略 `fast / standard / orchestrated` はControl Planeに接続済みです。直列Task DAGは固定Acceptanceと依存を既存executeへ接続し、Runtime leaseとRun lockを維持します。結果確定後の戦略提案は観測専用で `applied: false` とし、Orchestration decisionやEvidenceを置き換えません。保存済みRunのオフライン集計はEval側の `tools/adaptive_baseline.py` が担当します。実際の途中戦略変更、動的Plan、Queue、並列実行、Device leaseは対象外です。[適応実行方針](adaptive-subagent-execution.md)に記録契約と集計手順を示します。
 
 ---
 

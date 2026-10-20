@@ -17,3 +17,80 @@ properties:
     items: {type: string, minLength: 1}
     uniqueItems: true
   updated_at: {type: string, format: date-time}
+  strategy_observation_refs:
+    type: array
+    uniqueItems: true
+    items:
+      type: string
+      minLength: 1
+  strategy_observation_diagnostics:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required:
+      - code
+      - error_type
+      properties:
+        code:
+          enum:
+          - observation_persistence_failed
+          - observation_reference_persistence_failed
+        error_type:
+          type: string
+  definition_fingerprint:
+    type: object
+    additionalProperties: false
+    required:
+    - schema_version
+    - architecture_version
+    - policy_revision
+    - prompt_revision
+    - context_revision
+    - graph_revision
+    - runtime_profile_revision
+    - tool_schema_revision
+    - checkpoint_schema_revision
+    - evidence_schema_revision
+    - eval_contract_revision
+    properties:
+      schema_version:
+        const: '1.0'
+      architecture_version:
+        type: string
+        minLength: 1
+      policy_revision:
+        type: string
+        minLength: 1
+      prompt_revision:
+        type: string
+        minLength: 1
+      context_revision:
+        type: string
+        minLength: 1
+      graph_revision:
+        type: string
+        minLength: 1
+      runtime_profile_revision:
+        type: string
+        minLength: 1
+      tool_schema_revision:
+        type: string
+        minLength: 1
+      checkpoint_schema_revision:
+        type: string
+        minLength: 1
+      evidence_schema_revision:
+        type: string
+        minLength: 1
+      eval_contract_revision:
+        type: string
+        minLength: 1
+  context_manifest_ref:
+    type:
+    - string
+    - 'null'
+  orchestration_decision_ref:
+    type:
+    - string
+    - 'null'

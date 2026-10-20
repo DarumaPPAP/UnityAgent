@@ -85,6 +85,86 @@ class ControlPlaneTests(unittest.TestCase):
             support_tier="supported", compatibility_backend="official", capabilities=["visual.capture"],
             failure_class=None, binding_status="bound", bound_instance_id="unity-test")
 
+    def observe_inspection(self, plane, **extra):
+        from unityagent.runtime.tooling.providers.file.file_provider import FileProvider
+        return plane.execute(self.entry_request(), environment_snapshot=self.snapshot,
+            context=ResolutionContext(policy_allowed=True), definition_fingerprint=fingerprint(),
+            executors={'file': FileProvider(self.project).execute}, run_id='observe-single', **extra)
+
+    def test_observation_preserves_dispatch_and_handoff(self):
+        from unittest.mock import patch
+        plane = UnityAgentControlPlane(self.root / 'state')
+        original = UnityAgentControlPlane(self.root / 'original-state')
+        with mock.patch.object(original, '_observe_strategy', side_effect=lambda result, **kwargs: result), mock.patch.object(original.broker, 'dispatch', wraps=original.broker.dispatch) as before:
+            baseline = self.observe_inspection(original)
+        with mock.patch.object(plane.broker, 'dispatch', wraps=plane.broker.dispatch) as after:
+            result = self.observe_inspection(plane)
+        self.assertEqual(before.call_count, after.call_count)
+        self.assertEqual(result['handoff'], baseline['handoff'])
+        self.assertEqual(result['status'], baseline['status'])
+        self.assertEqual([r['status'] for r in result['results']], [r['status'] for r in baseline['results']])
+        self.assertEqual(result['evidence_refs'], baseline['evidence_refs'])
+        saved = plane.state_store.load_execution_state(result['run_id'])
+        self.assertEqual(saved['strategy_observation_refs'], result['strategy_observation_refs'])
+        self.assertEqual(result['status'], 'completed')
+        self.assertEqual(len(result['results']), 1)
+        self.assertEqual(result['handoff']['step_id'], 'inspect_sources')
+        ref = result['strategy_observation_refs'][0]
+        record = json.loads((plane.state_store.layout.root / ref).read_text())
+        self.assertEqual(record['recommendation'], 'not_evaluated')
+        self.assertEqual(record['selection_inputs'], {})
+        self.assertFalse(record['applied'])
+        self.assertEqual(record['evidence_refs'], result['evidence_refs'])
+        self.assertNotIn(ref, result['evidence_refs'])
+        from unityagent.persistence.store.atomic_store import sha256_json
+        self.assertEqual(Path(ref).stem, sha256_json(record).split(':')[1])
+
+    def test_fast_observation_does_not_load_graph_or_spawn_worker(self):
+        from unittest.mock import patch
+        plane = UnityAgentControlPlane(self.root / 'state')
+        with patch('unityagent.control_plane.unity_agent_control_plane.runtime_node_for_requests', side_effect=AssertionError('graph')):
+            result = self.observe_inspection(plane)
+        self.assertEqual(result['status'], 'completed')
+        self.assertEqual(len(result['strategy_observation_refs']), 1)
+        self.assertEqual(result['handoff']['runtime_action'], {'kind': 'capability_dispatch'})
+
+    def test_missing_optional_observation_does_not_fabricate_context(self):
+        plane = UnityAgentControlPlane(self.root / 'state')
+        with mock.patch('unityagent.control_plane.unity_agent_control_plane.derive_context_inputs', side_effect=ValueError('missing observed inputs')):
+            result = self.observe_inspection(plane)
+        self.assertEqual(result['status'], 'blocked')
+        self.assertNotIn('strategy_observation_refs', result)
+        self.assertNotIn('handoff', result)
+
+    def test_observed_failure_keeps_runtime_classification(self):
+        for failure in ('blocked_by_approval', 'scope_violation', 'unavailable', 'resource_conflict'):
+            with self.subTest(failure=failure):
+                plane = UnityAgentControlPlane(self.root / failure)
+                with mock.patch.object(plane.broker, 'dispatch', return_value={
+                        'status':'blocked', 'provider_result':{'status':'failed','failure_class':failure}}):
+                    result = self.observe_inspection(plane)
+                record = json.loads((plane.state_store.layout.root / result['strategy_observation_refs'][0]).read_text())
+                self.assertEqual(record['recommendation'], 'blocked')
+                self.assertIn(failure, record['reason_codes'])
+                self.assertIsNone(record['proposed_path'])
+
+    def test_observation_persistence_failure_does_not_replay_provider(self):
+        from unittest.mock import patch
+        from unityagent.persistence.store.atomic_store import write_immutable_json
+        plane = UnityAgentControlPlane(self.root / 'state')
+        def write(path, value):
+            if path.parent.name == 'strategy-observation':
+                raise OSError('observation disk unavailable')
+            return write_immutable_json(path, value)
+        with patch('unityagent.control_plane.unity_agent_control_plane.write_immutable_json', side_effect=write), patch.object(plane.broker, 'dispatch', wraps=plane.broker.dispatch) as dispatch:
+            result = self.observe_inspection(plane)
+        self.assertEqual(dispatch.call_count, 1)
+        self.assertEqual(result['status'], 'completed')
+        self.assertEqual(result['strategy_observation_refs'], [])
+        self.assertEqual(result['strategy_observation_diagnostics'][0]['code'], 'observation_persistence_failed')
+        self.assertTrue(plane.evidence_store.get(result['evidence_refs'][0]))
+        self.assertEqual(plane.state_store.load_execution_state(result['run_id'])['strategy_observation_diagnostics'], result['strategy_observation_diagnostics'])
+
     def test_execution_facade_owns_run_and_persists_evidence(self) -> None:
         plane = UnityAgentControlPlane(self.root / "state")
         result = plane.execute(

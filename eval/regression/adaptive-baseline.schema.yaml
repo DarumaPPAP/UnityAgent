@@ -1,0 +1,319 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:eval:adaptive-baseline
+title: 保存済み実行の適応戦略Baseline
+type: object
+additionalProperties: false
+required:
+- schema_version
+- declared_source_revision
+- source_revision_provenance
+- requested_run_ids
+- observation_completeness
+- measurement_scope
+- groups
+properties:
+  schema_version:
+    const: '1.0'
+  declared_source_revision: &id001
+    type: string
+  source_revision_provenance:
+    const: caller_declared_unless_persisted
+  requested_run_ids:
+    type: array
+    minItems: 1
+    uniqueItems: true
+    items: *id001
+  observation_completeness:
+    enum:
+    - complete
+    - failed
+  measurement_scope:
+    const: saved_run_records_only
+  groups:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required:
+      - source_revision
+      - definition_fingerprint
+      - samples
+      - path_distribution
+      - recommendation_distribution
+      - outcomes
+      - quality
+      - completion
+      - model_usage
+      properties:
+        source_revision: *id001
+        definition_fingerprint:
+          anyOf:
+          - type: object
+            additionalProperties: false
+            required:
+            - schema_version
+            - architecture_version
+            - policy_revision
+            - prompt_revision
+            - context_revision
+            - graph_revision
+            - runtime_profile_revision
+            - tool_schema_revision
+            - checkpoint_schema_revision
+            - evidence_schema_revision
+            - eval_contract_revision
+            properties:
+              schema_version:
+                const: '1.0'
+              architecture_version:
+                type: string
+                minLength: 1
+              policy_revision:
+                type: string
+                minLength: 1
+              prompt_revision:
+                type: string
+                minLength: 1
+              context_revision:
+                type: string
+                minLength: 1
+              graph_revision:
+                type: string
+                minLength: 1
+              runtime_profile_revision:
+                type: string
+                minLength: 1
+              tool_schema_revision:
+                type: string
+                minLength: 1
+              checkpoint_schema_revision:
+                type: string
+                minLength: 1
+              evidence_schema_revision:
+                type: string
+                minLength: 1
+              eval_contract_revision:
+                type: string
+                minLength: 1
+          - type: 'null'
+        samples:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - id
+            - run_id
+            - result_run_id
+            - task_id
+            - attempt
+            - execution_status
+            - outcome
+            - quality
+            - gates
+            - current_path
+            - recommendation
+            - context_estimated_tokens
+            - latency_ms
+            - latency_scope
+            - missing_observations
+            - records
+            properties:
+              id: *id001
+              run_id: *id001
+              result_run_id: *id001
+              task_id:
+                type:
+                - string
+                - 'null'
+              attempt:
+                type:
+                - integer
+                - 'null'
+                minimum: 0
+              execution_status: *id001
+              outcome:
+                enum:
+                - completed
+                - failed
+                - blocked
+                - unavailable
+              quality:
+                enum:
+                - passed
+                - failed
+                - not_evaluated
+              gates:
+                type: object
+                additionalProperties: *id001
+              current_path:
+                enum:
+                - fast
+                - standard
+                - orchestrated
+                - null
+              recommendation:
+                enum:
+                - keep
+                - promote
+                - demote
+                - blocked
+                - not_evaluated
+                - null
+              context_estimated_tokens:
+                type:
+                - integer
+                - 'null'
+                minimum: 0
+              latency_ms:
+                type:
+                - number
+                - 'null'
+                minimum: 0
+              latency_scope:
+                enum:
+                - task_total
+                - not_observed
+              missing_observations:
+                type: array
+                items: *id001
+                uniqueItems: true
+              records:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: false
+                  required:
+                  - ref
+                  - digest
+                  - kind
+                  properties:
+                    ref: *id001
+                    digest:
+                      type:
+                      - string
+                      - 'null'
+                      pattern: ^sha256:[0-9a-f]{64}$
+                    kind: *id001
+        path_distribution:
+          type: object
+          additionalProperties: false
+          properties:
+            fast: &id002
+              type: integer
+              minimum: 0
+            standard: *id002
+            orchestrated: *id002
+        recommendation_distribution:
+          type: object
+          additionalProperties: false
+          properties:
+            keep: *id002
+            promote: *id002
+            demote: *id002
+            blocked: *id002
+            not_evaluated: *id002
+        outcomes:
+          type: object
+          additionalProperties: false
+          required:
+          - completed
+          - failed
+          - blocked
+          - unavailable
+          properties:
+            completed: *id002
+            failed: *id002
+            blocked: *id002
+            unavailable: *id002
+        quality:
+          type: object
+          additionalProperties: false
+          required:
+          - total
+          - evaluable
+          - succeeded
+          - not_evaluated
+          - success_rate
+          properties:
+            total: *id002
+            evaluable: *id002
+            succeeded: *id002
+            not_evaluated: *id002
+            success_rate:
+              type:
+              - number
+              - 'null'
+              minimum: 0
+              maximum: 1
+        completion:
+          type: object
+          additionalProperties: false
+          required:
+          - total
+          - completed
+          properties:
+            total: *id002
+            completed: *id002
+        model_usage:
+          type: object
+          additionalProperties: false
+          required:
+          - status
+          - total_tokens
+          properties:
+            status:
+              const: not_observed
+            total_tokens:
+              const: null
+  dag_decisions:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required:
+      - run_id
+      - ref
+      - digest
+      - status
+      - recommendation
+      - reason_codes
+      - remaining_task_count
+      - ready_task_count
+      properties:
+        run_id:
+          type: string
+        ref:
+          type:
+          - string
+          - 'null'
+        digest:
+          type:
+          - string
+          - 'null'
+          pattern: ^sha256:[0-9a-f]{64}$
+        status:
+          enum:
+          - valid
+          - invalid
+        recommendation:
+          enum:
+          - keep
+          - promote
+          - demote
+          - blocked
+          - not_evaluated
+        reason_codes:
+          type: array
+          items:
+            type: string
+        remaining_task_count:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+        ready_task_count:
+          type:
+          - integer
+          - 'null'
+          minimum: 0

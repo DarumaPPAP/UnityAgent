@@ -8,6 +8,7 @@
 |---|---|
 | 製品の責務と実行経路 | [全体構造](architecture/architecture.md) |
 | ツール実行と権限境界 | [実行処理の構造](architecture/production-tool-runtime.md) |
+| 初期戦略・直列DAG・観測とBaseline | [適応実行方針](architecture/adaptive-subagent-execution.md) |
 | 専門SubAgentの情報構築と推論の引き継ぎ | [専門SubAgentの情報構築](architecture/specialist-context-assembly.md) |
 | ArtistSubAgentの責務 | [ArtistSubAgentの境界](architecture/artist-subagent-boundary.md) |
 | 一連の実行機能と制約 | [一連の実行機能](architecture/full-e2e-capability.md) |

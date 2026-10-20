@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 import time
 
+from unityagent.control_plane.dag_observation import observe_dag_boundary
 from unityagent.orchestration.graph.resource_planning import plan_task_batches
 from unityagent.persistence.checkpoint.checkpoint_store import CheckpointStore
 from unityagent.persistence.contracts.definition_fingerprint import validate_definition_fingerprint
@@ -122,6 +123,7 @@ def execute_task_dag(plane, tasks, *, run_id, definition_fingerprint, task_param
                 safe_id(child_run, 'task_run_id')
                 record['status'] = 'running'
                 plane.state_store.save_task_state(state)
+                dispatch_revisions = dict(state['project_revisions'])
                 start = time.monotonic()
                 result = plane.execute(candidate, run_id=child_run,
                     definition_fingerprint=definition, **task_parameters[identifier])
@@ -130,6 +132,16 @@ def execute_task_dag(plane, tasks, *, run_id, definition_fingerprint, task_param
                 record['gates'] = _acceptance(plane, result, task['required_gates'], definition)
                 record['status'] = 'verified' if result['status'] == 'completed' and all(
                     g == 'passed' for g in record['gates'].values()) else 'blocked'
+                # Acceptance確定後のAttemptに結び付ける。Resume時はこの境界を再実行しない。
+                if result.get('handoff'):
+                    observed = plane._observe_strategy(result, observation_run_id=run_id,
+                        task_id=identifier, attempt=attempt, gates=record['gates'])
+                    record.setdefault('strategy_observation_refs', []).extend(observed['strategy_observation_refs'])
+                    if observed.get('strategy_observation_diagnostics'):
+                        record.setdefault('strategy_observation_diagnostics', []).extend(observed['strategy_observation_diagnostics'])
+                else:
+                    record.setdefault('strategy_observation_diagnostics', []).append(
+                        {'code': 'observation_not_available', 'attempt': attempt})
                 record['handoff_history'].append({'run_id': result['run_id'],
                     'decision_ref': result.get('orchestration_decision_ref'),
                     'requested_subagent': candidate.get('requested_subagent')})
@@ -149,6 +161,8 @@ def execute_task_dag(plane, tasks, *, run_id, definition_fingerprint, task_param
                     semantic_attempt=attempt, progress_marker=failure,
                     progress_made=failure != prior_failure, blocked=not repairable and record['status'] != 'verified')
                 record['semantic_decision'] = decision
+                observe_dag_boundary(plane, tasks, state, task_id=identifier, attempt=attempt,
+                    dispatch_revisions=dispatch_revisions)
                 if (decision['decision'] != 'continue' or attempt + 1 >= len(candidates)
                         or attempt >= task.get('semantic_repair_limit', 2)):
                     break
