@@ -25,7 +25,9 @@
     "setup.py": "repository configuration",
     "repository-layout.json": "repository configuration",
     "subagent": "canonical SubAgent contracts, instructions and optional tools",
-    "ci": "Unity Editor compatibility fixture and test evidence (in-repo migration)"
+    "ci": "Unity Editor compatibility fixture and test evidence (in-repo migration)",
+    "Assets": "Unity development project assets",
+    "ProjectSettings": "Unity development project settings"
   },
   "canonical_paths": {
     "src/unityagent/cli.py": "product CLI",

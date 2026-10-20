@@ -1,0 +1,9 @@
+{
+  "name": "DarumaPPAP.UnityAgent.Tests.PlayMode",
+  "rootNamespace": "DarumaPPAP.UnityAgent.Tests",
+  "references": [],
+  "includePlatforms": [],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

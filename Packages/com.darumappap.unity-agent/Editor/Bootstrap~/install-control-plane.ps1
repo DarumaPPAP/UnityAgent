@@ -286,6 +286,7 @@ finally {
 New-Item -ItemType Directory -Path $binRoot -Force | Out-Null
 $shimContent = "@echo off`r`n`"$controlPlanePath`" %*`r`n"
 Set-Content -LiteralPath $shimPath -Value $shimContent -Encoding ASCII
+Set-Content -LiteralPath (Join-Path $binRoot "uagent.cmd") -Value $shimContent -Encoding ASCII
 Add-UserPathEntry -Directory $binRoot
 
 [Environment]::SetEnvironmentVariable("UNITY_AGENT_CONTROL_PLANE", $controlPlanePath, "User")

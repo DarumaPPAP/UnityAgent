@@ -20,6 +20,11 @@ class SetupCliTests(unittest.TestCase):
             root = Path(temp_root)
             project_root = root / "Project"
             project_root.mkdir()
+            (project_root / "Assets").mkdir()
+            (project_root / "Packages").mkdir()
+            (project_root / "Packages/manifest.json").write_text('{"dependencies":{}}')
+            (project_root / "ProjectSettings").mkdir()
+            (project_root / "ProjectSettings/ProjectVersion.txt").write_text("m_EditorVersion: 6000.3.12f1\n")
             fake_codex = root / "codex.exe"
             fake_codex.write_text("test executable", encoding="utf-8")
             stdout = io.StringIO()

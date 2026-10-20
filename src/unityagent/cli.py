@@ -14,11 +14,12 @@ ROOT = resource_root()
 
 from unityagent.control_plane.unity_agent_control_plane import UnityAgentControlPlane
 from unityagent.control_plane.full_e2e import apply_full_e2e, approve_full_e2e, approve_full_e2e_save, plan_full_e2e
-from unityagent.persistence.store.atomic_store import PersistenceError
+from unityagent.persistence.store.atomic_store import PersistenceError, read_json, safe_id
 from unityagent.runtime.tooling.providers.installer.installer_provider import InstallerProvider
 from unityagent.runtime.reference_implementation.profiles import runtime_profile_revision
 from unityagent.control_plane.unity_agent_control_plane import validate_entry_request
 from unityagent.runtime.tooling.environment.discovery import discover_environment
+from unityagent.runtime.tooling.environment.project_identity import resolve_project_root, same_project_root
 from unityagent.runtime.tooling.capability_resolver import ResolutionContext
 from unityagent.runtime.tooling.providers.file.file_provider import FileProvider
 
@@ -65,11 +66,11 @@ def _default_state_root() -> Path:
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="UnityAgent Control Plane host")
+    parser = argparse.ArgumentParser(prog="uagent", description="UnityAgent Control Plane host", allow_abbrev=False)
     subparsers = parser.add_subparsers(dest="command", required=True)
     hot = subparsers.add_parser("hot-reload", help="Optional CLI Loop V3; 通常Compile/QAは別Gate")
     hot.add_argument("operation", choices=("plan", "approve", "apply"))
-    hot.add_argument("--project-path", required=True)
+    _add_project_arguments(hot)
     hot.add_argument("--state-root", type=Path, default=_default_state_root())
     hot.add_argument("--file", action="append", default=[])
     hot.add_argument("--runner-path", type=Path)
@@ -78,7 +79,7 @@ def _parse_args() -> argparse.Namespace:
     hot.add_argument("--approval-ref")
     rock = subparsers.add_parser("rock", help="承認済み固定TemplateによるBlender MCP岩制作")
     rock.add_argument("operation", choices=("plan", "approve", "apply"))
-    rock.add_argument("--project-path", required=True)
+    _add_project_arguments(rock)
     rock.add_argument("--state-root", type=Path, default=_default_state_root())
     rock.add_argument("--job-id", default="rock-g1")
     rock.add_argument("--plan-id")
@@ -86,7 +87,7 @@ def _parse_args() -> argparse.Namespace:
     rock.add_argument("--mcp-executable", type=Path)
     rock_import = subparsers.add_parser("rock-import", help="承認済みFBXのProduction Editor Import/復旧")
     rock_import.add_argument("operation", choices=("plan", "approve", "apply", "rollback"))
-    rock_import.add_argument("--project-path", required=True)
+    _add_project_arguments(rock_import)
     rock_import.add_argument("--state-root", type=Path, default=_default_state_root())
     rock_import.add_argument("--job-id", default="rock-g1")
     rock_import.add_argument("--plan-id")
@@ -96,7 +97,7 @@ def _parse_args() -> argparse.Namespace:
     rock_import.add_argument("--rollback-approval-ref")
     e2e = subparsers.add_parser("e2e", help="固定のUnity Editor Full E2E検証")
     e2e.add_argument("operation", choices=("plan", "approve", "approve-save", "apply"))
-    e2e.add_argument("--project-path", required=True)
+    _add_project_arguments(e2e)
     e2e.add_argument("--state-root", type=Path, default=_default_state_root())
     e2e.add_argument("--plan-id")
     e2e.add_argument("--approval-ref")
@@ -109,8 +110,10 @@ def _parse_args() -> argparse.Namespace:
     run_parser.add_argument("--reasoning-effort", default="high")
     for command in ("doctor", "setup"):
         subparser = subparsers.add_parser(command)
-        subparser.add_argument("--operation", choices=("doctor", "plan", "apply"), default=command if command == "doctor" else "plan")
-        subparser.add_argument("--project-path", required=True)
+        if command == "setup":
+            subparser.add_argument("setup_operation", nargs="?", choices=("plan", "apply"))
+        subparser.add_argument("--operation", choices=("doctor", "plan", "apply"))
+        _add_project_arguments(subparser)
         subparser.add_argument("--product", action="append", choices=PRODUCTS, dest="products")
         subparser.add_argument("--channel", default=CHANNEL)
         subparser.add_argument("--entry-point", choices=("unity_ui", "codex_plugin"), default="codex_plugin")
@@ -122,7 +125,37 @@ def _parse_args() -> argparse.Namespace:
         subparser.add_argument("--state-root", type=Path, default=_default_state_root())
         subparser.add_argument("--format", choices=("json",), default="json")
         subparser.add_argument("--non-interactive", action="store_true")
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.command in {"doctor", "setup"}:
+        positional = getattr(args, "setup_operation", None)
+        if positional is not None and args.operation is not None:
+            parser.error("setup operation must be supplied either positionally or with --operation")
+        args.operation = positional or args.operation or ("doctor" if args.command == "doctor" else "plan")
+    if args.command != "run":
+        try:
+            args.project_path = resolve_project_root(args.project_path)
+        except (ValueError, OSError, RuntimeError) as exc:
+            parser.error(str(exc))
+    return args
+
+
+def _add_project_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.allow_abbrev = False
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--project-p", dest="project_path", help="Unity Project root (default: nearest parent of CWD)")
+    group.add_argument("--project-path", dest="project_path", help="Compatibility alias for --project-p")
+
+
+def _require_plan_project(args: argparse.Namespace) -> None:
+    if args.operation == "plan":
+        return
+    directories = {"hot-reload": "hot-reload-plans", "rock": "rock-plans", "rock-import": "rock-import/plans"}
+    plan_path = args.state_root.expanduser().resolve() / directories[args.command] / (safe_id(args.plan_id) + ".json")
+    plan = read_json(plan_path)
+    # 保存済みPlanのProjectへ暗黙に切り替えず、CLIで解決した対象との一致を要求する。
+    root = plan.get("project_root")
+    if not isinstance(root, str) or not root.strip() or not same_project_root(root, args.project_path):
+        raise ValueError("Project does not match the reviewed Plan")
 
 
 def main() -> int:
@@ -130,6 +163,7 @@ def main() -> int:
     if args.command == "hot-reload":
         from unityagent.control_plane.hot_reload import plan_hot_reload, approve_hot_reload, apply_hot_reload
         try:
+            _require_plan_project(args)
             if args.operation == "plan":
                 if not args.runner_path or not args.runner_sha256:
                     raise ValueError("A reviewed installed project runner path and SHA-256 are required; setup is explicit")
@@ -147,6 +181,7 @@ def main() -> int:
         from unityagent.control_plane.rock_import import (
             plan_rock_import, approve_rock_import, apply_rock_import, rollback_rock_import)
         try:
+            _require_plan_project(args)
             if args.operation == "plan":
                 result = {"status":"planned", **plan_rock_import(args.project_path,args.state_root,
                     args.job_id,_fingerprint())}
@@ -170,6 +205,7 @@ def main() -> int:
         from unityagent.runtime.tooling.providers.blender_mcp.stdio_client import McpStdioClient
         import shutil
         try:
+            _require_plan_project(args)
             if args.operation == "plan":
                 result = {"status": "planned", **plan_rock(args.project_path, args.state_root, args.job_id, _fingerprint())}
             elif args.operation == "approve":
@@ -244,6 +280,10 @@ def main() -> int:
         approved_plan = json.loads(args.approved_plan.read_text(encoding="utf-8"))
         if isinstance(approved_plan, dict) and isinstance(approved_plan.get("outcome"), dict):
             approved_plan = approved_plan["outcome"].get("provider_result", approved_plan)
+        if args.operation == "apply":
+            root = approved_plan.get("project_root") if isinstance(approved_plan, dict) else None
+            if not isinstance(root, str) or not root.strip() or not same_project_root(root, project_root):
+                raise SystemExit("Project does not match the approved setup Plan")
 
     installer = InstallerProvider(project_root)
     plane = UnityAgentControlPlane(args.state_root)

@@ -65,6 +65,32 @@ def same_project_root(
     )
 
 
+def resolve_project_root(
+    project_root: str | os.PathLike[str] | None = None,
+    *,
+    cwd: str | os.PathLike[str] | None = None,
+) -> str:
+    """明示Projectを検証し、省略時だけCWDから最寄りの親Projectを探す。"""
+    def is_project(path: Path) -> bool:
+        return ((path / "Assets").is_dir()
+                and (path / "Packages/manifest.json").is_file()
+                and (path / PROJECT_VERSION_FILE).is_file())
+
+    if project_root is not None:
+        if not os.fspath(project_root).strip():
+            raise ValueError("Project path must not be blank; use --project-p <UnityProject>")
+        candidate = Path(project_root).expanduser().resolve(strict=False)
+        if not is_project(candidate):
+            raise ValueError(f"Invalid Unity Project: {candidate}; use --project-p <UnityProject>")
+        return canonicalize_project_root(candidate)
+
+    start = Path(cwd if cwd is not None else Path.cwd()).expanduser().resolve(strict=False)
+    for candidate in (start, *start.parents):
+        if is_project(candidate):
+            return canonicalize_project_root(candidate)
+    raise ValueError("Unity Project not found from CWD; use --project-p <UnityProject>")
+
+
 def canonical_scene_path(
     project_root: str | os.PathLike[str],
     scene_path: str | os.PathLike[str],

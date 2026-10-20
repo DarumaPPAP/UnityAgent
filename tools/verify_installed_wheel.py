@@ -53,7 +53,8 @@ def main() -> int:
         venv.EnvBuilder(with_pip=True).create(work / 'venv')
         executable_dir = work / 'venv' / ('Scripts' if os.name == 'nt' else 'bin')
         python = executable_dir / ('python.exe' if os.name == 'nt' else 'python')
-        cli = executable_dir / ('unity-agent.exe' if os.name == 'nt' else 'unity-agent')
+        cli = executable_dir / ('uagent.exe' if os.name == 'nt' else 'uagent')
+        legacy_cli = executable_dir / ('unity-agent.exe' if os.name == 'nt' else 'unity-agent')
         env = dict(os.environ)
         env.pop('PYTHONPATH', None)
         env.pop('PYTHONHOME', None)
@@ -62,6 +63,7 @@ def main() -> int:
             install.extend(['--no-index', '--find-links', str(args.dependency_dir.resolve())])
         subprocess.run([*install, str(wheel)], cwd=work, env=env, check=True)
         subprocess.run([str(cli), '--help'], cwd=work, env=env, check=True)
+        subprocess.run([str(legacy_cli), '--help'], cwd=work, env=env, check=True)
         subprocess.run([str(python), '-c', PROOF], cwd=work, env=env, check=True)
         project = work / 'project'
         for folder in ('Assets', 'Packages', 'ProjectSettings'):
@@ -69,6 +71,8 @@ def main() -> int:
         (project / 'Packages/manifest.json').write_text('{"dependencies":{}}', encoding='utf-8')
         (project / 'ProjectSettings/ProjectVersion.txt').write_text('m_EditorVersion: 6000.6.0f1\n', encoding='utf-8')
         subprocess.run([str(cli), 'doctor', '--project-path', str(project), '--state-root', str(work/'state')], cwd=work, env=env, check=True)
+        subprocess.run([str(cli), 'doctor', '--project-p', str(project), '--state-root', str(work/'state')], cwd=work, env=env, check=True)
+        subprocess.run([str(cli), 'doctor', '--state-root', str(work/'state')], cwd=project/'Assets', env=env, check=True)
     return 0
 
 if __name__ == '__main__':

@@ -182,15 +182,22 @@ Plugin追加後は新しいCodex Threadで開始してください。Unity UIと
 
 ## Quick Start
 
-Unity Project Rootを明示してEnvironmentを確認し、まず変更を伴わないSetup Planを生成します。
+Unity Project内でEnvironmentを確認し、まず変更を伴わないSetup Planを生成します。公開CLIは `uagent` です。
 
 ```powershell
 $Project = "D:\Projects\MyGame"
-unity-agent doctor --project-path "$Project" --format json --non-interactive
-unity-agent setup --operation plan --project-path "$Project" --format json --non-interactive
+cd "$Project"
+uagent doctor --format json --non-interactive
+uagent setup plan --format json --non-interactive
 ```
 
 Setup PlanのApplyは別操作です。承認済みPlanとApproval Referenceを指定し、Planで示されたScopeだけを適用します。
+
+ProjectはCWDから親方向に最寄りのRootを検出します。`Assets/`、`Packages/manifest.json`、`ProjectSettings/ProjectVersion.txt` が必要です。
+別Projectは `uagent doctor --project-p "$Project"` で指定します。旧 `unity-agent`、`--project-path`、`setup --operation plan` も互換利用できます。両Projectフラグの同時指定はエラーです。
+
+RepositoryルートをUnity 6000.3.12f1の開発Projectとして開けます。標準テストProjectは `tests/UnityAgentTest/` です。
+[手動Unityテスト手順](tests/UnityAgentTest/README.md) と [開発・検証環境仕様](docs/development/unity-test.md) を参照してください。
 
 固定のScene / GameObject / Material / Script生成からCompile、Editor PlayMode、Evidence保存までの手順は [Full E2E Capability](docs/architecture/full-e2e-capability.md) を参照してください。
 
