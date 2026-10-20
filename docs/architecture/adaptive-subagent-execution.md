@@ -71,7 +71,9 @@ Control Planeは既存のRoute・CapabilityRequest・Context・Handoffを一度�
 
 拒否・準備不足で受理されなければ後続dispatchも止め、未実行Taskをpendingのまま保持します。受理／dispatch記録の保存に失敗すればProviderへ進みません。実行後の境界・確定保存の失敗では既存Evidenceと結果を保持して後続dispatchを停止します。`dispatching` のままのクラッシュ、中断、孤立snapshot、未完了履歴、参照の欠落・改変は照合を要し、Resumeで自動再実行しません。完了済みRunのResumeでは履歴を再生成しません。
 
-読取は `orchestration.routing.strategy_application.read_strategy_application` を使用します。Schema・snapshot digest・chain順・準備の出所・初期選択・親判定・Runtime receipt・固定Acceptance境界を再検証します。ResumeではさらにcurrentのTask状態・子結果・Evidence集合・Attempt履歴・予算・固定実行順を確定境界と照合します。既存のFact／出所／判定読取検証も維持します。
+読取は `orchestration.routing.strategy_application.read_strategy_application` を使用します。Schema・snapshot digest・chain順・準備の出所・初期選択・親判定・Runtime receipt・固定Acceptance境界を再検証します。同じTask／Attemptの再出現を拒否し、確定済み適用履歴と境界の実行済みAttempt集合を一致させます。準備時のProject revisionは直前のAcceptanceと今回のdispatch境界へ結び付けます。ResumeではさらにcurrentのTask状態・子結果・Evidence集合・Attempt履歴・予算・固定実行順・最新境界を確定履歴と照合します。既存のFact／出所／判定読取検証も維持します。
+
+opt-in時は従来のTask開始時Project走査を、`dispatching` 保存後・Provider呼出し前へ移します。準備や保存中に変わったAssets／Packages／ProjectSettingsも拒否し、不確定なdispatchをResumeで再送しません。修復なしの通常実行では全走査回数を増やしません。固定修復Attemptにも送信直前の走査を行うため、修復ありの実行ではそのAttempt分の検証が加わります。
 
 専門処理の `world.plan` は出力Schema・意味契約・Context binding・変更観測を通ったArtifactだけを `world_plan` のEvidenceとして正規化します。読取時も同じ子Run内のArtifact存在・digestを検証します。このEvidenceだけでEditor／Player／実機／VisualのGateは通りません。
 

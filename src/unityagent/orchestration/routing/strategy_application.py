@@ -49,6 +49,10 @@ def validate_preparation(layout, prepared, contract):
     run_id, name, attempt = prepared['run_id'], prepared['task_id'], prepared['attempt']
     tasks = {task['id']: task for task in contract['tasks']}
     task = tasks[name]
+    projects = {str(Path(value['workspace']).resolve()) for value in tasks.values()}
+    revisions = prepared['project_revisions']
+    if set(revisions) != projects or any(not isinstance(value, str) or len(value) != 71 or not value.startswith('sha256:') or any(c not in '0123456789abcdef' for c in value[7:]) for value in revisions.values()):
+        raise ValueError('Prepared Project revision set differs')
     candidate = task['entry_request'] if attempt == 0 else task['repair_candidates'][attempt - 1]
     child = f'{run_id}-{name}' + (f'-repair{attempt}' if attempt else '')
     handoff = prepared['handoff']
@@ -109,6 +113,7 @@ def read_strategy_application(persistence_root, ref, *, run_id):
     base = None
     fixed_contract_ref = None
     last_boundary_ref = None
+    completed = set()
     for sequence, item in enumerate(reversed(chain)):
         if (item['schema_version'] != '1.0' or item['target'] != {'kind': 'parent_dag', 'run_id': run_id}
                 or item['sequence'] != sequence):
@@ -124,12 +129,15 @@ def read_strategy_application(persistence_root, ref, *, run_id):
             raise ValueError('Application preparation identity differs')
         key = (item['task_id'], item['attempt'])
         if key != group:
-            if phases and phases[-1] not in {'finalized', 'rejected'}:
+            if key in completed or (phases and phases[-1] != 'finalized'):
                 raise ValueError('Unfinished application precedes another Attempt')
             group, phases = key, []
             if item['prior_boundary_ref'] != last_boundary_ref:
                 raise ValueError('Application prior boundary is not the latest finalized boundary')
             boundary = read_dag_decision(layout.root, item['prior_boundary_ref'], run_id=run_id) if item['prior_boundary_ref'] else None
+            revisions = {sha256_json(project): revision for project, revision in prepared['project_revisions'].items()}
+            if boundary and revisions != boundary['project_revisions']:
+                raise ValueError('Prepared Project revision differs from prior Acceptance')
             expected = select_coordination(prepared, task, current_path=current, boundary=boundary)
             if item['decision'] != expected:
                 raise ValueError('Application decision differs from verified inputs')
@@ -157,5 +165,12 @@ def read_strategy_application(persistence_root, ref, *, run_id):
             boundary = final['boundary']
             if (boundary['task_id'], boundary['attempt']) != key or item['gates'] != final['inputs']['tasks'][key[0]]['gates']:
                 raise ValueError('Application result Acceptance differs')
+            snapshot = decision_snapshot(layout, final['state_ref'], run_id, 'dag-boundary')
+            if {sha256_json(project): revision for project, revision in prepared['project_revisions'].items()} != snapshot['dispatch_project_revisions']:
+                raise ValueError('Prepared Project revision differs from dispatch Acceptance')
+            completed.add(key)
+            executed = {(name, attempt) for name, value in final['inputs']['tasks'].items() for attempt in range(value['attempts_completed'])}
+            if completed != executed:
+                raise ValueError('Application history differs from Acceptance Attempts')
         phases.append(phase)
     return chain[0]

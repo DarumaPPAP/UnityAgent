@@ -29,6 +29,8 @@ def _strategy_applications(layout, state, run):
     records = []
     previous = None
     seen = set()
+    covered = set()
+    last_boundary_ref = None
     for sequence, ref in enumerate(state.get('strategy_application_refs', [])):
         try:
             if not isinstance(ref, str) or ref in seen:
@@ -37,6 +39,10 @@ def _strategy_applications(layout, state, run):
             event = read_strategy_application(layout.root, ref, run_id=run)
             if event['sequence'] != sequence or event['previous_ref'] != previous or event['phase'] not in APPLICATION_PHASES:
                 raise ValueError('application reference list differs from verified chain')
+            if event['phase'] in {'finalized', 'rejected'}:
+                covered.add((event['task_id'], event['attempt']))
+            if event['phase'] == 'finalized':
+                last_boundary_ref = event['boundary_ref']
             records.append({'run_id': run, 'ref': ref, 'digest': sha256_json(event), 'status': 'valid',
                 'phase': event['phase'], 'task_id': event['task_id'], 'attempt': event['attempt'],
                 'applied': event['applied'], 'completed': event['phase'] == 'finalized',
@@ -52,6 +58,10 @@ def _strategy_applications(layout, state, run):
     # currentの参照を削除・切詰めても、保存済みの適用履歴を旧形式として隠せない。
     if 'strategy_application_refs' not in state or snapshot_refs != seen:
         diagnostics.append({'code': 'strategy_application_reference_set_mismatch'})
+    executed = {(name, attempt) for name, value in state.get('tasks', {}).items() for attempt in range(len(value['handoff_history']))}
+    boundaries = state.get('dag_decision_refs', [])
+    if covered != executed or last_boundary_ref != (boundaries[-1] if boundaries else None):
+        diagnostics.append({'code': 'strategy_application_attempt_coverage_mismatch'})
     for diagnostic in diagnostics:
         records.append({'run_id': run, 'ref': None, 'digest': None, 'status': 'invalid',
             'phase': None, 'task_id': None, 'attempt': None, 'applied': None, 'completed': False,

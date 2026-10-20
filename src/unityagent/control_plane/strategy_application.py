@@ -75,8 +75,8 @@ def verify_boundary(plane, state, tasks, *, task_id=None, attempt=0):
     return record
 
 
-def prepare_application(plane, state, tasks, *, task_id, attempt, candidate, preparation):
-    """準備済みのRoute/Contextを共有し、追加ProviderやProject全体走査を発生させない。"""
+def prepare_application(plane, state, tasks, *, task_id, attempt, candidate, preparation, project_revision):
+    """Route/Contextを共有し、通常のProject走査を送信直前へ集約する。"""
     from unityagent.runtime.execution_control import strategy
     layout = plane.state_store.layout
     task = next(task for task in tasks if task['id'] == task_id)
@@ -148,6 +148,9 @@ def prepare_application(plane, state, tasks, *, task_id, attempt, candidate, pre
     verify_prepared()
     save_application(plane, state, {**payload, 'phase': 'dispatching'})
     verify_prepared()
+    # 従来のTask開始時走査をこの境界へ移し、準備・永続化中のAsset変更も送信前に拒否する。
+    if {project: project_revision(project) for project in prepared['project_revisions']} != prepared['project_revisions']:
+        raise ValueError('Project revision changed before Task dispatch')
     return payload
 
 
@@ -181,11 +184,18 @@ def verify_application_state(plane, state, tasks):
     if state.get('coordination_path') != expected_path:
         raise ValueError('Current coordination mode differs from accepted application')
     cursor = refs[-1]
+    finalized = set()
     for expected in reversed(refs):
         if cursor != expected:
             raise ValueError('Application history order differs')
         value = decision_snapshot(plane.state_store.layout, cursor, state['run_id'], 'strategy-application')
+        if value['phase'] == 'finalized':
+            finalized.add((value['task_id'], value['attempt']))
         cursor = value['previous_ref']
     if cursor:
         raise ValueError('Application history was truncated')
+    executed = {(name, attempt) for name, item in state['tasks'].items() for attempt in range(len(item['handoff_history']))}
+    boundaries = state.get('dag_decision_refs', [])
+    if finalized != executed or final.get('boundary_ref') != (boundaries[-1] if boundaries else None):
+        raise ValueError('Application history differs from executed Attempts or latest Acceptance')
     verify_boundary(plane, state, tasks)

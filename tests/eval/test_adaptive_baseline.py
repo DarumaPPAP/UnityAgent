@@ -331,6 +331,23 @@ class StrategyApplicationBaselineTests(unittest.TestCase):
         self.assertFalse(applications['records'][-1]['completed'])
         self.assertEqual(self.build()['observation_completeness'], 'failed')
 
+    def test_deleted_application_files_and_refs_still_fail_completeness(self):
+        state = self.fixture.run_tasks([self.fixture.task('a'), self.fixture.task('b')], adaptive_strategy_enabled=True)
+        for ref in state['strategy_application_refs'][4:]:
+            (self.root / ref).unlink()
+        state['strategy_application_refs'] = state['strategy_application_refs'][:4]
+        self.save(state)
+        baseline = self.build()
+        self.assertEqual(baseline['observation_completeness'], 'failed')
+        self.assertGreater(baseline['strategy_applications']['invalid'], 0)
+
+    def test_unreadable_current_state_with_application_snapshots_reports_failure(self):
+        self.fixture.run_tasks([self.fixture.task('a')], adaptive_strategy_enabled=True)
+        (self.root / 'runs/dag-test/current/task-state.json').write_text('{invalid json')
+        baseline = self.build()
+        self.assertEqual(baseline['observation_completeness'], 'failed')
+        self.assertGreater(baseline['strategy_applications']['invalid'], 0)
+
     def test_tampered_or_cross_run_application_and_diagnostics_fail_completeness(self):
         state = self.fixture.run_tasks([self.fixture.task('a')], adaptive_strategy_enabled=True)
         original = deepcopy(state)

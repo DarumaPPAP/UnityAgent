@@ -50,6 +50,86 @@ class StrategyApplicationTests(unittest.TestCase):
         self.assertNotIn('strategy_application_refs', result)
         self.assertNotIn('adaptive_strategy_enabled', result)
 
+    def test_orchestrated_demotes_and_can_promote_again_in_same_parent(self):
+        first = self.task('a')
+        first['resource_claims'] = ['fixture-resource']
+        state = self.run_tasks([first, self.task('b'), self.task('c', ['b'])], adaptive_strategy_enabled=True)
+        finalized = [item for item in self.applications(state) if item['phase'] == 'finalized']
+        self.assertEqual(state['status'], 'verified')
+        self.assertEqual([item['decision']['path'] for item in finalized], ['orchestrated', 'fast', 'orchestrated'])
+        self.assertEqual([item['decision']['recommendation'] for item in finalized], ['initialize', 'demote', 'promote'])
+        self.assertEqual(len(self.calls), 3)
+
+    def test_asset_change_after_preparation_cannot_reach_provider(self):
+        from unityagent.runtime.execution_control.strategy import consume_strategy
+        def changed(*args, **kwargs):
+            (self.project / 'Assets/changed.txt').write_text('changed after preparation')
+            return consume_strategy(*args, **kwargs)
+        with patch('unityagent.runtime.execution_control.strategy.consume_strategy', side_effect=changed):
+            with self.assertRaisesRegex(ValueError, 'Project revision'):
+                self.run_tasks([self.task('a')], adaptive_strategy_enabled=True)
+        self.assertEqual(self.calls, [])
+        with self.assertRaises(ValueError):
+            self.run_tasks([self.task('a')], resume=True, adaptive_strategy_enabled=True)
+        self.assertEqual(self.calls, [])
+
+    def test_asset_change_during_dispatch_marker_persistence_cannot_reach_provider(self):
+        from unityagent.persistence.store.atomic_store import write_immutable_json
+        def changed(path, payload):
+            result = write_immutable_json(path, payload)
+            if path.parent.name == 'strategy-application' and payload['phase'] == 'dispatching':
+                (self.project / 'Assets/changed.txt').write_text('changed during persistence')
+            return result
+        with patch('unityagent.persistence.state.strategy_application.write_immutable_json', side_effect=changed):
+            with self.assertRaisesRegex(ValueError, 'Project revision'):
+                self.run_tasks([self.task('a')], adaptive_strategy_enabled=True)
+        self.assertEqual(self.calls, [])
+
+    def test_resume_rejects_deleted_application_files_for_executed_attempt(self):
+        tasks = [self.task('a'), self.task('b')]
+        state = self.run_tasks(tasks, adaptive_strategy_enabled=True)
+        for ref in state['strategy_application_refs'][4:]:
+            (self.plane.state_store.layout.root / ref).unlink()
+        state['strategy_application_refs'] = state['strategy_application_refs'][:4]
+        self.plane.state_store.save_task_state(state)
+        with self.assertRaises(ValueError):
+            self.run_tasks(tasks, resume=True, adaptive_strategy_enabled=True)
+        self.assertEqual(len(self.calls), 2)
+
+    def test_reader_rejects_repeated_attempt_and_forged_prepared_revision(self):
+        from copy import deepcopy
+        from unityagent.orchestration.routing.strategy_application import read_strategy_application
+        from unityagent.persistence.store.atomic_store import sha256_json, write_immutable_json, relative_ref
+        state = self.run_tasks([self.task('a'), self.task('b')], adaptive_strategy_enabled=True)
+        layout = self.plane.state_store.layout
+        original = [json.loads((layout.root / ref).read_text()) for ref in state['strategy_application_refs']]
+        for change in ('revision', 'repeat'):
+            with self.subTest(change=change):
+                records = deepcopy(original)
+                if change == 'revision':
+                    prepared = json.loads((layout.root / records[-1]['preparation_ref']).read_text())
+                    prepared['project_revisions'] = {key: 'sha256:' + '0' * 64 for key in prepared['project_revisions']}
+                    path = layout.snapshot('dag-test', 'strategy-preparation', sha256_json(prepared))
+                    write_immutable_json(path, prepared)
+                    for item in records[4:]:
+                        item['preparation_ref'] = relative_ref(layout.root, path)
+                        if item['receipt']:
+                            item['receipt']['preparation_digest'] = sha256_json(prepared)
+                else:
+                    for item in deepcopy(original[:4]):
+                        item['prior_boundary_ref'] = original[-1]['boundary_ref']
+                        item['decision']['current_path'] = 'fast'
+                        item['decision']['recommendation'] = 'keep'
+                        records.append(item)
+                previous = None
+                for sequence, item in enumerate(records):
+                    item['sequence'], item['previous_ref'] = sequence, previous
+                    path = layout.snapshot('dag-test', 'strategy-application', sha256_json(item))
+                    write_immutable_json(path, item)
+                    previous = relative_ref(layout.root, path)
+                with self.assertRaises(ValueError):
+                    read_strategy_application(layout.root, previous, run_id='dag-test')
+
     def test_completed_resume_preserves_applications_and_cannot_toggle_mode(self):
         tasks = [self.task('a')]
         first = self.run_tasks(tasks, adaptive_strategy_enabled=True)
@@ -74,7 +154,7 @@ class StrategyApplicationTests(unittest.TestCase):
     def test_application_persistence_failure_blocks_dispatch(self):
         from unityagent.persistence.store.atomic_store import write_immutable_json
         def failing(path, payload):
-            if '/strategy-application/' in str(path) and payload['phase'] == 'accepted':
+            if path.parent.name == 'strategy-application' and payload['phase'] == 'accepted':
                 raise OSError('fixture disk failure')
             return write_immutable_json(path, payload)
         with patch('unityagent.persistence.state.strategy_application.write_immutable_json', side_effect=failing):
@@ -122,7 +202,7 @@ class StrategyApplicationTests(unittest.TestCase):
     def test_finalization_failure_preserves_evidence_and_stops_next_dispatch(self):
         from unityagent.persistence.store.atomic_store import write_immutable_json
         def failing(path, payload):
-            if '/strategy-application/' in str(path) and payload['phase'] == 'finalized':
+            if path.parent.name == 'strategy-application' and payload['phase'] == 'finalized':
                 raise OSError('fixture finalization failure')
             return write_immutable_json(path, payload)
         tasks = [self.task('a'), self.task('b')]
@@ -216,7 +296,7 @@ class StrategyApplicationTests(unittest.TestCase):
             with self.subTest(phase=phase):
                 self.setUp()
                 def failing(path, payload):
-                    if '/strategy-application/' in str(path) and payload['phase'] == phase:
+                    if path.parent.name == 'strategy-application' and payload['phase'] == phase:
                         raise OSError('fixture ' + phase)
                     return write_immutable_json(path, payload)
                 with patch('unityagent.persistence.state.strategy_application.write_immutable_json', side_effect=failing):
@@ -285,7 +365,7 @@ class StrategyApplicationTests(unittest.TestCase):
         from unityagent.persistence.store.atomic_store import write_immutable_json
         def changed(path, payload):
             result = write_immutable_json(path, payload)
-            if '/strategy-application/' in str(path) and payload['phase'] == 'dispatching':
+            if path.parent.name == 'strategy-application' and payload['phase'] == 'dispatching':
                 (self.project / 'ProjectSettings/ProjectVersion.txt').write_text('m_EditorVersion: changed\n')
             return result
         with patch('unityagent.persistence.state.strategy_application.write_immutable_json', side_effect=changed):

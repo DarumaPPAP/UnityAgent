@@ -137,7 +137,7 @@ def execute_task_dag(plane, tasks, *, run_id, definition_fingerprint, task_param
             # blocked/failed Taskを再開だけで再送しない。修正は別承認Taskとして再計画する。
             if record['status'] != 'pending':
                 continue
-            if {p: project_revision(p) for p in projects} != state['project_revisions']:
+            if not adaptive_strategy_enabled and {p: project_revision(p) for p in projects} != state['project_revisions']:
                 raise ValueError('Project revision changed before Task dispatch')
             record['status'] = 'running'
             plane.state_store.save_task_state(state)
@@ -161,7 +161,7 @@ def execute_task_dag(plane, tasks, *, run_id, definition_fingerprint, task_param
                     def consume(preparation):
                         nonlocal application
                         application = prepare_application(plane, state, tasks, task_id=identifier,
-                            attempt=attempt, candidate=candidate, preparation=preparation)
+                            attempt=attempt, candidate=candidate, preparation=preparation, project_revision=project_revision)
                         return application is not None
                     parameters['_strategy_consumer'] = consume
                 try:
