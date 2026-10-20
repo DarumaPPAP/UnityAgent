@@ -1,0 +1,13 @@
+{
+  "name": "DarumaPPAP.UnityAgent.Tests.EditMode",
+  "rootNamespace": "DarumaPPAP.UnityAgent.Tests",
+  "references": [
+    "DarumaPPAP.UnityAgent.Editor"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

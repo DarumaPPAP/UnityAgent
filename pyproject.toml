@@ -11,6 +11,7 @@ dependencies = ["PyYAML>=6.0", "jsonschema>=4.0"]
 license = { text = "MIT" }
 
 [project.scripts]
+uagent = "unityagent.cli:main"
 unity-agent = "unityagent.cli:main"
 
 [tool.setuptools]

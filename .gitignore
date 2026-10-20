@@ -141,7 +141,7 @@ credentials/
 .npmrc
 .upmconfig.toml
 
-# Unity generated folders in nested validation projects
+# Unity generated folders in development and nested validation projects
 **/[Ll]ibrary/
 **/[Tt]emp/
 **/[Oo]bj/
