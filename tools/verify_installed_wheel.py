@@ -30,6 +30,11 @@ observation_schema = root / 'src/unityagent/orchestration/contracts/strategy-obs
 assert observation_schema.is_file()
 Draft202012Validator.check_schema(yaml.safe_load(observation_schema.read_text()))
 assert observe_execution_strategy(current_path='fast', selection_inputs={})['applied'] is False
+from unityagent.persistence.state.dag_decision import read_dag_decision
+from unityagent.orchestration.routing.adaptive_execution import build_dag_inputs
+dag_schema = root / 'src/unityagent/orchestration/contracts/dag-decision.schema.yaml'
+assert dag_schema.is_file()
+Draft202012Validator.check_schema(yaml.safe_load(dag_schema.read_text()))
 assert not any(value.startswith('missing:') for value in _fingerprint().values())
 assert policy_for_capability('project.inspect')['operation_kind'] == 'read'
 assert load_provider_registry().providers

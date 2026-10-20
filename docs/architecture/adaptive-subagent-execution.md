@@ -28,6 +28,18 @@ Complexは説明上の呼称に限ります。既存execution profile、Context 
 
 観測保存失敗は `strategy_observation_diagnostics` へ固定分類で明示します。既存の結果・Evidenceを保持し、Providerを再送しません。参照保存の失敗も診断します。補助観測の失敗と、既存Evidence／権限の失敗を混同しません。Resumeでは完了済みTaskの観測を再生成しません。
 
+## 親DAGの境界判定情報
+
+`build_dag_inputs` は固定Task契約とAcceptance確定後の状態から、完了Task、残Task、依存成立Task、失敗／利用不可／依存阻害／実行中Task、意味的修復Attemptと残予算を区別します。残Task数は実行可能Task数とは別で、失敗や依存阻害を残作業から消しません。残作業ゼロは終了境界として記録し、既存selectorへ0を渡しません。
+
+`dag_decision_refs` は従来の子Run用 `strategy_observation_refs` とは別の親DAG記録です。Control Planeは各AttemptのEvidence・Acceptanceと意味的継続判定が確定した後だけ呼び出します。`dag-boundary` snapshotにその時点の入力・出所を保存し、`dag-decision` snapshotを固定Task契約、親DefinitionFingerprint、Project revision、Run／Task／Attemptへ結び付けます。後から更新されるcurrentファイルを当時の根拠には使いません。
+
+現在Taskのrisk・Review・専門担当・Context profile・binding／Scopeは、検証済みのOrchestration proof、Context manifest、同一Project revision、既存の意味的継続判定から取得できる項目だけを記録します。Evidenceは `EvidenceStore.verify_record` でevent chainとRun・定義を確認します。Project変更後のFactは有効扱いせず、欠測と参照不整合は別に診断します。生の結果・Provider引数・Source全文を新しいsnapshotへ複製しません。
+
+未実行Taskや別の修復候補には完了TaskのFactを転用しません。将来TaskのContext生成や追加Project走査も行いません。残作業に必要な選択条件は項目ごとの不足理由を持ち、全項目が確認済みの場合だけ既存selectorで候補を求めます。現在の親DAGには比較可能な戦略値がないため `current_path` はnullです。子Taskのfastと親DAGの調整を比べて昇格・降格とは記録しません。実行への適用は引き続きfalseです。
+
+補助保存失敗は `dag_decision_diagnostics` にTask／Attempt付きで記録し、Provider・モデルを再送しません。Resumeで完了済み境界を再生成しません。Baselineの任意 `dag_decisions` に親の観測完全性を出し、従来の子Attemptの品質分母・経路分布は維持します。P0〜P1形式だけのRunも従来どおり読めます。
+
 ## 保存済みRunのBaseline集計
 
 次のコマンドは明示した保存済みRunだけを読み、Production実行を開始しません。

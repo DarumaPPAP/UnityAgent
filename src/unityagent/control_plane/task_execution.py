@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 import time
 
+from unityagent.control_plane.dag_observation import observe_dag_boundary
 from unityagent.orchestration.graph.resource_planning import plan_task_batches
 from unityagent.persistence.checkpoint.checkpoint_store import CheckpointStore
 from unityagent.persistence.contracts.definition_fingerprint import validate_definition_fingerprint
@@ -122,6 +123,7 @@ def execute_task_dag(plane, tasks, *, run_id, definition_fingerprint, task_param
                 safe_id(child_run, 'task_run_id')
                 record['status'] = 'running'
                 plane.state_store.save_task_state(state)
+                dispatch_revisions = dict(state['project_revisions'])
                 start = time.monotonic()
                 result = plane.execute(candidate, run_id=child_run,
                     definition_fingerprint=definition, **task_parameters[identifier])
@@ -159,6 +161,8 @@ def execute_task_dag(plane, tasks, *, run_id, definition_fingerprint, task_param
                     semantic_attempt=attempt, progress_marker=failure,
                     progress_made=failure != prior_failure, blocked=not repairable and record['status'] != 'verified')
                 record['semantic_decision'] = decision
+                observe_dag_boundary(plane, tasks, state, task_id=identifier, attempt=attempt,
+                    dispatch_revisions=dispatch_revisions)
                 if (decision['decision'] != 'continue' or attempt + 1 >= len(candidates)
                         or attempt >= task.get('semantic_repair_limit', 2)):
                     break

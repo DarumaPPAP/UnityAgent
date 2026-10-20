@@ -14,6 +14,7 @@ import yaml
 
 from unityagent.persistence.contracts.definition_fingerprint import validate_definition_fingerprint
 from unityagent.persistence.evidence.evidence_store import EvidenceStore
+from unityagent.persistence.state.dag_decision import read_dag_decision
 from unityagent.persistence.store.atomic_store import PersistenceError, read_json, relative_ref, resolve_ref, safe_id, sha256_json
 from unityagent.persistence.store.layout import PersistenceLayout
 from unityagent.resources import resource_root
@@ -162,6 +163,7 @@ def build_adaptive_baseline(persistence_root: Path, run_ids: list[str], *, sourc
     schema = Draft202012Validator(yaml.safe_load((resource_root() /
         'src/unityagent/orchestration/contracts/strategy-observation.schema.yaml').read_text(encoding='utf-8')))
     groups = {}
+    dag_decisions = []
     requested = list(dict.fromkeys(safe_id(run, 'run_id') for run in run_ids))
     for run in requested:
         task_path = layout.run_root(run) / 'current/task-state.json'
@@ -175,6 +177,21 @@ def build_adaptive_baseline(persistence_root: Path, run_ids: list[str], *, sourc
         except (OSError, PersistenceError, ValueError):
             state = {'run_id': run, 'status': 'unavailable', 'strategy_observation_diagnostics': [{'code':'run_state_unavailable'}]}
         state_record = {'ref': relative_ref(layout.root, path), 'digest': state_digest, 'kind':'task-state' if path == task_path else 'execution-state'}
+        # 親DAGの補助観測を子Attemptの品質・経路分布に混ぜない。
+        for ref in state.get('dag_decision_refs', []):
+            try:
+                record = read_dag_decision(layout.root, ref, run_id=run)
+                dag_decisions.append({'run_id':run, 'ref':ref, 'digest':sha256_json(record), 'status':'valid',
+                    'recommendation':record['decision']['recommendation'], 'reason_codes':record['decision']['reason_codes'],
+                    'remaining_task_count':len(record['inputs']['remaining_task_ids']), 'ready_task_count':len(record['inputs']['ready_task_ids'])})
+            except (OSError, PersistenceError, ValueError, KeyError, TypeError):
+                dag_decisions.append({'run_id':run,'ref':ref,'digest':None,'status':'invalid',
+                    'recommendation':'not_evaluated','reason_codes':['invalid_dag_decision_reference'],
+                    'remaining_task_count':None,'ready_task_count':None})
+        for diagnostic in state.get('dag_decision_diagnostics', []):
+            dag_decisions.append({'run_id':run,'ref':None,'digest':None,'status':'invalid',
+                'recommendation':'not_evaluated','reason_codes':[diagnostic['code']],
+                'remaining_task_count':None,'ready_task_count':None})
         revision = state.get('source_revision', source_revision)
         targets = []
         if 'tasks' in state:
@@ -213,6 +230,10 @@ def build_adaptive_baseline(persistence_root: Path, run_ids: list[str], *, sourc
         'requested_run_ids':requested, 'observation_completeness':'failed' if any(
             s['missing_observations'] for g in groups.values() for s in g['samples']) else 'complete',
         'measurement_scope':'saved_run_records_only', 'groups':list(groups.values())}
+    if dag_decisions:
+        result['dag_decisions'] = dag_decisions
+        if any(record['status'] == 'invalid' for record in dag_decisions):
+            result['observation_completeness'] = 'failed'
     Draft202012Validator(yaml.safe_load((ROOT / 'eval/regression/adaptive-baseline.schema.yaml').read_text(encoding='utf-8'))).validate(result)
     return result
 

@@ -266,3 +266,54 @@ properties:
               const: not_observed
             total_tokens:
               const: null
+  dag_decisions:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required:
+      - run_id
+      - ref
+      - digest
+      - status
+      - recommendation
+      - reason_codes
+      - remaining_task_count
+      - ready_task_count
+      properties:
+        run_id:
+          type: string
+        ref:
+          type:
+          - string
+          - 'null'
+        digest:
+          type:
+          - string
+          - 'null'
+          pattern: ^sha256:[0-9a-f]{64}$
+        status:
+          enum:
+          - valid
+          - invalid
+        recommendation:
+          enum:
+          - keep
+          - promote
+          - demote
+          - blocked
+          - not_evaluated
+        reason_codes:
+          type: array
+          items:
+            type: string
+        remaining_task_count:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+        ready_task_count:
+          type:
+          - integer
+          - 'null'
+          minimum: 0

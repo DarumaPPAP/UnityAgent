@@ -1,0 +1,359 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:orchestration:dag-decision
+title: 親DAGの実行境界判定
+type: object
+additionalProperties: false
+required:
+- schema_version
+- target
+- boundary
+- definition_fingerprint
+- project_revisions
+- contract_ref
+- state_ref
+- inputs
+- input_digest
+- observed_facts
+- sources
+- decision
+properties:
+  schema_version:
+    const: '1.0'
+  target:
+    type: object
+    additionalProperties: false
+    required:
+    - kind
+    - run_id
+    properties:
+      kind:
+        const: parent_dag
+      run_id: &id001
+        type: string
+        minLength: 1
+  boundary:
+    type: object
+    additionalProperties: false
+    required:
+    - kind
+    - task_id
+    - attempt
+    - result_run_id
+    - semantic_decision
+    properties:
+      kind:
+        const: task_attempt_acceptance
+      task_id: *id001
+      attempt: &id002
+        type: integer
+        minimum: 0
+      result_run_id: *id001
+      semantic_decision:
+        type: object
+        additionalProperties: false
+        required:
+        - decision
+        - semantic_attempt
+        - outcome
+        properties:
+          decision:
+            enum:
+            - continue
+            - replan
+            - exit
+            - blocked
+          semantic_attempt:
+            type: integer
+            minimum: 0
+          outcome:
+            enum:
+            - passed
+            - validation_failed
+  definition_fingerprint:
+    type: object
+    additionalProperties: false
+    required:
+    - schema_version
+    - architecture_version
+    - policy_revision
+    - prompt_revision
+    - context_revision
+    - graph_revision
+    - runtime_profile_revision
+    - tool_schema_revision
+    - checkpoint_schema_revision
+    - evidence_schema_revision
+    - eval_contract_revision
+    properties:
+      schema_version:
+        const: '1.0'
+      architecture_version:
+        type: string
+        minLength: 1
+      policy_revision:
+        type: string
+        minLength: 1
+      prompt_revision:
+        type: string
+        minLength: 1
+      context_revision:
+        type: string
+        minLength: 1
+      graph_revision:
+        type: string
+        minLength: 1
+      runtime_profile_revision:
+        type: string
+        minLength: 1
+      tool_schema_revision:
+        type: string
+        minLength: 1
+      checkpoint_schema_revision:
+        type: string
+        minLength: 1
+      evidence_schema_revision:
+        type: string
+        minLength: 1
+      eval_contract_revision:
+        type: string
+        minLength: 1
+  project_revisions:
+    type: object
+    minProperties: 1
+    additionalProperties: &id004
+      type: string
+      pattern: ^sha256:[0-9a-f]{64}$
+  contract_ref: *id001
+  state_ref: *id001
+  inputs:
+    type: object
+    additionalProperties: false
+    required:
+    - tasks
+    - verified_task_ids
+    - remaining_task_ids
+    - ready_task_ids
+    - selection_inputs
+    - missing_inputs
+    properties:
+      tasks:
+        type: object
+        minProperties: 1
+        additionalProperties:
+          type: object
+          additionalProperties: false
+          required:
+          - status
+          - category
+          - dependencies_satisfied
+          - dependency_blockers
+          - gates
+          - attempts_completed
+          - semantic_retries
+          - repair_budget_remaining
+          - repair_candidates_remaining
+          properties:
+            status:
+              enum:
+              - pending
+              - running
+              - verified
+              - blocked
+              - failed
+              - blocked_dependency
+              - unavailable
+            category:
+              enum:
+              - verified
+              - pending
+              - running
+              - unavailable
+              - repair_pending
+              - blocked_dependency
+              - failed
+              - waiting_dependency
+            dependencies_satisfied:
+              type: boolean
+            dependency_blockers: &id003
+              type: array
+              items: *id001
+              uniqueItems: true
+            gates:
+              type: object
+              additionalProperties:
+                enum:
+                - passed
+                - failed
+                - unavailable
+                - not_observed
+            attempts_completed: *id002
+            semantic_retries: *id002
+            repair_budget_remaining: *id002
+            repair_candidates_remaining: *id002
+      verified_task_ids: *id003
+      remaining_task_ids: *id003
+      ready_task_ids: *id003
+      selection_inputs: &id005
+        type: object
+        additionalProperties: false
+        properties:
+          task_count:
+            type: integer
+            minimum: 1
+          simple_task:
+            type: boolean
+          requires_replan:
+            type: boolean
+          project_bound:
+            type: boolean
+          scope_known:
+            type: boolean
+          resource_conflict:
+            type: boolean
+          risk:
+            enum:
+            - low
+            - medium
+            - high
+            - critical
+          design_review:
+            enum:
+            - not_required
+            - conditional
+            - required
+          context_profile:
+            enum:
+            - tight
+            - standard
+            - wide
+          requested_subagent:
+            type:
+            - string
+            - 'null'
+            pattern: ^[a-z][a-z0-9_]*_subagent$
+          required_subagents:
+            type: array
+            items:
+              type: string
+              pattern: ^[a-z][a-z0-9_]*_subagent$
+      missing_inputs:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required:
+          - task_id
+          - field
+          - reason
+          properties:
+            task_id:
+              type:
+              - string
+              - 'null'
+            field:
+              enum:
+              - simple_task
+              - risk
+              - design_review
+              - requires_replan
+              - project_bound
+              - scope_known
+              - requested_subagent
+              - required_subagents
+              - resource_conflict
+              - context_profile
+            reason:
+              enum:
+              - not_executed
+              - boundary_fact_not_confirmed
+              - incompatible_explicit_requests
+              - invalid_boundary_fact
+  input_digest: *id004
+  observed_facts:
+    type: object
+    additionalProperties:
+      type: object
+      additionalProperties: false
+      required:
+      - values
+      - provenance
+      - freshness
+      - requires_revalidation
+      properties:
+        values: *id005
+        provenance:
+          type: object
+          propertyNames:
+            enum:
+            - simple_task
+            - risk
+            - design_review
+            - requires_replan
+            - project_bound
+            - scope_known
+            - requested_subagent
+            - required_subagents
+            - resource_conflict
+            - context_profile
+          additionalProperties: *id001
+        freshness:
+          enum:
+          - same_project_revision
+          - project_revision_changed
+        requires_revalidation: *id003
+  sources:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required:
+      - kind
+      - ref
+      - digest
+      - run_id
+      - task_id
+      - attempt
+      properties:
+        kind:
+          enum:
+          - orchestration-decision
+          - context-manifest
+          - strategy-observation
+          - evidence
+        ref: *id001
+        digest: *id004
+        run_id: *id001
+        task_id: *id001
+        attempt: *id002
+        evidence_id: *id001
+  decision:
+    type: object
+    additionalProperties: false
+    required:
+    - current_path
+    - proposed_path
+    - candidate_path
+    - recommendation
+    - reason_codes
+    - applied
+    properties:
+      current_path:
+        const: null
+      proposed_path:
+        const: null
+      candidate_path:
+        enum:
+        - fast
+        - standard
+        - orchestrated
+        - null
+      recommendation:
+        enum:
+        - blocked
+        - not_evaluated
+      reason_codes:
+        type: array
+        minItems: 1
+        items: *id001
+      applied:
+        const: false
