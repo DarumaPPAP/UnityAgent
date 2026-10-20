@@ -128,3 +128,55 @@ class TaskDagTests(unittest.TestCase):
         result = self.run_tasks([task])
         self.assertEqual(result['status'],'blocked')
         self.assertEqual(len(attempts),2)
+
+
+    def test_resume_does_not_duplicate_completed_observation(self):
+        tasks = [self.task('parent')]
+        first = self.run_tasks(tasks)
+        refs = first['tasks']['parent']['strategy_observation_refs']
+        self.assertEqual(len(refs), 1)
+        with patch.object(self.plane, '_observe_strategy', side_effect=AssertionError('re-observed')):
+            second = self.run_tasks(tasks, resume=True)
+        self.assertEqual(second['tasks']['parent']['strategy_observation_refs'], refs)
+        self.assertEqual(len(self.calls), 1)
+        import json
+        record = json.loads((self.plane.state_store.layout.root / refs[0]).read_text())
+        self.assertEqual((record['run_id'], record['task_id'], record['attempt']), ('dag-test', 'parent', 0))
+        self.assertEqual(record['result_run_id'], 'dag-test-parent')
+
+    def test_attempt_observations_are_distinct(self):
+        self.execute_file = lambda *args: {'status':'failed','failure_class':'execution_failed','reason':'same','evidence':[]}
+        task = self.task('repair')
+        task['repair_candidates'] = [self.task('r1')['entry_request']]
+        result = self.run_tasks([task])
+        refs = result['tasks']['repair']['strategy_observation_refs']
+        self.assertEqual(len(set(refs)), 2)
+        import json
+        self.assertEqual([json.loads((self.plane.state_store.layout.root / ref).read_text())['attempt'] for ref in refs], [0, 1])
+
+    def test_observation_proposal_is_never_applied(self):
+        with patch('unityagent.control_plane.unity_agent_control_plane.observe_execution_strategy', return_value={
+                'current_path':'fast', 'recommendation':'promote', 'proposed_path':'orchestrated',
+                'reason_codes':['test_proposal'], 'applied':False}):
+            result = self.run_tasks([self.task('parent'), self.task('child', ['parent'])])
+        self.assertEqual(result['status'], 'verified')
+        self.assertEqual(self.calls, ['project.inspect', 'project.inspect'])
+        self.assertEqual(result['scheduling'], 'serial')
+        self.assertEqual(result['execution_order'], ['parent', 'child'])
+        self.assertEqual(result['tasks']['parent']['budget_counts']['global_replans'], 0)
+        self.assertEqual(result['tasks']['parent']['result']['handoff']['step_id'], 'inspect_sources')
+
+
+    def test_saved_dag_baseline_has_attempt_bindings_and_fixed_acceptance(self):
+        from tools.adaptive_execution_baseline import build_adaptive_baseline
+        result = self.run_tasks([self.task('parent'), self.task('child', ['parent'])])
+        baseline = build_adaptive_baseline(self.plane.state_store.layout.root, ['dag-test'], source_revision='fixture')
+        self.assertEqual(baseline['observation_completeness'], 'complete')
+        samples = [s for group in baseline['groups'] for s in group['samples']]
+        self.assertEqual(len(samples), 2)
+        self.assertEqual({s['id'] for s in samples}, {'dag-test/parent/0', 'dag-test/child/0'})
+        self.assertTrue(all(s['quality'] == 'passed' for s in samples))
+        self.assertTrue(all(s['latency_ms'] is not None for s in samples))
+        self.assertEqual(len(self.calls), 2)
+        # 子Runを明示しなければ、親と子の実行を二重計上しない。
+        self.assertEqual(sum(g['completion']['total'] for g in baseline['groups']), len(result['tasks']))

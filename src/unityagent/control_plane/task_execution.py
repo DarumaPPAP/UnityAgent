@@ -130,6 +130,16 @@ def execute_task_dag(plane, tasks, *, run_id, definition_fingerprint, task_param
                 record['gates'] = _acceptance(plane, result, task['required_gates'], definition)
                 record['status'] = 'verified' if result['status'] == 'completed' and all(
                     g == 'passed' for g in record['gates'].values()) else 'blocked'
+                # Acceptance確定後のAttemptに結び付ける。Resume時はこの境界を再実行しない。
+                if result.get('handoff'):
+                    observed = plane._observe_strategy(result, observation_run_id=run_id,
+                        task_id=identifier, attempt=attempt, gates=record['gates'])
+                    record.setdefault('strategy_observation_refs', []).extend(observed['strategy_observation_refs'])
+                    if observed.get('strategy_observation_diagnostics'):
+                        record.setdefault('strategy_observation_diagnostics', []).extend(observed['strategy_observation_diagnostics'])
+                else:
+                    record.setdefault('strategy_observation_diagnostics', []).append(
+                        {'code': 'observation_not_available', 'attempt': attempt})
                 record['handoff_history'].append({'run_id': result['run_id'],
                     'decision_ref': result.get('orchestration_decision_ref'),
                     'requested_subagent': candidate.get('requested_subagent')})

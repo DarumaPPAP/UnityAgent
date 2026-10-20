@@ -101,3 +101,63 @@ class AdaptiveExecutionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class StrategyObservationTests(unittest.TestCase):
+    def observe(self, current_path='fast', **changes):
+        from unityagent.orchestration.routing.adaptive_execution import observe_execution_strategy
+        inputs = dict(task_count=1, simple_task=True, risk='low', design_review='not_required',
+                      requires_replan=False, project_bound=True, scope_known=True)
+        inputs.update(changes)
+        return observe_execution_strategy(current_path=current_path, selection_inputs=inputs)
+
+    def test_observe_keep_fast(self):
+        value = self.observe()
+        self.assertEqual((value['recommendation'], value['proposed_path'], value['applied']), ('keep', 'fast', False))
+
+    def test_observe_promote_specialist(self):
+        self.assertEqual(self.observe(required_subagents=('qa_subagent',))['proposed_path'], 'standard')
+        self.assertEqual(self.observe(required_subagents=('qa_subagent',))['recommendation'], 'promote')
+
+    def test_observe_promote_multiple_tasks(self):
+        self.assertEqual(self.observe(task_count=2)['proposed_path'], 'orchestrated')
+
+    def test_observe_demote_single_remaining_task(self):
+        self.assertEqual(self.observe('orchestrated')['recommendation'], 'demote')
+
+    def test_observe_blocked_failure_never_promotes(self):
+        from unityagent.orchestration.routing.adaptive_execution import observe_execution_strategy
+        for failure in ('approval_required', 'approval_denied', 'scope_denied', 'environment_unavailable',
+                        'resource_conflict', 'resource_busy', 'context_insufficient', 'unknown_failure'):
+            with self.subTest(failure=failure):
+                value = observe_execution_strategy(current_path='fast', selection_inputs={}, failure_class=failure)
+                self.assertEqual(value['recommendation'], 'blocked')
+                self.assertIsNone(value['proposed_path'])
+                self.assertIn(failure, value['reason_codes'])
+        value = observe_execution_strategy(current_path='fast', selection_inputs={}, uncertain_side_effects=True)
+        self.assertIn('uncertain_side_effects', value['reason_codes'])
+        for inputs in ({'resource_conflict': True}, {'scope_known': False}, {'project_bound': False}):
+            self.assertEqual(self.observe(**inputs)['recommendation'], 'blocked')
+
+    def test_observe_missing_and_invalid_facts(self):
+        from unityagent.orchestration.routing.adaptive_execution import observe_execution_strategy
+        self.assertEqual(observe_execution_strategy(current_path='fast', selection_inputs={})['recommendation'], 'not_evaluated')
+        for inputs in ({'task_count': True}, {'risk': 'unknown'}, {'risk': []}, {'current_path': 'unknown'}):
+            self.assertEqual(self.observe(**inputs)['recommendation'], 'not_evaluated')
+
+    def test_observe_does_not_mutate_inputs(self):
+        from copy import deepcopy
+        from unityagent.orchestration.routing.adaptive_execution import observe_execution_strategy
+        inputs = {'task_count': 1, 'secret': {'token': 'not-for-record'}}
+        original = deepcopy(inputs)
+        value = observe_execution_strategy(current_path='fast', selection_inputs=inputs)
+        self.assertEqual(inputs, original)
+        self.assertNotIn('secret', str(value))
+
+
+    def test_invalid_failure_inputs_are_not_evaluated(self):
+        from unityagent.orchestration.routing.adaptive_execution import observe_execution_strategy
+        for changes in ({'failure_class':True}, {'uncertain_side_effects':'unknown'}):
+            result = observe_execution_strategy(current_path='fast', selection_inputs={}, **changes)
+            self.assertEqual(result['recommendation'], 'not_evaluated')
+            self.assertIsNone(result['proposed_path'])

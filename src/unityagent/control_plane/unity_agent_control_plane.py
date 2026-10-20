@@ -18,10 +18,10 @@ from pathlib import Path
 from typing import Any, Mapping
 
 import yaml
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, ValidationError
 
 from unityagent.orchestration.orchestrator.orchestrator import runtime_handoff, runtime_node_for_requests
-from unityagent.orchestration.routing.adaptive_execution import select_execution_path
+from unityagent.orchestration.routing.adaptive_execution import select_execution_path, observe_execution_strategy
 from unityagent.orchestration.routing.route_selector import load_routes, resolve_specialist, select_route, select_specialist_capability, task_fingerprint_from_intent
 from unityagent.orchestration.tool_routing.capability_request_builder import (build_capability_requests, build_specialist_capability_requests, conditions_for_intent,
     mutation_scope_for_intent, task_contract_projection)
@@ -35,7 +35,7 @@ from unityagent.persistence.evidence.evidence_store import EvidenceStore
 from unityagent.persistence.evidence.runtime_adapter import append_runtime_execution_evidence
 from unityagent.persistence.install.receipt_store import InstallReceiptStore
 from unityagent.persistence.state.state_store import StateStore
-from unityagent.persistence.store.atomic_store import PersistenceError, relative_ref, sha256_json, write_immutable_json
+from unityagent.persistence.store.atomic_store import PersistenceError, read_json, relative_ref, sha256_json, write_immutable_json
 from unityagent.persistence.contracts.definition_fingerprint import validate_definition_fingerprint
 from unityagent.runtime.contracts.install_receipt_contract import validate_install_receipt
 from unityagent.runtime.evidence_capture.tool_runtime_evidence import normalize_provider_result, observation_payload
@@ -215,6 +215,63 @@ class UnityAgentControlPlane:
                 decision=decision,
             )
         )
+
+    def _observe_strategy(self, result, *, current_path=None, observation_run_id=None, task_id=None, attempt=None, gates=None):
+        """結果確定後の補助記録。保存失敗で実行済みProviderを再送しない。"""
+        run_id = observation_run_id or result['run_id']
+        refs = []
+        diagnostics = []
+        try:
+            if current_path is None and result.get('orchestration_decision_ref'):
+                proof = read_json(self.state_store.layout.root / result['orchestration_decision_ref'])
+                current_path = proof['execution_plan']['path']
+            failures = [item.get('provider_result') or item for item in result.get('results', [])]
+            known_failures = {'execution_failed', 'approval_required', 'approval_denied', 'scope_denied',
+                'permission_denied', 'runtime_permission_denied', 'environment_unavailable', 'resource_busy',
+                'resource_conflict', 'resource_unavailable', 'context_insufficient', 'runtime_tool_unavailable',
+                'runtime_timeout', 'runtime_protocol_failure', 'runtime_cancelled',
+                'unavailable', 'unknown', 'unhealthy', 'ambiguous_binding', 'blocked_by_policy',
+                'blocked_by_approval', 'scope_violation', 'unsupported', 'backend_not_implemented',
+                'precondition_failed', 'cancelled', 'timeout', 'observed_test_failure', 'not_observed'}
+            raw_failure = result.get('failure_class') or next((f.get('failure_class') for f in failures if f.get('failure_class')), None)
+            failure = raw_failure if raw_failure in known_failures else 'unclassified_failure' if raw_failure else None
+            uncertain = any(f.get('uncertain_side_effects') is True for f in failures)
+            # 初期選択のFactは残作業のFactではない。未観測の再計画要否を作らない。
+            inputs = dict(selection_inputs={}, failure_class=failure, uncertain_side_effects=uncertain)
+            proposal = observe_execution_strategy(current_path=current_path, **inputs)
+            record = {**proposal, **inputs, 'schema_version': '1.0', 'run_id': run_id,
+                'result_run_id': result['run_id'], 'step_id': result.get('handoff', {}).get('step_id', 'task-acceptance'),
+                'definition_fingerprint': dict(result.get('handoff', {})['definition_fingerprint']),
+                'input_digest': sha256_json({'current_path': current_path, **inputs}),
+                'evidence_refs': list(dict.fromkeys(result.get('evidence_refs', []))),
+                'result_status': result['status'], 'gates': dict(gates or {}),
+                'context_manifest_ref': result.get('context_manifest_ref'),
+                'orchestration_decision_ref': result.get('orchestration_decision_ref')}
+            if task_id is not None:
+                record.update(task_id=task_id, attempt=attempt)
+            schema = yaml.safe_load((ROOT / 'src/unityagent/orchestration/contracts/strategy-observation.schema.yaml').read_text(encoding='utf-8'))
+            Draft202012Validator(schema).validate(record)
+            path = self.state_store.layout.snapshot(run_id, 'strategy-observation', sha256_json(record))
+            write_immutable_json(path, record)
+            refs.append(relative_ref(self.state_store.layout.root, path))
+        except (OSError, PersistenceError, ValueError, KeyError, TypeError, ValidationError) as exc:
+            # 生の例外には引数等が含まれ得るため、補助診断は固定分類だけを保存する。
+            diagnostics.append({'code': 'observation_persistence_failed', 'error_type': type(exc).__name__})
+        additions = {'strategy_observation_refs': refs}
+        if diagnostics:
+            additions['strategy_observation_diagnostics'] = diagnostics
+        if observation_run_id is None:
+            try:
+                state = self.state_store.load_execution_state(result['run_id'])
+                self.state_store.save_execution_state({**state, **additions,
+                    'definition_fingerprint': dict(result['handoff']['definition_fingerprint']),
+                    'context_manifest_ref': result.get('context_manifest_ref'),
+                    'orchestration_decision_ref': result.get('orchestration_decision_ref')})
+            except (OSError, PersistenceError, ValueError) as exc:
+                # snapshotがあっても参照の保存失敗は完全な観測とは扱わない。
+                additions.setdefault('strategy_observation_diagnostics', []).append(
+                    {'code': 'observation_reference_persistence_failed', 'error_type': type(exc).__name__})
+        return {**result, **additions}
 
     @_project_exclusive
     def execute(
@@ -441,7 +498,7 @@ class UnityAgentControlPlane:
                     decision="exit" if final_status == "completed" else "blocked",
                     progress_marker=node_id,
                 )
-            return {
+            result = {
                 "schema_version": "1.0",
                 "status": final_status,
                 "run_id": resolved_run_id,
@@ -457,6 +514,7 @@ class UnityAgentControlPlane:
                 "workflow_state_ref": workflow_state_ref,
                 "loop_state_ref": loop_state_ref,
             }
+            return self._observe_strategy(result, current_path=execution_plan['path'])
 
         results: list[dict[str, Any]] = []
         runtime_provider_arguments = {name: dict(values) for name, values in (provider_arguments or {}).items()}
@@ -620,7 +678,7 @@ class UnityAgentControlPlane:
             node_id=node_id,
             evidence_refs=evidence_refs,
         )
-        return {
+        result = {
             "schema_version": "1.0",
             "status": final_status,
             "run_id": resolved_run_id,
@@ -634,6 +692,7 @@ class UnityAgentControlPlane:
             "state_ref": state_ref,
             "workflow_state_ref": workflow_state_ref,
         }
+        return self._observe_strategy(result, current_path=execution_plan['path'])
 
     def execute_tasks(self, tasks, *, run_id, definition_fingerprint, task_parameters, resume=False):
         """既存RuntimeへTask単位で渡し、固定Acceptanceを満たす依存だけを開く。"""

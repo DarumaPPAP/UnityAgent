@@ -35,7 +35,7 @@ Entry、SubAgent、ProviderはこのAuthorityを迂回しません。
 
 ## 2. Production Specialist
 
-現行Consumer Catalogは `src/unityagent/runtime/reference_implementation/subagent-catalog.yaml`、Hub側の静的正本はUnitySubAgentHubの `SubAgents/<id>/manifest.yaml` です。
+同居SubAgentの正本は `subagent/<id>/manifest.yaml` とその参照先です。UnityAgentが所有するRuntime Profile・Activation・Contextは `src/unityagent/runtime/reference_implementation/subagent-catalog.yaml` を参照します。外部UnitySubAgentHubの履歴やSource Lockを、現在の同居定義の正本として扱いません。
 
 | Specialist | Execution | Semantic capability | Required observations |
 |---|---|---|---|
@@ -44,7 +44,7 @@ Entry、SubAgent、ProviderはこのAuthorityを迂回しません。
 | `world_creator_subagent` | reasoning | `world.plan` | none |
 | `qa_subagent` | reasoning | `performance.analyze` | `profiler.observe` |
 
-Graphics / WorldCreator / QAのPerformance分析はConsumer Catalog v3へ登録済みです。Hub Manifest v5 / Snapshot v3との整合は固定fixtureで検証します。
+Graphics / WorldCreator / QAの性能分析はConsumer Catalog v3へ登録済みです。説明上のPerformanceはQASubAgentの性能分析責務を指し、正本IDは `qa_subagent`、Capabilityは `performance.analyze` です。別の専門Agent IDは追加しません。同居ManifestからのSnapshotがConsumer Catalogと一致することをread-onlyのImport Gateで検証します。
 
 **登録済み != Live Production Verified** です。Repository fixtureやSchema PASSだけでEditor / Player / Target Device / Visual / Performance成功を主張しません。
 
@@ -133,23 +133,13 @@ Entryは次を所有しません。
 
 Typed IntentからOrchestrationがTask Fingerprint、Route、CapabilityRequest、必要なMutation Scopeを生成し、Context AssemblyがContext identityを生成します。v1 EntryはValidation互換のため保持しますが、caller-owned Context / Route / CapabilityをProduction executionへ持ち込みません。
 
-## 8. Hub snapshot boundary
+## 8. 同居定義とSnapshotの境界
 
-UnitySubAgentHubはconsumer-neutralなManifest Snapshot v3を出力します。Snapshotは現在のProject状態、Runtime Profile値、選択済みProvider、Task Routeを所有しません。
+`subagent/registry.yaml` が同居Manifestの索引です。Manifest v5からconsumer-neutralなSnapshot v3を生成し、UnityAgent所有のConsumer Catalog v3と照合します。Snapshotは現在のProject状態、Runtime Profile、Provider、Task Route、インストール済み状態を決定しません。外部Hubの公開や登録を理由にRuntime Catalogを自動更新しません。
 
-```text
-Hub Manifest v5
-  ↓
-Hub Snapshot v3
-  ↓
-UnityAgent Offline Import Adapter
-  ↓
-Consumer Catalog v3
-```
+同居定義の検証に外部Hub checkoutは不要です。互換用の外部Hub Source Lock／Import CLIは残りますが、同居定義の更新とは別の境界です。Candidate用 `candidate-specialists.yaml` と各 `*-pilot-profile.yaml` は過去の評価資料であり、現在の選出へ注入しません。
 
-Import AdapterはSnapshotを検証し、UnityAgent所有のProfile値と照合します。Artifact公開だけでRuntime Catalogを自動更新しません。Hub SnapshotとConsumer Catalogの差分は通常のGit変更としてレビューします。
-
-Candidate用 `src/unityagent/runtime/reference_implementation/candidate-specialists.yaml` と各 `*-pilot-profile.yaml` は過去のPilot / Evaluation baselineとして残っています。Current Production selectionの正本は `subagent-catalog.yaml` です。
+戦略観測はSpecialist向けの検証済みObservationやAcceptance Evidenceとは別です。結果確定後に `strategy_observation_refs` へ記録し、Reasoning Contextや必須Gateを変更しません。詳細は[適応実行方針](adaptive-subagent-execution.md)を参照してください。
 
 ## 9. Supported baseline
 
