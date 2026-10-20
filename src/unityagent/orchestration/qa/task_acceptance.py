@@ -1,10 +1,19 @@
 """固定Required Gateを観測Evidenceから判定し、修正先の判断材料を返す。"""
 
-def assess_task(records, *, required_gates, run_id, definition_fingerprint):
+def assess_task(records, *, required_gates, run_id, definition_fingerprint, prior_context=None):
     observed = set()
     failed = unavailable = False
     for record in records:
-        if record['run_id'] != run_id or record['definition_fingerprint'] != definition_fingerprint:
+        expected = definition_fingerprint
+        if prior_context is not None:
+            matches = record['evidence_id'] in prior_context['evidence_ids'] or any(
+                record.get('capability') == request['capability'] and record['step_id'] == f"{prior_context['step_id']}-{index + 1}"
+                for index, request in enumerate(prior_context['capability_requests']))
+            if matches:
+                expected = prior_context['definition_fingerprint']
+                if any(expected.get(key) != value for key, value in definition_fingerprint.items() if key not in {'policy_revision', 'context_revision'}):
+                    raise ValueError('Prior Context changed the fixed definition')
+        if record['run_id'] != run_id or record['definition_fingerprint'] != expected:
             raise ValueError('Evidence task or definition revision mismatch')
         failed |= record['verification_status'] == 'failed'
         unavailable |= record['verification_status'] == 'unavailable'

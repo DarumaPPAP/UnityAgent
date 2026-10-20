@@ -63,7 +63,7 @@ class AdaptiveBaselineTests(unittest.TestCase):
     def add_evidence(self, record, definition=None):
         evidence_id = record['run_id'] + '-evidence'
         EvidenceStore(self.root).append({'schema_version': '1.1', 'evidence_id': evidence_id,
-            'run_id': record['run_id'], 'step_id': record['step_id'], 'source_type': 'reasoning_execution',
+            'run_id': record['run_id'], 'step_id': record['step_id'], 'source_type': 'fixture',
             'source_ref': None, 'timestamp': None, 'hash': None, 'producer': 'fixture',
             'verification_status': 'passed', 'provenance': ['fixture'],
             'definition_fingerprint': definition or record['definition_fingerprint']})
@@ -265,3 +265,124 @@ class AdaptiveBaselineTests(unittest.TestCase):
                 group = self.build(failure)['groups'][0]
                 self.assertEqual(group['outcomes']['unavailable'], 1)
                 self.assertEqual(group['quality']['evaluable'], 0)
+
+
+class StrategyApplicationBaselineTests(unittest.TestCase):
+    def setUp(self):
+        from tests.runtime.test_task_dag_execution import TaskDagTests
+        self.fixture = TaskDagTests()
+        self.fixture.setUp()
+        self.addCleanup(self.fixture.doCleanups)
+        self.root = self.fixture.plane.state_store.layout.root
+
+    def build(self):
+        return build_adaptive_baseline(self.root, ['dag-test'], source_revision='fixture')
+
+    def save(self, state):
+        self.fixture.plane.state_store.save_task_state(state)
+
+    def test_optional_applications_preserve_existing_quality_and_path_metrics(self):
+        state = self.fixture.run_tasks([self.fixture.task('a')], adaptive_strategy_enabled=True)
+        before = {p: p.read_bytes() for p in self.root.rglob('*') if p.is_file()}
+        baseline = self.build()
+        self.assertEqual(before, {p: p.read_bytes() for p in self.root.rglob('*') if p.is_file()})
+        applications = baseline['strategy_applications']
+        self.assertEqual(applications['phase_counts'], {'prepared': 1, 'accepted': 1, 'dispatching': 1, 'finalized': 1, 'rejected': 0, 'interrupted': 0})
+        self.assertEqual(applications['incomplete'], 0)
+        self.assertEqual(applications['records'][1]['phase'], 'accepted')
+        self.assertTrue(applications['records'][1]['applied'])
+        self.assertFalse(applications['records'][1]['completed'])
+        self.assertTrue(applications['records'][-1]['completed'])
+        from tests.runtime.test_task_dag_execution import TaskDagTests
+        disabled = TaskDagTests()
+        disabled.setUp()
+        self.addCleanup(disabled.doCleanups)
+        disabled.run_tasks([disabled.task('a')])
+        legacy = build_adaptive_baseline(disabled.plane.state_store.layout.root, ['dag-test'], source_revision='fixture')
+        self.assertNotIn('strategy_applications', legacy)
+        # 独立した旧形式Runとの比較でも、適用履歴を品質・経路集計へ混ぜない。
+        for field in ('quality', 'completion', 'path_distribution', 'recommendation_distribution', 'outcomes', 'model_usage'):
+            self.assertEqual(baseline['groups'][0][field], legacy['groups'][0][field])
+
+    def test_deleted_or_truncated_application_refs_cannot_disguise_new_state_as_legacy(self):
+        original = self.fixture.run_tasks([self.fixture.task('a'), self.fixture.task('b')], adaptive_strategy_enabled=True)
+        for flag, refs in ((True, None), (None, None), (True, original['strategy_application_refs'][:4])):
+            with self.subTest(flag=flag, refs=refs):
+                state = deepcopy(original)
+                if flag is None:
+                    state.pop('adaptive_strategy_enabled', None)
+                if refs is None:
+                    state.pop('strategy_application_refs')
+                else:
+                    state['strategy_application_refs'] = refs
+                self.save(state)
+                baseline = self.build()
+                self.assertEqual(baseline['observation_completeness'], 'failed')
+                self.assertGreater(baseline['strategy_applications']['invalid'], 0)
+
+    def test_accepted_application_is_incomplete_until_finalized(self):
+        state = self.fixture.run_tasks([self.fixture.task('a')], adaptive_strategy_enabled=True)
+        state['strategy_application_refs'] = state['strategy_application_refs'][:2]
+        self.save(state)
+        applications = self.build()['strategy_applications']
+        self.assertEqual(applications['phase_counts']['accepted'], 1)
+        self.assertEqual(applications['phase_counts']['finalized'], 0)
+        self.assertEqual(applications['incomplete'], 1)
+        self.assertFalse(applications['records'][-1]['completed'])
+        self.assertEqual(self.build()['observation_completeness'], 'failed')
+
+    def test_tampered_or_cross_run_application_and_diagnostics_fail_completeness(self):
+        state = self.fixture.run_tasks([self.fixture.task('a')], adaptive_strategy_enabled=True)
+        original = deepcopy(state)
+        event = json.loads((self.root / state['strategy_application_refs'][0]).read_text())
+        foreign = self.fixture.plane.state_store.layout.snapshot('other-run', 'strategy-application', sha256_json(event))
+        write_immutable_json(foreign, event)
+        for refs in (['../../outside.json'], [relative_ref(self.root, foreign)], [state['strategy_application_refs'][-1]] * 2):
+            with self.subTest(refs=refs):
+                state = deepcopy(original)
+                state['strategy_application_refs'] = refs
+                self.save(state)
+                baseline = self.build()
+                self.assertEqual(baseline['observation_completeness'], 'failed')
+                self.assertGreater(baseline['strategy_applications']['invalid'], 0)
+        state = deepcopy(original)
+        state['strategy_application_diagnostics'] = [{'code': 'application_finalization_failed'}]
+        self.save(state)
+        self.assertEqual(self.build()['observation_completeness'], 'failed')
+        state = deepcopy(original)
+        self.save(state)
+        path = self.root / state['strategy_application_refs'][-1]
+        event = json.loads(path.read_text())
+        event['applied'] = False
+        atomic_write_json(path, event)
+        self.assertEqual(self.build()['observation_completeness'], 'failed')
+
+    def test_disabled_mode_has_no_optional_application_aggregate(self):
+        self.fixture.run_tasks([self.fixture.task('a')])
+        self.assertNotIn('strategy_applications', self.build())
+
+    def test_rejected_application_is_distinct_from_completion(self):
+        from unityagent.runtime.execution_control.strategy import consume_strategy
+        def reject(*args, **kwargs):
+            (self.fixture.project / 'ProjectSettings/ProjectVersion.txt').write_text('m_EditorVersion: changed\n')
+            return consume_strategy(*args, **kwargs)
+        with patch('unityagent.runtime.execution_control.strategy.consume_strategy', side_effect=reject):
+            self.fixture.run_tasks([self.fixture.task('a')], adaptive_strategy_enabled=True)
+        applications = self.build()['strategy_applications']
+        self.assertEqual(applications['phase_counts']['rejected'], 1)
+        self.assertEqual(applications['phase_counts']['interrupted'], 0)
+        self.assertFalse(applications['records'][-1]['completed'])
+
+    def test_interrupted_application_is_distinct_from_completion(self):
+        def interrupted(*args):
+            raise KeyboardInterrupt('fixture interruption')
+        self.fixture.execute_file = interrupted
+        with self.assertRaises(KeyboardInterrupt):
+            self.fixture.run_tasks([self.fixture.task('a')], adaptive_strategy_enabled=True)
+        baseline = self.build()
+        applications = baseline['strategy_applications']
+        self.assertEqual(applications['phase_counts']['interrupted'], 1)
+        self.assertEqual(applications['phase_counts']['finalized'], 0)
+        self.assertEqual(applications['invalid'], 0)
+        self.assertFalse(applications['records'][-1]['completed'])
+        self.assertEqual(baseline['observation_completeness'], 'failed')

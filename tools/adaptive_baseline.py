@@ -20,6 +20,43 @@ from unityagent.persistence.store.layout import PersistenceLayout
 from unityagent.resources import resource_root
 
 ROOT = Path(__file__).resolve().parents[1]
+APPLICATION_PHASES = ('prepared', 'accepted', 'dispatching', 'finalized', 'rejected', 'interrupted')
+
+
+def _strategy_applications(layout, state, run):
+    """適用履歴は品質分母や旧経路分布へ混ぜず、受理と確定を別の事実として読む。"""
+    from unityagent.orchestration.routing.strategy_application import read_strategy_application
+    records = []
+    previous = None
+    seen = set()
+    for sequence, ref in enumerate(state.get('strategy_application_refs', [])):
+        try:
+            if not isinstance(ref, str) or ref in seen:
+                raise ValueError('duplicate or invalid application reference')
+            seen.add(ref)
+            event = read_strategy_application(layout.root, ref, run_id=run)
+            if event['sequence'] != sequence or event['previous_ref'] != previous or event['phase'] not in APPLICATION_PHASES:
+                raise ValueError('application reference list differs from verified chain')
+            records.append({'run_id': run, 'ref': ref, 'digest': sha256_json(event), 'status': 'valid',
+                'phase': event['phase'], 'task_id': event['task_id'], 'attempt': event['attempt'],
+                'applied': event['applied'], 'completed': event['phase'] == 'finalized',
+                'path': event['decision']['path'], 'reason_codes': event['decision']['reason_codes']})
+        except (OSError, PersistenceError, ValueError, TypeError, KeyError):
+            records.append({'run_id': run, 'ref': ref if isinstance(ref, str) else None, 'digest': None,
+                'status': 'invalid', 'phase': None, 'task_id': None, 'attempt': None,
+                'applied': None, 'completed': False, 'path': None, 'reason_codes': ['invalid_strategy_application_reference']})
+        previous = ref
+    diagnostics = list(state.get('strategy_application_diagnostics', []))
+    application_root = layout.run_root(run) / 'snapshots/strategy-application'
+    snapshot_refs = {path.relative_to(layout.root).as_posix() for path in application_root.glob('*.json')}
+    # currentの参照を削除・切詰めても、保存済みの適用履歴を旧形式として隠せない。
+    if 'strategy_application_refs' not in state or snapshot_refs != seen:
+        diagnostics.append({'code': 'strategy_application_reference_set_mismatch'})
+    for diagnostic in diagnostics:
+        records.append({'run_id': run, 'ref': None, 'digest': None, 'status': 'invalid',
+            'phase': None, 'task_id': None, 'attempt': None, 'applied': None, 'completed': False,
+            'path': None, 'reason_codes': [diagnostic.get('code', 'strategy_application_diagnostic')]})
+    return records
 
 
 def _snapshot(layout, ref, owner, kind, records):
@@ -164,6 +201,8 @@ def build_adaptive_baseline(persistence_root: Path, run_ids: list[str], *, sourc
         'src/unityagent/orchestration/contracts/strategy-observation.schema.yaml').read_text(encoding='utf-8')))
     groups = {}
     dag_decisions = []
+    applications = []
+    applications_present = False
     requested = list(dict.fromkeys(safe_id(run, 'run_id') for run in run_ids))
     for run in requested:
         task_path = layout.run_root(run) / 'current/task-state.json'
@@ -177,6 +216,11 @@ def build_adaptive_baseline(persistence_root: Path, run_ids: list[str], *, sourc
         except (OSError, PersistenceError, ValueError):
             state = {'run_id': run, 'status': 'unavailable', 'strategy_observation_diagnostics': [{'code':'run_state_unavailable'}]}
         state_record = {'ref': relative_ref(layout.root, path), 'digest': state_digest, 'kind':'task-state' if path == task_path else 'execution-state'}
+        application_root = layout.run_root(run) / 'snapshots/strategy-application'
+        if ('strategy_application_refs' in state or state.get('strategy_application_diagnostics')
+                or state.get('adaptive_strategy_enabled') is True or application_root.exists()):
+            applications_present = True
+            applications.extend(_strategy_applications(layout, state, run))
         # 親DAGの補助観測を子Attemptの品質・経路分布に混ぜない。
         for ref in state.get('dag_decision_refs', []):
             try:
@@ -233,6 +277,18 @@ def build_adaptive_baseline(persistence_root: Path, run_ids: list[str], *, sourc
     if dag_decisions:
         result['dag_decisions'] = dag_decisions
         if any(record['status'] == 'invalid' for record in dag_decisions):
+            result['observation_completeness'] = 'failed'
+    if applications_present:
+        latest = {}
+        for record in applications:
+            if record['status'] == 'valid':
+                latest[(record['run_id'], record['task_id'], record['attempt'])] = record['phase']
+        incomplete = sum(phase in {'prepared', 'accepted', 'dispatching'} for phase in latest.values())
+        invalid = sum(record['status'] == 'invalid' for record in applications)
+        result['strategy_applications'] = {'records': applications,
+            'phase_counts': {phase: sum(record['status'] == 'valid' and record['phase'] == phase for record in applications) for phase in APPLICATION_PHASES},
+            'incomplete': incomplete, 'invalid': invalid}
+        if invalid or incomplete or any(phase == 'interrupted' for phase in latest.values()):
             result['observation_completeness'] = 'failed'
     Draft202012Validator(yaml.safe_load((ROOT / 'eval/regression/adaptive-baseline.schema.yaml').read_text(encoding='utf-8'))).validate(result)
     return result

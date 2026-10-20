@@ -5,11 +5,12 @@ from unityagent.resources import resource_root
 import json
 import shutil
 import tempfile
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, Mapping
 
 from unityagent.runtime.contracts.runtime_handoff import validate_runtime_handoff
-from unityagent.runtime.contracts.reasoning_output import require_reasoning_output_contract
+from unityagent.runtime.contracts.reasoning_output import require_reasoning_output_contract, verify_reasoning_artifact
 from unityagent.runtime.runner.codex.codex_runner import CodexRunnerError, _command_prefix, execute
 
 ROOT = resource_root()
@@ -17,6 +18,28 @@ ROOT = resource_root()
 
 class ContextBindingError(ValueError):
     pass
+
+
+def normalize_reasoning_evidence(record: Mapping[str, Any], *, output_contract_ref: str, manifest: Mapping[str, Any], artifact: Mapping[str, Any] | None, project_root: str) -> dict[str, Any]:
+    """検証済みWorld Planだけを固定Gateの観測にし、Unity実行の観測へ昇格させない。"""
+    value = deepcopy(dict(record))
+    if value.get("verification_status") != "passed" or not value.get("payload_ref"):
+        return value
+    verification = verify_reasoning_artifact(output_contract_ref, manifest, artifact)
+    if verification.get("evidence_type") != "world_plan":
+        return value
+    value.update({
+        "schema_version": "1.2", "capability": "world.plan", "provider_ref": "codex_runner",
+        "project_root": project_root,
+        "environment": {"profile_hint": "generic_planning", "binding_fingerprint": artifact["source_context_fingerprint"], "unity_version": None, "requested_target": None},
+        "target": {"surface": "host", "instance_id": None, "device_id": None, "artifact_id": value["payload_ref"], "command_ref": value.get("source_ref")},
+        "safety_strength": 1, "evidence_strength": 1,
+        "completion": "verified", "observation_state": "observed", "failure_class": None,
+        "observed_evidence": ["world_plan"], "required_evidence": ["world_plan"],
+        "raw_refs": [ref for ref in (value.get("source_ref"), value["payload_ref"]) if ref],
+        "mutation_provenance": None, "latency_ms": None, "fallback_from": None, "durability": "durable",
+    })
+    return value
 
 
 def _repository_file(reference: str, root: Path) -> Path:

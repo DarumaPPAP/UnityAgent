@@ -170,6 +170,47 @@ class ReasoningRuntimeHandoffTests(unittest.TestCase):
         registry = Registry().with_resources((schema["$id"], Resource.from_contents(schema)) for schema in schemas)
         Draft202012Validator(schemas[0], registry=registry).validate(execution)
 
+    def test_validated_world_plan_satisfies_only_its_fixed_gate(self):
+        from unityagent.orchestration.qa.task_acceptance import assess_task
+        response, plane, _ = self.execute()
+        evidence = plane.evidence_store.verify_record(response["results"][-1]["evidence_ref"], expected_run_id=response["run_id"])
+        self.assertEqual(evidence.get("completion"), "verified")
+        self.assertEqual(evidence.get("observation_state"), "observed")
+        self.assertEqual(evidence.get("observed_evidence"), ["world_plan"])
+        gates = {name: [name] for name in ("world_plan", "editor_test", "player_test", "target_device", "visual_capture")}
+        acceptance = assess_task([evidence], required_gates=gates, run_id=response["run_id"], definition_fingerprint=response["handoff"]["definition_fingerprint"])
+        self.assertEqual(acceptance["gates"], {name: "passed" if name == "world_plan" else "not_observed" for name in gates})
+
+    def test_world_plan_artifact_tamper_or_missing_payload_is_rejected(self):
+        from unityagent.persistence.store.atomic_store import PersistenceError
+        for remove in (False, True):
+            with self.subTest(remove=remove):
+                response, plane, _ = self.execute()
+                outcome = response["results"][-1]
+                path = plane.state_store.layout.root / outcome["artifact_ref"]
+                if remove:
+                    path.unlink()
+                else:
+                    artifact = json.loads(path.read_text(encoding="utf-8"))
+                    artifact["source_context_fingerprint"] = "sha256:stale"
+                    path.write_text(json.dumps(artifact), encoding="utf-8")
+                with self.assertRaises(PersistenceError):
+                    plane.evidence_store.verify_record(outcome["evidence_ref"], expected_run_id=response["run_id"])
+
+    def test_reasoning_evidence_normalization_revalidates_artifact_context_and_semantics(self):
+        from unityagent.runtime.contracts.reasoning_output import ReasoningOutputError
+        from unityagent.runtime.handoff.reasoning_runtime import normalize_reasoning_evidence
+        response, plane, _ = self.execute()
+        outcome = response["results"][-1]
+        artifact = json.loads((plane.state_store.layout.root / outcome["artifact_ref"]).read_text(encoding="utf-8"))
+        manifest = json.loads((plane.state_store.layout.root / response["context_manifest_ref"]).read_text(encoding="utf-8"))
+        evidence = plane.evidence_store.verify_record(outcome["evidence_ref"])
+        for field, replacement in (("source_context_fingerprint", "sha256:stale"), ("world_plan", {})):
+            with self.subTest(field=field):
+                invalid = {**artifact, field: replacement}
+                with self.assertRaises(ReasoningOutputError):
+                    normalize_reasoning_evidence(evidence, output_contract_ref=outcome["output_contract_ref"], manifest=manifest, artifact=invalid, project_root=str(self.project))
+
     def test_performance_observation_reaches_reasoning_as_limited_measurement(self):
         snapshot = discover_environment(str(self.project), editor_candidates=[], editor_candidates_observed=True, editor_processes=[], editor_processes_observed=True, unity_cli_observation=UnityCliSnapshot(False, None, None, "unavailable"), provider_instances={"myunitymcp": [], "coplay_mcp": []}, which_fn=lambda _: None).to_dict()
         editor_path = self.root / "Unity.exe"
@@ -227,7 +268,10 @@ class ReasoningRuntimeHandoffTests(unittest.TestCase):
                 self.assertEqual(response["status"], "blocked")
                 self.assertEqual(response["results"][-1]["status"], "blocked")
                 self.assertEqual(response["results"][-1]["runtime_failure"]["failure_class"], failure_class)
-                self.assertEqual(plane.evidence_store.verify_record(response["results"][-1]["evidence_ref"])["verification_status"], "failed")
+                evidence = plane.evidence_store.verify_record(response["results"][-1]["evidence_ref"])
+                self.assertEqual(evidence["verification_status"], "failed")
+                self.assertNotEqual(evidence.get("completion"), "verified")
+                self.assertNotIn("world_plan", evidence.get("observed_evidence", []))
                 observation = json.loads((plane.state_store.layout.root / response['strategy_observation_refs'][0]).read_text(encoding='utf-8'))
                 self.assertEqual(observation['failure_class'], failure_class)
                 self.assertEqual(observation['recommendation'], 'blocked')

@@ -20,21 +20,37 @@ def project_revision(project: str | Path) -> str:
                         for name in ('Assets', 'Packages', 'ProjectSettings')})
 
 
-def _acceptance(plane, result, gates, definition):
+def _acceptance(plane, result, gates, definition, *, verify=False):
     effective = result.get('handoff', {}).get('definition_fingerprint', definition)
     if any(effective.get(k) != v for k, v in definition.items() if k not in {'policy_revision', 'context_revision'}):
         raise ValueError('Runtime definition revision differs')
     from unityagent.orchestration.qa.task_acceptance import assess_task
-    return assess_task([plane.evidence_store.get(ref) for ref in result.get('evidence_refs', [])],
-        required_gates=gates, run_id=result['run_id'], definition_fingerprint=effective)['gates']
+    records = [plane.evidence_store.verify_record(ref, expected_run_id=result['run_id']) if verify else plane.evidence_store.get(ref)
+               for ref in result.get('evidence_refs', [])]
+    prior_context = None
+    if result.get('orchestration_decision_ref'):
+        from unityagent.persistence.state.dag_decision import decision_snapshot
+        layout = plane.state_store.layout
+        proof = decision_snapshot(layout, result['orchestration_decision_ref'], result['run_id'], 'orchestration-decision')
+        if proof.get('previous_context_manifest_ref'):
+            previous = decision_snapshot(layout, proof['previous_context_manifest_ref'], result['run_id'], 'context-manifest')
+            if previous['run_id'] != result['run_id'] or proof['context_manifest_ref'] != result['context_manifest_ref']:
+                raise ValueError('Prior Context binding differs')
+            prior_context = {'definition_fingerprint': {**effective, **{key: previous['materialized_context']['definition_fingerprint'][key]
+                for key in ('policy_revision', 'context_revision')}}, 'evidence_ids': proof['observation_evidence_refs'],
+                'capability_requests': proof['capability_requests'], 'step_id': result['handoff']['step_id']}
+    return assess_task(records,
+        required_gates=gates, run_id=result['run_id'], definition_fingerprint=effective, prior_context=prior_context)['gates']
 
 
-def execute_task_dag(plane, tasks, *, run_id, definition_fingerprint, task_parameters, resume=False):
+def execute_task_dag(plane, tasks, *, run_id, definition_fingerprint, task_parameters, resume=False, adaptive_strategy_enabled=False):
     """Task自体の権限を増やさず、既存executeで得た永続Evidenceだけで依存を開く。
 
     初期Schedulerは直列。parallel planを速度向上の実測と混同しない。
     実行途中の再開は副作用が不確定なので自動再送しない。
     """
+    if not isinstance(adaptive_strategy_enabled, bool):
+        raise ValueError('Adaptive strategy mode must be boolean')
     definition = deepcopy(dict(definition_fingerprint))
     validate_definition_fingerprint(definition)
     safe_id(run_id, 'run_id')
@@ -59,7 +75,7 @@ def execute_task_dag(plane, tasks, *, run_id, definition_fingerprint, task_param
             raise ValueError('Required gates must be fixed before Task execution')
         if not isinstance(task.get('goal'), str) or not task['goal'].strip():
             raise ValueError('Task goal is required')
-        if identifier not in task_parameters or set(task_parameters[identifier]) & {'run_id', 'definition_fingerprint', 'entry_request'}:
+        if identifier not in task_parameters or set(task_parameters[identifier]) & {'run_id', 'definition_fingerprint', 'entry_request', '_strategy_consumer'}:
             raise ValueError('Task runtime parameters missing or override identity')
         candidates = task.get('repair_candidates', [])
         repair_limit = task.get('semantic_repair_limit', 2)
@@ -75,6 +91,8 @@ def execute_task_dag(plane, tasks, *, run_id, definition_fingerprint, task_param
     revisions = {p: project_revision(p) for p in projects}
     if resume:
         state = plane.state_store.load_task_state(run_id)
+        if state.get('adaptive_strategy_enabled', False) != adaptive_strategy_enabled:
+            raise ValueError('Adaptive strategy mode changed during resume')
         if state['contract_digest'] != contract_digest:
             raise ValueError('Task contract changed during resume')
         if state['definition_fingerprint'] != definition or state['project_revisions'] != revisions:
@@ -94,10 +112,22 @@ def execute_task_dag(plane, tasks, *, run_id, definition_fingerprint, task_param
         contract = plane.state_store.layout.snapshot(run_id, 'task-contract', contract_digest)
         write_immutable_json(contract, {'tasks': tasks, 'definition_fingerprint': definition})
         state['contract_ref'] = relative_ref(plane.state_store.layout.root, contract)
+    from unityagent.control_plane.strategy_application import prepare_application, finalize_application, verify_application_state
+    application_root = plane.state_store.layout.run_root(run_id) / 'snapshots/strategy-application'
+    if adaptive_strategy_enabled:
+        if not resume:
+            state.update(adaptive_strategy_enabled=True, strategy_application_refs=[], coordination_path=None)
+        else:
+            verify_application_state(plane, state, tasks)
+    elif application_root.exists():
+        raise ValueError('Adaptive strategy mode or history was removed')
     plane.state_store.save_task_state(state)
+    stop_dispatch = False
     for batch in plan['batches']:
         for identifier in batch['task_ids']:
             task, record = by_id[identifier], state['tasks'][identifier]
+            if stop_dispatch:
+                continue
             if record['status'] == 'verified':
                 continue
             if any(state['tasks'][dep]['status'] != 'verified' for dep in task.get('depends_on', [])):
@@ -125,11 +155,34 @@ def execute_task_dag(plane, tasks, *, run_id, definition_fingerprint, task_param
                 plane.state_store.save_task_state(state)
                 dispatch_revisions = dict(state['project_revisions'])
                 start = time.monotonic()
-                result = plane.execute(candidate, run_id=child_run,
-                    definition_fingerprint=definition, **task_parameters[identifier])
+                application = None
+                parameters = dict(task_parameters[identifier])
+                if adaptive_strategy_enabled:
+                    def consume(preparation):
+                        nonlocal application
+                        application = prepare_application(plane, state, tasks, task_id=identifier,
+                            attempt=attempt, candidate=candidate, preparation=preparation)
+                        return application is not None
+                    parameters['_strategy_consumer'] = consume
+                try:
+                    result = plane.execute(candidate, run_id=child_run,
+                        definition_fingerprint=definition, **parameters)
+                except BaseException as exc:
+                    if adaptive_strategy_enabled and application is not None:
+                        from unityagent.persistence.state.strategy_application import save_application
+                        try:
+                            save_application(plane, state, {**application, 'phase': 'interrupted',
+                                'uncertain_side_effects': True, 'error_type': type(exc).__name__})
+                        except (OSError, ValueError):
+                            # dispatchingが残ればResumeは不確定なAttemptを再送しない。
+                            pass
+                    raise
+                if adaptive_strategy_enabled and application is None:
+                    # 受理されないAttemptの後へ進まず、未実行Taskはpendingのまま保持する。
+                    stop_dispatch = True
                 record['latency_ms'] = record.get('latency_ms', 0) + (time.monotonic() - start) * 1000
                 record['result'] = result
-                record['gates'] = _acceptance(plane, result, task['required_gates'], definition)
+                record['gates'] = _acceptance(plane, result, task['required_gates'], definition, verify=adaptive_strategy_enabled)
                 record['status'] = 'verified' if result['status'] == 'completed' and all(
                     g == 'passed' for g in record['gates'].values()) else 'blocked'
                 # Acceptance確定後のAttemptに結び付ける。Resume時はこの境界を再実行しない。
@@ -163,6 +216,16 @@ def execute_task_dag(plane, tasks, *, run_id, definition_fingerprint, task_param
                 record['semantic_decision'] = decision
                 observe_dag_boundary(plane, tasks, state, task_id=identifier, attempt=attempt,
                     dispatch_revisions=dispatch_revisions)
+                if adaptive_strategy_enabled and application is not None:
+                    try:
+                        finalize_application(plane, state, application, task_id=identifier, attempt=attempt)
+                    except (OSError, ValueError) as exc:
+                        # 実行済みEvidenceを保持し、保存失敗を理由に同じProviderへ再送しない。
+                        state.setdefault('strategy_application_diagnostics', []).append(
+                            {'code': 'application_result_incomplete', 'task_id': identifier,
+                             'attempt': attempt, 'error_type': type(exc).__name__})
+                        plane.state_store.save_task_state(state)
+                        raise ValueError('Application result incomplete; reconciliation required') from exc
                 if (decision['decision'] != 'continue' or attempt + 1 >= len(candidates)
                         or attempt >= task.get('semantic_repair_limit', 2)):
                     break

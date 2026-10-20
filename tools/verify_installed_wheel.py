@@ -35,6 +35,11 @@ from unityagent.orchestration.routing.adaptive_execution import build_dag_inputs
 dag_schema = root / 'src/unityagent/orchestration/contracts/dag-decision.schema.yaml'
 assert dag_schema.is_file()
 Draft202012Validator.check_schema(yaml.safe_load(dag_schema.read_text()))
+from unityagent.orchestration.routing.strategy_application import read_strategy_application, select_coordination
+from unityagent.runtime.execution_control.strategy import consume_strategy
+application_schema = root / 'src/unityagent/orchestration/contracts/strategy-application.schema.yaml'
+assert application_schema.is_file()
+Draft202012Validator.check_schema(yaml.safe_load(application_schema.read_text()))
 assert not any(value.startswith('missing:') for value in _fingerprint().values())
 assert policy_for_capability('project.inspect')['operation_kind'] == 'read'
 assert load_provider_registry().providers

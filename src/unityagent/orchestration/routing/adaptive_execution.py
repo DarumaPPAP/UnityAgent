@@ -322,8 +322,16 @@ def read_dag_decision(persistence_root, ref, *, run_id):
             raise ValueError('DAG Evidence source set differs')
         if observation['orchestration_decision_ref'] not in sources or observation['context_manifest_ref'] not in sources:
             raise ValueError('DAG child Context or proof source is missing')
+        proof = sources[observation['orchestration_decision_ref']]
+        prior_context = None
+        if proof.get('previous_context_manifest_ref'):
+            previous = sources[proof['previous_context_manifest_ref']]
+            prior_context = {'definition_fingerprint': {**observation['definition_fingerprint'], **{
+                key: previous['materialized_context']['definition_fingerprint'][key] for key in ('policy_revision', 'context_revision')}},
+                'evidence_ids': proof['observation_evidence_refs'], 'capability_requests': proof['capability_requests'],
+                'step_id': observation['step_id']}
         gates = assess_task([sources[source['ref']] for source in evidence_sources], required_gates=task['required_gates'],
-            run_id=child, definition_fingerprint=observation['definition_fingerprint'])['gates']
+            run_id=child, definition_fingerprint=observation['definition_fingerprint'], prior_context=prior_context)['gates']
         verified = observation['result_status'] == 'completed' and all(value == 'passed' for value in gates.values())
         semantic = item['semantic_decision']
         if item['gates'] != gates or item['status'] != ('verified' if verified else 'blocked') or semantic['outcome'] != ('passed' if verified else 'validation_failed'):
