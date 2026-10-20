@@ -353,3 +353,21 @@ class StrategyApplicationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.run_tasks(tasks, resume=True, adaptive_strategy_enabled=True)
         self.assertEqual(self.calls, [])
+
+    def test_standard_consumes_prior_evidence_audit_before_the_next_provider(self):
+        from unityagent.persistence.store.atomic_store import PersistenceError
+        from unityagent.runtime.execution_control.strategy import consume_strategy
+        def tampered(decision, preparation, **kwargs):
+            if preparation['task_id'] == 'b':
+                state = self.plane.state_store.load_task_state('dag-test')
+                evidence_id = state['tasks']['a']['result']['evidence_refs'][0]
+                path = self.plane.evidence_store.layout.evidence(evidence_id)
+                evidence = json.loads(path.read_text())
+                evidence['verification_status'] = 'unverified'
+                path.write_text(json.dumps(evidence))
+            return consume_strategy(decision, preparation, **kwargs)
+        with patch('unityagent.runtime.execution_control.strategy.consume_strategy', side_effect=tampered):
+            with self.assertRaises(PersistenceError):
+                self.test_world_plan_specialist_promotion_and_demotion_reach_fixed_acceptance()
+        # 名前やreceiptだけを変えても、bのProvider到達を防がなければこの検証は失敗する。
+        self.assertEqual(self.calls, ['project.inspect'])
