@@ -90,20 +90,20 @@
 
 **Files**
 
-- Create: `tools/adaptive_execution_baseline.py`
+- Create: `tools/adaptive_baseline.py`
 - Create: `eval/regression/adaptive-baseline.schema.yaml`
-- Create: `tests/eval/test_adaptive_execution_baseline.py`
+- Create: `tests/eval/test_adaptive_baseline.py`
 
 **Interfaces**
 
 - Consumes: 明示されたPersistence root、run id、source revision。既存Run state／manifest／observation参照をread-onlyで取得する。
 - Produces: `build_adaptive_baseline(persistence_root: Path, run_ids: list[str], *, source_revision: str) -> dict[str, Any]`。
-- CLI: `python tools/adaptive_execution_baseline.py --persistence-root <root> --run-id <id> --source-revision <sha> --output <path>`。`--run-id`は複数指定可能。
+- CLI: `python tools/adaptive_baseline.py --persistence-root <root> --run-id <id> --source-revision <sha> --output <path>`。`--run-id`は複数指定可能。
 - 出力はSchema付き。record digest、定義別group、経路／提案分布、Gate状態、取得済みlatency／Context推定量、モデル実usageの未観測状態、観測欠落を含む。
 
 - [ ] `test_group_by_definition`、`test_missing_usage_is_not_zero`、`test_context_estimate_is_not_billed_tokens`、`test_blocked_and_unavailable_are_reported_separately`を書く。
 - [ ] `test_corrupt_or_cross_run_reference_is_rejected`、`test_duplicate_run_is_not_counted_twice`、`test_export_does_not_modify_inputs`、`test_no_runtime_or_model_is_launched`を書く。
-- [ ] `python -m unittest tests.eval.test_adaptive_execution_baseline -v`を実行し、集計機能が未定義で失敗することを確認する。
+- [ ] `python -m unittest tests.eval.test_adaptive_baseline -v`を実行し、集計機能が未定義で失敗することを確認する。
 - [ ] 純粋集計とCLIを実装する。fixture計測をProduction性能値へ変換しない。既存Frozen BaselineとComparatorを変更しない。
 - [ ] 同テストと既存Baseline Comparatorテストを実行する。CLI出力を新Schemaで検証する。
 - [ ] 実Runが利用可能なら明示した入力から集計し、計測環境と対象revisionを保存する。なければfixture検証のみとし、実Baselineは`not_observed`として報告する。

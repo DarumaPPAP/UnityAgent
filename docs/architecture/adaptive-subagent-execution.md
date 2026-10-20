@@ -33,7 +33,7 @@ Complexは説明上の呼称に限ります。既存execution profile、Context 
 次のコマンドは明示した保存済みRunだけを読み、Production実行を開始しません。
 
 ```sh
-python tools/adaptive_execution_baseline.py \
+python tools/adaptive_baseline.py \
   --persistence-root /path/to/persistence \
   --run-id saved-run-id \
   --source-revision recorded-source-sha \
@@ -44,8 +44,11 @@ python tools/adaptive_execution_baseline.py \
 
 - `source_revision` とDefinitionFingerprintでgroupを分けます。既存Runにsource revisionがなければ呼出し側の宣言を使用し、`source_revision_provenance` で区別します。記録だけから実際のソースrevisionを推測しません。
 - snapshot digest、Run／Task／Attempt、入力digest、Schema、Context／Orchestration／Evidence参照のbindingを検証します。不正・欠落・保存失敗は `observation_completeness: failed` と欠落理由へ残し、品質成功に数えません。
+- Evidenceは既存EvidenceStoreのevent chainと保存時record hashを照合します。Contextは観測recordの有効なpolicy／context revision、Routing Proofは対象manifest参照も照合します。
+- Reasoning前の再Materializationでは、Proofが示す直前Contextと、必須Observation参照またはCapabilityRequestのCapability／Stepに対応するTool結果だけを旧Contextへ結び付けます。Reasoning結果は再構築後の定義で検証し、任意の過去Contextを許可しません。
 - 経路・提案分布、固定Gate状態、観測可能な対象だけの品質成功率と分母、blocked／unavailable、実行完了件数を別々に出します。単一executeの固定Acceptance未定義は品質の `not_evaluated` です。欠測を総対象数から除外しません。
 - Taskの既存 `latency_ms` はTask合計の壁時計時間として最終Attemptに一度だけ付けます。未取得はnullです。各記録のdigestも保持します。
+- Attemptの戦略観測が欠けた場合、対応する子RunのExecutionStateから実行状態だけを確認します。その状態も読めなければ未観測とし、最終Taskの成功を過去Attemptへ流用しません。
 - Contextの `estimated_tokens` は推定量です。正規化された実モデルusageの取得機能は追加せず、`model_usage.status: not_observed`、`total_tokens: null` とします。欠測を0へ変換しません。
 
 出力は `eval/regression/adaptive-baseline.schema.yaml` で検証します。Persistence内への出力と既存ファイルの上書きを拒否し、既存Frozen Baseline／Comparatorは変更しません。fixtureの実行時間をProduction latencyやUnity性能改善として報告しません。
@@ -62,4 +65,4 @@ Control PlaneのRun lockは同一Host／userの物理Projectを排他し、Evide
 
 Hostのunit test・fixture・Schema・validator・wheel resource検証と、実Unity／実モデルの検証は分けます。今回のfixture成功は実Baseline取得や性能改善を意味しません。実Unity Editor／Player／実機／実モデルの利用条件がない場合、検証は `unavailable`、実Baselineは `not_observed` と報告します。
 
-依頼時の[設計](../superpowers/specs/2026-10-20-adaptive-harness-design.md)と[実装計画](../superpowers/plans/2026-10-20-adaptive-harness-plan.md)は導入範囲の記録です。現在の挙動の正本はコード・Schema・テストです。
+依頼時の[設計](../superpowers/specs/2026-10-20-adaptive-harness.md)と[実装計画](../superpowers/plans/2026-10-20-adaptive-harness.md)は導入範囲の記録です。現在の挙動の正本はコード・Schema・テストです。

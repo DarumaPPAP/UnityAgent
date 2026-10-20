@@ -12,8 +12,9 @@ import yaml
 from jsonschema import Draft202012Validator
 from unityagent.persistence.store.atomic_store import sha256_json, write_immutable_json, atomic_write_json, relative_ref
 from unityagent.persistence.store.layout import PersistenceLayout
+from unityagent.persistence.evidence.evidence_store import EvidenceStore
 from tests.runtime.test_control_plane import fingerprint
-from tools.adaptive_execution_baseline import build_adaptive_baseline
+from tools.adaptive_baseline import build_adaptive_baseline
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -35,7 +36,7 @@ class AdaptiveBaselineTests(unittest.TestCase):
         manifest = {'run_id': run, 'budget_report': {'estimated_tokens': 123, 'selected_utf8_bytes': 369},
                     'materialized_context': {'definition_fingerprint': definition}}
         manifest_ref = self.snapshot(run, 'context-manifest', manifest)
-        proof_ref = self.snapshot(run, 'orchestration-decision', {'execution_plan': {'path': 'fast'}})
+        proof_ref = self.snapshot(run, 'orchestration-decision', {'execution_plan': {'path': 'fast'}, 'context_manifest_ref': manifest_ref})
         inputs = {'selection_inputs': {}, 'failure_class': failure, 'uncertain_side_effects': False}
         record = {**inputs, 'schema_version':'1.0', 'run_id':run, 'result_run_id':run, 'step_id':'inspect_sources',
             'current_path':'fast', 'proposed_path':None, 'recommendation':'blocked' if failure else 'not_evaluated',
@@ -54,6 +55,76 @@ class AdaptiveBaselineTests(unittest.TestCase):
 
     def build(self, *runs):
         return build_adaptive_baseline(self.root, list(runs or ['run-a']), source_revision='revision-a')
+
+    def save_observation(self, state, record):
+        state['strategy_observation_refs'] = [self.snapshot(state['run_id'], 'strategy-observation', record)]
+        atomic_write_json(self.layout.execution_state(state['run_id']), state)
+
+    def add_evidence(self, record, definition=None):
+        evidence_id = record['run_id'] + '-evidence'
+        EvidenceStore(self.root).append({'schema_version': '1.1', 'evidence_id': evidence_id,
+            'run_id': record['run_id'], 'step_id': record['step_id'], 'source_type': 'reasoning_execution',
+            'source_ref': None, 'timestamp': None, 'hash': None, 'producer': 'fixture',
+            'verification_status': 'passed', 'provenance': ['fixture'],
+            'definition_fingerprint': definition or record['definition_fingerprint']})
+        record['evidence_refs'] = [evidence_id]
+        return evidence_id
+
+    def test_evidence_changes_after_append_cannot_pass_quality(self):
+        state, record = self.make_run(gates={'project': 'passed'})
+        evidence_id = self.add_evidence(record)
+        self.save_observation(state, record)
+        self.assertEqual(self.build()['groups'][0]['quality']['succeeded'], 1)
+        evidence = json.loads(self.layout.evidence(evidence_id).read_text(encoding='utf-8'))
+        evidence['verification_status'] = 'failed'
+        atomic_write_json(self.layout.evidence(evidence_id), evidence)
+        baseline = self.build()
+        self.assertEqual(baseline['observation_completeness'], 'failed')
+        self.assertEqual(baseline['groups'][0]['quality']['succeeded'], 0)
+
+    def test_evidence_without_append_event_cannot_pass_quality(self):
+        state, record = self.make_run(gates={'project': 'passed'})
+        evidence_id = self.add_evidence(record)
+        self.save_observation(state, record)
+        self.layout.evidence_events('run-a').unlink()
+        baseline = self.build()
+        self.assertEqual(baseline['observation_completeness'], 'failed')
+        self.assertEqual(baseline['groups'][0]['quality']['succeeded'], 0)
+
+    def test_manifest_context_revision_must_match_observation(self):
+        state, record = self.make_run(gates={'project': 'passed'})
+        manifest = json.loads((self.root / record['context_manifest_ref']).read_text(encoding='utf-8'))
+        manifest['materialized_context']['definition_fingerprint']['context_revision'] = 'other-context'
+        record['context_manifest_ref'] = self.snapshot('run-a', 'context-manifest', manifest)
+        record['orchestration_decision_ref'] = self.snapshot('run-a', 'orchestration-decision', {
+            'execution_plan': {'path': 'fast'}, 'context_manifest_ref': record['context_manifest_ref']})
+        self.save_observation(state, record)
+        self.assertEqual(self.build()['groups'][0]['quality']['succeeded'], 0)
+
+    def test_routing_proof_must_reference_observed_manifest(self):
+        state, record = self.make_run(gates={'project': 'passed'})
+        record['orchestration_decision_ref'] = self.snapshot('run-a', 'orchestration-decision', {
+            'execution_plan': {'path': 'fast'}, 'context_manifest_ref': 'different-manifest'})
+        self.save_observation(state, record)
+        self.assertEqual(self.build()['groups'][0]['quality']['succeeded'], 0)
+
+    def test_declared_observation_uses_previous_context_definition(self):
+        state, record = self.make_run(gates={'project': 'passed'})
+        previous_definition = dict(fingerprint(), context_revision='before-observation')
+        previous_ref = self.snapshot('run-a', 'context-manifest', {
+            'run_id': 'run-a', 'materialized_context': {'definition_fingerprint': previous_definition}})
+        evidence_id = self.add_evidence(record, previous_definition)
+        proof = {'execution_plan': {'path': 'fast'}, 'context_manifest_ref': record['context_manifest_ref'],
+            'previous_context_manifest_ref': previous_ref, 'observation_evidence_refs': [evidence_id]}
+        record['orchestration_decision_ref'] = self.snapshot('run-a', 'orchestration-decision', proof)
+        self.save_observation(state, record)
+        self.assertEqual(self.build()['observation_completeness'], 'complete')
+        self.assertEqual(self.build()['groups'][0]['quality']['succeeded'], 1)
+        # 前提Observationとして列挙されない旧ContextのEvidenceは再利用できない。
+        proof['observation_evidence_refs'] = []
+        record['orchestration_decision_ref'] = self.snapshot('run-a', 'orchestration-decision', proof)
+        self.save_observation(state, record)
+        self.assertEqual(self.build()['groups'][0]['quality']['succeeded'], 0)
 
     def test_group_by_definition(self):
         self.make_run()
@@ -151,7 +222,7 @@ class AdaptiveBaselineTests(unittest.TestCase):
     def test_cli_does_not_overwrite_existing_output(self):
         self.make_run()
         output = Path(self.temp.name) / 'baseline.json'
-        command = [sys.executable, str(ROOT/'tools/adaptive_execution_baseline.py'), '--persistence-root', str(self.root),
+        command = [sys.executable, str(ROOT/'tools/adaptive_baseline.py'), '--persistence-root', str(self.root),
                    '--run-id','run-a','--source-revision','revision-a','--output',str(output)]
         result = subprocess.run(command, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)

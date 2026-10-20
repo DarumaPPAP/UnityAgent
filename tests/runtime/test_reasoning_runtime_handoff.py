@@ -210,6 +210,9 @@ class ReasoningRuntimeHandoffTests(unittest.TestCase):
         records = [plane.evidence_store.verify_record(ref) for ref in response["evidence_refs"]]
         self.assertEqual([record["verification_status"] for record in records], ["passed", "passed", "passed"])
         self.assertEqual([record["completion"] for record in records[:2]], ["verified", "verified"])
+        from tools.adaptive_baseline import build_adaptive_baseline
+        baseline = build_adaptive_baseline(plane.state_store.layout.root, [response['run_id']], source_revision='fixture')
+        self.assertEqual(baseline['observation_completeness'], 'complete', baseline)
         inputs = derive_context_inputs(str(self.project), snapshot, entry["intent"])
         mutation_context = build_context_manifest("performance-mutation-fixture", "performance-experiment", project_facts=inputs["project_facts"], bindings=inputs["bindings"], capability_ids=["profiler.observe"], active_conditions={"mutation_requested"})
         self.assertIn("binding:baseline_capture_or_explicit_missing_baseline", mutation_context["unresolved_bindings"])
@@ -225,6 +228,9 @@ class ReasoningRuntimeHandoffTests(unittest.TestCase):
                 self.assertEqual(response["results"][-1]["status"], "blocked")
                 self.assertEqual(response["results"][-1]["runtime_failure"]["failure_class"], failure_class)
                 self.assertEqual(plane.evidence_store.verify_record(response["results"][-1]["evidence_ref"])["verification_status"], "failed")
+                observation = json.loads((plane.state_store.layout.root / response['strategy_observation_refs'][0]).read_text(encoding='utf-8'))
+                self.assertEqual(observation['failure_class'], failure_class)
+                self.assertEqual(observation['recommendation'], 'blocked')
 
     def test_runner_unavailable_is_durable_failure(self):
         plane = UnityAgentControlPlane(self.root / "state", broker=self.broker)
@@ -232,6 +238,9 @@ class ReasoningRuntimeHandoffTests(unittest.TestCase):
         self.assertEqual(response["status"], "blocked")
         outcome = response["results"][-1]
         self.assertEqual(outcome["runtime_failure"]["failure_class"], "runner_unavailable")
+        observation = json.loads((plane.state_store.layout.root / response['strategy_observation_refs'][0]).read_text(encoding='utf-8'))
+        self.assertEqual(observation['failure_class'], 'runner_unavailable')
+        self.assertEqual(observation['recommendation'], 'blocked')
         self.assertEqual(plane.evidence_store.verify_record(outcome["evidence_ref"])["verification_status"], "failed")
         with patch("unityagent.runtime.handoff.reasoning_runtime._command_prefix", side_effect=codex_runner.CodexRunnerError("Codex CLI was not found on PATH")):
             response = plane.execute(self.entry, environment_snapshot=self.snapshot, context=ResolutionContext(policy_allowed=True), executors={}, definition_fingerprint=fingerprint(), specialist_pilot_enabled=True, reasoning_model="gpt-fixture")

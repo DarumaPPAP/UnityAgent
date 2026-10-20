@@ -62,6 +62,11 @@ class TaskDagTests(unittest.TestCase):
         self.assertEqual(result['tasks']['parent']['gates']['visual'], 'not_observed')
         self.assertEqual(result['tasks']['child']['status'], 'blocked_dependency')
         self.assertEqual(len(self.calls), 1)
+        from tools.adaptive_baseline import build_adaptive_baseline
+        baseline = build_adaptive_baseline(self.plane.state_store.layout.root, ['dag-test'], source_revision='fixture')
+        child = next(sample for group in baseline['groups'] for sample in group['samples'] if sample['task_id'] == 'child')
+        self.assertEqual(child['execution_status'], 'blocked_dependency')
+        self.assertEqual(child['outcome'], 'blocked')
 
     def test_resume_cannot_drop_required_gate_or_change_revision(self):
         tasks = [self.task('parent', gates={'visual': ['visual_capture']})]
@@ -129,6 +134,33 @@ class TaskDagTests(unittest.TestCase):
         self.assertEqual(result['status'],'blocked')
         self.assertEqual(len(attempts),2)
 
+    def test_missing_failed_attempt_observation_does_not_inherit_final_success(self):
+        from tools.adaptive_baseline import build_adaptive_baseline
+        original_execute = self.execute_file
+        attempts = []
+        def repairable(request, context, arguments):
+            attempts.append(request)
+            if len(attempts) == 1:
+                return {'status': 'failed', 'failure_class': 'execution_failed', 'reason': 'first attempt', 'evidence': []}
+            return original_execute(request, context, arguments)
+        self.execute_file = repairable
+        original_observe = self.plane._observe_strategy
+        def observe(result, **kwargs):
+            if kwargs.get('attempt') == 0:
+                return {**result, 'strategy_observation_refs': []}
+            return original_observe(result, **kwargs)
+        task = self.task('repair')
+        task['repair_candidates'] = [self.task('candidate')['entry_request']]
+        with patch.object(self.plane, '_observe_strategy', side_effect=observe):
+            result = self.run_tasks([task])
+        self.assertEqual(result['status'], 'verified')
+        baseline = build_adaptive_baseline(self.plane.state_store.layout.root, ['dag-test'], source_revision='fixture')
+        samples = [sample for group in baseline['groups'] for sample in group['samples']]
+        self.assertEqual(len(samples), 2)
+        self.assertEqual(sum(group['completion']['completed'] for group in baseline['groups']), 1)
+        self.assertEqual(samples[0]['execution_status'], 'blocked')
+        self.assertEqual(samples[1]['execution_status'], 'completed')
+
 
     def test_resume_does_not_duplicate_completed_observation(self):
         tasks = [self.task('parent')]
@@ -168,7 +200,7 @@ class TaskDagTests(unittest.TestCase):
 
 
     def test_saved_dag_baseline_has_attempt_bindings_and_fixed_acceptance(self):
-        from tools.adaptive_execution_baseline import build_adaptive_baseline
+        from tools.adaptive_baseline import build_adaptive_baseline
         result = self.run_tasks([self.task('parent'), self.task('child', ['parent'])])
         baseline = build_adaptive_baseline(self.plane.state_store.layout.root, ['dag-test'], source_revision='fixture')
         self.assertEqual(baseline['observation_completeness'], 'complete')

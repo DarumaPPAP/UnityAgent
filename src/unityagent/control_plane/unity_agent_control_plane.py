@@ -225,14 +225,16 @@ class UnityAgentControlPlane:
             if current_path is None and result.get('orchestration_decision_ref'):
                 proof = read_json(self.state_store.layout.root / result['orchestration_decision_ref'])
                 current_path = proof['execution_plan']['path']
-            failures = [item.get('provider_result') or item for item in result.get('results', [])]
+            failures = [item.get('provider_result') or item.get('runtime_failure') or item for item in result.get('results', [])]
             known_failures = {'execution_failed', 'approval_required', 'approval_denied', 'scope_denied',
                 'permission_denied', 'runtime_permission_denied', 'environment_unavailable', 'resource_busy',
                 'resource_conflict', 'resource_unavailable', 'context_insufficient', 'runtime_tool_unavailable',
                 'runtime_timeout', 'runtime_protocol_failure', 'runtime_cancelled',
                 'unavailable', 'unknown', 'unhealthy', 'ambiguous_binding', 'blocked_by_policy',
                 'blocked_by_approval', 'scope_violation', 'unsupported', 'backend_not_implemented',
-                'precondition_failed', 'cancelled', 'timeout', 'observed_test_failure', 'not_observed'}
+                'precondition_failed', 'cancelled', 'timeout', 'observed_test_failure', 'not_observed',
+                'runner_unavailable', 'structured_output_invalid', 'context_binding_failed',
+                'world_plan_contract_failed', 'mutation_attempt_detected', 'unavailable_required_evidence', 'task_fixture_invalid'}
             raw_failure = result.get('failure_class') or next((f.get('failure_class') for f in failures if f.get('failure_class')), None)
             failure = raw_failure if raw_failure in known_failures else 'unclassified_failure' if raw_failure else None
             uncertain = any(f.get('uncertain_side_effects') is True for f in failures)

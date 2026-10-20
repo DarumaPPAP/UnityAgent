@@ -55,18 +55,38 @@ branchは `feature/adaptive-harness-observation`。HEADは基準SHAのまま、�
 - `docs/architecture/adaptive-subagent-execution.md`
 - `docs/architecture/architecture.md`
 - `docs/architecture/specialist-context-assembly.md`
-- `docs/superpowers/plans/2026-10-20-adaptive-harness-plan.md`
-- `docs/superpowers/reports/2026-10-20-adaptive-harness-validation.md`
-- `docs/superpowers/specs/2026-10-20-adaptive-harness-design.md`
+- `docs/superpowers/plans/2026-10-20-adaptive-harness.md`
+- `docs/superpowers/reports/2026-10-20-adaptive-harness.md`
+- `docs/superpowers/specs/2026-10-20-adaptive-harness.md`
 - `eval/regression/adaptive-baseline.schema.yaml`
 - `src/unityagent/control_plane/task_execution.py`
 - `src/unityagent/control_plane/unity_agent_control_plane.py`
 - `src/unityagent/orchestration/contracts/strategy-observation.schema.yaml`
 - `src/unityagent/orchestration/routing/adaptive_execution.py`
 - `src/unityagent/persistence/contracts/execution-state.schema.yaml`
-- `tests/eval/test_adaptive_execution_baseline.py`
+- `tests/eval/test_adaptive_baseline.py`
 - `tests/orchestration/test_adaptive_execution.py`
 - `tests/runtime/test_control_plane.py`
 - `tests/runtime/test_task_dag_execution.py`
-- `tools/adaptive_execution_baseline.py`
+- `tools/adaptive_baseline.py`
 - `tools/verify_installed_wheel.py`
+
+## 追加レビュー後の修正・検証
+
+上記は初回Cloud実装時点の記録。以下は `ab25eab3d24d5e0e136471351653a997ec91ef2c` に対する追加修正の記録とする。
+
+- Baseline集計で既存EvidenceStoreのイベント記録・hash検証を再利用し、変更されたEvidenceやappend記録のないEvidenceを受理しない。
+- Context manifestのPolicy／Context revisionと観測定義、Proofのmanifest参照と観測参照を照合する。Graphics／QAが再構築前に取得したEvidenceは、同じRunの明示した前ContextとProofのCapabilityRequest／観測Evidence参照に結び付く場合だけ受理する。
+- 観測が欠落した過去Attemptは、そのAttemptの実行状態から集計する。後続Attemptの成功で過去の失敗を成功にしない。実行履歴のない依存阻害Taskは `blocked_dependency` を保持する。
+- reasoning Runtimeの入れ子の `runtime_failure.failure_class` を停止理由に反映する。
+- 集計Toolとテストは `adaptive_baseline.py`／`test_adaptive_baseline.py`、設計・計画・報告は各配置先の `2026-10-20-adaptive-harness.md` に短縮し、参照も更新した。
+
+| 修正後の検証 | 結果 |
+|---|---|
+| Baseline・Graphics・reasoning Handoff・DAG・Control Plane・戦略観測・既存Comparator | 106件PASS |
+| `python tools/validate_all.py` | Windowsでは未完了。layoutの大文字小文字識別、POSIX形式Project path fixture、symlink作成権限に起因する既存失敗。Runtimeは451件中failure 2・error 4・skip 5、Architectureは19件中error 2。他suiteとpackaging 31件はPASS |
+| 修正前Commitの独立checkoutで同じ失敗対象を検証 | 33件中failure 2・error 6を再現。今回の修正による失敗とは区別する |
+| `python -m build --no-isolation` | sdist／wheelのビルド成功 |
+| `tools/verify_installed_wheel.py` と事前取得した依存wheel | checkout外の分離venvでPASS。resource hash、CLI、戦略Schema、Context構築、doctorを検証 |
+
+既存Skillのレビュー手順に従い、追加差分には独立レビューも実施した。レビューで検出した依存阻害Taskの状態退行は修正し、関連106件に含めて再検証した。実Unity Editor／Player／実機／Visual／Performance、実モデルusageと実Baselineは引き続き未検証・未観測である。

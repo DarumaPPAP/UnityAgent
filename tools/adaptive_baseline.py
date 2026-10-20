@@ -13,6 +13,7 @@ from jsonschema import Draft202012Validator, ValidationError
 import yaml
 
 from unityagent.persistence.contracts.definition_fingerprint import validate_definition_fingerprint
+from unityagent.persistence.evidence.evidence_store import EvidenceStore
 from unityagent.persistence.store.atomic_store import PersistenceError, read_json, relative_ref, resolve_ref, safe_id, sha256_json
 from unityagent.persistence.store.layout import PersistenceLayout
 from unityagent.resources import resource_root
@@ -34,6 +35,14 @@ def _snapshot(layout, ref, owner, kind, records):
 def _number(value):
     valid = not isinstance(value, bool) and isinstance(value, (int, float)) and math.isfinite(value) and value >= 0
     return value if valid else None
+
+
+def _context_snapshot(layout, ref, child, records):
+    manifest = _snapshot(layout, ref, child, 'context-manifest', records)
+    if manifest.get('run_id') != child:
+        raise ValueError('manifest Run differs')
+    validate_definition_fingerprint(manifest['materialized_context']['definition_fingerprint'])
+    return manifest
 
 
 def _sample(layout, *, owner, child, task_id, attempt, refs, status, definition, gates,
@@ -67,28 +76,55 @@ def _sample(layout, *, owner, child, task_id, attempt, refs, status, definition,
     if len(observed) != 1:
         missing.append('missing_or_duplicate_boundary_observation')
     observation = observed[0] if len(observed) == 1 else None
+    if observation is None and task_id is not None and attempt in expected_attempts:
+        # 最終Taskの成功は過去Attemptの事実ではない。欠測時はその子Runだけを参照する。
+        status = 'not_observed'
+        try:
+            path = layout.execution_state(child)
+            execution = read_json(path)
+            if execution.get('run_id') != child:
+                raise ValueError('Attempt execution Run differs')
+            status = execution['status']
+            records.append({'ref': relative_ref(layout.root, path), 'digest': sha256_json(execution), 'kind': 'execution-state'})
+        except (OSError, PersistenceError, ValueError, KeyError, TypeError):
+            missing.append('attempt_state_unavailable')
     if observation:
-        for evidence_ref in observation['evidence_refs']:
-            try:
-                evidence = read_json(layout.evidence(safe_id(evidence_ref, 'evidence_id')))
-                if evidence.get('run_id') != child or evidence.get('evidence_id') != evidence_ref or evidence.get('definition_fingerprint') != observation['definition_fingerprint']:
-                    raise ValueError('Evidence binding differs')
-                records.append({'ref': relative_ref(layout.root, layout.evidence(evidence_ref)),
-                                'digest': sha256_json(evidence), 'kind':'evidence'})
-            except (OSError, PersistenceError, ValueError, TypeError):
-                missing.append('invalid_evidence_reference')
         definition = observation['definition_fingerprint']
         status = observation['result_status']
         gates = observation['gates']
-        for kind, field in (('context-manifest', 'context_manifest_ref'), ('orchestration-decision', 'orchestration_decision_ref')):
+        proof = {}
+        previous_definition = None
+        try:
+            manifest = _context_snapshot(layout, observation['context_manifest_ref'], child, records)
+            context_definition = manifest['materialized_context']['definition_fingerprint']
+            if any(context_definition[key] != definition[key] for key in ('policy_revision', 'context_revision')):
+                raise ValueError('manifest Context definition differs')
+        except (OSError, PersistenceError, ValueError, TypeError, KeyError):
+            missing.append('invalid_context_manifest_reference')
+        try:
+            proof = _snapshot(layout, observation['orchestration_decision_ref'], child, 'orchestration-decision', records)
+            if proof['execution_plan']['path'] != observation['current_path'] or proof['context_manifest_ref'] != observation['context_manifest_ref']:
+                raise ValueError('routing Context binding differs')
+            if proof.get('previous_context_manifest_ref'):
+                previous = _context_snapshot(layout, proof['previous_context_manifest_ref'], child, records)
+                # 前提Observationだけが再Materialization前のContextを使う。
+                previous_definition = {**definition, **{key: previous['materialized_context']['definition_fingerprint'][key] for key in ('policy_revision', 'context_revision')}}
+        except (OSError, PersistenceError, ValueError, TypeError, KeyError):
+            missing.append('invalid_orchestration_decision_reference')
+        evidence_store = EvidenceStore(layout.root)
+        for evidence_ref in observation['evidence_refs']:
             try:
-                value = _snapshot(layout, observation[field], child, kind, records)
-                if kind == 'context-manifest' and value.get('run_id') != child:
-                    raise ValueError('manifest Run differs')
-                if kind == 'orchestration-decision' and value['execution_plan']['path'] != observation['current_path']:
-                    raise ValueError('initial path differs')
+                evidence = evidence_store.verify_record(evidence_ref, expected_run_id=child)
+                # 必須Observation以外のTool結果も、同じHandoff内では再構築前に取得される。
+                matches_request = any(evidence.get('capability') == request['capability'] and evidence.get('step_id') == f"{observation['step_id']}-{index + 1}" for index, request in enumerate(proof.get('capability_requests', [])))
+                uses_previous = previous_definition is not None and (evidence_ref in proof.get('observation_evidence_refs', []) or matches_request)
+                expected_definition = previous_definition if uses_previous else definition
+                if evidence.get('definition_fingerprint') != expected_definition:
+                    raise ValueError('Evidence binding differs')
+                records.append({'ref': relative_ref(layout.root, layout.evidence(evidence_ref)),
+                                'digest': sha256_json(evidence), 'kind':'evidence'})
             except (OSError, PersistenceError, ValueError, TypeError, KeyError):
-                missing.append('invalid_' + kind.replace('-', '_') + '_reference')
+                missing.append('invalid_evidence_reference')
     estimate = None
     if observation and observation.get('context_manifest_ref'):
         try:

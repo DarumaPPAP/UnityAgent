@@ -73,6 +73,13 @@ class GraphicsProductionReasoningTests(unittest.TestCase):
         self.assertEqual(launches, 0)
         self.assertIn("required_context_missing", response["results"][-1]["runtime_failure"]["reason"])
 
+    def test_completed_reasoning_baseline_accepts_observations_before_rematerialization(self):
+        from tools.adaptive_baseline import build_adaptive_baseline
+        response, _, _, _ = self.execute('builtin')
+        self.assertEqual(response['status'], 'completed')
+        baseline = build_adaptive_baseline(self.root / 'state', [response['run_id']], source_revision='fixture')
+        self.assertEqual(baseline['observation_completeness'], 'complete', baseline)
+
     def test_verification_and_apply_still_require_reproduction_bindings(self):
         inputs = derive_context_inputs(str(self.project), self.snapshot, self.entry["intent"])
         for condition in ("verification_requested", "mutation_requested"):
