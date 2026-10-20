@@ -65,4 +65,4 @@ Control PlaneのRun lockは同一Host／userの物理Projectを排他し、Evide
 
 Hostのunit test・fixture・Schema・validator・wheel resource検証と、実Unity／実モデルの検証は分けます。今回のfixture成功は実Baseline取得や性能改善を意味しません。実Unity Editor／Player／実機／実モデルの利用条件がない場合、検証は `unavailable`、実Baselineは `not_observed` と報告します。
 
-依頼時の[設計](../superpowers/specs/2026-10-20-adaptive-harness.md)と[実装計画](../superpowers/plans/2026-10-20-adaptive-harness.md)は導入範囲の記録です。現在の挙動の正本はコード・Schema・テストです。
+現在の挙動の正本はコード・Schema・テストです。
