@@ -3,6 +3,7 @@ from copy import deepcopy
 
 from jsonschema import ValidationError
 
+from unityagent.control_plane.measurement import measured_call, record_counters
 from unityagent.orchestration.graph.plan import create_plan, revise_plan
 from unityagent.persistence.state.plan import append_plan_audit, commit_plan, read_active_plan, read_plan, read_plan_audit, stage_plan
 from unityagent.persistence.state.dag_decision import decision_snapshot
@@ -59,6 +60,10 @@ def verify_task_receipts(plane, state, tasks):
 def restore_plan(plane, state, initial_tasks, root):
     current = read_active_plan(plane.state_store, state)
     audit = read_plan_audit(plane.state_store, state)
+    if ('parallel_execution' in state or any(event['kind'] == 'parallel' for event in audit)
+            or (plane.state_store.layout.run_root(state['run_id']) / 'snapshots/parallel-execution').exists()):
+        from unityagent.persistence.state.parallel_execution import verify_parallel_history
+        verify_parallel_history(plane, state)
     if ([event['ref'] for event in audit if event['kind'] == 'proposal'] != state['plan_proposal_refs']
             or [event['ref'] for event in audit if event['kind'] == 'task'] != [
                 state['task_receipt_refs'][name] for name in state['execution_order']]):
@@ -122,16 +127,19 @@ def restore_plan(plane, state, initial_tasks, root):
     return deepcopy(current['tasks'])
 
 
-def update_plan(plane, state, tasks, by_id, parameters, completed, proposer):
-    _task_receipt(plane, state, completed)
-    state['plan_boundary_task_ids'].append(completed)
-    plane.state_store.save_task_state(state)
+def update_plan(plane, state, tasks, by_id, parameters, completed, proposer, *, record_boundary=True):
+    if record_boundary:
+        _task_receipt(plane, state, completed)
+        state['plan_boundary_task_ids'].append(completed)
+        plane.state_store.save_task_state(state)
+    elif completed not in state['task_receipt_refs']:
+        raise ValueError('Plan update requires a settled Task receipt')
     if proposer is None or state['plan_proposals_consumed'] >= 4:
         return
     current = read_active_plan(plane.state_store, state)
     state['plan_proposal_in_progress'] = completed
     plane.state_store.save_task_state(state)
-    proposal = proposer({'plan_digest': sha256_json(current), 'plan': deepcopy(current),
+    proposal = measured_call(plane, state['run_id'], 'coordination', proposer, {'plan_digest': sha256_json(current), 'plan': deepcopy(current),
         'completed_task_id': completed, 'project_revisions': dict(state['project_revisions']), 'evidence_refs': list(state['tasks'][completed]['result'].get('evidence_refs', []))})
     state.pop('plan_proposal_in_progress')
     if proposal is None:
@@ -157,6 +165,7 @@ def update_plan(plane, state, tasks, by_id, parameters, completed, proposer):
         payload.update(outcome='validated', result_digest=sha256_json(revised))
     except (ValueError, KeyError, TypeError, ValidationError):
         pass
+    record_counters(plane, state['run_id'], 'coordination', plan_proposals=1, plan_rejections=int(revised is None))
     path = plane.state_store.layout.snapshot(state['run_id'], 'plan-proposal', sha256_json(payload))
     write_immutable_json(path, payload)
     ref = relative_ref(plane.state_store.layout.root, path)
@@ -198,10 +207,15 @@ def verify_final_gates(plane, state, tasks):
                                   for name, record in state['tasks'].items() if record.get('result')}
     observed = set()
     by_id = {task['id']: task for task in tasks}
+    integration_final = {task['id'] for task in tasks if task['workspace'] == root['project_root']
+        and task['entry_request']['intent'].get('verification_only')
+        and task['entry_request']['intent'].get('integration_plan_id')}
     for name, record in state['tasks'].items():
         if by_id[name]['workspace'] != root['project_root']:
             continue
-        if record['status'] == 'verified' and record.get('result_project_revisions') == current:
+        if integration_final and name not in integration_final:
+            continue
+        if (record['status'] == 'verified' or name in integration_final) and record.get('result_project_revisions') == current:
             for gate, value in record['gates'].items():
                 if value == 'passed':
                     observed.add(gate)

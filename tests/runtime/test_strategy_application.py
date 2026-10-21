@@ -13,6 +13,23 @@ class StrategyApplicationTests(unittest.TestCase):
     run_tasks = dag.TaskDagTests.run_tasks
     execute_file = dag.TaskDagTests.execute_file
 
+    def test_reader_verifies_each_boundary_once_but_rechecks_on_the_next_read(self):
+        from unityagent.orchestration.routing import strategy_application as reader
+        from unityagent.persistence.store.atomic_store import PersistenceError
+        state = self.run_tasks([self.task('a'), self.task('b')], adaptive_strategy_enabled=True)
+        ref = state['strategy_application_refs'][-1]
+        with patch.object(reader, 'read_dag_decision', wraps=reader.read_dag_decision) as verify:
+            reader.read_strategy_application(self.root / 'state', ref, run_id='dag-test')
+        references = [call.args[1] for call in verify.call_args_list]
+        self.assertEqual(len(references), len(set(references)))
+        evidence = state['tasks']['a']['result']['evidence_refs'][0]
+        path = self.plane.evidence_store.layout.evidence(evidence)
+        value = json.loads(path.read_text())
+        value['verification_status'] = 'unverified'
+        path.write_text(json.dumps(value))
+        with self.assertRaises((ValueError, PersistenceError)):
+            reader.read_strategy_application(self.plane.state_store.layout.root, ref, run_id='dag-test')
+
     def applications(self, result):
         from unityagent.orchestration.routing.strategy_application import read_strategy_application
         return [read_strategy_application(self.plane.state_store.layout.root, ref, run_id='dag-test')

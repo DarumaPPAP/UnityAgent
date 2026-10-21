@@ -135,6 +135,12 @@ def write_immutable_json(path: Path, value: dict[str, Any]) -> bool:
             return False
         raise PersistenceError("immutable_record_conflict", f"immutable record already exists with different content: {path}")
     atomic_write_json(path, value)
+    if 'snapshots' in path.parts:
+        from unityagent.persistence.store.measurement import notify
+        try:
+            notify('snapshot.bytes', path.stat().st_size, 'bytes')
+        except OSError:
+            pass
     return True
 
 

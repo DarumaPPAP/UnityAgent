@@ -98,6 +98,13 @@ def validate_preparation(layout, prepared, contract):
 def read_strategy_application(persistence_root, ref, *, run_id):
     """新形式だけを厳密に読む。既存の観測recordとapplied:falseには触れない。"""
     layout = PersistenceLayout(persistence_root)
+    verified_boundaries = {}
+
+    def boundary_at(reference):
+        # この読取呼出し内だけ共有する。次回の読取はEvidenceから再検証する。
+        if reference not in verified_boundaries:
+            verified_boundaries[reference] = read_dag_decision(layout.root, reference, run_id=run_id)
+        return verified_boundaries[reference]
     schema = yaml.safe_load((resource_root() / 'src/unityagent/orchestration/contracts/strategy-application.schema.yaml').read_text(encoding='utf-8'))
     validator = Draft202012Validator(schema)
     chain, seen = [], set()
@@ -149,7 +156,7 @@ def read_strategy_application(persistence_root, ref, *, run_id):
             group, phases = key, []
             if item['prior_boundary_ref'] != last_boundary_ref:
                 raise ValueError('Application prior boundary is not the latest finalized boundary')
-            boundary = read_dag_decision(layout.root, item['prior_boundary_ref'], run_id=run_id) if item['prior_boundary_ref'] else None
+            boundary = boundary_at(item['prior_boundary_ref']) if item['prior_boundary_ref'] else None
             revisions = {sha256_json(project): revision for project, revision in prepared['project_revisions'].items()}
             if boundary and revisions != boundary['project_revisions']:
                 raise ValueError('Prepared Project revision differs from prior Acceptance')
@@ -173,7 +180,7 @@ def read_strategy_application(persistence_root, ref, *, run_id):
                 raise ValueError('Runtime acceptance receipt differs')
             current = item['decision']['path']
         if phase == 'finalized':
-            final = read_dag_decision(layout.root, item['boundary_ref'], run_id=run_id)
+            final = boundary_at(item['boundary_ref'])
             if final['contract_ref'] != item['contract_ref']:
                 raise ValueError('Application result fixed contract differs')
             last_boundary_ref = item['boundary_ref']

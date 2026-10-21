@@ -104,7 +104,37 @@ Task結果は実行時Plan、Task定義digest、入力／結果Project revision�
 
 動的DAGの境界は `dag-decision.schema_version: 2.0` とPlan参照を持ち、固定の辞書順ではなく実際の確定済み実行prefixを検証します。既存の1.0 readerは維持します。ResumeとBaselineは全Plan chain、提案の再検証、Task確定receipt、実行済み集合、Evidence、現在契約を照合します。不完全な動的記録はBaselineの品質成功に数えず、有効Planに存在する欠落Taskを分母から落としません。
 
-この入口は既存のinspection／planning等を使うHost契約経路です。限定C#修正のTyped Intent、実Unity Compile／EditMode E2E、実worker並列化、統合後Gate、Production性能採用判定は別の検証対象です。
+この入口は既存のinspection／planning等を使うHost契約経路です。限定C#修正、別Workspaceのworker、統合後Gateは以下の別入口で扱い、実Unity／実モデル／性能採用判定は契約検証と区別します。
+
+## 別Workspaceのworkerと承認済み直列統合
+
+`execute_workspace_tasks(tasks, run_id=..., definition_fingerprint=..., task_parameters=..., root_contract=..., parallel_enabled=False)` は同じRoot／Plan契約を使います。`parallel_enabled=True`でも、依存成立・`parallel_safe`・独立したProjectと出力・非競合Host claimを確認できた最大2 Taskだけをworkerで処理します。Rootには原Projectと全workerの許可Scopeを初期から明示します。Taskは限定C#修正またはinspectionに限定し、暗黙の修復候補を受け付けません。
+
+Projectと子のdev／inode、全配下のsymlink・junction・hardlink、Git管理領域、EnvironmentのProject bindingとEditor状態、実際のNative Providerの出力先を検査します。共有Gitや不明なEditorでは直列化し、原Project別名や未知のNative出力は拒否します。Projectの置換は同じ内容でもResumeを拒否します。通常の単一Fast Taskは既存の直列入口を使います。
+
+各workerは既存`execute`で自分の子Runだけを保存します。親が全workerの準備を検証してから解放し、全workerの停止後に結果を受理します。子Run・Task・Attempt・実行Plan・Task定義・入力revisionをimmutableな`dispatching → settled → accepted`履歴へ結び付け、親だけがTaskStateとPlanを更新します。取消・期限・停止未確認・結果欠落・孤立記録は照合が必要で、自動再送しません。Plan更新は停止barrierの後だけです。`observed_worker_overlap_ns`は準備barrier解放後の観測区間の重複で、モデルやUnityそのものの並列成功を単独では証明しません。
+
+承認済みP4 patch Planを持つ2 workerが検証済みになったら、`create_integration_plan(run_id=...)`で差分2件の正確な統合案を作ります。元のRootで許可した原Projectの同一base、非重複target、子のContext・patch・Evidence・確定receiptを照合します。原Projectはまだ変更しません。表示された案を明示承認する`approve_integration(integration_plan_id=...)`は既存Approval StoreへPlan digest・base・Scope・期限・取消epochを束縛します。
+
+`integrate_workspace_results(run_id=..., integration_plan_id=..., approval_ref=...)`はその承認を各patch直前に再検証し、1回のPlan更新で原Projectの直列patch Task 2件と最終検証Taskを追加します。各patchは既存ToolBroker／File Providerを使い、モデルを再実行しません。importしたPlanはモデル提案元の子Contextと親実行Contextを別々に保持します。最後の原Project revisionでstatic review・新しいCompile観測・両対象のEditMode Testを取り直し、この最終検証TaskだけをRoot Gateへ採用します。子や途中TaskのPASSは最終Gateの代わりになりません。
+
+実環境の段階実行は`python tools/parallel_csharp_e2e.py --help`と同名の`.schema.json`を参照してください。`prepare → propose → workers → integrate`の順で、新規所有Fixtureだけを使います。`workers`は確認した2件の`approved_plan_ids`、`integrate`は確認した`approved_integration_plan_id`を必要とします。モデル提案段階は現在直列で、worker適用段階だけを並列化します。Unity 6000.3.15f1／Test Framework 1.3.9／Codex接続が必要です。実行不能・0件Test・古いXMLを成功にしません。
+
+## 実行計測と比較
+
+Operationsの`operations/metric.jsonl`には`adaptive.*`の固定数値を追記します。準備、Context構築、調整、lease取得、Provider／Gate、モデル、統合を単調時計で区別し、Context選択byte・推定tokens、Evidenceの実読取／再検証、event chain検証、実際に新規保存したsnapshot byte、Plan提案／拒否数を記録します。workerには親Run・Task・Attempt・Plan digestの出所を付けます。時間は各phaseの包含時間で、入れ子phaseを合算して総時間にしません。再開後に実際に行った読取は新しい計測になり、以前の計測を再作成しません。
+
+通常の計測保存失敗で確定処理を再送しません。承認・適用・Evidence・制御履歴の保存失敗は従来どおり実行を停止します。適用履歴readerは同じ読取呼出し内で検証済み境界を共有し、次の呼出しでは再検証します。プロセスをまたぐ検証cacheは持ちません。
+
+Codexの構造化`turn.completed.usage`から取得できる実tokensは、出所・単位・設定model・reasoning effort・観測turn数とともに保存します。cache tokensはinputの内数です。未取得usageと未観測の実model revisionはnullで、推定tokensと合算しません。Source全文やPrompt全文は追加保存しません。
+
+`python tools/adaptive_comparison.py --help`と同名の`.schema.json`は、測定前の`freeze`、固定commandによる`collect`、全記録の`evaluate`を定義します。Fast／動的更新／並列の各シナリオで、同一の正式adapterへvariantだけを渡します。commandは現在のPython実行パスと`tools/adaptive_scenario.py --conditions {conditions} --scenario シナリオID --variant {variant} --workspace {workspace} --report {report}`の引数配列に限定します。任意の外部commandによる品質自己申告を採用しません。
+
+Aは途中更新なし、Bは適応有効・直列、CはBに並列だけを追加し、Workspace作成から最終Gateまでを総時間へ含めます。adapterはFastの単一inspection、初回Evidence後の許可Project追加調査、実モデルとUnityを使う2件C#修正を実行します。並列シナリオには固定条件の`authorize_owned_fixture_patches: true`を明示し、専用Fixtureの既知の算術return修正2件とそのunionだけを承認します。モデルの任意差分は承認しません。
+
+条件digest・Source SHA・model／設定・Unity／Package／OS／Hardware・固定品質Gateを固定し、観測したHost情報も保存します。3 warmup後の30組をABC／CBA交替で記録します。各sample前後・収集終了・評価時のclean SHAを照合し、変更した測定は無効です。記録は内容hashを含む名前で保存し、評価時も今回のWorkspace・Run・Root・必要Gate・モデル提案元・Native Evidence・並列時間を再検証します。中断後は自動再送せず、欠測を0にしません。
+
+判定はFast p95の5%以内、並列総時間中央値C／Bが0.85以下、p95(C)がp95(B)以下、対応する30比の中央値bootstrap 95%区間上限が1未満を必要とします。全失敗・unavailableを分母に残し、成功自己申告だけを採用せずPersistenceの品質Evidenceを再検証します。条件を満たしても、実環境と安全性の独立確認は別途必要です。既存Frozen Baselineは変更せず、並列を既定化しません。
 
 ## 保存済みRunのBaseline集計
 
@@ -127,7 +157,7 @@ python tools/adaptive_baseline.py \
 - 経路・提案分布、固定Gate状態、観測可能な対象だけの品質成功率と分母、blocked／unavailable、実行完了件数を別々に出します。単一executeの固定Acceptance未定義は品質の `not_evaluated` です。欠測を総対象数から除外しません。
 - Taskの既存 `latency_ms` はTask合計の壁時計時間として最終Attemptに一度だけ付けます。未取得はnullです。各記録のdigestも保持します。
 - Attemptの戦略観測が欠けた場合、対応する子RunのExecutionStateから実行状態だけを確認します。その状態も読めなければ未観測とし、最終Taskの成功を過去Attemptへ流用しません。
-- Contextの `estimated_tokens` は推定量です。正規化された実モデルusageの取得機能は追加せず、`model_usage.status: not_observed`、`total_tokens: null` とします。欠測を0へ変換しません。
+- Contextの `estimated_tokens` は推定量です。この旧Baseline集計は新しいpatch Planの実usageを合算せず、`model_usage.status: not_observed`、`total_tokens: null` を維持します。patch Planの出所付きusageと区別し、欠測を0へ変換しません。
 
 出力は `eval/regression/adaptive-baseline.schema.yaml` で検証します。Persistence内への出力と既存ファイルの上書きを拒否し、既存Frozen Baseline／Comparatorは変更しません。fixtureの実行時間をProduction latencyやUnity性能改善として報告しません。
 
@@ -135,9 +165,9 @@ python tools/adaptive_baseline.py \
 
 小さいTaskでもPolicy／Approval／Project binding／Scope／Guard／必須Evidenceを維持します。戦略提案からGateを省略できません。
 
-Control PlaneのRun lockは同一Host／userの物理Projectを排他し、Evidence保存まで保持します。Runtimeの `resource_lease.py` はEditor利用CapabilityとMutationのProvider実行中を保護します。取得順はRun lock → Provider単位Editor leaseです。期限切れによる自動奪取や別ProviderへのFallbackで競合を回避しません。
+Control PlaneのRun lockは同一Host／userの物理Projectを排他し、Evidence保存まで保持します。Runtimeの `resource_lease.py` はEditor利用CapabilityとMutationのProvider実行中を保護します。取得順はProject Run lock → 必要なHost資源claim → Provider単位Editor leaseです。親Coordinatorは原ProjectのRun lockを保持してworkerを待ちません。期限切れによる自動奪取や別ProviderへのFallbackで競合を回避しません。
 
-これらはUnityAgent経由の協調処理の排他です。手動Editor操作、Unity自身のProject Lockとの統合、Queue、Device lease、汎用変更Agentは未実装です。途中戦略の適用範囲は上記opt-inのdispatch前監査に限ります。外部Hubの履歴や互換Source Lockは変更しません。
+これらはUnityAgent経由の協調処理の排他です。手動Editor操作、Unity自身のProject Lockとの統合、Queue、Device lease、汎用変更Agentは未実装です。固定DAGの途中戦略は上記opt-inのdispatch前監査、動的Planと別Workspaceの実行はそれぞれ明示した入口に限定します。外部Hubの履歴や互換Source Lockは変更しません。
 
 ## 検証範囲
 

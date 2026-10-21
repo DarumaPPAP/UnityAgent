@@ -5,6 +5,7 @@ production_dispatch_authority: false
 request_contract: src/unityagent/runtime/contracts/capability-request.schema.yaml
 
 conditions:
+  - bounded_csharp_union_review
   - bounded_csharp_gates
   - bounded_csharp_verification
   - always
@@ -38,6 +39,7 @@ routes:
       - {capability: source.patch, operation_kind: source_mutation, required_evidence: [source_diff], preferred_surface: project, when: mutation_requested}
       - {capability: compile.observe, operation_kind: read, required_evidence: [compile_observation], preferred_surface: editor, when: verification_requested}
       - {capability: static.review, operation_kind: read, required_evidence: [static_review], preferred_surface: project, when: bounded_csharp_verification}
+      - {capability: static.review, operation_kind: read, required_evidence: [static_review], preferred_surface: project, when: bounded_csharp_union_review}
       - {capability: compile.observe, operation_kind: read, required_evidence: [compile_observation, current_compile_observation], preferred_surface: editor, when: bounded_csharp_gates}
       - {capability: project.test, operation_kind: read, required_evidence: [test_execution, targeted_editmode_execution], preferred_surface: editor, when: bounded_csharp_gates}
   rendering-incident:

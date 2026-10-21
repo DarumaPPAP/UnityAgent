@@ -27,8 +27,8 @@ def conditions_for_intent(intent: dict[str, Any], fingerprint: dict[str, str]) -
         return {"project_fact_needed"}
     if kind == 'csharp_local_fix' and fingerprint['artifact'] == 'csharp':
         if intent.get('verification_only'):
-            return {'bounded_csharp_gates'}
-        return {'mutation_requested', 'bounded_csharp_verification', 'bounded_csharp_gates'} if intent.get('patch_plan_id') else set()
+            return {'bounded_csharp_gates', 'bounded_csharp_union_review'} if intent.get('integration_plan_id') else {'bounded_csharp_gates'}
+        return {'mutation_requested', 'bounded_csharp_verification', 'bounded_csharp_gates'} if intent.get('patch_plan_id') or intent.get('integration_plan_id') else set()
     if (kind == "visual_capture" and fingerprint["artifact"] == "visual"
             and fingerprint["scope"] == "project_asset" and fingerprint["mutation_target"] == "none"):
         return {"visual_evidence_needed"}
@@ -57,6 +57,8 @@ def mutation_scope_for_intent(intent: dict[str, Any], fingerprint: dict[str, str
             "prohibited_paths": ["ProjectSettings"],
         }
     if intent.get('kind') == 'csharp_local_fix' and fingerprint.get('artifact') == 'csharp':
+        if intent.get('verification_only'):
+            return {}
         return {'allowed_paths': [intent['target_source']], 'prohibited_paths': ['ProjectSettings', 'Packages']}
     return {}
 
@@ -74,7 +76,7 @@ def task_contract_projection(route_id: str, *, root: Path = ROOT, active_conditi
                   "required_quality_gates": list(contract.get("required_quality_gates") or [])}
     if route_id == 'csharp-local-fix' and 'bounded_csharp_gates' in (active_conditions or set()):
         bounded = contract['bounded_typed_entry']
-        key = 'required_quality_gates' if 'bounded_csharp_verification' in active_conditions else 'verification_quality_gates'
+        key = 'required_quality_gates' if {'bounded_csharp_verification', 'bounded_csharp_union_review'} & set(active_conditions) else 'verification_quality_gates'
         projection['required_quality_gates'] = list(bounded[key])
     return projection
 

@@ -1,7 +1,7 @@
 """同じ物理Projectへの協調実行をHost共有のOSロックで排他する。"""
 from __future__ import annotations
 
-from contextlib import contextmanager
+from contextlib import contextmanager, ExitStack
 import errno
 import hashlib
 import json
@@ -40,12 +40,40 @@ def acquire_project_lease(
     Handleを実行とEvidence保存まで保持する。Process終了時はOSが解放する。
     非協調Editor・ユーザー手動編集の保護は既存のbinding/revision gateが担う。
     """
-    if not isinstance(owner, str) or not owner.strip():
-        raise ValueError('lease owner must be a non-empty run identity')
     project = Path(project_root).expanduser().resolve(strict=True)
     if not project.is_dir():
         raise ValueError('lease requires an existing Project directory')
     identity = canonicalize_project_root(project)
+    with _acquire_identity(identity, owner=owner, lock_root=lock_root) as record:
+        yield {'project_identity': identity, **record}
+
+
+@contextmanager
+def acquire_host_claims(claims, *, owner, lock_root=None):
+    """Project Run取得後にだけ呼ぶ。正規化順・非blockingで共用Host資源を排他する。"""
+    if not isinstance(claims, (list, tuple)):
+        raise ValueError('Host resource claims must be a list')
+    normalized = []
+    for value in claims:
+        if not isinstance(value, str) or not value.strip() or '\x00' in value:
+            raise ValueError('Host resource claim is invalid')
+        value = value.strip().replace('\\', '/').casefold().rstrip('/')
+        if '..' in value.split('/') or not value:
+            raise ValueError('Host resource claim is not confined')
+        normalized.append(value)
+    with ExitStack() as stack:
+        records = []
+        for claim in sorted(set(normalized)):
+            record = stack.enter_context(_acquire_identity('host-resource:' + claim, owner=owner,
+                lock_root=lock_root, identity_key='resource_identity'))
+            records.append({'resource_identity': claim, **record})
+        yield records
+
+
+@contextmanager
+def _acquire_identity(identity, *, owner, lock_root=None, identity_key='project_identity'):
+    if not isinstance(owner, str) or not owner.strip():
+        raise ValueError('lease owner must be a non-empty run identity')
     digest = hashlib.sha256(identity.encode('utf-8')).hexdigest()
     directory = Path(lock_root) if lock_root is not None else _default_lock_root()
     directory.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -68,8 +96,9 @@ def acquire_project_lease(
             if exc.errno in {errno.EACCES, errno.EAGAIN, errno.EDEADLK}:
                 raise ProjectLeaseBusy('Project is owned by another active UnityAgent run') from exc
             raise
-        record = {'project_identity': identity, 'owner': owner, 'process_id': os.getpid()}
-        payload = json.dumps(record, ensure_ascii=False).encode('utf-8')
+        record = {'owner': owner, 'process_id': os.getpid()}
+        persisted = {identity_key: identity, **record}
+        payload = json.dumps(persisted, ensure_ascii=False).encode('utf-8')
         os.lseek(descriptor, 1, os.SEEK_SET)
         os.write(descriptor, payload)
         os.ftruncate(descriptor, len(payload) + 1)

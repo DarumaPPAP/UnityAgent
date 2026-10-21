@@ -96,3 +96,31 @@ def plan_task_batches(tasks: list[dict[str, Any]]) -> dict[str, Any]:
         complete.update(selected)
     return {"schema_version": "1.0", "status": "planned", "batches": batches,
             "execution_owner": "UnityAgent Runtime", "approval_required": "consult_policy"}
+
+
+def plan_ready_batch(tasks, *, verified_task_ids, parallel_enabled, workspace_status, pending_task_ids=None):
+    """現行Planの成功依存だけを開き、実行提案を最大2件に制限する。"""
+    plan_task_batches(tasks)
+    if not isinstance(parallel_enabled, bool):
+        raise ValueError('Parallel execution mode must be boolean')
+    by_id = {task['id']: task for task in tasks}
+    if set(verified_task_ids) - by_id.keys():
+        raise ValueError('Verified Task set differs from the current Plan')
+    pending = set(by_id) - set(verified_task_ids) if pending_task_ids is None else set(pending_task_ids)
+    if pending - by_id.keys() or pending & set(verified_task_ids):
+        raise ValueError('Pending Task set differs from the current Plan')
+    ready = sorted(name for name, task in by_id.items() if name in pending
+                   and set(task.get('depends_on', [])) <= set(verified_task_ids))
+    if not ready:
+        return []
+    if not parallel_enabled or workspace_status != 'verified':
+        return ready[:1]
+    candidates = [{**by_id[name], 'depends_on': []} for name in ready]
+    selected = plan_task_batches(candidates)['batches'][0]['task_ids'][:2]
+    if len(selected) == 2:
+        # 同じ元Projectへ統合する変更候補の競合も、worker起動前に直列化する。
+        left, right = (by_id[name] for name in selected)
+        if any(_overlap(_normalize_resource(a), _normalize_resource(b))
+               for a in left.get('write_set', []) for b in right.get('write_set', [])):
+            return selected[:1]
+    return selected

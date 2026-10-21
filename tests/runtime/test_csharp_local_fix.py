@@ -208,6 +208,17 @@ class CSharpProductTests(CSharpEntryTests):
         self.assertEqual(model.call_count, 1)
         self.assertEqual((self.project / entry['intent']['target_source']).read_bytes(), original)
 
+    def test_worker_cancellation_signal_reaches_the_existing_model_runner(self):
+        import threading
+        cancel = threading.Event()
+        def model(command, **kwargs):
+            self.assertIs(kwargs['cancel_event'], cancel)
+            return self.fake_model(command, **kwargs)
+        with patch('unityagent.runtime.runner.codex.codex_runner.run_streaming_process', side_effect=model):
+            result = self.execute(self.entry(), reasoning_model='gpt-fixture',
+                                  reasoning_command_prefix=['codex'], cancel_event=cancel)
+        self.assertEqual(result.get('reason'), 'explicit_patch_approval_required', result)
+
     def test_verification_only_reuses_typed_route_without_model_patch_or_approval(self):
         entry = self.entry()
         entry['intent']['verification_only'] = True
@@ -218,6 +229,7 @@ class CSharpProductTests(CSharpEntryTests):
         self.assertEqual([item['capability'] for item in result['results']],
                          ['source.read', 'compile.observe', 'project.test'])
         self.assertEqual(len(calls), 2)
+        self.assertEqual(result['handoff']['mutation_scope'], {})
         model.assert_not_called()
         entry['intent']['patch_plan_id'] = 'a' * 64
         with self.assertRaises(ValidationError):

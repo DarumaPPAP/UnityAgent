@@ -9,6 +9,7 @@ from unityagent.persistence.store.atomic_store import atomic_write_json, read_js
 from unityagent.persistence.state.dag_decision import decision_snapshot
 from unityagent.runtime.guardrails.csharp_patch import patch_revisions, project_revision
 from unityagent.runtime.handoff.csharp_patch import propose_patch
+from unityagent.control_plane.measurement import measured_call, record_model_usage
 
 
 def _path(plane, kind, identifier):
@@ -19,6 +20,10 @@ def load_patch_plan(plane, identifier):
     plan = read_json(_path(plane, 'plans', identifier))
     if plan['plan_id'] != identifier or sha256_json({key: value for key, value in plan.items() if key != 'plan_id'}).split(':')[1] != identifier:
         raise ValueError('C# patch Plan digest differs')
+    if plan.get('schema_version') == '2.0':
+        from unityagent.control_plane.csharp_integration import validate_imported_plan
+        validate_imported_plan(plane, plan)
+        return plan
     for ref in plan['source_evidence_refs']:
         record = plane.evidence_store.verify_record(ref)
         if record.get('capability') != 'source.read' or record.get('completion') != 'verified':
@@ -37,6 +42,8 @@ def load_patch_plan(plane, identifier):
 
 def approve_csharp_fix(plane, plan_id):
     plan = load_patch_plan(plane, plan_id)
+    if plan.get('schema_version') != '1.0':
+        raise ValueError('Imported patches require the explicit union integration approval')
     if project_revision(plan['project_root']) != plan['expected_revision']:
         raise ValueError('C# patch approval preimage is stale')
     now = datetime.now(timezone.utc)
@@ -51,6 +58,11 @@ def approve_csharp_fix(plane, plan_id):
 
 
 def _approval(plane, plan, approval_ref):
+    if plan.get('integration_plan_id'):
+        from unityagent.control_plane.csharp_integration import load_integration_plan, validate_integration_approval
+        integration = load_integration_plan(plane, plan['integration_plan_id'])
+        validate_integration_approval(plane, integration, approval_ref)
+        return
     record = ApprovalDecisionStore(plane.state_store.layout.root).get(safe_id(approval_ref, 'approval_ref'))
     decision = record['decision']
     if (decision.get('decision_digest') != sha256_json({key: value for key, value in decision.items() if key != 'decision_digest'})
@@ -64,7 +76,7 @@ def _approval(plane, plan, approval_ref):
         raise ValueError('C# patch approval is missing, stale, revoked, or bound to another diff')
 
 
-def prepare(plane, entry, context, handoff):
+def prepare(plane, entry, context, handoff, *, manifest_ref=None, workspace_dispatch_authorized=False):
     project = Path(entry['project_root']).resolve(strict=True)
     state_root = plane.state_store.layout.root
     if state_root == project or project in state_root.parents:
@@ -74,6 +86,11 @@ def prepare(plane, entry, context, handoff):
         raise ValueError('C# Entry expected revision is stale')
     session = {'entry': entry, 'intent': intent, 'project': project, 'plan': None, 'source': None,
                'file_arguments': {'relative_path': intent['target_source']}, 'context': context}
+    if intent.get('integration_plan_id'):
+        if not workspace_dispatch_authorized:
+            raise ValueError('Integration must dispatch through its parent Workspace Coordinator')
+        from unityagent.control_plane.csharp_integration import prepare_integration_session
+        return prepare_integration_session(plane, session, handoff, manifest_ref)
     plan_id = entry['intent'].get('patch_plan_id')
     if plan_id:
         plan = load_patch_plan(plane, plan_id)
@@ -100,7 +117,7 @@ def before_capability(plane, session, capability, run_id):
     session['input_revision'] = expected
     if capability == 'source.patch':
         _approval(plane, plan, session['entry'].get('approval_ref'))
-        atomic_write_json(_path(plane, 'applications', plan['plan_id']),
+        atomic_write_json(_path(plane, 'applications', plan.get('application_id', plan['plan_id'])),
             {'plan_id': plan['plan_id'], 'run_id': run_id, 'phase': 'dispatching', 'evidence_refs': []})
 
 
@@ -111,17 +128,20 @@ def after_capability(session, capability, outcome):
 
 
 def finish(plane, session, *, handoff, manifest, manifest_ref, evidence_refs, results, model,
-           command_prefix=None, timeout_seconds=120.0, reasoning_effort='high'):
+           command_prefix=None, timeout_seconds=120.0, reasoning_effort='high', cancel_event=None):
     plan = session['plan']
     successful = bool(results) and all(item.get('status') == 'completed' for item in results)
     if session['intent'].get('verification_only'):
         expected = session['intent']['expected_revision']
+        required = {'source.read', 'compile.observe', 'project.test'}
+        if session.get('integration_final'):
+            required.add('static.review')
         successful = (successful and {item.get('capability') for item in results}
-                      == {'source.read', 'compile.observe', 'project.test'}
+                      == required
                       and project_revision(session['project']) == expected)
         for ref in evidence_refs:
-            record = plane.evidence_store.verify_record(ref, expected_run_id=handoff['run_id'])
-            if record.get('execution_binding') != {'patch_plan_id': None, 'input_project_revision': expected,
+            record = measured_call(plane, handoff['run_id'], 'evidence', plane.evidence_store.verify_record, ref, expected_run_id=handoff['run_id'])
+            if record.get('execution_binding') != {'patch_plan_id': session.get('evidence_plan_id'), 'input_project_revision': expected,
                     'result_project_revision': expected, 'context_manifest_ref': manifest_ref}:
                 successful = False
         return {'status': 'completed' if successful else 'blocked', 'verification_only': True,
@@ -129,16 +149,22 @@ def finish(plane, session, *, handoff, manifest, manifest_ref, evidence_refs, re
     if plan is None:
         if not successful or session['source'] is None:
             return {'status': 'blocked', 'reason': 'csharp_source_observation_failed'}
-        patch = propose_patch(handoff, manifest, intent=session['intent'], source=session['source'],
-            original_project=session['project'], model=model, command_prefix=command_prefix,
-            timeout_seconds=timeout_seconds, reasoning_effort=reasoning_effort)
+        telemetry = {}
+        try:
+            patch = measured_call(plane, handoff['run_id'], 'model', propose_patch, handoff, manifest, intent=session['intent'], source=session['source'],
+                original_project=session['project'], model=model, command_prefix=command_prefix,
+                timeout_seconds=timeout_seconds, reasoning_effort=reasoning_effort, cancel_event=cancel_event,
+                telemetry_out=telemetry)
+        finally:
+            record_model_usage(plane, handoff['run_id'], telemetry.get('model_usage'))
         revisions = patch_revisions(session['project'], session['intent']['target_source'],
                                     patch['expected_text'], patch['replacement_text'])
         if revisions['expected_revision'] != session['intent']['expected_revision']:
             raise ValueError('C# Project changed during model proposal')
         core = {'schema_version': '1.0', 'project_root': str(session['project']), 'intent': session['intent'],
             'patch': patch, **revisions, 'proposal_context_ref': manifest_ref, 'source_evidence_refs': list(evidence_refs),
-            'definition_fingerprint': handoff['definition_fingerprint'], 'model': model, 'model_usage': None,
+            'definition_fingerprint': handoff['definition_fingerprint'], 'model': model,
+            'model_usage': telemetry.get('model_usage'), 'context_metrics': telemetry.get('context'),
             'observed_source_sha256': sha256_bytes(session['source'].encode('utf-8')).split(':')[1]}
         identifier = sha256_json(core).split(':')[1]
         plan = {**core, 'plan_id': identifier}
@@ -149,7 +175,7 @@ def finish(plane, session, *, handoff, manifest, manifest_ref, evidence_refs, re
     required = {'source.read', 'source.patch', 'static.review', 'compile.observe', 'project.test'}
     successful = successful and {item.get('capability') for item in results} == required and final_revision == plan['result_revision']
     for ref in evidence_refs:
-        record = plane.evidence_store.verify_record(ref, expected_run_id=handoff['run_id'])
+        record = measured_call(plane, handoff['run_id'], 'evidence', plane.evidence_store.verify_record, ref, expected_run_id=handoff['run_id'])
         capability = record.get('capability')
         expected_input = plan['expected_revision'] if capability in {'source.read', 'source.patch'} else plan['result_revision']
         expected_result = plan['expected_revision'] if capability == 'source.read' else plan['result_revision']
@@ -157,7 +183,7 @@ def finish(plane, session, *, handoff, manifest, manifest_ref, evidence_refs, re
                 'result_project_revision': expected_result, 'context_manifest_ref': manifest_ref}:
             successful = False
     status = 'completed' if successful else 'blocked'
-    atomic_write_json(_path(plane, 'applications', plan['plan_id']),
+    atomic_write_json(_path(plane, 'applications', plan.get('application_id', plan['plan_id'])),
         {'plan_id': plan['plan_id'], 'run_id': handoff['run_id'], 'phase': 'finalized', 'status': status,
          'result_revision': final_revision, 'evidence_refs': list(evidence_refs)})
     return {'status': status, 'patch_plan_id': plan['plan_id'], 'result_revision': final_revision,

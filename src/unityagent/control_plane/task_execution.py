@@ -11,9 +11,11 @@ from unityagent.orchestration.graph.resource_planning import plan_task_batches
 from unityagent.persistence.checkpoint.checkpoint_store import CheckpointStore
 from unityagent.persistence.contracts.definition_fingerprint import validate_definition_fingerprint
 from unityagent.persistence.store.atomic_store import safe_id, sha256_json, write_immutable_json, relative_ref
+from unityagent.persistence.store.measurement import observed
 from unityagent.runtime.sandbox.workspace_guard import snapshot_workspace_hashes
 
 
+@observed('project.scan')
 def project_revision(project: str | Path) -> str:
     project = Path(project).resolve(strict=True)
     return sha256_json({name: snapshot_workspace_hashes(project / name)
@@ -94,6 +96,9 @@ def execute_task_dag(plane, tasks, *, run_id, definition_fingerprint, task_param
     initial_tasks = deepcopy(tasks)
     if resume:
         existing = plane.state_store.load_task_state(run_id)
+        if ('parallel_execution' in existing or
+                (plane.state_store.layout.run_root(run_id) / 'snapshots/parallel-execution').exists()):
+            raise ValueError('Workspace execution must Resume through execute_workspace_tasks')
         if (existing.get('schema_version') == '2.0') != (root_contract is not None):
             raise ValueError('Dynamic Plan mode changed during resume')
         if root_contract is not None:
@@ -189,6 +194,7 @@ def execute_task_dag(plane, tasks, *, run_id, definition_fingerprint, task_param
             start = time.monotonic()
             application = None
             parameters = dict(task_parameters[identifier])
+            parameters['_host_resource_claims'] = task.get('resource_claims', [])
             if adaptive_strategy_enabled:
                 def consume(preparation):
                     nonlocal application

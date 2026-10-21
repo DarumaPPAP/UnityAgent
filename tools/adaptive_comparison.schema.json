@@ -1,0 +1,309 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Frozen adaptive comparison conditions",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "source_sha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1
+    },
+    "model_settings": {
+      "type": "object",
+      "minProperties": 1
+    },
+    "unity_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "packages": {
+      "type": "object",
+      "minProperties": 1
+    },
+    "os": {
+      "type": "string",
+      "minLength": 1
+    },
+    "hardware": {
+      "type": "string",
+      "minLength": 1
+    },
+    "warmups": {
+      "const": 3
+    },
+    "pairs": {
+      "const": 30
+    },
+    "primary_metric": {
+      "const": "total_duration_including_preparation_workspaces_integration_final_gates"
+    },
+    "quality_gates": {
+      "const": [
+        "project",
+        "static",
+        "compile",
+        "editmode"
+      ]
+    },
+    "timeout_seconds": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 7200
+    },
+    "scenarios": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "kind",
+          "command"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]*$"
+          },
+          "kind": {
+            "enum": [
+              "fast",
+              "dynamic",
+              "parallel"
+            ]
+          },
+          "command": {
+            "type": "array",
+            "minItems": 5,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "authorize_owned_fixture_patches": {
+      "type": "boolean",
+      "description": "専用Fixtureの既存return a - b;→return a + b;、return a + b;→return a * b;の2件とその非重複unionだけを承認する。ユーザーProjectには適用しない。"
+    }
+  },
+  "$defs": {
+    "report": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "execution_kind": {
+          "const": "real"
+        },
+        "conditions_digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "scenario": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]*$"
+        },
+        "variant": {
+          "enum": [
+            "A",
+            "B",
+            "C"
+          ]
+        },
+        "status": {
+          "enum": [
+            "passed",
+            "failed",
+            "blocked",
+            "unavailable",
+            "timeout",
+            "cancelled"
+          ]
+        },
+        "quality_passed": {
+          "type": "boolean"
+        },
+        "evidence_verified": {
+          "type": "boolean"
+        },
+        "context_preserved": {
+          "type": "boolean"
+        },
+        "evidence": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "persistence_root": {
+              "type": "string",
+              "minLength": 1
+            },
+            "run_id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "persistence_root",
+            "run_id"
+          ]
+        },
+        "actual_usage": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "source": {
+              "type": "string",
+              "minLength": 1
+            },
+            "model": {
+              "type": "string",
+              "minLength": 1
+            },
+            "unit": {
+              "const": "tokens"
+            },
+            "input_tokens": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "output_tokens": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "cached_input_tokens": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            }
+          },
+          "required": [
+            "source",
+            "model",
+            "unit",
+            "input_tokens",
+            "output_tokens",
+            "cached_input_tokens"
+          ]
+        },
+        "coordination_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "safety_incidents": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "redundant_context_copies": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "workers": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "worktrees": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "preparations": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "project_scans": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "model_calls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "provider_calls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unnecessary_calls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "adaptive_enabled": {
+          "type": "boolean"
+        },
+        "parallel_enabled": {
+          "type": "boolean"
+        },
+        "observed_worker_overlap_ns": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "schema_version",
+        "execution_kind",
+        "conditions_digest",
+        "scenario",
+        "variant",
+        "status",
+        "quality_passed",
+        "evidence_verified",
+        "context_preserved",
+        "evidence",
+        "actual_usage",
+        "coordination_ns",
+        "safety_incidents",
+        "redundant_context_copies",
+        "workers",
+        "worktrees",
+        "preparations",
+        "project_scans",
+        "model_calls",
+        "provider_calls",
+        "unnecessary_calls",
+        "adaptive_enabled",
+        "parallel_enabled",
+        "observed_worker_overlap_ns"
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "source_sha",
+    "model",
+    "model_settings",
+    "unity_version",
+    "packages",
+    "os",
+    "hardware",
+    "warmups",
+    "pairs",
+    "primary_metric",
+    "quality_gates",
+    "timeout_seconds",
+    "scenarios"
+  ]
+}
