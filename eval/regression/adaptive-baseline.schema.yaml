@@ -266,6 +266,44 @@ properties:
               const: not_observed
             total_tokens:
               const: null
+  strategy_applications:
+    type: object
+    additionalProperties: false
+    required: [records, phase_counts, incomplete, invalid]
+    properties:
+      incomplete: {type: integer, minimum: 0}
+      invalid: {type: integer, minimum: 0}
+      phase_counts:
+        type: object
+        additionalProperties: false
+        required: [prepared, accepted, dispatching, finalized, rejected, interrupted]
+        properties:
+          prepared: {type: integer, minimum: 0}
+          accepted: {type: integer, minimum: 0}
+          dispatching: {type: integer, minimum: 0}
+          finalized: {type: integer, minimum: 0}
+          rejected: {type: integer, minimum: 0}
+          interrupted: {type: integer, minimum: 0}
+      records:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [run_id, ref, digest, status, phase, task_id, attempt, applied, completed, path, reason_codes]
+          properties:
+            run_id: {type: string}
+            ref: {type: [string, 'null']}
+            digest: {type: [string, 'null'], pattern: '^sha256:[0-9a-f]{64}$'}
+            status: {enum: [valid, invalid]}
+            phase: {enum: [prepared, accepted, dispatching, finalized, rejected, interrupted, null]}
+            task_id: {type: [string, 'null']}
+            attempt: {type: [integer, 'null'], minimum: 0}
+            applied: {type: [boolean, 'null']}
+            completed: {type: boolean}
+            path: {enum: [fast, standard, orchestrated, null]}
+            reason_codes:
+              type: array
+              items: {type: string}
   dag_decisions:
     type: array
     items:

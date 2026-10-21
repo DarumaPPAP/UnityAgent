@@ -211,6 +211,18 @@ class EvidenceStore:
         event = matches[0]
         if event.get("run_id") != record.get("run_id") or event.get("record_hash") != record_hash:
             raise PersistenceError("evidence_tampered", "evidence event does not bind the persisted record")
+        if record.get("source_type") == "reasoning_execution" and record.get("verification_status") == "passed":
+            # Recordの整合性だけでは、後から変更・削除されたArtifactを観測の根拠にできない。
+            reference = record.get("payload_ref")
+            if not isinstance(reference, str) or not reference or Path(reference).is_absolute():
+                raise PersistenceError("reasoning_artifact_unverified", "reasoning artifact reference is invalid")
+            path = (self.layout.root / reference).resolve()
+            artifact_root = (self.layout.run_root(record["run_id"]) / "snapshots" / "reasoning-artifact").resolve()
+            if not path.is_relative_to(artifact_root):
+                raise PersistenceError("reasoning_artifact_unverified", "reasoning artifact is outside the current run")
+            artifact = read_json(path)
+            if not record.get("hash") or sha256_json(artifact) != record["hash"]:
+                raise PersistenceError("reasoning_artifact_tampered", "reasoning artifact digest mismatch")
         return record
 
     def read_observation(self, evidence_id: str, *, expected_run_id: str, expected_project_root: str, expected_capability: str) -> dict[str, Any]:

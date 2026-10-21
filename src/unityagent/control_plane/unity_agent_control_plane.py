@@ -293,6 +293,7 @@ class UnityAgentControlPlane:
         reasoning_timeout_seconds: float = 120.0,
         reasoning_command_prefix: list[str] | None = None,
         maximum_retry_attempts: int = 1,
+        _strategy_consumer=None,
     ) -> dict[str, Any]:
         """Run Entry and Orchestration through the selected runtime handoff, then record Evidence."""
         validate_entry_request(entry_request)
@@ -377,13 +378,14 @@ class UnityAgentControlPlane:
         bounded_inspection = intent['kind'] == 'project_inspection'
         risk = {'R0': 'low', 'R1': 'medium', 'R2': 'high', 'R3': 'critical'}.get(
             projection['risk_level'], 'critical')
-        execution_plan = select_execution_path(
+        selection_inputs = dict(
             task_count=1, simple_task=bounded_inspection, risk=risk,
             design_review='not_required' if bounded_inspection else route_decision['design_review'],
             requires_replan=False, project_bound=task_fingerprint['project_access'] == 'authorized',
             scope_known=True, requested_subagent=requested_subagent,
             required_subagents=(assigned_subagent,) if assigned_subagent else (),
-            context_profile=manifest['budget_report']['profile'])
+            context_profile=manifest['budget_report']['profile'], resource_conflict=False)
+        execution_plan = select_execution_path(**selection_inputs)
         if execution_plan['status'] == 'blocked':
             return {'schema_version': '2.0', 'status': 'blocked', 'run_id': resolved_run_id,
                     'reason': execution_plan['reason'], 'results': [], 'evidence_refs': []}
@@ -431,6 +433,15 @@ class UnityAgentControlPlane:
         routing_path = self.state_store.layout.snapshot(resolved_run_id, "orchestration-decision", sha256_json(routing_proof))
         write_immutable_json(routing_path, routing_proof)
         routing_ref = relative_ref(self.state_store.layout.root, routing_path)
+
+        if _strategy_consumer is not None:
+            accepted = _strategy_consumer({'handoff': handoff, 'proof_ref': routing_ref,
+                'manifest_ref': manifest_ref, 'selection_inputs': selection_inputs,
+                'project_facts': inputs['project_facts']})
+            if not accepted:
+                return {'schema_version': '2.0', 'status': 'blocked', 'run_id': resolved_run_id,
+                    'reason': 'Adaptive strategy rejected prepared dispatch', 'results': [], 'evidence_refs': [],
+                    'handoff': handoff, 'orchestration_decision_ref': routing_ref, 'context_manifest_ref': manifest_ref}
 
         evidence_refs: list[str] = []
         state_ref = self._save_execution_state(
@@ -661,6 +672,9 @@ class UnityAgentControlPlane:
                 outcome["execution_ref"] = relative_ref(self.state_store.layout.root, execution_path)
             evidence_id = f"{resolved_run_id}-reasoning-evidence"
             evidence = {"schema_version": "1.1", "evidence_id": evidence_id, "run_id": resolved_run_id, "step_id": node_id, "source_type": "reasoning_execution", "source_ref": outcome.get("execution_ref"), "timestamp": _now(), "hash": sha256_json(artifact) if artifact_ref else None, "producer": "Runtime/CodexRunner", "verification_status": "passed" if artifact_ref else "failed", "provenance": ["runtime_handoff", "codex_runner", "schema_validation", "semantic_validation", "context_binding", "workspace_mutation_observation"], "payload_ref": artifact_ref, "gate_outcome": None, "definition_fingerprint": dict(definition_fingerprint)}
+            from unityagent.runtime.handoff.reasoning_runtime import normalize_reasoning_evidence
+            evidence = normalize_reasoning_evidence(evidence, output_contract_ref=reasoning_action['output_contract_ref'],
+                manifest=manifest, artifact=artifact, project_root=str(entry_request['project_root']))
             self.evidence_store.append(evidence)
             evidence_refs.append(evidence_id)
             outcome["evidence_ref"] = evidence_id
@@ -696,13 +710,14 @@ class UnityAgentControlPlane:
         }
         return self._observe_strategy(result, current_path=execution_plan['path'])
 
-    def execute_tasks(self, tasks, *, run_id, definition_fingerprint, task_parameters, resume=False):
+    def execute_tasks(self, tasks, *, run_id, definition_fingerprint, task_parameters, resume=False, adaptive_strategy_enabled=False):
         """既存RuntimeへTask単位で渡し、固定Acceptanceを満たす依存だけを開く。"""
         from unityagent.control_plane.task_execution import execute_task_dag
         from unityagent.persistence.store.atomic_store import exclusive_file_lock
         with exclusive_file_lock(self.state_store.layout.run_root(run_id) / "task-execution.lock"):
             return execute_task_dag(self, tasks, run_id=run_id,
-                definition_fingerprint=definition_fingerprint, task_parameters=task_parameters, resume=resume)
+                definition_fingerprint=definition_fingerprint, task_parameters=task_parameters, resume=resume,
+                adaptive_strategy_enabled=adaptive_strategy_enabled)
 
     def setup(
         self,

@@ -1,0 +1,60 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:orchestration:strategy-application
+title: StrategyApplication
+type: object
+additionalProperties: false
+required: [schema_version, target, sequence, previous_ref, task_id, attempt, contract_ref, preparation_ref, prior_boundary_ref, decision, phase, applied, receipt]
+properties:
+  schema_version: {const: '1.0'}
+  target:
+    type: object
+    additionalProperties: false
+    required: [kind, run_id]
+    properties:
+      kind: {const: parent_dag}
+      run_id: {type: string, minLength: 1}
+  sequence: {type: integer, minimum: 0}
+  previous_ref: {type: [string, 'null']}
+  task_id: {type: string, minLength: 1}
+  attempt: {type: integer, minimum: 0}
+  contract_ref: {type: string, minLength: 1}
+  preparation_ref: {type: string, minLength: 1}
+  prior_boundary_ref: {type: [string, 'null']}
+  decision:
+    type: object
+    additionalProperties: false
+    required: [current_path, path, recommendation, reason_codes]
+    properties:
+      current_path: {enum: [null, fast, standard, orchestrated]}
+      path: {enum: [fast, standard, orchestrated]}
+      recommendation: {enum: [initialize, keep, promote, demote]}
+      reason_codes: {type: array, minItems: 1, items: {type: string}}
+  phase: {enum: [prepared, accepted, dispatching, finalized, rejected, interrupted]}
+  applied: {type: boolean}
+  receipt:
+    type: [object, 'null']
+    additionalProperties: false
+    required: [path, checks, preparation_digest]
+    properties:
+      path: {enum: [fast, standard, orchestrated]}
+      checks: {type: array, items: {enum: [prepared_binding, prior_acceptance, fixed_dag]}}
+      preparation_digest: {type: string, pattern: '^sha256:[0-9a-f]{64}$'}
+  boundary_ref: {type: string, minLength: 1}
+  gates: {type: object, additionalProperties: {enum: [passed, failed, unavailable, not_observed]}}
+  error_type: {type: string, minLength: 1}
+  uncertain_side_effects: {const: true}
+allOf:
+  - if:
+      properties: {phase: {enum: [prepared, rejected]}}
+    then:
+      properties: {applied: {const: false}, receipt: {type: 'null'}}
+    else:
+      properties: {applied: {const: true}, receipt: {type: object}}
+  - if:
+      properties: {phase: {const: finalized}}
+    then:
+      required: [boundary_ref, gates]
+  - if:
+      properties: {phase: {const: interrupted}}
+    then:
+      required: [uncertain_side_effects, error_type]
