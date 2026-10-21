@@ -56,7 +56,8 @@ class CSharpIntegrationTests(unittest.TestCase):
                     'expected_revision': project_revision(project), 'editmode_tests': [test]}}
             with patch('unityagent.runtime.runner.codex.codex_runner.run_streaming_process', side_effect=self.model):
                 proposal = self.plane.execute(entry, run_id='proposal-' + name,
-                    definition_fingerprint=self.definition, reasoning_model='gpt-fixture', **parameters)
+                    definition_fingerprint=self.definition, reasoning_model='gpt-fixture',
+                    reasoning_command_prefix=['fixture-codex'], **parameters)
             self.assertEqual(proposal['reason'], 'explicit_patch_approval_required', proposal)
             approval = approve_csharp_fix(self.plane, proposal['patch_plan_id'])
             entry['intent']['patch_plan_id'] = proposal['patch_plan_id']
