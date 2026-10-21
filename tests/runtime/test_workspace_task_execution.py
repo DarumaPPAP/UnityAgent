@@ -81,6 +81,20 @@ class WorkspaceTaskExecutionTests(unittest.TestCase):
         self.assertEqual(result['observed_worker_overlap_ns'], 0)
         workers.assert_not_called()
 
+    def test_native_outputs_cannot_target_an_unselected_or_finished_root_project(self):
+        from unityagent.runtime.tooling.providers.native_unity_editor.native_unity_editor_provider import NativeUnityEditorProvider
+        for name, foreign in (('a', 'b'), ('original', 'a')):
+            with self.subTest(task=name):
+                self.plane = UnityAgentControlPlane(self.root / ('state-' + name))
+                self.parameters['a']['executors'].pop('native_unity_editor', None)
+                if name == 'a':
+                    self.tasks[1]['depends_on'] = ['a']
+                native = NativeUnityEditorProvider(self.root / name,
+                    self.parameters[name]['environment_snapshot'], temp_root=self.root / foreign / 'Assets/native-output')
+                self.parameters[name]['executors']['native_unity_editor'] = native.execute
+                with self.assertRaises(ValueError):
+                    self.run_tasks()
+
     def test_child_failure_blocks_original_without_resending_or_false_gate(self):
         self.parameters['a']['executors']['file'] = lambda *args: {
             'status': 'failed', 'failure_class': 'execution_failed', 'evidence': []}
@@ -153,7 +167,7 @@ class WorkspaceTaskExecutionTests(unittest.TestCase):
         for name in ('a', 'b'):
             self.parameters[name]['executors']['native_unity_editor'] = lambda *args: None
         observation = _observations(self.plane, self.tasks[:2], self.parameters,
-                                    self.contract['project_root'], 'isolated')
+                                    self.contract['project_root'], 'isolated', self.contract['projects'])
         self.assertEqual(observation['status'], 'blocked')
         with self.assertRaises(ValueError):
             self.run_tasks()

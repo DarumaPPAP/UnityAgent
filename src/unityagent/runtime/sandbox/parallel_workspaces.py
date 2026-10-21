@@ -85,7 +85,7 @@ def _project(project, members):
     return project
 
 
-def verify_worker_workspaces(original_project, workers):
+def verify_worker_workspaces(original_project, workers, *, protected_projects=(), extra_outputs=None):
     """実行権限は増やさない。不明なEditor／共有Gitは直列判断、原Project別名は拒否。"""
     members = set()
     original = _project(original_project, members)
@@ -137,6 +137,51 @@ def verify_worker_workspaces(original_project, workers):
         descriptors[name] = {'workspace': str(project), 'physical_identity': identity,
             'physical_fingerprint': 'sha256:' + hashlib.sha256(json.dumps(sorted(worker_members)).encode()).hexdigest(),
             'git_common_identity': git_identity, 'output_root': str(output) if output is not None else None}
-    return {'schema_version': '1.0', 'status': 'serial' if reasons else 'verified',
+    named_outputs = {name: value['output_root'] for name, value in descriptors.items()}
+    for name, output in (extra_outputs or {}).items():
+        if name in named_outputs:
+            raise ValueError('Output Task identities must be unique')
+        named_outputs[name] = output
+    protected = set(projects) | {_canonical(value, existing=True) for value in protected_projects}
+    bindings, physical_outputs, output_members = {}, [], []
+    if any(output is not None for output in named_outputs.values()):
+        for project in protected - set(projects):
+            _project(project, members)
+    for name, value in named_outputs.items():
+        if value is None:
+            bindings[name] = None
+            continue
+        output = _canonical(value, existing=False)
+        if any(_overlap(output, project) for project in protected):
+            raise ValueError('Native output overlaps a protected Root Project')
+        ancestor = output
+        while not ancestor.exists():
+            ancestor = ancestor.parent
+        identity, tail = _identity(ancestor), output.relative_to(ancestor).as_posix()
+        if tuple(identity) in members:
+            raise ValueError('Native output physically aliases a protected Root Project')
+        descendants = set()
+        if output.exists():
+            descendants.add(tuple(_identity(output)))
+            for path in output.rglob('*'):
+                if path.is_symlink() or (hasattr(path, 'is_junction') and path.is_junction()):
+                    raise ValueError('Native output contains an aliased directory or file')
+                if path.is_dir():
+                    descendants.add(tuple(_identity(path)))
+        if any(tuple(identity) in prior or tuple(other['ancestor_identity']) in descendants
+               for other, prior in zip(physical_outputs, output_members)):
+            raise ValueError('Native outputs physically contain another output')
+        if any(identity == other['ancestor_identity'] and
+               (tail == '.' or other['relative_path'] == '.' or _overlap(tail, other['relative_path']))
+               for other in physical_outputs):
+            raise ValueError('Native outputs alias the same physical destination')
+        binding = {'root': str(output), 'ancestor_identity': identity, 'relative_path': tail}
+        bindings[name] = binding
+        physical_outputs.append(binding)
+        output_members.append(descendants)
+        if name in descriptors:
+            descriptors[name]['output_binding'] = binding
+    return {'schema_version': '2.0', 'status': 'serial' if reasons else 'verified',
             'original_project': str(original), 'original_identity': physical[0],
-            'workspaces': descriptors, 'reasons': sorted(set(reasons))}
+            'workspaces': descriptors, 'protected_project_roots': sorted(map(str, protected)),
+            'output_bindings': bindings, 'reasons': sorted(set(reasons))}

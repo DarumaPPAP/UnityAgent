@@ -27,7 +27,7 @@ def verify_parallel_history(plane, state):
         return
     mode = state.get('parallel_execution')
     refs = state.get('parallel_execution_refs')
-    if (not isinstance(mode, dict) or mode.get('schema_version') != '1.0' or mode.get('max_workers') != 2
+    if (not isinstance(mode, dict) or mode.get('schema_version') != '2.0' or mode.get('max_workers') != 2
             or not isinstance(mode.get('enabled'), bool) or refs != audit or set(refs) != persisted
             or len(refs) % 3):
         raise ValueError('Parallel dispatch history is incomplete; reconciliation required')
@@ -47,6 +47,19 @@ def verify_parallel_history(plane, state):
                 or receipt['settled_ref'] != refs[index + 1] or not settled['all_workers_stopped']
                 or settled.get('timed_out') or settled.get('cancelled')):
             raise ValueError('Parallel worker barrier was not accepted')
+        proof = dispatch.get('workspace_observation', {})
+        if (proof.get('schema_version') != '2.0'
+                or set(proof.get('protected_project_roots', [])) != set(mode['project_identities'])
+                or set(proof.get('output_bindings', {})) != {job['task_id'] for job in dispatch['jobs']}):
+            raise ValueError('Root Project output isolation proof is incomplete')
+        for binding in proof['output_bindings'].values():
+            if binding is None:
+                continue
+            output = binding['root'].replace('\\', '/').casefold().rstrip('/')
+            for project in mode['project_identities']:
+                project = project.replace('\\', '/').casefold().rstrip('/')
+                if output == project or output.startswith(project + '/') or project.startswith(output + '/'):
+                    raise ValueError('Native output overlaps a protected Root Project')
         plan = read_plan(store.layout, dispatch['plan_ref'], run_id)
         outcomes = {item['task_id']: item for item in settled['outcomes']}
         if len(outcomes) != len(dispatch['jobs']) or len(dispatch['jobs']) not in (1, 2):

@@ -70,6 +70,48 @@ class ParallelWorkspaceTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 self.verify()
 
+    def test_uncreated_outputs_with_the_same_physical_ancestor_and_tail_are_rejected(self):
+        from unittest.mock import patch
+        from unityagent.runtime.sandbox import parallel_workspaces as workspaces
+        first, second = self.root / 'external-first', self.root / 'external-second'
+        first.mkdir()
+        second.mkdir()
+        identity = workspaces._identity
+        for left, right in ((first / 'output', second / 'output'), (first, second / 'nested')):
+            with self.subTest(left=left, right=right):
+                self.workers[0]['output_root'], self.workers[1]['output_root'] = str(left), str(right)
+                with patch.object(workspaces, '_identity', side_effect=lambda path: identity(first if path == second else path)):
+                    with self.assertRaises(ValueError):
+                        self.verify()
+
+    def test_output_directory_replacement_changes_the_physical_binding(self):
+        output = Path(self.workers[0]['output_root'])
+        output.mkdir()
+        before = self.verify()
+        output.rename(self.root / 'old-output')
+        output.mkdir()
+        after = self.verify()
+        self.assertNotEqual(before['workspaces']['left'], after['workspaces']['left'])
+
+    def test_output_ancestor_aliasing_another_outputs_descendant_is_rejected(self):
+        from unittest.mock import patch
+        from unityagent.runtime.sandbox import parallel_workspaces as workspaces
+        first, alias = self.root / 'external-first', self.root / 'external-alias'
+        nested = first / 'nested'
+        nested.mkdir(parents=True)
+        alias.mkdir()
+        identity = workspaces._identity
+        for reverse in (False, True):
+            with self.subTest(reverse=reverse):
+                outputs = [str(first), str(alias / 'new')]
+                if reverse:
+                    outputs.reverse()
+                for worker, output in zip(self.workers, outputs):
+                    worker['output_root'] = output
+                with patch.object(workspaces, '_identity', side_effect=lambda path: identity(nested if path == alias else path)):
+                    with self.assertRaises(ValueError):
+                        self.verify()
+
     def test_shared_git_common_directory_disables_parallel(self):
         common = self.root / 'shared-git'
         common.mkdir()

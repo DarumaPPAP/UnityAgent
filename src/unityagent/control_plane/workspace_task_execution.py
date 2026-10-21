@@ -25,8 +25,8 @@ def verify_project_bindings(state):
     if set(expected) != set(state['project_revisions']) or observe_project_identities(expected) != expected:
         raise ValueError('Physical Project identity changed since the initial Root binding')
 
-def _observations(plane, tasks, parameters, original, run_id):
-    workers = []
+def _observations(plane, tasks, parameters, original, run_id, protected_projects):
+    workers, original_outputs = [], {}
     for task in tasks:
         native = parameters[task['id']]['executors'].get('native_unity_editor')
         owner = getattr(native, '__self__', None)
@@ -36,15 +36,12 @@ def _observations(plane, tasks, parameters, original, run_id):
                 return {'status': 'blocked', 'reason': 'native_output_not_observed', 'workspaces': {}}
         output = owner.temp_root if native is not None else None
         if task['workspace'] == original:
-            if output is not None:
-                resolved = Path(output).absolute()
-                if resolved != resolved.resolve() or resolved == Path(original) or Path(original) in resolved.parents:
-                    raise ValueError('Original Editor output must be unaliased and outside the Project')
+            original_outputs[task['id']] = str(Path(output).absolute()) if output is not None else None
             continue
         snapshot = parameters[task['id']]['environment_snapshot']
         workers.append({'task_id': task['id'], 'workspace': task['workspace'], 'output_root': str(Path(output).absolute()) if output is not None else None,
                         'environment_snapshot': snapshot.to_dict() if hasattr(snapshot, 'to_dict') else snapshot})
-    return verify_worker_workspaces(original, workers)
+    return verify_worker_workspaces(original, workers, protected_projects=protected_projects, extra_outputs=original_outputs)
 
 
 def execute_workspace_dag(plane, tasks, *, run_id, definition_fingerprint, task_parameters,
@@ -63,7 +60,7 @@ def execute_workspace_dag(plane, tasks, *, run_id, definition_fingerprint, task_
     state_path = plane.state_store.layout.run_root(run_id) / 'current/task-state.json'
     if resume:
         state = plane.state_store.load_task_state(run_id)
-        expected_mode = {'schema_version': '1.0', 'enabled': parallel_enabled, 'max_workers': 2,
+        expected_mode = {'schema_version': '2.0', 'enabled': parallel_enabled, 'max_workers': 2,
                          'original_project': original}
         mode = state.get('parallel_execution', {})
         if (any(mode.get(key) != value for key, value in expected_mode.items())
@@ -92,7 +89,7 @@ def execute_workspace_dag(plane, tasks, *, run_id, definition_fingerprint, task_
         state = {'schema_version': '2.0', 'run_id': run_id, 'status': 'running', 'contract_digest': digest,
             'contract_ref': relative_ref(plane.state_store.layout.root, contract_path), 'definition_fingerprint': definition,
             'project_revisions': revisions, 'execution_order': [], 'evidence_refs': [],
-            'parallel_execution': {'schema_version': '1.0', 'enabled': parallel_enabled, 'max_workers': 2,
+            'parallel_execution': {'schema_version': '2.0', 'enabled': parallel_enabled, 'max_workers': 2,
                                    'original_project': original,
                                    'project_identities': observe_project_identities(root_contract['projects'])}, 'parallel_execution_refs': [],
             'observed_worker_overlap_ns': 0, 'scheduling': 'isolated_workspaces',
@@ -124,13 +121,13 @@ def execute_workspace_dag(plane, tasks, *, run_id, definition_fingerprint, task_
                 state['tasks'][name]['status'] = 'blocked_dependency'
             break
         selected_tasks = [by_id[name] for name in selected]
-        observation = measured_call(plane, run_id, 'coordination', _observations, plane, selected_tasks, task_parameters, original, run_id)
+        observation = measured_call(plane, run_id, 'coordination', _observations, plane, selected_tasks, task_parameters, original, run_id, projects)
         if observation['status'] == 'blocked':
             raise ValueError('Native output isolation is not observed')
         if len(selected) == 2 and observation['status'] != 'verified':
             selected = selected[:1]
             selected_tasks = [by_id[selected[0]]]
-            observation = measured_call(plane, run_id, 'coordination', _observations, plane, selected_tasks, task_parameters, original, run_id)
+            observation = measured_call(plane, run_id, 'coordination', _observations, plane, selected_tasks, task_parameters, original, run_id, projects)
         dispatch_revisions = dict(state['project_revisions'])
         if {project: project_revision(project) for project in projects} != dispatch_revisions:
             raise ValueError('Project changed before workspace dispatch')
@@ -147,9 +144,10 @@ def execute_workspace_dag(plane, tasks, *, run_id, definition_fingerprint, task_
         def prepare(job, preparation):
             verify_project_bindings(state)
             task = by_id[job['task_id']]
-            current_observation = measured_call(plane, run_id, 'coordination', _observations, plane, selected_tasks, task_parameters, original, run_id)
+            current_observation = measured_call(plane, run_id, 'coordination', _observations, plane, selected_tasks, task_parameters, original, run_id, projects)
             if (current_observation.get('original_identity') != observation.get('original_identity')
-                    or current_observation['workspaces'] != observation['workspaces']):
+                    or current_observation['workspaces'] != observation['workspaces']
+                    or current_observation['output_bindings'] != observation['output_bindings']):
                 raise ValueError('Physical worker or output identity changed before dispatch')
             return validate_dynamic_preparation(plane, state, task, task['entry_request'], preparation, attempt=0)
 

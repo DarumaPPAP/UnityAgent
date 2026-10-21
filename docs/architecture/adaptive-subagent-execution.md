@@ -112,6 +112,8 @@ Task結果は実行時Plan、Task定義digest、入力／結果Project revision�
 
 Projectと子のdev／inode、全配下のsymlink・junction・hardlink、Git管理領域、EnvironmentのProject bindingとEditor状態、実際のNative Providerの出力先を検査します。共有Gitや不明なEditorでは直列化し、原Project別名や未知のNative出力は拒否します。Projectの置換は同じ内容でもResumeを拒否します。通常の単一Fast Taskは既存の直列入口を使います。
 
+出力分離は、今回未選択・完了済みのworkerも含む全Root Projectへ照合します。出力先の既存物理ancestorと未作成部分を束縛し、準備barrier直前にも再確認します。原Projectへの直列統合もこの検査を使います。`parallel_execution`とWorkspace観測の形式は2.0で、出力束縛を確認できない旧並列履歴は照合が必要です。従来の固定DAG・P2形式の読取は維持します。
+
 各workerは既存`execute`で自分の子Runだけを保存します。親が全workerの準備を検証してから解放し、全workerの停止後に結果を受理します。子Run・Task・Attempt・実行Plan・Task定義・入力revisionをimmutableな`dispatching → settled → accepted`履歴へ結び付け、親だけがTaskStateとPlanを更新します。取消・期限・停止未確認・結果欠落・孤立記録は照合が必要で、自動再送しません。Plan更新は停止barrierの後だけです。`observed_worker_overlap_ns`は準備barrier解放後の観測区間の重複で、モデルやUnityそのものの並列成功を単独では証明しません。
 
 承認済みP4 patch Planを持つ2 workerが検証済みになったら、`create_integration_plan(run_id=...)`で差分2件の正確な統合案を作ります。元のRootで許可した原Projectの同一base、非重複target、子のContext・patch・Evidence・確定receiptを照合します。原Projectはまだ変更しません。表示された案を明示承認する`approve_integration(integration_plan_id=...)`は既存Approval StoreへPlan digest・base・Scope・期限・取消epochを束縛します。
