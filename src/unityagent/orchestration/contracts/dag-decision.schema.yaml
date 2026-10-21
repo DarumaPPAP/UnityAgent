@@ -18,7 +18,10 @@ required:
 - decision
 properties:
   schema_version:
-    const: '1.0'
+    enum: ['1.0', '2.0']
+  plan_ref:
+    type: string
+    minLength: 1
   target:
     type: object
     additionalProperties: false
@@ -357,3 +360,14 @@ properties:
         items: *id001
       applied:
         const: false
+
+allOf:
+- if:
+    properties:
+      schema_version:
+        const: '2.0'
+  then:
+    required: [plan_ref]
+  else:
+    not:
+      required: [plan_ref]

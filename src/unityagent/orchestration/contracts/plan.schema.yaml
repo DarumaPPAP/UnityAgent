@@ -1,0 +1,85 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: urn:unityagent:orchestration:plan
+title: 不変Rootと有限予算を持つ動的直列Plan
+type: object
+additionalProperties: false
+required: [schema_version, run_id, revision, previous_digest, root_contract, root_digest,
+  definition_fingerprint, tasks, task_digests, project_revisions, cancelled_task_ids,
+  generated_task_ids, reason, evidence_refs, limits, rules_version]
+properties:
+  schema_version: {const: '1.0'}
+  rules_version: {const: '1.0'}
+  run_id: {type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$'}
+  revision: {type: integer, minimum: 0, maximum: 2}
+  previous_digest:
+    anyOf:
+    - {type: 'null'}
+    - {$ref: '#/$defs/digest'}
+  root_digest: {$ref: '#/$defs/digest'}
+  root_contract:
+    type: object
+    additionalProperties: false
+    required: [goal, project_root, projects, required_gates, approval_conditions]
+    properties:
+      goal: {type: string, minLength: 1, pattern: '\S'}
+      project_root: {type: string, minLength: 1}
+      projects:
+        type: object
+        minProperties: 1
+        additionalProperties:
+          type: object
+          additionalProperties: false
+          required: [read_set, write_set]
+          properties:
+            read_set: {$ref: '#/$defs/strings'}
+            write_set: {$ref: '#/$defs/strings'}
+      required_gates: {$ref: '#/$defs/gates'}
+      approval_conditions: {const: [existing_policy]}
+      allowed_entry_kinds: {$ref: '#/$defs/strings'}
+  definition_fingerprint: {type: object, minProperties: 1}
+  tasks:
+    type: array
+    minItems: 1
+    maxItems: 32
+    items:
+      type: object
+      required: [id, goal, workspace, read_set, write_set, resource_claims, required_gates, entry_request]
+      properties:
+        id: {type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$'}
+        goal: {type: string, minLength: 1, pattern: '\S'}
+        workspace: {type: string, minLength: 1}
+        depends_on: {$ref: '#/$defs/strings'}
+        read_set: {$ref: '#/$defs/strings'}
+        write_set: {$ref: '#/$defs/strings'}
+        resource_claims: {$ref: '#/$defs/strings'}
+        required_gates: {$ref: '#/$defs/gates'}
+        entry_request: {type: object}
+  task_digests:
+    type: object
+    minProperties: 1
+    additionalProperties: {$ref: '#/$defs/digest'}
+  project_revisions:
+    type: object
+    minProperties: 1
+    additionalProperties: {$ref: '#/$defs/digest'}
+  cancelled_task_ids: {$ref: '#/$defs/strings'}
+  generated_task_ids:
+    allOf:
+    - {$ref: '#/$defs/strings'}
+    - {minItems: 1, maxItems: 32}
+  reason: {type: string, minLength: 1, pattern: '\S'}
+  evidence_refs: {$ref: '#/$defs/strings'}
+  limits: {const: {updates: 2, tasks: 32, proposals: 4}}
+$defs:
+  digest: {type: string, pattern: '^sha256:[0-9a-f]{64}$'}
+  strings:
+    type: array
+    uniqueItems: true
+    items: {type: string, minLength: 1, pattern: '\S'}
+  gates:
+    type: object
+    minProperties: 1
+    additionalProperties:
+      allOf:
+      - {$ref: '#/$defs/strings'}
+      - {minItems: 1}

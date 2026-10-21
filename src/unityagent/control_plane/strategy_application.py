@@ -12,6 +12,9 @@ from unityagent.persistence.store.atomic_store import relative_ref, sha256_json,
 
 
 def verify_boundary(plane, state, tasks, *, task_id=None, attempt=0):
+    if state.get('schema_version') == '2.0':
+        from unityagent.control_plane.plan_execution import verify_dynamic_boundary
+        return verify_dynamic_boundary(plane, state, tasks, task_id=task_id, attempt=attempt)
     refs = state.get('dag_decision_refs', [])
     histories = {name: item['handoff_history'] for name, item in state['tasks'].items()}
     if not refs:
@@ -88,6 +91,8 @@ def prepare_application(plane, state, tasks, *, task_id, attempt, candidate, pre
         'proof_ref': preparation['proof_ref'], 'manifest_ref': preparation['manifest_ref'],
         'handoff': deepcopy(preparation['handoff']), 'selection_inputs': deepcopy(preparation['selection_inputs']),
         'project_facts': deepcopy(preparation['project_facts']), 'project_revisions': dict(state['project_revisions'])}
+    if state.get('schema_version') == '2.0':
+        prepared['plan_ref'] = state['active_plan_ref']
     validate_preparation(layout, prepared, contract)
     # 必須の状態照合はFastにも適用する。深い出所監査はRuntime側のモードが選択する。
     prior_ref = state.get('dag_decision_refs', [None])[-1]

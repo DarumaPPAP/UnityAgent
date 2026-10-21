@@ -47,9 +47,14 @@ def select_coordination(prepared, task, *, current_path, boundary=None):
 def validate_preparation(layout, prepared, contract):
     """保存されたFactを今回のTask・Project・定義・Scopeの出所へ戻して検証する。"""
     run_id, name, attempt = prepared['run_id'], prepared['task_id'], prepared['attempt']
+    if prepared.get('plan_ref'):
+        from unityagent.persistence.state.plan import read_plan
+        plan = read_plan(layout, prepared['plan_ref'], run_id)
+        if plan['tasks'] != contract['tasks'] or plan['definition_fingerprint'] != contract['definition_fingerprint']:
+            raise ValueError('Dynamic preparation Plan binding differs')
     tasks = {task['id']: task for task in contract['tasks']}
     task = tasks[name]
-    projects = {str(Path(value['workspace']).resolve()) for value in tasks.values()}
+    projects = set(plan['root_contract']['projects']) if prepared.get('plan_ref') else {str(Path(value['workspace']).resolve()) for value in tasks.values()}
     revisions = prepared['project_revisions']
     if set(revisions) != projects or any(not isinstance(value, str) or len(value) != 71 or not value.startswith('sha256:') or any(c not in '0123456789abcdef' for c in value[7:]) for value in revisions.values()):
         raise ValueError('Prepared Project revision set differs')
@@ -120,11 +125,21 @@ def read_strategy_application(persistence_root, ref, *, run_id):
             raise ValueError('Application target or sequence differs')
         if fixed_contract_ref is None:
             fixed_contract_ref = item['contract_ref']
-        if item['contract_ref'] != fixed_contract_ref:
-            raise ValueError('Application fixed contract changed')
         contract = decision_snapshot(layout, item['contract_ref'], run_id, 'task-contract')
         prepared = decision_snapshot(layout, item['preparation_ref'], run_id, 'strategy-preparation')
         task = validate_preparation(layout, prepared, contract)
+        if item['contract_ref'] != fixed_contract_ref:
+            if not prepared.get('plan_ref'):
+                raise ValueError('Application fixed contract changed')
+            from unityagent.persistence.state.plan import read_plan
+            active = read_plan(layout, prepared['plan_ref'], run_id)
+            initial = chain[-1]
+            original = decision_snapshot(layout, initial['preparation_ref'], run_id, 'strategy-preparation')
+            if not original.get('plan_ref'):
+                raise ValueError('Application cannot migrate a legacy Run to dynamic Plan')
+            root = read_plan(layout, original['plan_ref'], run_id)
+            if active['root_contract'] != root['root_contract'] or active['root_digest'] != root['root_digest']:
+                raise ValueError('Application immutable Root differs')
         if prepared['run_id'] != run_id or (item['task_id'], item['attempt']) != (prepared['task_id'], prepared['attempt']):
             raise ValueError('Application preparation identity differs')
         key = (item['task_id'], item['attempt'])
@@ -159,7 +174,7 @@ def read_strategy_application(persistence_root, ref, *, run_id):
             current = item['decision']['path']
         if phase == 'finalized':
             final = read_dag_decision(layout.root, item['boundary_ref'], run_id=run_id)
-            if final['contract_ref'] != fixed_contract_ref:
+            if final['contract_ref'] != item['contract_ref']:
                 raise ValueError('Application result fixed contract differs')
             last_boundary_ref = item['boundary_ref']
             boundary = final['boundary']

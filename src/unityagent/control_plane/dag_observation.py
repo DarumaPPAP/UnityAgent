@@ -97,6 +97,9 @@ def observe_dag_boundary(plane, tasks, state, *, task_id, attempt, dispatch_revi
             'handoff_history':[{'run_id':entry['run_id']} for entry in item.get('handoff_history', [])],
             'semantic_decision':{key:item['semantic_decision'][key] for key in ('decision','semantic_attempt','outcome')} if item.get('semantic_decision') else {}}
             for name,item in state['tasks'].items()}
+        if state.get('schema_version') == '2.0':
+            snapshot['plan_ref'] = state['active_plan_ref']
+            snapshot['execution_order'] = list(state['execution_order'])
         phase = 'dag_decision_persistence_failed'
         path = layout.snapshot(state['run_id'],'dag-boundary',sha256_json(snapshot))
         write_immutable_json(path,snapshot)
@@ -104,6 +107,8 @@ def observe_dag_boundary(plane, tasks, state, *, task_id, attempt, dispatch_revi
             'definition_fingerprint':snapshot['definition_fingerprint'],'project_revisions':revisions,
             'contract_ref':state['contract_ref'],'state_ref':relative_ref(layout.root,path),
             'inputs':inputs,'input_digest':sha256_json(inputs),'observed_facts':observed,'sources':sources,'decision':decision}
+        if state.get('schema_version') == '2.0':
+            record.update(schema_version='2.0', plan_ref=state['active_plan_ref'])
         path = layout.snapshot(state['run_id'],'dag-decision',sha256_json(record))
         write_immutable_json(path,record)
         ref = relative_ref(layout.root,path)
