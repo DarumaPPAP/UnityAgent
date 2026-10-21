@@ -22,7 +22,7 @@ def derive_context_inputs(project_root: str, snapshot: dict[str, Any], intent: d
     fact = {"key": "unity_version", "value": version, "source_kind": "detected_project",
             "source_path": str(source), "revision": revision, "observed_at_attempt": attempt,
             "freshness": freshness, "reason": "reobserved ProjectVersion.txt and matched bound EnvironmentSnapshot"}
-    specialist_tags = {"project_inspection": "project", "visual_capture": "camera", "rendering_diagnosis": "rendering", "performance_analysis": "performance", "world_planning": "world", "fixed_full_e2e_probe": "e2e"}
+    specialist_tags = {"project_inspection": "project", "csharp_local_fix": "csharp", "visual_capture": "camera", "rendering_diagnosis": "rendering", "performance_analysis": "performance", "world_planning": "world", "fixed_full_e2e_probe": "e2e"}
     try:
         specialist_tag = specialist_tags[intent["kind"]]
     except KeyError as exc:
@@ -58,6 +58,10 @@ def derive_context_inputs(project_root: str, snapshot: dict[str, Any], intent: d
     if isinstance(intent.get("kind"), str) and intent["kind"]:
         bindings["goal"] = {"value": intent["kind"], "source_kind": "user_request",
                             "revision": request_revision, "freshness": freshness}
+    if specialist_tag == 'csharp':
+        for key in ('goal_or_confirmed_error', 'target_source', 'expected_behavior', 'allowed_changes', 'expected_revision', 'editmode_tests'):
+            bindings[key] = {'value': intent[key] if isinstance(intent[key], str) else json.dumps(intent[key]), 'source_kind': 'user_request',
+                             'revision': request_revision, 'freshness': freshness}
     if specialist_tag == "e2e":
         fixed_bindings = {
             "target_assets": (

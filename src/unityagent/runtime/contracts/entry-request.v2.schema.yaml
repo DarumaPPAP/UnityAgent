@@ -32,6 +32,25 @@ properties:
         kind: {const: project_inspection}
     - type: object
       additionalProperties: false
+      required: [kind, goal_or_confirmed_error, target_source, expected_behavior, allowed_changes, expected_revision, editmode_tests]
+      properties:
+        kind: {const: csharp_local_fix}
+        goal_or_confirmed_error: {type: string, minLength: 1, pattern: '\S'}
+        target_source: {type: string, pattern: '^Assets/.+\.cs$'}
+        expected_behavior: {type: string, minLength: 1, pattern: '\S'}
+        allowed_changes: {type: string, minLength: 1, pattern: '\S'}
+        expected_revision: {type: string, pattern: '^sha256:[0-9a-f]{64}$'}
+        editmode_tests:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: {type: string, pattern: '^[A-Za-z_][A-Za-z0-9_.+]*(?:\([^\r\n;]+\))?$'}
+        patch_plan_id: {type: string, pattern: '^[0-9a-f]{64}$'}
+        verification_only: {const: true}
+      not:
+        required: [patch_plan_id, verification_only]
+    - type: object
+      additionalProperties: false
       required: [kind, visual_intent, exact_scene_or_asset_scope, reference_or_visual_definition]
       properties:
         kind: {const: visual_capture}

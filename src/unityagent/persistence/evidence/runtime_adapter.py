@@ -146,6 +146,7 @@ def from_runtime_execution_evidence(record: dict[str, Any]) -> dict[str, Any]:
         "latency_ms": record["latency_ms"],
         "fallback_from": record["fallback_from"],
         "durability": "durable",
+        **({"execution_binding": deepcopy(record["execution_binding"])} if "execution_binding" in record else {}),
     }
 
 

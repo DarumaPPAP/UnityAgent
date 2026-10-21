@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Owned C# fixture E2E input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "phase", "workspace_root", "model", "timeout_seconds"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "phase": {"enum": ["prepare", "propose", "apply"]},
+    "workspace_root": {"type": "string", "minLength": 1},
+    "model": {"type": "string", "minLength": 1},
+    "timeout_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 1800},
+    "approved_plan_id": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "if": {"properties": {"phase": {"const": "apply"}}},
+  "then": {"required": ["approved_plan_id"]},
+  "else": {"not": {"required": ["approved_plan_id"]}}
+}

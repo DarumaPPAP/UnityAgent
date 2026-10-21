@@ -53,6 +53,26 @@ required_knowledge: []
 required_quality_gates:
   - static_review
   - compile
+bounded_typed_entry:
+  required_inputs:
+    - goal_or_confirmed_error
+    - target_source
+    - expected_behavior
+    - allowed_changes
+    - expected_revision
+    - editmode_tests
+  allowed_mutations: [one_existing_method_return_expression]
+  required_quality_gates: [static_review, compile, editmode]
+  verification_quality_gates: [compile, editmode]
+  completion:
+    - exact_diff_approval_is_current_and_plan_bound
+    - source_is_an_unaliased_regular_assets_file
+    - current_compile_and_nonempty_target_editmode_are_passed
+    - durable_evidence_matches_final_project_revision
+  stop_conditions:
+    - stale_revision_or_context_or_approval
+    - uncertain_prior_mutation_requires_reconciliation
+    - zero_or_old_or_unavailable_test_results
 conditional_quality_gates:
   - namespace_and_type_naming_review
   - editmode

@@ -72,7 +72,9 @@ properties:
         - static_review
         - git_diff
         - compile_observation
+        - current_compile_observation
         - test_execution
+        - targeted_editmode_execution
         - build_execution
         - editor_observation
         - mutation_evidence

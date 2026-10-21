@@ -80,6 +80,7 @@ def build_test_command(
     log_path: Path,
     test_results_path: Path,
     test_platform: str = "EditMode",
+    test_filter: list[str] | None = None,
 ) -> NativeUnityCommand:
     if not test_platform or test_platform.startswith("-"):
         raise ValueError("test_platform must be a concrete Unity Test Framework platform")
@@ -98,6 +99,10 @@ def build_test_command(
             str(test_results_path),
         ]
     )
+    if test_filter is not None:
+        if not test_filter or any(not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_.+]*(?:\([^\r\n;]+\))?', name) for name in test_filter):
+            raise ValueError('Test filter must contain explicit qualified test names')
+        command.extend(['-testFilter', ';'.join(test_filter)])
     return NativeUnityCommand(
         command=tuple(command),
         log_path=log_path,

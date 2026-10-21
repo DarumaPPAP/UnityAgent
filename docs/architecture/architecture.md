@@ -85,7 +85,11 @@ Providerless Specialist reasoningでは同じControl Planeから別のRuntime Ac
 
 Graphics / WorldCreator / QA（性能分析）はConsumer Catalog v3のProduction Reasoning Profileとして登録済みです。Graphicsは`project.inspect` / `source.read`、QAの`performance.analyze`は`profiler.observe`の検証済みObservationをReasoning前に要求し、WorldCreatorは`world.plan`のplanning-only Handoffを使います。Reasoning ProfileはTool Providerを持たず、既存CodexRunnerで構造化Artifactを生成します。登録済みであることとLive ProjectでProduction Verifiedであることは別であり、未観測Evidenceを成功へ昇格しません。Policy defines; Orchestration decides; Context materializes; Runtime executes; Persistence remembers; eval measures、という責務境界を維持します。
 
-初期戦略 `fast / standard / orchestrated` はControl Planeに接続済みです。直列Task DAGは固定Acceptanceと依存を既存executeへ接続し、Runtime leaseとRun lockを維持します。結果確定後の戦略提案は観測専用で `applied: false` とし、Orchestration decisionやEvidenceを置き換えません。保存済みRunのオフライン集計はEval側の `tools/adaptive_baseline.py` が担当します。実際の途中戦略変更、動的Plan、Queue、並列実行、Device leaseは対象外です。[適応実行方針](adaptive-subagent-execution.md)に記録契約と集計手順を示します。
+初期戦略 `fast / standard / orchestrated` はControl Planeに接続済みです。直列Task DAGは固定Acceptanceと依存を既存executeへ接続し、Runtime leaseとRun lockを維持します。`execute_tasks`に明示したRoot契約とPlan proposerを渡す動的直列経路では、確定境界で有限予算のPlan revisionを適用し、ResumeでPlan・Task・Evidence履歴を照合します。Root省略時は従来の固定DAGを使います。一般の結果確定後の戦略提案は引き続き観測専用の `applied: false` です。保存済みRunの集計はEval側の `tools/adaptive_baseline.py` が担当します。並列実行、Queue、Device leaseは対象外です。[適応実行方針](adaptive-subagent-execution.md)に記録契約と集計手順を示します。
+
+Typed Entryの`csharp_local_fix`は既存C# Route・Task Contract・Contextから、既存CodexRunnerによる読取専用提案を生成します。提案は既存メソッドのreturn式1箇所に限定し、原Projectへ書く前に、差分Plan・入力revision・scope・期限・取消epochに束縛した明示Approvalを必要とします。File Providerの限定patch、static review、Native Editorの今回のCompile観測、指定EditMode Testの非0件成功をToolBroker経由で実行し、最終revisionとdurable Evidenceのbindingを照合します。`verification_only: true`はSource読取とCompile／EditModeだけを行います。古いXML、0件、unavailable、保存前中断の不確定Mutationは完了になりません。Source全文とPromptは永続化せず、モデルへの一時Contextは実行後削除します。
+
+実環境検証は`tools/csharp_fix_e2e.py --help`と同名の`.schema.json`に従い、`tests/unity/projects/csharp-local-fix`の新規コピーだけを対象に、`prepare`（独立Testの修正前失敗）、`propose`（実モデル提案）、`apply`（確認済みPlan IDで固定期待差分を承認・適用）を分けます。Fixture／契約テストの成功と実Unity／実モデルのE2E成功は別に記録します。
 
 ---
 

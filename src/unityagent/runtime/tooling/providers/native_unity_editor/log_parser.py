@@ -4,6 +4,7 @@ from __future__ import annotations
 import re
 import xml.etree.ElementTree as ET
 from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -103,6 +104,10 @@ def read_test_results(test_results_path: Path) -> dict[str, Any] | None:
         return None
     return {
         "result": str(root.attrib.get("result") or "Unknown"),
+        "start_time": root.attrib.get('start-time'),
+        "end_time": root.attrib.get('end-time'),
+        "test_cases": [{'name': item.attrib.get('fullname'), 'result': item.attrib.get('result')}
+                       for item in root.iter('test-case')],
         "total": _int_attr(root, "total") or _int_attr(root, "testcasecount"),
         "passed": _int_attr(root, "passed"),
         "failed": _int_attr(root, "failed"),
@@ -116,6 +121,8 @@ def normalize_test_result(
     exit_code: int,
     log_text: str,
     test_results_path: Path,
+    expected_test_names: list[str] | None = None,
+    not_before_ns: int | None = None,
 ) -> dict[str, Any]:
     compile_result = normalize_compile_result(exit_code=0, log_text=log_text)
     if compile_result["status"] != "passed":
@@ -127,6 +134,27 @@ def normalize_test_result(
 
     test_result = read_test_results(test_results_path)
     if test_result is not None:
+        valid = test_result['total'] > 0
+        if expected_test_names is not None:
+            cases = test_result['test_cases']
+            observed_names = {item['name'] for item in cases}
+            valid = (valid and bool(expected_test_names) and set(expected_test_names) <= observed_names
+                     and test_result['total'] == len(cases)
+                     and test_result['passed'] == sum(item['result'] == 'Passed' for item in cases)
+                     and test_result['failed'] == sum(item['result'] == 'Failed' for item in cases)
+                     and all(item['result'] in {'Passed', 'Failed'} for item in cases))
+        if not_before_ns is not None:
+            try:
+                start = datetime.fromisoformat(test_result['start_time'].replace('Z', '+00:00'))
+                end = datetime.fromisoformat(test_result['end_time'].replace('Z', '+00:00'))
+                valid = (valid and start.tzinfo is not None and end.tzinfo is not None
+                         and start.timestamp() >= not_before_ns / 1e9 - 1.0 and end >= start)
+            except (TypeError, ValueError, AttributeError):
+                valid = False
+        if not valid:
+            return {'status': 'failed', 'failure_class': 'not_observed',
+                    'reason': 'Current non-empty target EditMode results were not observed',
+                    'test_result': test_result, 'evidence': []}
         result_name = test_result["result"].casefold()
         if test_result["failed"] > 0 or result_name in {"failed", "failure"}:
             return {
