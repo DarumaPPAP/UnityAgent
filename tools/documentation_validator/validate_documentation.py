@@ -374,7 +374,7 @@ def _validate_capability_status(errors: list[str]) -> None:
                 errors.append(f"empty status table: {relative}:{number}")
             active = False
             continue
-        cells = [cell.strip() for cell in re.split(r"(?<!\\)\\|", line.strip().strip("|"))]
+        cells = [cell.strip() for cell in re.split(r"(?<!\\)\|", line.strip().strip("|"))]
         if cells[0] == STATUS_COLUMNS[0]:
             found = True
             active = True
