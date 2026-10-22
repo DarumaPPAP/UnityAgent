@@ -22,7 +22,7 @@ ArtistSubAgentはUnityのVisual Art、LookDev、Lighting、Environment、Camera�
 - `artist.camera.refine`
 - `visual.capture`
 
-Backend内部のコマンド一覧はResolver-visible Capabilityを増やしません。Hubは[Capability contract](contracts/capability-contracts.yaml)と[Backend interface](contracts/backend-surface-contract.yaml)を所有します。コマンドと安全性のRelease確認は[Backend release contract](tools/host/artist-backend-contract.yaml)で行います。
+Backend内部のコマンド一覧はResolver-visible Capabilityを増やしません。同居定義は[Capability contract](contracts/capability-contracts.yaml)と[Backend interface](contracts/backend-surface-contract.yaml)を所有します。コマンドと安全性のRelease確認は[Backend release contract](tools/host/artist-backend-contract.yaml)で行います。
 
 | Unity | Render Pipeline |
 |---|---|
@@ -40,7 +40,7 @@ ManifestはEvidence types、required artifacts、terminal statesのみを宣言�
 
 ## UnityAgent import boundary
 
-Hubは静的Snapshotを公開します。UnityAgentは`Runtime/ReferenceImplementation/subagent-catalog.yaml`を自分のRuntime Catalogとして所有し、Offline Import AdapterでSnapshotの差分を検証します。Hubの登録やArtifact公開だけでRuntime Catalogを同期・Hot Reloadしません。
+`subagent/registry.yaml` が同居Manifestを索引し、同居Exporterが静的Snapshotを生成します。UnityAgentは `src/unityagent/runtime/reference_implementation/subagent-catalog.yaml` をRuntime Catalogとして所有します。旧HubのSnapshotは明示的なOffline互換入力として検証し、登録やArtifact公開だけでRuntime Catalogを同期・Hot Reloadしません。
 
 Artist Package、CLI、Installer、Backend TestsはStage 2から同じUnityAgent Repositoryの `subagent/artist_subagent/tools/editor/` と `subagent/artist_subagent/tools/host/` に存在します。詳細は[Hub Architecture](https://github.com/DarumaPPAP/UnitySubAgentHub/blob/c5a593dfcaeea0f902999e91a97b620214db063f/docs/architecture/subagent-hub-architecture.md)と[Ownership audit](https://github.com/DarumaPPAP/UnitySubAgentHub/blob/c5a593dfcaeea0f902999e91a97b620214db063f/docs/architecture/authority-cleanup-audit.md)を参照してください。
 

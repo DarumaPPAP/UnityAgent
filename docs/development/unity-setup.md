@@ -1,5 +1,7 @@
 # Codex Cloud実装指示 — UnityAgent環境整備
 
+> **実装指示の履歴資料です。** 記載当時のGoal・予定・制約を保存しています。現在の操作・Revision・検証状態は [Unity開発・検証環境仕様](unity-test.md) と [ローカル開発ガイド](../local-project-development.md) を参照してください。
+
 **文書名:** `unity-setup.md`
 **Repository:** https://github.com/DarumaPPAP/UnityAgent
 **Branch:** `feature/unity-test-project`

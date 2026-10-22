@@ -330,9 +330,11 @@ flowchart TD
 
 ## 5. Capability Contract
 
-Canonical Capabilityは15個です。
+Tool Capabilityの正本は [Capability Request Schema](../../src/unityagent/runtime/contracts/capability-request.schema.yaml) の列挙です。次はこのSchemaに対応する語彙であり、列挙されていることだけでは現在のProjectでの利用可能性を意味しません。
 
 ```text
+editor.hot_reload
+world.create
 project.inspect
 source.read
 source.patch

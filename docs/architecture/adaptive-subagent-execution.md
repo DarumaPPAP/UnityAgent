@@ -14,7 +14,7 @@ UnityAgentが唯一のControl Planeです。同居SubAgentの正本は `subagent
 
 Complexは説明上の呼称に限ります。既存execution profile、Context budgetの `tight / standard / wide` とは別の概念です。
 
-`plan_task_batches` はDAGと競合を計画します。`execute_tasks` は依存と固定Acceptanceを持つTaskを**直列**で既存executeへ接続します。完了TaskのResumeは再送せず、不確定副作用は照合を要します。計画のparallel判定は並列実行の許可や実測速度向上を意味しません。動的Task Plan更新は下記の明示opt-inで利用できます。実並列化・Worktree分割は実装していません。
+`plan_task_batches` はDAGと競合を計画します。`execute_tasks` は依存と固定Acceptanceを持つTaskを**直列**で既存executeへ接続します。完了TaskのResumeは再送せず、不確定副作用は照合を要します。計画のparallel判定は並列実行の許可や実測速度向上を意味しません。動的Task Plan更新は下記の明示opt-inで利用できます。別Workspaceでの最大2workerの限定並列実行と承認済み直列統合は、後述の「別Workspaceのworkerと承認済み直列統合」の明示opt-in入口に実装されています。既定は `parallel_enabled=False` で、実モデル・実UnityによるE2Eおよび性能採用評価は未完了です。汎用的な並列実行を意味しません。
 
 ## 途中戦略の観測
 

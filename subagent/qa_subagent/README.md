@@ -4,4 +4,4 @@
 
 QASubAgentは観測済みのCPU / GPU / Memory / GC等のEvidenceを解釈し、bottleneckの分類、仮説、必要な追加観測、Recommendationを返します。ShaderやRenderGraphの実装正当性はGraphicsSubAgentの領域です。Profiler、ProfilerRecorder、FrameTimingManager等は決定論的なMeasurement Tool Surfaceであり、Specialist Identityではありません。
 
-HubはIdentity、Capability、Read-only、Compatibility、Evidence、Receipt境界を定義します。UnityAgentのProduction Consumer ProfileがActivation、Context、Routeを定義します。必須観測の`profiler.observe`はUnity CLI / PipelineのEditor Snapshotを条件付きで取得し、`limited`として伝搬します。登録とProduction Verifiedは別であり、実Unity ProjectのEditor / Player / Target DeviceおよびLive A/B/Cは`NOT_EVALUATED_RUNTIME`です。
+同居Manifestと参照先のProduction契約がIdentity、Capability、Read-only、Compatibility、Evidence、Receipt境界を定義します。UnityAgentのProduction Consumer ProfileがActivation、Context、Routeを定義します。必須観測の`profiler.observe`はUnity CLI / PipelineのEditor Snapshotを条件付きで取得し、`limited`として伝搬します。登録とProduction Verifiedは別であり、実Unity ProjectのEditor / Player / Target DeviceおよびLive A/B/Cは`NOT_EVALUATED_RUNTIME`です。

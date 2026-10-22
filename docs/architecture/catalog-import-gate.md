@@ -2,6 +2,8 @@
 
 ## 目的
 
+現在の同居SubAgent定義の入口は `subagent/registry.yaml` です。この文書は、旧Hubの明示的な互換入力を検証するOffline Import経路を説明します。通常の同居定義の更新やRelease生成にHub取得は不要です。
+
 Hubのconsumer-neutral SnapshotをUnityAgent所有の `SubAgentProfileCatalog` へOfflineで適合させ、反映前にレビュー可能なImport Planを作成します。Snapshotの読取成功はProviderのinstalled / compatible / project-bound / availableを意味しません。
 
 ## 実行
@@ -34,7 +36,7 @@ JSON Planには`source.mode`、`source.commit`、`source.locked_commit`、完全
 
 CI互換性Gateは読取専用`no_op`だけを成功とし、`blocked`、`requires_pull_request`、不正入力、Export失敗は失敗とします。表示名変更など低リスク差分もレビューが必要です。正当な契約変更ではConsumer Profile / Schemaの明示Migrationをレビューし、両RepositoryのGateを再実行します。Source Lock更新は別途明示的に判断し、自動更新しません。
 
-UnityAgent CIはHub mainのDevelopment HEADとPinned Sourceを検証し、それぞれのPlanをCI Evidence Artifactへ保存します。Hub CIは当該Hub Commitから生成したSnapshotをUnityAgent mainの既存Import CLIで検証します。相手Repositoryのmainは実行開始時に解決するため、横断契約変更のMerge後にも両Gateを再実行してください。これらのArtifactは検証記録であり、Hub ReleaseやRuntime同期を行いません。
+現行UnityAgent CIは同居定義とConsumer Catalogの整合、およびチェックイン済みCatalogの読取専用no-opを検証します。外部Hub checkoutを必要とするDevelopment / Pinnedの検証は、上記コマンドで明示的に行う互換検証です。かつての相互CIの記録を、現行CIでHub mainを取得している証拠として扱いません。Source Lockの更新やRuntime同期は行いません。
 
 ## Planの扱い
 

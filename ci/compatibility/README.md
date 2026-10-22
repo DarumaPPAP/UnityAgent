@@ -1,16 +1,18 @@
-# Artist compatibility contracts
+<a id="artist-compatibility-contracts"></a>
 
-`support-matrix.yaml` is the single declared Unity 6.x+ Built-in / URP / HDRP support matrix. It declares product targets, rather than measured Editor success. Unity 2022.3 is excluded from current production support.
+# Artistの対応環境と検証状態
 
-All previously checked-in session, release audit, and production acceptance records are archived byte-for-byte under [historical evidence](../../tests/unity/evidence/artist/historical/). Their [preservation index](../../tests/unity/evidence/artist/historical/index.json) records original paths and SHA-256 values, and classifies each as historical with current observation `not_observed`. Embedded paths and original `passed` fields remain historical facts. Original URP/HDRP fixture paths were absent from the baseline checkout; those records cannot prove a current fixture or current successful run.
+[support-matrix.yaml](support-matrix.yaml) がArtist BackendのUnity 6.x+ / Built-in・URP・HDRPの対応対象を宣言する正本です。これは製品の対象宣言であり、実Editorでの検証成功ではありません。Unity 2022.3は現行Production対象外です。
 
-[Archive validators](../../tests/unity/verify/) check the preserved historical shape and hashes. They do not run Unity. Current Editor / Pipeline / capture / visual validation remains `BLOCKED_NOT_RUN`. New measured evidence belongs under `tests/unity/evidence/artist/current/` only after a licensed Editor run supplies exact versions, logs, results, and artifacts.
+過去のSession、Release監査、受入記録は [Historical Evidence](../../tests/unity/evidence/artist/historical/) に元のバイト列で保存されています。[保存索引](../../tests/unity/evidence/artist/historical/index.json) が元のパス・SHA-256と現在の観測 `not_observed` を記録します。記録内の `passed` は当時の事実です。旧URP/HDRP Fixtureの元パスが基準checkoutにない場合、その記録は現在のFixtureや実行成功を証明しません。
 
-The canonical [6000.6 Artist E2E project](../../tests/unity/projects/artist-e2e/) preserves its scenes and resources. The [2022.3 project](../../tests/unity/projects/historical/2022.3/) is historical only. A disposable live check requires an explicitly targeted, licensed, connected Editor:
+[Archive Validator](../../tests/unity/verify/) は履歴の形式とハッシュを確認します。Unityを起動する検証ではありません。現在のEditor / Pipeline / Capture / Visualは `BLOCKED_NOT_RUN` です。新しい実測Evidenceを `tests/unity/evidence/artist/current/` に記録するには、ライセンス済みEditorでの正確なVersion、ログ、結果、成果物が必要です。
+
+[6000.6 Artist E2E Project](../../tests/unity/projects/artist-e2e/) のSceneとResourceを維持します。[2022.3 Project](../../tests/unity/projects/historical/2022.3/) は履歴用です。使い捨てコピーでのLive確認には、対象を明示したライセンス済み・接続済みEditorが必要です。
 
 ```powershell
 python subagent/artist_subagent/tools/host/scripts/run_minimal_live_smoke.py --project-path .\tests\unity\projects\artist-e2e
 .\subagent\artist_subagent\tools\host\scripts\verify-external-cli.ps1 -ProjectPath .\tests\unity\projects\artist-e2e
 ```
 
-These mutation-capable checks are separate from host contracts and have not run during consolidation. UnityAgent must independently observe every manifest activation gate; archive integrity and Hub registration do not establish runtime readiness.
+これらは変更を伴い得るLive検証で、Host契約検査とは別です。文書更新では実行していません。履歴の整合やRegistry登録から実行準備完了を推測せず、ManifestのActivation条件を現在のProjectで独立に観測します。
