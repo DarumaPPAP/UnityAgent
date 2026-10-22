@@ -8,4 +8,4 @@
 
 旧`world.create_review_handoff`の知識は、制作GoalとAcceptance Criteriaを維持したStructured Plan、`human_review_required`、必要Evidenceへ移しました。Review結果の受付、Approval、後続Execution、PersistenceはUnityAgentが所有します。旧`world.start_preflight`は旧Agent Execution Frontendなので移植しません。
 
-Hub登録とUnityAgentのReasoning Runtime経路はRepository / fixtureで検証しています。これはLive Reasoningや実Unity Projectでの検証成功を意味しません。Compile / Editor / Player / Target Deviceは`NOT_EVALUATED_RUNTIME`です。旧Legacy Runtimeの削除は、残る依存と置換Evidenceの監査が完了するまで保留します。
+同居Manifestの登録とUnityAgentのReasoning Runtime経路にはRepository / fixture検証があります。これはLive Reasoningや実Unity Projectでの検証成功を意味しません。Compile / Editor / Player / Target Deviceは`NOT_EVALUATED_RUNTIME`です。旧Legacy Runtimeの削除は、残る依存と置換Evidenceの監査が完了するまで保留します。

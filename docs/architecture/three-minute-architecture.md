@@ -56,7 +56,11 @@ Unity Project
 
 この分離により、Knowledgeの保管、Agentの判断、Projectの実測を同じ責務として混ぜません。
 
-## 実Task例
+<a id="実task例"></a>
+
+## Taskの説明例
+
+以下は構造を理解するための説明シナリオです。実行済みのTraceや性能改善の検証証拠ではありません。
 
 依頼: `Shaderを最適化して`
 
@@ -85,7 +89,7 @@ Quality
 `tools/context_explorer/` は、このMental ModelとCanonical Context Packを読み取り専用で表示するHuman Maintenance Viewerです。
 
 ```powershell
-python .\tools\ContextExplorer\build.py --bundle .\Artifacts\ContextExplorer\viewer
+python .\tools\context_explorer\build.py --bundle .\Artifacts\ContextExplorer\viewer
 ```
 
 生成Bundleは次の4段階で情報を開示します。

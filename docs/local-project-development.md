@@ -153,8 +153,8 @@ Assets/Shaders/GPUCulling/**
 flowchart LR
     A[UnityAgent] -->|Policy / Orchestration / Runtime Rule| W[開発Workflow]
     P[Target Unity Project] -->|Scene / Prefab / C# / Shader / Settings| PRODUCT[製品]
-    H[UnitySubAgentHub] -->|Manifest / capability contract| W
-    A[UnityArtistCLI] -->|Backend execution| TOOL[外部Provider]
+    S[同居SubAgent定義] -->|Manifest / Capability契約| W
+    B[Artist Backend] -->|限定された実行| TOOL[Provider]
     W --> PRODUCT
     TOOL --> W
 ```
@@ -181,11 +181,13 @@ flowchart LR
 - ProjectSettings
 - 製品固有Package
 
-### UnitySubAgentHubが所有
+<a id="unitysubagenthubが所有"></a>
 
-- ArtistSubAgent Manifest / Registry / Catalog Snapshot
-- Specialist capability / compatibility contract
-- Artist Backend Package / CLI（移行中、同Repositoryに配置）
+### 同居SubAgent定義と旧Hub
+
+現在の定義は `subagent/registry.yaml` が索引するManifestと参照先にあります。Artist Backendも `subagent/artist_subagent/tools/` に同居します。Runtime Profile・Activation・ContextはUnityAgent所有のConsumer Catalogで管理します。
+
+旧UnitySubAgentHubと固定Source Lockは履歴・明示的な互換検証のために残ります。現行mainのRelease Workflowは同じUnityAgent checkoutから成果物を生成し、旧Hubを取得しません。過去の公開Releaseの生成元は、そのTagのWorkflowとProvenanceを参照してください。
 
 ### UnityArtistCLI Backendが担当
 
@@ -196,7 +198,7 @@ flowchart LR
 
 旧 `myunitymcp` Runtime Adapterは現行UnityAgent Registryから削除済みです。旧Sourceの履歴・知識はLegacy detachmentのためにGit tag / archiveへ移行し、現行実行Providerとして扱いません。
 
-UnityAgentは外部Providerの製品Sourceを複製して正本化しません。
+同居Artist Backendと、Unity公式CLI等の外部製品を区別します。外部製品のSourceを文書整理のために複製・正本化しません。
 
 ---
 
@@ -206,6 +208,8 @@ UnityAgentは外部Providerの製品Sourceを複製して正本化しません�
 
 | Capability | 主用途 |
 | --- | --- |
+| `editor.hot_reload` | 固定Runnerによる承認Sourceの差分適用（任意） |
+| `world.create` | 固定Blender制作と一時保管（任意） |
 | `project.inspect` | Project Fact確認 |
 | `source.read` | C# / Shader / text source read |
 | `source.patch` | Source変更 |
@@ -333,7 +337,7 @@ Inspect
 
 このSafety Contractをraw mutation、arbitrary eval、暗黙保存へdowngradeしません。Captureは実測できたチャンネルだけをEvidenceにします。
 
-旧MCP Provider候補は移行互換のため定義を残しますが、UnityArtistCLIの現行Production経路ではありません。
+旧 `myunitymcp` Runtime Adapterは現行Registryから削除済みです。過去の候補記録をUnityArtistCLIの現行Production経路として扱いません。
 
 Registryに記述されていても、Concrete Production executorと現在Tool exposureが証明できなければ実行可能扱いしません。
 

@@ -11,7 +11,7 @@ Taskは `id`、`workspace`、`goal`、`depends_on`、`write_set`、`resource_cla
 - 再開によって必須の検証項目を削除することはできない。証拠はTaskの実行IDと有効な定義Revisionに一致する必要がある。
 - QAの `assess_task` は保存済みの証拠を決定的に評価するだけで、ツール実行権限を持たず、合格条件も緩和しない。
 - 既存の性能分析能力は `qa_subagent` に継承し、旧 `performance_subagent` は明示的な入力互換名として扱う。
-- 初期の実行制御は直列処理であり、並列実行を想定したBatchであっても同時には実行しない。並列化の速度向上は `unmeasured`。単一Task用のFast Pathは変更していない。
+- `execute_tasks` の固定DAGは直列処理であり、Batch計画のparallel判定だけでは同時実行しない。別Workspaceの限定C#修正・inspectionを最大2workerで処理する明示opt-in入口は [適応実行方針](adaptive-subagent-execution.md) に分けて説明する。既定は無効で、実モデル・実UnityのE2Eと速度向上は未検証。単一Task用のFast Pathとは別である。
 
 Taskは事前に固定した `repair_candidates` と `semantic_repair_limit` を持てる。意味的修正回数の初期候補は2回だが、無制限の再実行ではない。既存の `RuntimeBudgetLedger` と `decide_semantic_loop` が制限し、すべての候補で必須検証項目を維持する。
 
