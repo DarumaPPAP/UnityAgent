@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 420" role="img" aria-labelledby="title desc">
+  <title id="title">UnityAgentの簡略実行フロー</title>
+  <desc id="desc">Unity Editor、Codex、CLIから共通のControl Planeへ要求を渡し、PolicyとContextに沿ってCapabilityを解決します。Tool操作はProvider、専門推論はCodexRunnerを経由し、観測結果をPersistenceへ保存します。正式な層契約を再定義しない概念図です。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#7b2630"/></marker>
+  </defs>
+  <rect width="880" height="420" rx="16" fill="#fafafa"/>
+  <g font-family="system-ui, sans-serif" font-size="17" text-anchor="middle" fill="#242424">
+    <g fill="#ffffff" stroke="#b62f35" stroke-width="2">
+      <rect x="30" y="35" width="230" height="74" rx="10"/>
+      <rect x="315" y="35" width="250" height="74" rx="10"/>
+      <rect x="620" y="35" width="230" height="74" rx="10"/>
+      <rect x="480" y="190" width="245" height="68" rx="10"/>
+      <rect x="165" y="190" width="245" height="68" rx="10"/>
+      <rect x="255" y="325" width="370" height="64" rx="10"/>
+    </g>
+    <text x="145" y="66">Unity Editor / Codex / CLI</text><text x="145" y="91" font-size="15">要求・表示・承認の入口</text>
+    <text x="440" y="66" font-weight="700">UnityAgent Control Plane</text><text x="440" y="91" font-size="15">共通の実行管理</text>
+    <text x="735" y="66">Capability / Orchestration</text><text x="735" y="91" font-size="15">Policy・Contextに沿った解決</text>
+    <text x="602" y="218">Provider</text><text x="602" y="242" font-size="15">許可されたTool操作</text>
+    <text x="287" y="218">CodexRunner</text><text x="287" y="242" font-size="15">必要時の専門推論</text>
+    <text x="440" y="351">Evidence / Persistence</text><text x="440" y="376" font-size="15">観測結果・実行状態の保存</text>
+  </g>
+  <g fill="none" stroke="#7b2630" stroke-width="2" marker-end="url(#arrow)">
+    <path d="M260 72H309"/><path d="M565 72H614"/>
+    <path d="M735 109V151H602V184"/><path d="M735 151H287V184"/>
+    <path d="M602 258V290H510V319"/><path d="M287 258V290H370V319"/>
+  </g>
+</svg>

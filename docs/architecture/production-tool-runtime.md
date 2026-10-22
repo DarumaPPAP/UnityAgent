@@ -107,10 +107,12 @@ flowchart LR
 
 ## 4. Canonical Capability語彙
 
-Production Contractでは次の15 Capabilityを使用します。
+Tool Capabilityの正本は [Capability Request Schema](../../src/unityagent/runtime/contracts/capability-request.schema.yaml) です。以下は語彙の説明であり、実環境での検証成功や利用可能性の一覧ではありません。
 
 | Capability | 意味 |
 | --- | --- |
+| `editor.hot_reload` | 承認済みSourceを導入済みの固定Runnerで差分適用する任意機能 |
+| `world.create` | 固定のBlender岩制作Workflowで制作物を一時保管する任意機能 |
 | `project.inspect` | Unity Project Factを観測する |
 | `source.read` | Sourceを読み取る |
 | `source.patch` | 許可範囲のSourceを変更する |
@@ -242,7 +244,7 @@ flowchart LR
 
 `domain.workflow`はRegistry上のPotential Capabilityですが、canonical pre-approval provenanceを完全に表現できない経路はProduction adapter側でfail-closedにします。
 
-旧MCP Provider候補は移行互換のためRegistryへ残る場合がありますが、現行Artist経路のAuthorityではありません。具体的なAdapter、Project binding、live surface、Safety / Evidence条件が揃わない限り実行可能扱いしません。
+旧 `myunitymcp` Runtime Adapterは現行Registryから削除済みです。過去のMCP候補の記録は履歴であり、現行Artist経路のAuthorityではありません。具体的なAdapter、Project binding、live surface、Safety / Evidence条件が揃わない限り実行可能扱いしません。
 
 ### Player Runtime Provider
 
