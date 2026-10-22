@@ -136,14 +136,31 @@ namespace DarumaPPAP.UnityAgent.Editor
                     DrawHeader();
                     EditorGUILayout.Space(12);
 
-                    var nextTab = GUILayout.Toolbar(selectedDashboardTab, DASHBOARD_TABS, GUILayout.Height(32f));
-                    if (nextTab != selectedDashboardTab)
+                    using (new EditorGUILayout.HorizontalScope())
                     {
-                        selectedDashboardTab = nextTab;
-                        windowScroll = Vector2.zero;
-                        if (selectedDashboardTab == 3)
+                        for (var tabIndex = 0; tabIndex < DASHBOARD_TABS.Length; tabIndex++)
                         {
-                            showDiagnostics = true;
+                            var previousBackground = GUI.backgroundColor;
+                            if (selectedDashboardTab == tabIndex)
+                            {
+                                GUI.backgroundColor = EditorGUIUtility.isProSkin
+                                    ? new Color(0.78f, 0.46f, 0.50f)
+                                    : new Color(0.94f, 0.70f, 0.72f);
+                            }
+
+                            var pressed = GUILayout.Toggle(selectedDashboardTab == tabIndex,
+                                DASHBOARD_TABS[tabIndex], GUI.skin.button,
+                                GUILayout.Height(32f), GUILayout.ExpandWidth(true));
+                            GUI.backgroundColor = previousBackground;
+                            if (pressed && selectedDashboardTab != tabIndex)
+                            {
+                                selectedDashboardTab = tabIndex;
+                                windowScroll = Vector2.zero;
+                                if (selectedDashboardTab == 3)
+                                {
+                                    showDiagnostics = true;
+                                }
+                            }
                         }
                     }
 
