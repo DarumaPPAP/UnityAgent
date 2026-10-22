@@ -692,6 +692,66 @@
       "path": "tests/unity/verify/verify-unity-api-compatibility.py",
       "sha1": "7dcd442bde6246fa59f6ce617e095b76aa6d4840",
       "size": 3258
+    },
+    {
+      "path": "tests/unity/projects/csharp-local-fix/Assets.meta",
+      "sha1": "fe402a254d34d8a72ea4140ef74a2a64717bbad0",
+      "size": 116
+    },
+    {
+      "path": "tests/unity/projects/csharp-local-fix/Assets/Calculator.cs",
+      "sha1": "9b6aafdb5503b342ba91d6686c468fd09169aac5",
+      "size": 178
+    },
+    {
+      "path": "tests/unity/projects/csharp-local-fix/Assets/Calculator.cs.meta",
+      "sha1": "9f4f27c6399048a9353ab0669c78857a16a79758",
+      "size": 187
+    },
+    {
+      "path": "tests/unity/projects/csharp-local-fix/Assets/Editor.meta",
+      "sha1": "6a06a182bd2c0df5f1faf21b5102938e581efc39",
+      "size": 116
+    },
+    {
+      "path": "tests/unity/projects/csharp-local-fix/Assets/Editor/CalculatorTests.cs",
+      "sha1": "a97625823a9c34e98755ae2ae93f5c6f33327f34",
+      "size": 381
+    },
+    {
+      "path": "tests/unity/projects/csharp-local-fix/Assets/Editor/CalculatorTests.cs.meta",
+      "sha1": "e1e3d954ee845af3e3a6dd98a0fd2554c1ff99b3",
+      "size": 187
+    },
+    {
+      "path": "tests/unity/projects/csharp-local-fix/Assets/Editor/UnityAgent.AdaptiveFixture.Tests.asmdef",
+      "sha1": "e9b2a223041cd8d0c765d2705c80fda119218fb2",
+      "size": 204
+    },
+    {
+      "path": "tests/unity/projects/csharp-local-fix/Assets/Editor/UnityAgent.AdaptiveFixture.Tests.asmdef.meta",
+      "sha1": "15f1eb8f65a1a6b9999072906213c1f9a4ce83df",
+      "size": 110
+    },
+    {
+      "path": "tests/unity/projects/csharp-local-fix/Assets/UnityAgent.AdaptiveFixture.asmdef",
+      "sha1": "8a6a7d7c81714c487e5513ede34ba8df5cde6ca9",
+      "size": 43
+    },
+    {
+      "path": "tests/unity/projects/csharp-local-fix/Assets/UnityAgent.AdaptiveFixture.asmdef.meta",
+      "sha1": "9ddaccd30000f2600375df5bd5fa04489bec3fe7",
+      "size": 110
+    },
+    {
+      "path": "tests/unity/projects/csharp-local-fix/Packages/manifest.json",
+      "sha1": "030fb4402c53b814d22d9641ed3f046a8af05cdb",
+      "size": 68
+    },
+    {
+      "path": "tests/unity/projects/csharp-local-fix/ProjectSettings/ProjectVersion.txt",
+      "sha1": "ebe1ff4e76af434fa02d69858b7cf8a4d7eb93ab",
+      "size": 29
     }
   ]
 }

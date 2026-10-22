@@ -17,6 +17,10 @@ def task_fingerprint_from_intent(intent: dict[str, Any], environment_snapshot: d
         fingerprint = {"intent": "review", "artifact": "project", "scope": "read_only",
             "failure_mode": "none", "architecture_state": "not_applicable",
             "mutation_target": "none", "evidence_state": "unknown"}
+    elif kind == 'csharp_local_fix' and all(isinstance(intent.get(key), str) and intent[key].strip() for key in (
+            'goal_or_confirmed_error', 'target_source', 'expected_behavior', 'allowed_changes', 'expected_revision')) and intent.get('editmode_tests'):
+        fingerprint = {'intent': 'fix', 'artifact': 'csharp', 'scope': 'local', 'failure_mode': 'runtime',
+            'architecture_state': 'not_applicable', 'mutation_target': 'source', 'evidence_state': 'known'}
     elif kind == "visual_capture" and set(intent) == {
             "kind", "visual_intent", "exact_scene_or_asset_scope", "reference_or_visual_definition"} and all(
             isinstance(intent[key], str) and intent[key].strip() for key in (

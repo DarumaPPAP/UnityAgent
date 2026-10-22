@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["expected_text", "replacement_text", "summary", "source_context_id", "source_context_fingerprint"],
+  "properties": {
+    "expected_text": {"type": "string", "minLength": 1, "maxLength": 1024},
+    "replacement_text": {"type": "string", "minLength": 1, "maxLength": 1024},
+    "summary": {"type": "string", "minLength": 1, "maxLength": 1000},
+    "source_context_id": {"type": "string", "minLength": 1},
+    "source_context_fingerprint": {"type": "string", "minLength": 1}
+  }
+}

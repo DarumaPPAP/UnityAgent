@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import tempfile
 import threading
+import time
+import re
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
@@ -63,6 +65,25 @@ class NativeUnityEditorProvider:
         self.editor_candidates = list(editor_candidates) if editor_candidates is not None else None
         self.temp_root = Path(temp_root or (Path(tempfile.gettempdir()) / "unityagent-native-editor"))
         self.temp_root.mkdir(parents=True, exist_ok=True)
+
+    def execute(self, request, context, arguments):
+        common = {'run_id': arguments['run_id'], 'timeout_seconds': arguments.get('timeout_seconds', 120.0),
+                  'policy_allowed': context.policy_allowed, 'cancel_event': arguments.get('cancel_event')}
+        if request['capability'] == 'compile.observe':
+            result = self.run_compile(request, **common)
+            if arguments.get('require_compilation_observation') and result.get('status') == 'passed':
+                log = Path(result['log_path']).read_text(encoding='utf-8', errors='replace')
+                if not re.search(r'CompilationPipeline|ReloadAssembly|Reloading assemblies|Finished script compilation', log, re.I):
+                    return _failure('not_observed', 'Current Unity script compilation was not observed')
+            if result.get('status') == 'passed' and arguments.get('require_compilation_observation'):
+                result['evidence'] = [*result['evidence'], 'current_compile_observation']
+            return result
+        if request['capability'] == 'project.test':
+            result = self.run_tests(request, **common, test_platform='EditMode', test_filter=arguments.get('test_filter'))
+            if result.get('status') == 'passed' and arguments.get('test_filter'):
+                result['evidence'] = [*result['evidence'], 'targeted_editmode_execution']
+            return result
+        return _failure('unsupported', 'Native C# adapter supports Compile and EditMode only')
 
     def _validate_common(
         self,
@@ -149,6 +170,11 @@ class NativeUnityEditorProvider:
         if safe_mode is True:
             return _failure("precondition_failed", "Native Editor execution is blocked while the project is in Safe Mode")
         if safe_mode == "unknown":
+            editor = self.environment_snapshot.get('unity_editor') or {}
+            if editor.get('running') is False and editor.get('binding_status') == 'not_running':
+                # 起動済みEditorがない観測にSafe Modeの真偽を補完しない。
+                # 直後のprocess再観測と今回のCompile/Test結果で新規batch起動を検証する。
+                return None
             return _failure("not_observed", "Safe Mode state is unknown")
         return None
 
@@ -237,6 +263,7 @@ class NativeUnityEditorProvider:
         timeout_seconds: float,
         policy_allowed: bool,
         test_platform: str = "EditMode",
+        test_filter: list[str] | None = None,
         approval_required: bool = False,
         approval_complete: bool = False,
         cancel_event: threading.Event | None = None,
@@ -267,7 +294,9 @@ class NativeUnityEditorProvider:
             log_path=log_path,
             test_results_path=results_path,
             test_platform=test_platform,
+            test_filter=test_filter,
         )
+        started_ns = time.time_ns()
         exit_code, log_text, failure = self._dispatch_command(
             command,
             timeout_seconds=timeout_seconds,
@@ -279,6 +308,8 @@ class NativeUnityEditorProvider:
             exit_code=int(exit_code),
             log_text=log_text,
             test_results_path=results_path,
+            expected_test_names=test_filter,
+            not_before_ns=started_ns if test_filter is not None else None,
         )
         return {
             **normalized,

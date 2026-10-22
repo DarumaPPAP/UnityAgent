@@ -25,6 +25,10 @@ def conditions_for_intent(intent: dict[str, Any], fingerprint: dict[str, str]) -
     if (kind == "project_inspection" and fingerprint["artifact"] == "project"
             and fingerprint["scope"] == "read_only" and fingerprint["mutation_target"] == "none"):
         return {"project_fact_needed"}
+    if kind == 'csharp_local_fix' and fingerprint['artifact'] == 'csharp':
+        if intent.get('verification_only'):
+            return {'bounded_csharp_gates'}
+        return {'mutation_requested', 'bounded_csharp_verification', 'bounded_csharp_gates'} if intent.get('patch_plan_id') else set()
     if (kind == "visual_capture" and fingerprint["artifact"] == "visual"
             and fingerprint["scope"] == "project_asset" and fingerprint["mutation_target"] == "none"):
         return {"visual_evidence_needed"}
@@ -52,10 +56,12 @@ def mutation_scope_for_intent(intent: dict[str, Any], fingerprint: dict[str, str
             "allowed_paths": ["Assets/UnityAgentE2E", "Assets/UnityAgentE2E.meta"],
             "prohibited_paths": ["ProjectSettings"],
         }
+    if intent.get('kind') == 'csharp_local_fix' and fingerprint.get('artifact') == 'csharp':
+        return {'allowed_paths': [intent['target_source']], 'prohibited_paths': ['ProjectSettings', 'Packages']}
     return {}
 
 
-def task_contract_projection(route_id: str, *, root: Path = ROOT) -> dict[str, Any]:
+def task_contract_projection(route_id: str, *, root: Path = ROOT, active_conditions=None) -> dict[str, Any]:
     catalog = yaml.safe_load((root / "src/unityagent/context/selection/context-catalog.yaml").read_text(encoding="utf-8"))
     selected = (catalog.get("routes") or {}).get(route_id)
     if not isinstance(selected, dict):
@@ -66,6 +72,10 @@ def task_contract_projection(route_id: str, *, root: Path = ROOT) -> dict[str, A
         raise ValueError(f"Task Contract does not match selected route: {route_id}")
     projection = {"task_contract_ref": ref, "id": route_id, "risk_level": contract["risk_level"],
                   "required_quality_gates": list(contract.get("required_quality_gates") or [])}
+    if route_id == 'csharp-local-fix' and 'bounded_csharp_gates' in (active_conditions or set()):
+        bounded = contract['bounded_typed_entry']
+        key = 'required_quality_gates' if 'bounded_csharp_verification' in active_conditions else 'verification_quality_gates'
+        projection['required_quality_gates'] = list(bounded[key])
     return projection
 
 

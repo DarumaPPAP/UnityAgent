@@ -143,9 +143,16 @@ class CapabilityResolverTests(unittest.TestCase):
         self.assertEqual(scene_result["provider_ref"], "coplay_mcp")
 
     def test_cli_absence_allows_native_editor_legal_fallback(self):
+        snapshot = self.snapshot(cli=False, myunity=False, coplay=False)
+        # Nativeは別Editorを起動するため、既存bound Editorのない状態で解決する。
+        blocked = resolve_capability(self.request('project.test'), snapshot,
+                                     context=ResolutionContext(policy_allowed=True))
+        self.assertNotEqual(blocked['status'], 'resolved')
+        snapshot['unity_editor'].update(running=False, project_bound=False,
+                                        binding_status='not_running', bound_instance_id=None)
         result = resolve_capability(
             self.request("project.test"),
-            self.snapshot(cli=False, myunity=False, coplay=False),
+            snapshot,
             context=ResolutionContext(policy_allowed=True),
         )
         self.assertEqual(result["status"], "resolved")

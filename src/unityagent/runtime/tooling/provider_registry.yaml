@@ -193,7 +193,7 @@ providers:
       compile.observe:
         priority: 80
         surfaces: [editor]
-        evidence_supported: [compile_observation]
+        evidence_supported: [compile_observation, current_compile_observation]
         environment_requirements:
           project.exists: true
           unity_editor.installed: true
@@ -201,11 +201,11 @@ providers:
       project.test:
         priority: 80
         surfaces: [editor]
-        evidence_supported: [test_execution]
+        evidence_supported: [test_execution, targeted_editmode_execution]
         environment_requirements:
           project.exists: true
           unity_editor.installed: true
-          unity_editor.safe_mode: false
+          unity_editor.running: false
           test_framework.available: true
         scope_preservation: true
       project.build:

@@ -89,6 +89,11 @@ def validate_entry_request(value: dict[str, Any], *, root: Path = ROOT) -> None:
     if value["schema_version"] == "2.0":
         if any(key in value["intent"] for key in ENTRY_AUTHORITY_KEYS):
             raise ValueError("Entry intent must not contain Orchestration or Context authority fields")
+        if value['intent']['kind'] == 'csharp_local_fix':
+            from unityagent.runtime.sandbox.workspace_guard import normalize_relative_path
+            path = value['intent']['target_source']
+            if normalize_relative_path(path) != path or not path.startswith('Assets/') or not path.endswith('.cs'):
+                raise ValueError('C# target must be one canonical source path under Assets')
     else:
         for request in value["capability_requests"]:
             validate_capability_request(dict(request), root=root)
@@ -337,7 +342,7 @@ class UnityAgentControlPlane:
                 raise ValueError(f"selected route does not support requested outcome: {required_capability}")
             for request in capability_requests:
                 validate_capability_request(request)
-            projection = task_contract_projection(route_id)
+            projection = task_contract_projection(route_id, active_conditions=conditions)
             requirements = list(dict.fromkeys(evidence for request in capability_requests
                 for evidence in request["required_evidence"]))
             capabilities = [str(request["capability"]) for request in capability_requests]
@@ -532,6 +537,18 @@ class UnityAgentControlPlane:
         results: list[dict[str, Any]] = []
         runtime_provider_arguments = {name: dict(values) for name, values in (provider_arguments or {}).items()}
         specialist_execution_context = None
+        csharp_session = None
+        csharp_additions = {}
+        csharp_error = False
+        if intent['kind'] == 'csharp_local_fix':
+            from unityagent.control_plane import csharp_fix
+            try:
+                csharp_session = csharp_fix.prepare(self, entry_request, context, handoff)
+                runtime_provider_arguments['file'] = csharp_session['file_arguments']
+            except (ValueError, PersistenceError, OSError) as exc:
+                csharp_error = True
+                csharp_additions = {'status': 'blocked', 'reason': str(exc)}
+                results.append({'status': 'blocked', 'capability': 'source.patch', 'reason': str(exc)})
         if specialist_selection["status"] == "selected":
             # The immutable manifest is the only Specialist Context source for the backend.
             specialist_execution_context = {
@@ -540,12 +557,23 @@ class UnityAgentControlPlane:
                 "context_fingerprint": view["context_fingerprint"]["value"],
                 "specialist_context": deepcopy(view["specialist_context"]),
             }
-        for index, request in enumerate(handoff["capability_requests"]):
+        for index, request in enumerate(handoff["capability_requests"] if not csharp_error else []):
+            if csharp_session is not None:
+                try:
+                    csharp_fix.before_capability(self, csharp_session, request['capability'], resolved_run_id)
+                except (ValueError, PersistenceError, OSError) as exc:
+                    results.append({'status': 'blocked', 'capability': request['capability'], 'reason': str(exc)})
+                    break
+                runtime_provider_arguments['native_unity_editor'] = {
+                    **runtime_provider_arguments.get('native_unity_editor', {}),
+                    'run_id': f'{resolved_run_id}-cap{index + 1}', 'require_compilation_observation': True,
+                    'test_filter': list(intent['editmode_tests'])}
+
             capability_step_id = f"{node_id}-{index + 1}"
             outcome = self.broker.dispatch(
                 dict(request),
                 snapshot,
-                context=context,
+                context=csharp_session['context'] if csharp_session is not None else context,
                 executors=executors,
                 provider_arguments=runtime_provider_arguments,
                 specialist_execution_context=specialist_execution_context if request["capability"] == selected_capability else None,
@@ -556,6 +584,11 @@ class UnityAgentControlPlane:
             result = deepcopy(outcome)
             resolution = outcome.get("resolution")
             provider_result = outcome.get("provider_result")
+            if (csharp_session is not None and request['capability'] == 'source.read'
+                    and isinstance(provider_result, Mapping)):
+                csharp_session['source'] = provider_result.get('content')
+                provider_result = {key: value for key, value in provider_result.items() if key != 'content'}
+                result['provider_result'] = provider_result
             if result.get("receipt_integrity") == "failed":
                 results.append(result)
                 break
@@ -583,6 +616,12 @@ class UnityAgentControlPlane:
                     fallback_from=outcome.get("fallback_from"),
                     registry=self.broker.registry,
                 )
+                if csharp_session is not None:
+                    from unityagent.runtime.guardrails.csharp_patch import project_revision as csharp_project_revision
+                    evidence['execution_binding'] = {'patch_plan_id': csharp_session['plan']['plan_id'] if csharp_session['plan'] else None,
+                        'input_project_revision': csharp_session['input_revision'],
+                        'result_project_revision': csharp_project_revision(csharp_session['project']),
+                        'context_manifest_ref': manifest_ref}
                 persisted = append_runtime_execution_evidence(self.evidence_store, evidence)
                 evidence_refs.append(str(persisted["evidence_id"]))
                 result["evidence_ref"] = persisted["evidence_id"]
@@ -600,6 +639,19 @@ class UnityAgentControlPlane:
                 node_id=capability_step_id,
                 evidence_refs=evidence_refs,
             )
+
+            if csharp_session is not None and not csharp_fix.after_capability(csharp_session, request['capability'], result):
+                result['status'] = 'blocked'
+                break
+
+        if csharp_session is not None:
+            try:
+                csharp_additions = csharp_fix.finish(self, csharp_session, handoff=handoff, manifest=manifest,
+                    manifest_ref=manifest_ref, evidence_refs=evidence_refs, results=results, model=reasoning_model,
+                    command_prefix=reasoning_command_prefix, timeout_seconds=reasoning_timeout_seconds,
+                    reasoning_effort=reasoning_effort)
+            except (ValueError, PersistenceError, OSError) as exc:
+                csharp_additions = {'status': 'blocked', 'reason': str(exc)}
 
         if reasoning_action is not None and all(item.get("status") == "completed" for item in results):
             reasoning_output = self.state_store.layout.run_root(resolved_run_id) / "runtime" / node_id
@@ -680,7 +732,7 @@ class UnityAgentControlPlane:
             outcome["evidence_ref"] = evidence_id
             results.append(outcome)
 
-        final_status = "completed" if all(item.get("status") == "completed" for item in results) else "blocked"
+        final_status = csharp_additions.get("status", "completed" if all(item.get("status") == "completed" for item in results) else "blocked")
         state_ref = self._save_execution_state(
             run_id=resolved_run_id,
             step_id=node_id,
@@ -707,6 +759,7 @@ class UnityAgentControlPlane:
             "evidence_refs": evidence_refs,
             "state_ref": state_ref,
             "workflow_state_ref": workflow_state_ref,
+            **csharp_additions,
         }
         return self._observe_strategy(result, current_path=execution_plan['path'])
 

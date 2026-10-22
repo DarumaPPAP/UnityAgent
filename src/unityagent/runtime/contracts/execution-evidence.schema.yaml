@@ -42,6 +42,17 @@ properties:
     - $ref: urn:unityagent:runtime:execution-result#/$defs/gate_outcome
   definition_fingerprint:
     $ref: urn:unityagent:persistence:definition-fingerprint
+  execution_binding:
+    type: object
+    additionalProperties: false
+    required: [patch_plan_id, input_project_revision, result_project_revision, context_manifest_ref]
+    properties:
+      patch_plan_id:
+        type: [string, 'null']
+        pattern: '^[0-9a-f]{64}$'
+      input_project_revision: {type: string, pattern: '^sha256:[0-9a-f]{64}$'}
+      result_project_revision: {type: string, pattern: '^sha256:[0-9a-f]{64}$'}
+      context_manifest_ref: {type: string, minLength: 1}
   capability:
     type: string
     minLength: 1
