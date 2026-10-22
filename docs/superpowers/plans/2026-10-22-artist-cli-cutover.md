@@ -23,7 +23,7 @@
 - [x] `tests/runtime/fixtures/artist-cutover-baseline.json`に型付き入力、Editor結果例、現行MapperのEvidence、外側失敗の分類を固定する。FixtureはSource由来の合成データと明記する。
 - [x] `test_reference_implementation.py`で非空の偽承認ID、期限境界、別Run／Projectへの流用を拒否する。
 - [x] `test_control_plane.py`でContext Receiptの欠落・異なるID・異なるFingerprintを拒否するテストを追加する。
-- [ ] 必須の既存静的・Unit・Packaging・Host契約検証を実行し、環境阻害を個別記録する。
+- [x] 必須の既存静的・Unit・Packaging・Host契約検証を実行し、環境阻害を個別記録する。全体は`82ffaa724175b5f31c2b5ab4056f3a99eb2c676d`のCIログで通過を確認。実Editorは未観測。
 
 ## 既存Unity CLIへの接続
 

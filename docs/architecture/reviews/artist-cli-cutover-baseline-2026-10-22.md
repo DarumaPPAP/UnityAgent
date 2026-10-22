@@ -78,17 +78,20 @@ Artist ProviderはDomain／Workflow Qualifierを持ち、適格性はavailable�
 | 移行Baseline・Artist・Approval境界の対象Unit | PASS | 31テスト。合成入力／Python内の検証でありEditor実証ではない |
 | Packaging | PASS | 31テスト。生成された未追跡Python Bytecodeを除去し、`PYTHONDONTWRITEBYTECODE=1`で再実行 |
 | Catalog／Registry／Unity Fixture構造 | PASS | 既存の3検証コマンド。Fixture検証はStaticのみ |
-| 全体`tools/validate_all.py` | 再検証中 | 初回Sandbox実行は既存Project LeaseのRead-onlyエラーを含み、中断。Sandbox外で同じ検証を再実行する。未確定をPASSにしない |
+| 全体`tools/validate_all.py` | PASS（CI） | `82ffaa724175b5f31c2b5ab4056f3a99eb2c676d`の[CIログ](https://github.com/DarumaPPAP/UnityAgent/actions/runs/39798719602/job/119892980586)で全Validatorと全Suiteの通過を確認。Runtime 623テスト、ReferenceImplementation 42テストには既存の条件付きSkip 1件がある |
 | Control PlaneのReceipt回帰 | PASS | Sandbox外で欠落／不一致IDとFingerprintの4入力を検証。Windows上の実行は未観測 |
-| Environment／Installer／Unity CLI対象Unit | 83 PASS / 1 FAIL | 84テスト中、既存ProfilerのBroker実行テストが`blocked`。Host共有Leaseの環境阻害と整合するがPASSへ読み替えない |
+| Environment／Installer／Unity CLI対象Unit | PASS（CI） | 初回Sandboxの84テストは83 PASS／1 FAIL。Environment／Installerの30テストはローカルで再実行し通過。Profilerを含む全RuntimeはCIの623テストで通過 |
 | 旧Host Compile | PASS | 一時導入した.NET 8.0.426でReleaseビルド成功、警告／エラー0。Sandbox内の`NuGet-Migrations` Mutexエラーを避け、Sandbox外で検証 |
-| 旧Host契約 | 検証中 | 同じ.NET環境で既存のHost契約テストを実行する。Editor実証とは別 |
+| 旧Host契約 | PASS | ローカルとCIで既存11テストが通過。Editor実証とは別 |
+| Windows／CI契約 | PASS（範囲限定） | ローカルの55テスト中53 PASS／既存Skip 2。CIのWindows Project Leaseも通過。Artist Receiptの実Windows実行と実Editorは未観測 |
 | Unity Compile／Editor Read-only／Mutation E2E | BLOCKED_NOT_RUN | 実Unity Editorと接続可能なUnity CLIがない |
 | 旧Hostなしの実Editor実行 | BLOCKED_NOT_RUN | 新経路の切替前、かつ実Editorなし |
 | Visual／Performance／Player／実機 | not_observed | 画像、評価者、比較可能な実測、実機証拠がない |
 | P9 Release／Production G1 | BLOCKED_NOT_RUN | 必要な実Editorと同一レビュー済みSHAの成果物照合が未完了 |
 
 新旧の処理時間、実プロセス起動数、Token消費、失敗率は未計測であり改善を主張しない。Source上の起動構造と実測回数を混同しない。現在の作業SHAはレビュー済みSHAではなく、今後の実検証にはレビュー済みSHAとArtifact Provenanceを固定する必要がある。
+
+初回Sandbox実行ではHost共有Leaseへの書込制限があり、.NETにもOS Mutex制限があった。Productionの安全境界を弱めず、対象テストとHostビルド／契約はSandbox外で検証した。ローカル全体再実行は同じコードSHAのCI成功を確認してから中断した。中断したローカル全体をPASSとは記録せず、全体成功の根拠は上記CIログとする。最終の文書更新Commitはこのコード検証SHAと区別する。
 
 独立レビューで、合成結果の共通Revision／Undo、承認・Diff・診断Evidenceの不足、およびFingerprintを一時ディレクトリ名へ含めるWindows互換性問題を修正した。Fixtureの不一致を検出する追加テストの失敗を確認してからデータを修正し、対象31テストを再実行した。
 
