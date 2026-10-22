@@ -14,9 +14,9 @@ Context ExplorerはRelationを推測せず、Route、Policy、Runtime State、Pr
 ## Build / Validate
 
 ```powershell
-python .\tools\ContextExplorer\build.py --check
-python .\tools\ContextExplorer\validate.py
-python .\tools\ContextExplorer\build.py
+python .\tools\context_explorer\build.py --check
+python .\tools\context_explorer\validate.py
+python .\tools\context_explorer\build.py
 ```
 
 Default Artifact: `Artifacts/ContextExplorer/context-map.json`

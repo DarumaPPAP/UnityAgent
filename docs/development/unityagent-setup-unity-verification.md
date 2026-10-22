@@ -5,15 +5,14 @@
 
 ## 1. UnityAgent UPMを現在のソースへ更新する
 
-この変更はGitHub mainへ統合された後に、利用中のUnity ProjectのUPM Packageを更新して初めて表示されます。
-Unity Editorの画面が `v0.0.7-beta` のままの場合、Projectが旧Packageを参照しています。
+この文書はDevelopment側のSetup機能を説明します。利用中のUnity Projectが対象機能を含むUPM Revisionを参照していることを確認してください。同じVersion文字列でも公開Releaseとmainの内容は一致するとは限りません。
 Control Planeの更新だけではUnity Editor Package自体は更新されません。
 
 開発検証では、Unity Package ManagerのGit Package参照を、
 `https://github.com/DarumaPPAP/UnityAgent.git?path=/Packages/com.darumappap.unity-agent#<reviewed-commit-sha>`
 に合わせます。既存Projectの `Packages/manifest.json` 内の依存関係とLockを確認したうえで作業し、
 旧Packageを強制削除したり、承認なくmain追従へ切り替えたりしないでください。
-既存のRelease tag `v0.0.8-beta` は今回の開発変更を含むとは限りません。タグは改変しません。
+公開済みのRelease tag `v0.0.8-beta` には、その後mainへ追加されたSetup機能は含まれません。タグは改変しません。
 `<reviewed-commit-sha>` は必ず検証対象のGitHub mainフルコミットSHAに置き換えてください。
 
 ## 2. Control Planeを診断・更新する
@@ -38,7 +37,7 @@ Doctorはoptional SubAgentのInstalled/Bind/Compatibilityを別途評価しま�
 ## 3. P9 Unity検証の実行
 
 UnitySubAgentHubをClone・取得する必要はありません。UnityAgent内の
-`ci/` Fixtureと同一の検証SourceをUPMの
+`tests/unity/` のFixture・Runnerと同一の検証SourceをUPMの
 `Editor/Verification~/`に同梱しています。UPMの検証用ManifestはGit blob IDと
 サイズの検査で改変・欠損を拒否します（Git SHA-1は暗号学的な真正性保証ではなく、
 Package自体の信頼境界はレビュー済みUnityAgent UPM Revisionです）。

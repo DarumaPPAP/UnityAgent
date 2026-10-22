@@ -35,7 +35,7 @@ Context Mapは `src/unityagent/context/packs/*.yaml` のMetadataだけを読み�
 
 ## Context Metadata Schema
 
-生成物は [`../Tools/ContextExplorer/schema/context-map.schema.json`](../tools/context_explorer/schema/context-map.schema.json) に従います。
+生成物は [`tools/context_explorer/schema/context-map.schema.json`](../tools/context_explorer/schema/context-map.schema.json) に従います。
 
 各Context Nodeは最低限次のProvenanceを保持します。
 
@@ -149,24 +149,28 @@ BundleはStatic / Offline / Read-onlyです。
 ## Build / Validation
 
 ```powershell
-python .\tools\ContextExplorer\build.py --check
-python .\tools\ContextExplorer\validate.py
+python .\tools\context_explorer\build.py --check
+python .\tools\context_explorer\validate.py
 python .\tools\validate_all.py
 ```
 
 Bundle生成:
 
 ```powershell
-python .\tools\ContextExplorer\build.py --bundle .\Artifacts\ContextExplorer\viewer
+python .\tools\context_explorer\build.py --bundle .\Artifacts\ContextExplorer\viewer
 ```
 
-## #32 Migration Result
+<a id="32-migration-result"></a>
+
+## 旧表示基盤からの移行記録
 
 旧`tools/GraphObservatory/`にあったgeneric graph builder、generic projection runner、graph schema、expansion gateは削除しました。
 
 Context Explorerは `src/unityagent/context/packs` -> `ContextMap` -> Static Viewer の一方向Projectionだけを所有します。Context / Harness / LoopのCanonical Authorityを奪いません。
 
-## #131 Final Visualization Result
+<a id="131-final-visualization-result"></a>
+
+## 表示語彙とRelationの境界
 
 Graph Visualizationの残存語彙をContext Mapへ統一し、Viewer上のRelation表示をexplicit one-hop projectionとして固定します。
 
