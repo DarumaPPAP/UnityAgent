@@ -44,6 +44,14 @@ def read_dag_record(persistence_root, ref, *, run_id):
         raise ValueError('DAG definition differs')
     if state['project_revisions'] != record['project_revisions'] or state['observed_facts'] != record['observed_facts'] or state['sources'] != record['sources']:
         raise ValueError('DAG sources or Project revision differs')
+    if record['schema_version'] == '2.0':
+        from unityagent.persistence.state.plan import read_plan
+        plan = read_plan(layout, record['plan_ref'], run_id)
+        if (state.get('plan_ref') != record['plan_ref'] or plan['tasks'] != contract['tasks']
+                or plan['definition_fingerprint'] != record['definition_fingerprint']):
+            raise ValueError('Dynamic DAG Plan binding differs')
+    elif 'plan_ref' in state:
+        raise ValueError('Dynamic DAG cannot use the legacy reader')
     tasks = {task['id']:task for task in contract['tasks']}
     if set(tasks) != set(record['inputs']['tasks']):
         raise ValueError('DAG Task contract differs')

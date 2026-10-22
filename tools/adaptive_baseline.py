@@ -246,6 +246,27 @@ def build_adaptive_baseline(persistence_root: Path, run_ids: list[str], *, sourc
             dag_decisions.append({'run_id':run,'ref':None,'digest':None,'status':'invalid',
                 'recommendation':'not_evaluated','reason_codes':[diagnostic['code']],
                 'remaining_task_count':None,'ready_task_count':None})
+        dynamic_diagnostics = []
+        if state.get('schema_version') == '2.0' and 'tasks' in state:
+            from types import SimpleNamespace
+            from unityagent.persistence.state.state_store import StateStore
+            from unityagent.persistence.state.plan import read_active_plan, read_plan
+            from unityagent.control_plane.plan_execution import restore_plan
+            reader = SimpleNamespace(state_store=StateStore(layout.root), evidence_store=EvidenceStore(layout.root))
+            active = None
+            try:
+                active = read_active_plan(reader.state_store, state)
+                initial_path = layout.snapshot(run, 'plan', sha256_json(active))
+                initial = active
+                while initial['previous_digest']:
+                    initial_path = layout.snapshot(run, 'plan', initial['previous_digest'])
+                    initial = read_plan(layout, relative_ref(layout.root, initial_path), run)
+                restore_plan(reader, state, initial['tasks'], initial['root_contract'])
+            except (OSError, PersistenceError, ValueError, KeyError, TypeError, ValidationError):
+                dynamic_diagnostics.append({'code': 'invalid_dynamic_plan_state'})
+            if active:
+                for task in active['tasks']:
+                    state['tasks'].setdefault(task['id'], {'status': 'unavailable', 'gates': {}, 'handoff_history': []})
         revision = state.get('source_revision', source_revision)
         targets = []
         if 'tasks' in state:
@@ -257,7 +278,7 @@ def build_adaptive_baseline(persistence_root: Path, run_ids: list[str], *, sourc
                         refs=task.get('strategy_observation_refs', []), status=task['status'],
                         definition=task.get('result', {}).get('handoff', {}).get('definition_fingerprint', state.get('definition_fingerprint')),
                         gates=task.get('gates', {}) if final else {},
-                        diagnostics=task.get('strategy_observation_diagnostics', []) + (task.get('result', {}).get('strategy_observation_diagnostics', []) if final else []),
+                        diagnostics=dynamic_diagnostics + task.get('strategy_observation_diagnostics', []) + (task.get('result', {}).get('strategy_observation_diagnostics', []) if final else []),
                         latency_ms=task.get('latency_ms') if final else None, expected_attempts=set(range(len(history)))))
         else:
             targets.append(dict(owner=run, child=run, task_id=None, attempt=None, refs=state.get('strategy_observation_refs', []),
@@ -265,6 +286,8 @@ def build_adaptive_baseline(persistence_root: Path, run_ids: list[str], *, sourc
                 diagnostics=state.get('strategy_observation_diagnostics', []), latency_ms=None, expected_attempts=set()))
         for target in targets:
             sample, definition = _sample(layout, **target, state_record=state_record, schema=schema)
+            if dynamic_diagnostics:
+                sample['quality'] = 'not_evaluated'
             key = sha256_json({'source_revision':revision, 'definition_fingerprint':definition})
             group = groups.setdefault(key, {'source_revision': revision, 'definition_fingerprint': definition, 'samples': []})
             group['samples'].append(sample)

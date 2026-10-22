@@ -290,6 +290,11 @@ def read_dag_decision(persistence_root, ref, *, run_id):
     from unityagent.orchestration.qa.task_acceptance import assess_task
     from unityagent.orchestration.graph.resource_planning import plan_task_batches
     order = [name for batch in plan_task_batches(contract['tasks'])['batches'] for name in batch['task_ids']]
+    if record['schema_version'] == '2.0':
+        prefix = state['execution_order']
+        if len(prefix) != len(set(prefix)) or set(prefix) - set(order) or boundary['task_id'] in prefix:
+            raise ValueError('Dynamic execution prefix differs')
+        order = prefix + [boundary['task_id']] + [name for name in order if name not in prefix and name != boundary['task_id']]
     boundary_index = order.index(boundary['task_id'])
     for task in contract['tasks']:
         name = task['id']

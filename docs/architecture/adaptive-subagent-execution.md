@@ -14,7 +14,7 @@ UnityAgentが唯一のControl Planeです。同居SubAgentの正本は `subagent
 
 Complexは説明上の呼称に限ります。既存execution profile、Context budgetの `tight / standard / wide` とは別の概念です。
 
-`plan_task_batches` はDAGと競合を計画します。`execute_tasks` は依存と固定Acceptanceを持つTaskを**直列**で既存executeへ接続します。完了TaskのResumeは再送せず、不確定副作用は照合を要します。計画のparallel判定は並列実行の許可や実測速度向上を意味しません。動的Task Plan更新・実並列化・Worktree分割は実装していません。
+`plan_task_batches` はDAGと競合を計画します。`execute_tasks` は依存と固定Acceptanceを持つTaskを**直列**で既存executeへ接続します。完了TaskのResumeは再送せず、不確定副作用は照合を要します。計画のparallel判定は並列実行の許可や実測速度向上を意味しません。動的Task Plan更新は下記の明示opt-inで利用できます。実並列化・Worktree分割は実装していません。
 
 ## 途中戦略の観測
 
@@ -76,6 +76,35 @@ Control Planeは既存のRoute・CapabilityRequest・Context・Handoffを一度�
 opt-in時は従来のTask開始時Project走査を、`dispatching` 保存後・Provider呼出し前へ移します。準備や保存中に変わったAssets／Packages／ProjectSettingsも拒否し、不確定なdispatchをResumeで再送しません。修復なしの通常実行では全走査回数を増やしません。固定修復Attemptにも送信直前の走査を行うため、修復ありの実行ではそのAttempt分の検証が加わります。
 
 専門処理の `world.plan` は出力Schema・意味契約・Context binding・変更観測を通ったArtifactだけを `world_plan` のEvidenceとして正規化します。読取時も同じ子Run内のArtifact存在・digestを検証します。このEvidenceだけでEditor／Player／実機／VisualのGateは通りません。
+
+## Root契約を保持する動的直列Plan
+
+`execute_tasks(..., root_contract=root, plan_proposer=propose)` は `TaskState.schema_version: 2.0` を作成します。`root_contract` を省略した固定DAGの形式・既定動作は維持します。`adaptive_strategy_enabled=True` と併用でき、同じ親Runで現在PlanのTaskを既存executeへ直列に渡します。Planの有効／無効、最初のTask契約、Root、DefinitionFingerprintをResumeで変更できません。
+
+Rootは `goal`、最終Gateの対象 `project_root`、許可Projectごとの `projects: {path: {read_set, write_set}}`、`required_gates`、`approval_conditions: [existing_policy]` を持ちます。必要なら `allowed_entry_kinds` でTyped Intentを限定します。現在のEntry準備はProject全体のFactを読むため、各Taskの `read_set` と対応するRootのread Scopeには `.` の明示が必要です。限定読取を保証できると推測して狭いScopeを許可しません。Taskの変更Scopeは実際の準備済みHandoffにも照合し、既存ApprovalとToolBrokerを維持します。未知の承認条件は受理しません。
+
+`propose` はTaskの全AttemptとAcceptanceが確定した境界だけで呼びます。引数は現在の `plan`、`plan_digest`、`completed_task_id`、Project revision、確定した子Runの `evidence_refs` です。更新が不要ならNoneを返します。更新時は次の契約を返します。
+
+```python
+{
+    'base_digest': boundary['plan_digest'],
+    'tasks': replacement_tasks,
+    'reason': 'additional_inspection',
+    'evidence_refs': boundary['evidence_refs'],
+}
+```
+
+`replacement_tasks` は継続する実行済みTaskと次に実行する未実行Taskの全体です。未実行Taskの追加、取消、分割、置換、依存調整を検証してから実行側が消費します。完了・実行中・停止済みTaskの変更、取消IDの再使用、修復Attemptと衝突するTask ID、cycle、未知依存、Root Gateの弱化、Scope拡張、古いbaseを拒否します。新TaskのRuntime引数は呼出し側の `task_parameters` に必要で、既存承認を自動複製しません。提案Callbackのためにモデル・Provider・未来TaskのContextを追加実行しません。
+
+親Runの予算は受理更新2回、全revisionを通じてTask ID最大32件、提案4回です。Task修復予算とは別に保存し、拒否も提案予算を消費します。上限後は提案Callbackを呼びません。Rootの `required_gates` は各Taskの最低Gateとしても保持します。
+
+Plan Schemaは `src/unityagent/orchestration/contracts/plan.schema.yaml`、純粋検証は `orchestration/graph/plan.py`、snapshotとactive切替は `persistence/state/plan.py` が所有します。検証snapshotを保存しただけではactiveになりません。active切替は既存親Run lock内でbaseを再照合し、Task集合・契約参照・active参照を一度のatomic TaskState保存で切り替えます。過去Planはprevious digestとjournalに保持します。Task確定・提案拒否にも別のappend-only journalを持ち、本文とcurrent参照の同時切詰め、予算巻戻し、切替途中の失敗を検出します。保存失敗・提案中断・不確定AttemptをResumeで再送しません。
+
+Task結果は実行時Plan、Task定義digest、入力／結果Project revisionへ結び付け、歴史的AcceptanceとEvidenceを保持します。最終Gate直前に実Projectを再走査し、最終Root Projectの同一revisionに対するGateだけを採用します。古い結果は `evidence_validity: stale` とし、現在の最終PASSへ転用しません。検証が必要なら別IDの検証Taskを現在Planへ追加します。
+
+動的DAGの境界は `dag-decision.schema_version: 2.0` とPlan参照を持ち、固定の辞書順ではなく実際の確定済み実行prefixを検証します。既存の1.0 readerは維持します。ResumeとBaselineは全Plan chain、提案の再検証、Task確定receipt、実行済み集合、Evidence、現在契約を照合します。不完全な動的記録はBaselineの品質成功に数えず、有効Planに存在する欠落Taskを分母から落としません。
+
+この入口は既存のinspection／planning等を使うHost契約経路です。限定C#修正のTyped Intent、実Unity Compile／EditMode E2E、実worker並列化、統合後Gate、Production性能採用判定は別の検証対象です。
 
 ## 保存済みRunのBaseline集計
 
