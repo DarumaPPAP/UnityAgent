@@ -415,18 +415,19 @@ class ControlPlaneTests(unittest.TestCase):
 
     def test_specialist_receipt_missing_or_mismatched_fails_closed(self) -> None:
         self.make_artist_available()
-        for forged in (None, "ctx-forged"):
-            with self.subTest(forged=forged):
+        for case_index, (field, forged) in enumerate((("received_context_id", None), ("received_context_id", "ctx-forged"),
+                                                    ("received_context_fingerprint", None), ("received_context_fingerprint", "sha256:forged"))):
+            with self.subTest(field=field, forged=forged):
                 calls = []
                 def artist(request, context, arguments):
                     calls.append(arguments)
                     result = self.artist_receipt_executor(request, context, arguments)
                     if forged is None:
-                        del result["received_context_id"]
+                        del result[field]
                     else:
-                        result["received_context_id"] = forged
+                        result[field] = forged
                     return result
-                plane = UnityAgentControlPlane(self.root / f"receipt-{forged}")
+                plane = UnityAgentControlPlane(self.root / f"receipt-{case_index}")
                 result = plane.execute(self.capture_request(), environment_snapshot=self.snapshot,
                     context=ResolutionContext(policy_allowed=True), executors={
                         "unity_artist_cli": artist,

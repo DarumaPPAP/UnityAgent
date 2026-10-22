@@ -172,6 +172,34 @@ class ReferenceContractTests(unittest.TestCase):
         with self.assertRaises(ContractValidationError):
             SurfaceGrantProjector().derive(task=task, approval=approval, subagent_instance_id="artist-test", requested_capabilities=["installer.install"])
 
+    def test_nonempty_forged_approval_id_is_not_a_trusted_decision(self):
+        task, approval, _, _ = contract_fixture()
+        resolver = ApprovalDecisionResolver()
+        resolver.register(approval)
+        with self.assertRaisesRegex(ContractValidationError, "not found in trusted storage"):
+            resolver.resolve("nonempty-forged-token", task=task)
+
+    def test_approval_expires_at_the_exact_deadline(self):
+        task, approval, _, _ = contract_fixture()
+        resolver = ApprovalDecisionResolver()
+        resolver.register(approval)
+        deadline = datetime.fromisoformat(approval.expires_at)
+        self.assertEqual(resolver.resolve(approval.approval_decision_id, task=task, now=deadline - timedelta(microseconds=1)), approval)
+        for instant in (deadline, deadline + timedelta(microseconds=1)):
+            with self.subTest(instant=instant), self.assertRaisesRegex(ContractValidationError, "expired"):
+                resolver.resolve(approval.approval_decision_id, task=task, now=instant)
+
+    def test_approval_cannot_be_reused_for_another_run_or_project(self):
+        task, approval, _, _ = contract_fixture()
+        resolver = ApprovalDecisionResolver()
+        resolver.register(approval)
+        for run_id, project in (("other-run", task.project), (task.run_id, {"root": str(ROOT / "other-project"), "name": "other-project"})):
+            other_task = TaskContractIssuer().issue(task_id=task.task_id, run_id=run_id,
+                project=project, project_fingerprint=sha256_jcs(project), budgets=budgets(),
+                issued_at=task.issued_at)
+            with self.subTest(run=run_id, project=project), self.assertRaisesRegex(ContractValidationError, "bind|binding"):
+                resolver.resolve(approval.approval_decision_id, task=other_task)
+
 
 class MutationRuntimeTests(unittest.TestCase):
     def test_dispatch_re_resolves_revoked_approval_at_runtime_boundary(self):
