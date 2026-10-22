@@ -165,7 +165,7 @@ class DocumentationTests(unittest.TestCase):
         revision = "[Commit](https://github.com/DarumaPPAP/UnityAgent/commit/0123456789012345678901234567890123456789)"
         def matrix(ids):
             rows = "".join(
-                f"| \`{cap}\` | 条件 | 実装済み | 未観測 | 制限 | [定義](../../source.yaml) | {revision} |\n"
+                f"| `{cap}` | 条件 | 実装済み | 未観測 | 制限 | [定義](../../source.yaml) | {revision} |\n"
                 for cap in ids
             )
             self.write("source.yaml", "kind: example")
