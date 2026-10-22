@@ -67,8 +67,14 @@ namespace DarumaPPAP.UnityAgent.Editor
         [MenuItem("UnityAgent/Setup")]
         private static void Open()
         {
-            var window = GetWindow<SetupWindow>("UnityAgent Setup");
+            var window = GetWindow<SetupWindow>("UnityAgent");
             window.minSize = new Vector2(700f, 540f);
+        }
+
+        [MenuItem("UnityAgent/Dashboard")]
+        private static void OpenDashboard()
+        {
+            Open();
         }
 
         private void OnEnable()
@@ -261,7 +267,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                     var package = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(SetupWindow).Assembly);
                     EditorGUILayout.LabelField("UnityAgent UPM",
                         package == null ? "VERSION UNKNOWN" : package.version, fieldLabelStyle);
-                    DrawHint("Editorが起動中であることと、ToolchainのE2E検証は別です。", MutedColor);
+                    EditorGUILayout.HelpBox("Editorが起動中であることと、ToolchainのE2E検証は別です。", MessageType.Info);
                     using (new EditorGUI.DisabledScope(string.IsNullOrWhiteSpace(controlPlanePath)))
                     {
                         if (GUILayout.Button("Unity Toolchain Doctor", secondaryButtonStyle))
@@ -296,7 +302,7 @@ namespace DarumaPPAP.UnityAgent.Editor
                     }
                     break;
                 case 3:
-                    DrawHint("MCPの導入・通信・Blenderセッションは個別に確認が必要です。", WarningColor);
+                    EditorGUILayout.HelpBox("MCPの導入・通信・Blenderセッションは個別に確認が必要です。", MessageType.Warning);
                     using (new EditorGUI.DisabledScope(string.IsNullOrWhiteSpace(controlPlanePath)))
                     {
                         if (GUILayout.Button("Blender MCP Doctor（読み取り診断）", secondaryButtonStyle))
@@ -306,10 +312,10 @@ namespace DarumaPPAP.UnityAgent.Editor
                     }
                     break;
                 case 4:
-                    DrawHint("独立したUnity MCP Serverの接続判定は現行UIに未統合です。Unity CLIとは別の経路です。", MutedColor);
+                    EditorGUILayout.HelpBox("独立したUnity MCP Serverの接続判定は現行UIに未統合です。Unity CLIとは別の経路です。", MessageType.Info);
                     break;
                 case 5:
-                    DrawHint("Unity CLI Loopは別ツールです。Doctorの結果を確認してください。", MutedColor);
+                    EditorGUILayout.HelpBox("Unity CLI Loopは別ツールです。Doctorの結果を確認してください。", MessageType.Info);
                     using (new EditorGUI.DisabledScope(string.IsNullOrWhiteSpace(controlPlanePath)))
                     {
                         if (GUILayout.Button("Unity CLI Loop Doctor", secondaryButtonStyle))
