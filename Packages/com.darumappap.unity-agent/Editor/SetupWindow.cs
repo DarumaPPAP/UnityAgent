@@ -37,6 +37,18 @@ namespace DarumaPPAP.UnityAgent.Editor
         private Vector2 windowScroll;
         private Vector2 diagnosticsScroll;
         private Texture2D setupLogoTexture;
+        private int selectedDashboardTab;
+        private int expandedConnection = 3;
+
+        private static readonly string[] DASHBOARD_TABS =
+        {
+            "接続状況",
+            "セットアップ",
+            "ツール設定",
+            "診断・ログ",
+        };
+        private static readonly string[] BLENDER_MCP_PRODUCTS = { "blender_mcp" };
+        private static readonly string[] UNITY_CLI_LOOP_PRODUCTS = { "unity_cli_loop" };
 
         private GUIStyle titleStyle;
         private GUIStyle subtitleStyle;
@@ -50,12 +62,19 @@ namespace DarumaPPAP.UnityAgent.Editor
         private GUIStyle heroVersionStyle;
         private GUIStyle cardStyle;
         private GUIStyle fieldLabelStyle;
+        private GUIStyle connectionRowStyle;
 
         [MenuItem("UnityAgent/Setup")]
         private static void Open()
         {
-            var window = GetWindow<SetupWindow>("UnityAgent Setup");
+            var window = GetWindow<SetupWindow>("UnityAgent");
             window.minSize = new Vector2(700f, 540f);
+        }
+
+        [MenuItem("UnityAgent/Dashboard")]
+        private static void OpenDashboard()
+        {
+            Open();
         }
 
         private void OnEnable()
@@ -116,34 +135,221 @@ namespace DarumaPPAP.UnityAgent.Editor
                 {
                     DrawHeader();
                     EditorGUILayout.Space(12);
-                    DrawOverview();
-                    EditorGUILayout.Space(10);
-                    DrawControlPlaneCard();
-                    EditorGUILayout.Space(10);
-                    DrawCodexCard();
-                    EditorGUILayout.Space(10);
-                    DrawIntegrationCard();
-                    EditorGUILayout.Space(10);
-                    DrawEnvironmentCard();
-                    EditorGUILayout.Space(10);
-                    SetupVerificationPanel.Draw();
-                    EditorGUILayout.Space(10);
-                    if (GUILayout.Button("6. Play Mode確認（スクリーンショット / 録画）", GUILayout.Height(30f)))
+
+                    using (new EditorGUILayout.HorizontalScope())
                     {
-                        PlayEvidenceWindow.Open();
+                        for (var tabIndex = 0; tabIndex < DASHBOARD_TABS.Length; tabIndex++)
+                        {
+                            var previousBackground = GUI.backgroundColor;
+                            if (selectedDashboardTab == tabIndex)
+                            {
+                                GUI.backgroundColor = EditorGUIUtility.isProSkin
+                                    ? new Color(0.78f, 0.46f, 0.50f)
+                                    : new Color(0.94f, 0.70f, 0.72f);
+                            }
+
+                            var pressed = GUILayout.Toggle(selectedDashboardTab == tabIndex,
+                                DASHBOARD_TABS[tabIndex], GUI.skin.button,
+                                GUILayout.Height(32f), GUILayout.ExpandWidth(true));
+                            GUI.backgroundColor = previousBackground;
+                            if (pressed && selectedDashboardTab != tabIndex)
+                            {
+                                selectedDashboardTab = tabIndex;
+                                windowScroll = Vector2.zero;
+                                if (selectedDashboardTab == 3)
+                                {
+                                    showDiagnostics = true;
+                                }
+                            }
+                        }
                     }
-                    EditorGUILayout.Space(10);
-                    DrawStatusCard();
-                    EditorGUILayout.Space(10);
-                    DrawDiagnostics();
-                    EditorGUILayout.Space(8);
-                    DrawAdvanced();
+
+                    EditorGUILayout.Space(12);
+                    switch (selectedDashboardTab)
+                    {
+                        case 0:
+                            DrawConnectionOverview();
+                            break;
+                        case 1:
+                            DrawOverview();
+                            EditorGUILayout.Space(10);
+                            DrawControlPlaneCard();
+                            EditorGUILayout.Space(10);
+                            DrawCodexCard();
+                            EditorGUILayout.Space(10);
+                            DrawIntegrationCard();
+                            break;
+                        case 2:
+                            DrawEnvironmentCard();
+                            EditorGUILayout.Space(10);
+                            SetupVerificationPanel.Draw();
+                            EditorGUILayout.Space(10);
+                            if (GUILayout.Button("Play Mode確認（スクリーンショット / 録画）", GUILayout.Height(30f)))
+                            {
+                                PlayEvidenceWindow.Open();
+                            }
+                            EditorGUILayout.Space(10);
+                            DrawAdvanced();
+                            break;
+                        case 3:
+                            DrawStatusCard();
+                            EditorGUILayout.Space(10);
+                            DrawDiagnostics();
+                            break;
+                    }
+
                     EditorGUILayout.Space(16);
                 }
                 GUILayout.Space(8f);
             }
 
             EditorGUILayout.EndScrollView();
+        }
+
+        private void DrawConnectionOverview()
+        {
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                GUILayout.Label("接続状況", cardTitleStyle);
+                GUILayout.FlexibleSpace();
+                if (GUILayout.Button("再検出", secondaryButtonStyle, GUILayout.Width(84f)))
+                {
+                    RefreshAllPaths();
+                    UpdateIdleStatus();
+                }
+            }
+
+            GUILayout.Label("UnityAgentと外部ツールの検出状態を確認します。接続・操作の可否はDoctorで別途検証します。", cardSubtitleStyle);
+            EditorGUILayout.Space(8f);
+
+            var controlPlaneState = ControlPlaneVersionState();
+            DrawConnectionRow(0, "Unity Editor", "現在のEditorセッション",
+                "起動中", ReadyColor);
+            DrawConnectionRow(1, "Control Plane", "UnityAgentの実行基盤",
+                controlPlaneState == "READY" ? "Version一致" : controlPlaneState,
+                controlPlaneState == "READY" ? ReadyColor : WarningColor);
+            DrawConnectionRow(2, "Codex CLI", "Codex Integration",
+                string.IsNullOrWhiteSpace(codexCliPath) ? "未検出" : "検出済み",
+                string.IsNullOrWhiteSpace(codexCliPath) ? WarningColor : ReadyColor);
+            DrawConnectionRow(3, "Blender MCP", "外部MCP Provider",
+                "未検証", WarningColor);
+            DrawConnectionRow(4, "Unity MCP", "独立MCP Server（オプション）",
+                "未統合", MutedColor);
+            DrawConnectionRow(5, "Unity CLI Loop", "外部Editor Tool（オプション）",
+                "未検証", MutedColor);
+
+            EditorGUILayout.Space(7f);
+            EditorGUILayout.HelpBox(
+                "検出済みは接続成功を意味しません。Blender MCPのセッション識別や実操作は、適切な承認とEvidenceを要する別の検証です。",
+                MessageType.Info);
+        }
+
+        private void DrawConnectionRow(int index, string title, string description, string status, Color color)
+        {
+            var expanded = expandedConnection == index;
+            using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+            {
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    var arrow = expanded ? "▼  " : "▶  ";
+                    var content = arrow + title + "\n" + "      " + description;
+                    if (GUILayout.Button(content, connectionRowStyle,
+                        GUILayout.MinHeight(42f), GUILayout.ExpandWidth(true)))
+                    {
+                        expandedConnection = expanded ? -1 : index;
+                    }
+
+                    var previousColor = GUI.contentColor;
+                    GUI.contentColor = color;
+                    GUILayout.Label("●  " + status, badgeStyle,
+                        GUILayout.Width(145f), GUILayout.Height(42f));
+                    GUI.contentColor = previousColor;
+                }
+
+                if (expanded)
+                {
+                    EditorGUILayout.Space(3f);
+                    DrawConnectionDetails(index);
+                    EditorGUILayout.Space(3f);
+                }
+            }
+        }
+
+        private void DrawConnectionDetails(int index)
+        {
+            switch (index)
+            {
+                case 0:
+                    EditorGUILayout.LabelField("Unity Editor", Application.unityVersion, fieldLabelStyle);
+                    var package = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(SetupWindow).Assembly);
+                    EditorGUILayout.LabelField("UnityAgent UPM",
+                        package == null ? "VERSION UNKNOWN" : package.version, fieldLabelStyle);
+                    EditorGUILayout.HelpBox("Editorが起動中であることと、ToolchainのE2E検証は別です。", MessageType.Info);
+                    using (new EditorGUI.DisabledScope(string.IsNullOrWhiteSpace(controlPlanePath)))
+                    {
+                        if (GUILayout.Button("Unity Toolchain Doctor", secondaryButtonStyle))
+                        {
+                            RunConnectionDoctor(ALL_PRODUCTS);
+                        }
+                    }
+                    break;
+                case 1:
+                    EditorGUILayout.LabelField("Version", ControlPlaneVersionState(), fieldLabelStyle);
+                    DrawResolvedPath(controlPlanePath, controlPlanePathSource);
+                    if (GUILayout.Button("Control Planeの導入・更新設定", secondaryButtonStyle))
+                    {
+                        selectedDashboardTab = 1;
+                    }
+                    break;
+                case 2:
+                    DrawResolvedPath(codexCliPath, codexPathSource);
+                    using (new EditorGUILayout.HorizontalScope())
+                    {
+                        using (new EditorGUI.DisabledScope(string.IsNullOrWhiteSpace(controlPlanePath)))
+                        {
+                            if (GUILayout.Button("Codex Integration Doctor", secondaryButtonStyle))
+                            {
+                                RunConnectionDoctor(CODEX_INTEGRATION_PRODUCTS);
+                            }
+                        }
+                        if (GUILayout.Button("Codexのセットアップ", secondaryButtonStyle))
+                        {
+                            selectedDashboardTab = 1;
+                        }
+                    }
+                    break;
+                case 3:
+                    EditorGUILayout.HelpBox("MCPの導入・通信・Blenderセッションは個別に確認が必要です。", MessageType.Warning);
+                    using (new EditorGUI.DisabledScope(string.IsNullOrWhiteSpace(controlPlanePath)))
+                    {
+                        if (GUILayout.Button("Blender MCP Doctor（読み取り診断）", secondaryButtonStyle))
+                        {
+                            RunConnectionDoctor(BLENDER_MCP_PRODUCTS);
+                        }
+                    }
+                    break;
+                case 4:
+                    EditorGUILayout.HelpBox("独立したUnity MCP Serverの接続判定は現行UIに未統合です。Unity CLIとは別の経路です。", MessageType.Info);
+                    break;
+                case 5:
+                    EditorGUILayout.HelpBox("Unity CLI Loopは別ツールです。Doctorの結果を確認してください。", MessageType.Info);
+                    using (new EditorGUI.DisabledScope(string.IsNullOrWhiteSpace(controlPlanePath)))
+                    {
+                        if (GUILayout.Button("Unity CLI Loop Doctor", secondaryButtonStyle))
+                        {
+                            RunConnectionDoctor(UNITY_CLI_LOOP_PRODUCTS);
+                        }
+                    }
+                    break;
+            }
+        }
+
+        private void RunConnectionDoctor(string[] products)
+        {
+            Run("doctor", products);
+            selectedDashboardTab = 3;
+            showDiagnostics = true;
+            windowScroll = Vector2.zero;
         }
 
         private void EnsureStyles()
@@ -248,6 +454,14 @@ namespace DarumaPPAP.UnityAgent.Editor
             fieldLabelStyle.normal.textColor = EditorGUIUtility.isProSkin
                 ? new Color(0.72f, 0.74f, 0.78f)
                 : new Color(0.34f, 0.36f, 0.40f);
+
+            connectionRowStyle = new GUIStyle(EditorStyles.label)
+            {
+                alignment = TextAnchor.MiddleLeft,
+                fontSize = 12,
+                wordWrap = true,
+                padding = new RectOffset(8, 0, 3, 3),
+            };
         }
 
         private void DrawHeader()
