@@ -47,8 +47,19 @@ properties:
           items: {type: string, pattern: '^[A-Za-z_][A-Za-z0-9_.+]*(?:\([^\r\n;]+\))?$'}
         patch_plan_id: {type: string, pattern: '^[0-9a-f]{64}$'}
         verification_only: {const: true}
+        integration_plan_id: {type: string, pattern: '^[0-9a-f]{64}$'}
+        integration_item: {type: integer, minimum: 0, maximum: 1}
       not:
         required: [patch_plan_id, verification_only]
+      allOf:
+      - not: {required: [patch_plan_id, integration_plan_id]}
+      - if: {required: [integration_item]}
+        then: {required: [integration_plan_id], not: {required: [verification_only]}}
+      - if: {required: [integration_plan_id]}
+        then:
+          oneOf:
+          - required: [integration_item]
+          - required: [verification_only]
     - type: object
       additionalProperties: false
       required: [kind, visual_intent, exact_scene_or_asset_scope, reference_or_visual_definition]

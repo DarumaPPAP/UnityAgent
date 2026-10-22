@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Owned parallel C# E2E input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "phase",
+    "workspace_root",
+    "model",
+    "timeout_seconds",
+    "parallel_enabled"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "phase": {
+      "enum": [
+        "prepare",
+        "propose",
+        "workers",
+        "integrate"
+      ]
+    },
+    "workspace_root": {
+      "type": "string",
+      "minLength": 1
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1
+    },
+    "timeout_seconds": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 1800
+    },
+    "parallel_enabled": {
+      "type": "boolean"
+    },
+    "approved_plan_ids": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "left",
+        "right"
+      ],
+      "properties": {
+        "left": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "right": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "approved_integration_plan_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "phase": {
+            "const": "workers"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "approved_plan_ids"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "approved_plan_ids"
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "phase": {
+            "const": "integrate"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "approved_integration_plan_id"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "approved_integration_plan_id"
+          ]
+        }
+      }
+    }
+  ]
+}

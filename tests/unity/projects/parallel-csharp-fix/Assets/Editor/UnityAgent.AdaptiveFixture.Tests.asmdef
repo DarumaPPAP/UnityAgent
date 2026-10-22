@@ -1,0 +1,12 @@
+{
+  "name": "UnityAgent.AdaptiveFixture.Tests",
+  "references": [
+    "UnityAgent.AdaptiveFixture"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

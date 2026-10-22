@@ -5,6 +5,7 @@ import re
 import stat
 
 from unityagent.persistence.store.atomic_store import sha256_json
+from unityagent.persistence.store.measurement import observed
 from unityagent.runtime.sandbox.workspace_guard import snapshot_workspace_hashes
 
 _LITERAL_OR_COMMENT = re.compile(r'//[^\r\n]*|/\*[\s\S]*?\*/|@"(?:""|[^"])*"|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'')
@@ -12,6 +13,7 @@ _RETURN = re.compile(r'return[ \t]+[A-Za-z0-9_ .()+*/%<>=!&|^?:,\-]+;')
 _METHOD = re.compile(r'[A-Za-z_][\w<>,?.\[\] \t\r\n]*\s+[A-Za-z_]\w*\s*\([^{};]*\)\s*$')
 
 
+@observed('project.scan')
 def project_revision(project):
     project = Path(project).resolve(strict=True)
     return sha256_json({name: snapshot_workspace_hashes(project / name)

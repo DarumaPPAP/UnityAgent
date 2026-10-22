@@ -20,6 +20,7 @@ from jsonschema import Draft202012Validator, SchemaError, ValidationError
 ROOT = resource_root()
 
 from unityagent.runtime.execution_control.process_runtime import run_streaming_process
+from unityagent.runtime.telemetry.model_usage import observe_codex_usage
 from unityagent.runtime.guardrails.mutation_guard import evaluate_mutation_scope
 from unityagent.runtime.guardrails.permission_guard import RuntimePermissionError, enforce_permission
 from unityagent.runtime.sandbox.workspace_guard import changed_paths, snapshot_workspace, snapshot_workspace_hashes, workspace_path
@@ -102,7 +103,7 @@ def _write_permission_denied(request: dict[str, Any], output: Path, *, model: st
     return result
 
 
-def execute(request: dict[str, Any], output: Path, *, command_prefix: list[str], timeout_seconds: float, reasoning_effort: str) -> dict:
+def execute(request: dict[str, Any], output: Path, *, command_prefix: list[str], timeout_seconds: float, reasoning_effort: str, cancel_event=None) -> dict:
     if reasoning_effort not in {"none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"}:
         raise CodexRunnerError("unsupported reasoning effort")
     workspace = workspace_path(request["workspace_root"])
@@ -162,6 +163,7 @@ def execute(request: dict[str, Any], output: Path, *, command_prefix: list[str],
         stdout_path=events_path,
         stderr_path=stderr_path,
         stdin_text=str(request["prompt"]),
+        cancel_event=cancel_event,
     )
     after = snapshot_workspace(workspace, excluded_prefixes=(".unityagent-control",))
     changed = changed_paths(before, after)
@@ -206,6 +208,7 @@ def execute(request: dict[str, Any], output: Path, *, command_prefix: list[str],
             result["evidence_refs"].append("response.json")
     (output / "execution-result.yaml").write_text(yaml.safe_dump(result, sort_keys=False, allow_unicode=True), encoding="utf-8")
     metrics = {"changed_paths": changed, "original_workspace_changed_paths": original_changed, "runtime": {"launched": True, "timed_out": process.timed_out, "cancelled": process.cancelled, "duration_seconds": process.duration_seconds, "process_tree_cleanup": process.process_tree_cleanup, "remaining_processes": process.remaining_processes, "event_count": process.event_count, "sandbox_mode": sandbox_mode}}
+    metrics['model_usage'] = observe_codex_usage(events_path, model=model, reasoning_effort=reasoning_effort)
     (output / "metrics.json").write_text(json.dumps(metrics, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return result
 

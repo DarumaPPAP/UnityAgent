@@ -19,6 +19,7 @@ from unityagent.persistence.store.atomic_store import (
     write_immutable_json,
 )
 from unityagent.persistence.store.layout import PersistenceLayout
+from unityagent.persistence.store.measurement import observed
 
 VERIFICATION = {"passed", "failed", "unavailable", "unverified"}
 V12_REQUIRED = {
@@ -152,6 +153,7 @@ class EvidenceStore:
                 )
             return created
 
+    @observed('evidence.read')
     def get(self, evidence_id: str) -> dict[str, Any]:
         # Resolve through safe_id in layout.evidence; never allow a caller to
         # turn an evidence reference into an arbitrary filesystem path.
@@ -178,6 +180,7 @@ class EvidenceStore:
             events.append(value)
         return events
 
+    @observed('evidence.event_chain')
     def verify_event_chain(self, *, expected_run_id: str | None = None) -> list[dict[str, Any]]:
         """Verify every event hash and its predecessor binding before reuse."""
         events = self._read_events(expected_run_id)
@@ -196,6 +199,7 @@ class EvidenceStore:
             previous = str(event["event_hash"])
         return events
 
+    @observed('evidence.verify')
     def verify_record(self, evidence_id: str, *, expected_run_id: str | None = None) -> dict[str, Any]:
         """Re-read and verify immutable record, event-chain, and run binding."""
         record = self.get(evidence_id)

@@ -12,7 +12,7 @@ from unityagent.runtime.runner.codex import codex_runner
 
 
 def propose_patch(handoff, manifest, *, intent, source, original_project, model, command_prefix=None,
-                  timeout_seconds=120.0, reasoning_effort='high'):
+                  timeout_seconds=120.0, reasoning_effort='high', cancel_event=None, telemetry_out=None):
     validate_runtime_handoff(handoff)
     if (handoff['route_id'] != 'csharp-local-fix' or not model
             or any(request['capability'] != 'source.read' for request in handoff['capability_requests'])):
@@ -70,7 +70,16 @@ def propose_patch(handoff, manifest, *, intent, source, original_project, model,
         output = Path(temporary) / 'output'
         execution = codex_runner.execute(request, output,
             command_prefix=command_prefix if command_prefix is not None else codex_runner._command_prefix(None),
-            timeout_seconds=timeout_seconds, reasoning_effort=reasoning_effort)
+            timeout_seconds=timeout_seconds, reasoning_effort=reasoning_effort, cancel_event=cancel_event)
+        if telemetry_out is not None:
+            from unityagent.runtime.telemetry.model_usage import observe_codex_usage
+            telemetry_out.update({'model_usage': observe_codex_usage(output / 'codex-events.jsonl',
+                model=model, reasoning_effort=reasoning_effort),
+                'context': {'selected_utf8_bytes': selected_bytes,
+                    'selected_artifacts': budget['selected_artifacts'] + 1,
+                    'estimated_tokens': estimate_tokens(selected_bytes),
+                    'prompt_utf8_bytes': len(prompt.encode('utf-8')),
+                    'prompt_estimated_tokens': estimate_tokens(len(prompt.encode('utf-8')))}})
         if execution['status'] != 'passed':
             raise ValueError('C# proposal model execution did not pass its Runtime contract')
         patch = json.loads((output / 'response.json').read_text(encoding='utf-8'))

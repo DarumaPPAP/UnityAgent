@@ -7,10 +7,12 @@ decisions are owned by src/unityagent/orchestration/loop and are never inferred 
 capability iteration here.
 """
 from __future__ import annotations
+from unityagent.control_plane.measurement import measured, measured_call, capture_persistence
 from unityagent.resources import resource_root
 
 from datetime import datetime, timezone
 import uuid
+import time
 from copy import deepcopy
 from functools import wraps
 from contextlib import ExitStack
@@ -118,18 +120,25 @@ def _project_exclusive(operation):
             return {'schema_version': '2.0', 'status': 'blocked', 'run_id': owner,
                     'reason': str(exc), 'results': [], 'evidence_refs': []}
         stack = ExitStack()
-        try:
-            stack.enter_context(acquire_project_lease(entry_request['project_root'], owner=owner))
-        except ProjectLeaseBusy as exc:
-            return {'schema_version': '2.0', 'status': 'blocked', 'run_id': owner,
-                    'failure_class': 'resource_busy', 'reason': str(exc),
-                    'results': [], 'evidence_refs': []}
-        except (OSError, ValueError) as exc:
-            return {'schema_version': '2.0', 'status': 'blocked', 'run_id': owner,
-                    'failure_class': 'resource_unavailable', 'reason': str(exc),
-                    'results': [], 'evidence_refs': []}
         with stack:
-            return operation(plane, entry_request, **{**parameters, 'run_id': owner})
+            try:
+                with measured(plane, owner, 'lease'):
+                    stack.enter_context(acquire_project_lease(entry_request['project_root'], owner=owner))
+                claims = parameters.pop('_host_resource_claims', ())
+                if claims:
+                    from unityagent.runtime.guardrails.project_lease import acquire_host_claims
+                    with measured(plane, owner, 'lease'):
+                        stack.enter_context(acquire_host_claims(claims, owner=owner))
+            except ProjectLeaseBusy as exc:
+                return {'schema_version': '2.0', 'status': 'blocked', 'run_id': owner,
+                        'failure_class': 'resource_busy', 'reason': str(exc),
+                        'results': [], 'evidence_refs': []}
+            except (OSError, ValueError) as exc:
+                return {'schema_version': '2.0', 'status': 'blocked', 'run_id': owner,
+                        'failure_class': 'resource_unavailable', 'reason': str(exc),
+                        'results': [], 'evidence_refs': []}
+            with capture_persistence(plane, owner):
+                return operation(plane, entry_request, **{**parameters, 'run_id': owner})
     return execute
 
 
@@ -298,6 +307,9 @@ class UnityAgentControlPlane:
         reasoning_timeout_seconds: float = 120.0,
         reasoning_command_prefix: list[str] | None = None,
         maximum_retry_attempts: int = 1,
+        cancel_event=None,
+        _execution_deadline=None,
+        _workspace_dispatch_token=None,
         _strategy_consumer=None,
     ) -> dict[str, Any]:
         """Run Entry and Orchestration through the selected runtime handoff, then record Evidence."""
@@ -350,7 +362,7 @@ class UnityAgentControlPlane:
             return {"schema_version": "2.0", "status": "blocked", "run_id": resolved_run_id,
                     "reason": str(exc), "results": [], "evidence_refs": []}
         try:
-            inputs = derive_context_inputs(str(entry_request["project_root"]), snapshot, intent)
+            inputs = measured_call(self, resolved_run_id, 'preparation', derive_context_inputs, str(entry_request["project_root"]), snapshot, intent)
         except ValueError as exc:
             return {"schema_version": "2.0", "status": "blocked", "run_id": resolved_run_id, "reason": str(exc), "results": [], "evidence_refs": []}
         specialist_selection = resolve_specialist(route_id, selected_capability or capabilities[0], snapshot, pilot_enabled=specialist_pilot_enabled, context_items=inputs["specialist_items"], activation_only=True)
@@ -362,7 +374,7 @@ class UnityAgentControlPlane:
         if specialist_selection.get("provider_resolution") == "not_required" and any(root == project_path or project_path in root.parents for root in persistence_roots):
             return {"schema_version": "2.0", "status": "blocked", "run_id": resolved_run_id, "reason": "reasoning Persistence root must be outside the original Project", "results": [], "evidence_refs": []}
         try:
-            manifest = build_context_manifest(resolved_run_id, route_id, project_facts=inputs["project_facts"],
+            manifest = measured_call(self, resolved_run_id, 'context', build_context_manifest, resolved_run_id, route_id, project_facts=inputs["project_facts"],
                 bindings=inputs["bindings"], capability_ids=capabilities, active_conditions=conditions,
                 specialist_selection=specialist_selection if specialist_selection["status"] != "activated" else None,
                 specialist_items=inputs["specialist_items"] if specialist_selection["status"] == "selected" else None,
@@ -543,7 +555,9 @@ class UnityAgentControlPlane:
         if intent['kind'] == 'csharp_local_fix':
             from unityagent.control_plane import csharp_fix
             try:
-                csharp_session = csharp_fix.prepare(self, entry_request, context, handoff)
+                from unityagent.control_plane.workspace_task_execution import WORKSPACE_DISPATCH_TOKEN
+                csharp_session = csharp_fix.prepare(self, entry_request, context, handoff, manifest_ref=manifest_ref,
+                    workspace_dispatch_authorized=_workspace_dispatch_token is WORKSPACE_DISPATCH_TOKEN)
                 runtime_provider_arguments['file'] = csharp_session['file_arguments']
             except (ValueError, PersistenceError, OSError) as exc:
                 csharp_error = True
@@ -558,6 +572,10 @@ class UnityAgentControlPlane:
                 "specialist_context": deepcopy(view["specialist_context"]),
             }
         for index, request in enumerate(handoff["capability_requests"] if not csharp_error else []):
+            if ((cancel_event is not None and cancel_event.is_set())
+                    or (_execution_deadline is not None and time.monotonic() >= _execution_deadline)):
+                results.append({'status': 'blocked', 'capability': request['capability'], 'reason': 'execution_cancelled'})
+                break
             if csharp_session is not None:
                 try:
                     csharp_fix.before_capability(self, csharp_session, request['capability'], resolved_run_id)
@@ -567,10 +585,16 @@ class UnityAgentControlPlane:
                 runtime_provider_arguments['native_unity_editor'] = {
                     **runtime_provider_arguments.get('native_unity_editor', {}),
                     'run_id': f'{resolved_run_id}-cap{index + 1}', 'require_compilation_observation': True,
+                    'cancel_event': cancel_event,
                     'test_filter': list(intent['editmode_tests'])}
+                if _execution_deadline is not None:
+                    native_arguments = runtime_provider_arguments['native_unity_editor']
+                    native_arguments['timeout_seconds'] = min(native_arguments.get('timeout_seconds', 120.0),
+                                                               max(.001, _execution_deadline - time.monotonic()))
 
             capability_step_id = f"{node_id}-{index + 1}"
-            outcome = self.broker.dispatch(
+            outcome = measured_call(self, resolved_run_id,
+                'gate' if request['capability'] in {'static.review', 'compile.observe', 'project.test'} else 'provider', self.broker.dispatch,
                 dict(request),
                 snapshot,
                 context=csharp_session['context'] if csharp_session is not None else context,
@@ -618,7 +642,7 @@ class UnityAgentControlPlane:
                 )
                 if csharp_session is not None:
                     from unityagent.runtime.guardrails.csharp_patch import project_revision as csharp_project_revision
-                    evidence['execution_binding'] = {'patch_plan_id': csharp_session['plan']['plan_id'] if csharp_session['plan'] else None,
+                    evidence['execution_binding'] = {'patch_plan_id': csharp_session['plan']['plan_id'] if csharp_session['plan'] else csharp_session.get('evidence_plan_id'),
                         'input_project_revision': csharp_session['input_revision'],
                         'result_project_revision': csharp_project_revision(csharp_session['project']),
                         'context_manifest_ref': manifest_ref}
@@ -646,10 +670,14 @@ class UnityAgentControlPlane:
 
         if csharp_session is not None:
             try:
+                if _execution_deadline is not None:
+                    if time.monotonic() >= _execution_deadline:
+                        raise ValueError('execution_deadline_expired')
+                    reasoning_timeout_seconds = min(reasoning_timeout_seconds, _execution_deadline - time.monotonic())
                 csharp_additions = csharp_fix.finish(self, csharp_session, handoff=handoff, manifest=manifest,
                     manifest_ref=manifest_ref, evidence_refs=evidence_refs, results=results, model=reasoning_model,
                     command_prefix=reasoning_command_prefix, timeout_seconds=reasoning_timeout_seconds,
-                    reasoning_effort=reasoning_effort)
+                    reasoning_effort=reasoning_effort, cancel_event=cancel_event)
             except (ValueError, PersistenceError, OSError) as exc:
                 csharp_additions = {'status': 'blocked', 'reason': str(exc)}
 
@@ -677,7 +705,7 @@ class UnityAgentControlPlane:
                     runtime_action = reasoning_action
                     route_decision["profile"] = "generic_planning"
                     previous_manifest_ref = manifest_ref
-                    manifest = build_context_manifest(resolved_run_id, route_id, project_facts=inputs["project_facts"], bindings=inputs["bindings"], capability_ids=capabilities, active_conditions=conditions, specialist_selection=specialist_selection, specialist_items=observed_items, specialist_tags=inputs["specialist_tags"], required_specialist_keys=inputs["required_specialist_keys"])
+                    manifest = measured_call(self, resolved_run_id, 'context', build_context_manifest, resolved_run_id, route_id, project_facts=inputs["project_facts"], bindings=inputs["bindings"], capability_ids=capabilities, active_conditions=conditions, specialist_selection=specialist_selection, specialist_items=observed_items, specialist_tags=inputs["specialist_tags"], required_specialist_keys=inputs["required_specialist_keys"])
                     view = manifest["materialized_context"]
                     if manifest["budget_report"]["decision"] != "within_budget" or view["unresolved_bindings"]:
                         raise ContextBindingError(f"observed Context gate: {manifest['budget_report']['decision']}; unresolved={view['unresolved_bindings']}")
@@ -767,10 +795,56 @@ class UnityAgentControlPlane:
         """既存RuntimeへTask単位で渡し、固定Acceptanceを満たす依存だけを開く。"""
         from unityagent.control_plane.task_execution import execute_task_dag
         from unityagent.persistence.store.atomic_store import exclusive_file_lock
-        with exclusive_file_lock(self.state_store.layout.run_root(run_id) / "task-execution.lock"):
+        with exclusive_file_lock(self.state_store.layout.run_root(run_id) / "task-execution.lock"), capture_persistence(self, run_id):
             return execute_task_dag(self, tasks, run_id=run_id,
                 definition_fingerprint=definition_fingerprint, task_parameters=task_parameters, resume=resume,
                 adaptive_strategy_enabled=adaptive_strategy_enabled, root_contract=root_contract, plan_proposer=plan_proposer)
+
+    def execute_workspace_tasks(self, tasks, *, run_id, definition_fingerprint, task_parameters,
+                                root_contract, parallel_enabled=False, resume=False, plan_proposer=None,
+                                timeout_seconds=300.0, cancel_event=None):
+        """別Projectの子Runを最大2件に制限し、親だけがPlanとAcceptanceを更新する。"""
+        from unityagent.control_plane.workspace_task_execution import execute_workspace_dag
+        from unityagent.persistence.store.atomic_store import exclusive_file_lock
+        with exclusive_file_lock(self.state_store.layout.run_root(run_id) / 'task-execution.lock'), capture_persistence(self, run_id):
+            if (len(tasks) == 1 and plan_proposer is None and cancel_event is None and timeout_seconds == 300.0
+                    and isinstance(parallel_enabled, bool) and (not resume or
+                    'parallel_execution' not in self.state_store.load_task_state(run_id))):
+                from unityagent.control_plane.task_execution import execute_task_dag
+                return execute_task_dag(self, tasks, run_id=run_id, definition_fingerprint=definition_fingerprint,
+                    task_parameters=task_parameters, root_contract=root_contract, resume=resume)
+            return execute_workspace_dag(self, tasks, run_id=run_id,
+                definition_fingerprint=definition_fingerprint, task_parameters=task_parameters,
+                root_contract=root_contract, parallel_enabled=parallel_enabled, resume=resume,
+                plan_proposer=plan_proposer, timeout_seconds=timeout_seconds, cancel_event=cancel_event)
+
+    def create_integration_plan(self, *, run_id):
+        from unityagent.control_plane.csharp_integration import create_integration_plan
+        from unityagent.persistence.store.atomic_store import exclusive_file_lock
+        with exclusive_file_lock(self.state_store.layout.run_root(run_id) / 'task-execution.lock'), capture_persistence(self, run_id):
+            return create_integration_plan(self, run_id)
+
+    def approve_integration(self, *, integration_plan_id):
+        from unityagent.control_plane.csharp_integration import approve_integration
+        return approve_integration(self, integration_plan_id)
+
+    def integrate_workspace_results(self, *, run_id, integration_plan_id, approval_ref,
+                                    original_parameters=None, timeout_seconds=300.0, cancel_event=None):
+        from unityagent.control_plane.csharp_integration import integrate_workspace_results, load_integration_plan
+        from unityagent.persistence.store.atomic_store import exclusive_file_lock
+        if original_parameters is None:
+            from unityagent.runtime.tooling.environment.discovery import discover_environment
+            from unityagent.runtime.tooling.providers.file.file_provider import FileProvider
+            from unityagent.runtime.tooling.providers.native_unity_editor.native_unity_editor_provider import NativeUnityEditorProvider
+            project = load_integration_plan(self, integration_plan_id)['project_root']
+            snapshot = discover_environment(project, mutation_allowed_paths=['Assets']).to_dict()
+            native = NativeUnityEditorProvider(project, snapshot,
+                temp_root=self.state_store.layout.run_root(run_id) / 'integration-output')
+            original_parameters = {'environment_snapshot': snapshot, 'context': ResolutionContext(policy_allowed=True),
+                'executors': {'file': FileProvider(project).execute, 'native_unity_editor': native.execute}}
+        with exclusive_file_lock(self.state_store.layout.run_root(run_id) / 'task-execution.lock'), capture_persistence(self, run_id):
+            return measured_call(self, run_id, 'integration', integrate_workspace_results, self, run_id, integration_plan_id, approval_ref,
+                original_parameters, timeout_seconds=timeout_seconds, cancel_event=cancel_event)
 
     def setup(
         self,

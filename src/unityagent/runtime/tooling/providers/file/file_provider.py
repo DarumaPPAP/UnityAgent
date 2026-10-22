@@ -39,6 +39,8 @@ class FileProvider:
         self.project_root = workspace_path(project_root)
 
     def execute(self, request, context, arguments):
+        if arguments.get('bounded_csharp_union_review') is True and request.get('capability') == 'static.review':
+            return self._csharp_union_review(request, context, arguments)
         if arguments.get('bounded_csharp_patch') is True and request.get('capability') in {'source.patch', 'static.review'}:
             return self._bounded_csharp(request, context, arguments)
         if request.get("operation_kind") != "read":
@@ -53,6 +55,30 @@ class FileProvider:
                 return _failure("precondition_failed", "source.read requires an explicit relative_path")
             return self.read_text(request, relative_path=relative_path, policy_allowed=context.policy_allowed)
         return _failure("unsupported", "File observation executor does not implement this capability")
+
+    def _csharp_union_review(self, request, context, arguments):
+        from unityagent.runtime.guardrails.csharp_patch import project_revision, source_target, validate_csharp_patch
+        failure = self._validate_request(request, 'static.review')
+        if failure:
+            return failure
+        if not context.policy_allowed:
+            return _failure('blocked_by_policy', 'Policy denied integration static review')
+        try:
+            if project_revision(self.project_root) != arguments['expected_revision'] or len(arguments['items']) != 2:
+                raise ValueError('Integration static review revision differs')
+            for item in arguments['items']:
+                source = source_target(self.project_root, item['relative_path']).read_bytes().decode('utf-8')
+                if (hashlib.sha256(source.encode('utf-8')).hexdigest() != item['result_source_sha256']
+                        or source.count(item['replacement_text']) != 1):
+                    raise ValueError('Integration static review Source differs')
+                original = source.replace(item['replacement_text'], item['expected_text'], 1)
+                if (hashlib.sha256(original.encode('utf-8')).hexdigest() != item['source_sha256']
+                        or validate_csharp_patch(original, item['expected_text'], item['replacement_text']) != source):
+                    raise ValueError('Integration changes a declaration or an unapproved expression')
+            return {'status': 'passed', 'provider_ref': 'file', 'evidence': ['static_review'],
+                    'project_revision': arguments['expected_revision']}
+        except (ValueError, OSError, KeyError, UnicodeError) as exc:
+            return _failure('precondition_failed', str(exc))
 
     def _bounded_csharp(self, request, context, arguments):
         from unityagent.runtime.guardrails.csharp_patch import patch_revisions, project_revision, validate_csharp_patch
