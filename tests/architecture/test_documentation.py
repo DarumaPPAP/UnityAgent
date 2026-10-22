@@ -78,6 +78,21 @@ class DocumentationTests(unittest.TestCase):
         self.write("README.md", "[説明][unknown]")
         self.assert_invalid("undefined markdown reference")
 
+    def test_shortcut_reference_image_destination_is_checked(self):
+        self.write("README.md", "![picture]\n\n[picture]: missing.png")
+        self.assert_invalid("missing.png")
+        self.write("missing.png", "image")
+        self.assert_valid()
+
+    def test_image_wrapped_link_checks_both_destinations(self):
+        self.write("exists.svg", "<svg/>")
+        self.write("README.md", "[![badge](exists.svg)](missing.md)")
+        self.assert_invalid("missing.md")
+        self.write("missing.md", "# target")
+        self.assert_valid()
+        self.write("README.md", "[![badge](missing.svg)](missing.md)")
+        self.assert_invalid("missing.svg")
+
     def test_escaped_spaces_parentheses_and_optional_titles_are_resolved(self):
         self.write("docs/file (one).md", "# 詳細")
         self.write("README.md", '[図](<docs/file (one).md#詳細> "説明")\n[図](docs/file%20(one).md#詳細)')

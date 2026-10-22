@@ -229,17 +229,30 @@ def _links(text: str, references: dict[str, str] | None = None) -> tuple[list[st
     text = re.sub(r"(`+).*?\1", "", text, flags=re.DOTALL)
     targets = list(html.links)
     missing = []
-    for match in re.finditer(r"!?\[(?:\\.|[^]\n])*\]\(", text):
-        destination = _inline_destination(text, match.end())
-        if destination:
-            targets.append(unescape(destination))
+    # 画像を包むリンクの外側も検査するため、ラベルの角括弧を対応付ける。
+    brackets: list[int] = []
+    escaped = False
+    for index, char in enumerate(text):
+        if escaped:
+            escaped = False
+            continue
+        if char == "\\":
+            escaped = True
+        elif char == "[":
+            brackets.append(index)
+        elif char == "]" and brackets:
+            brackets.pop()
+            if text[index + 1:index + 2] == "(":
+                destination = _inline_destination(text, index + 2)
+                if destination:
+                    targets.append(unescape(destination))
     for match in re.finditer(r"!?\[([^]\n]*)\]\[([^]\n]*)\]", text):
         key = _reference_key(match[2] or match[1])
         if key in refs:
             targets.append(refs[key])
         else:
             missing.append(key)
-    for match in re.finditer(r"(?<!!)\[([^]\n]+)\](?![([])", text):
+    for match in re.finditer(r"\[([^]\n]+)\](?![([])", text):
         key = _reference_key(match[1])
         if key in refs:
             targets.append(refs[key])
