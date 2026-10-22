@@ -1,250 +1,160 @@
 <p align="center">
-  <img src="Packages/com.darumappap.unity-agent/Editor/Resources/UnityAgentSetupLogo.png" alt="UnityAgent logo" width="168" />
+  <img src="Packages/com.darumappap.unity-agent/Editor/Resources/UnityAgentSetupLogo.png" alt="UnityAgent ロゴ" width="168" />
 </p>
 
 <h1 align="center">UnityAgent</h1>
 
-<p align="center"><strong>Unity開発の要求を src/unityagent/policy → Capability → Provider → Evidence の一貫した経路で扱う Control Plane。</strong></p>
+<p align="center"><strong>Unity開発を、計画から実行・検証まで。</strong></p>
 
 <p align="center">
   <a href="VERSION"><img alt="Version" src="https://img.shields.io/badge/version-0.0.8--beta-blue"></a>
-  <a href="https://unity.com/"><img alt="Unity 6.x+" src="https://img.shields.io/badge/Unity-6.x%2B-000000?logo=unity&logoColor=white"></a>
-  <a href="https://github.com/openai/codex"><img alt="Codex Plugin" src="https://img.shields.io/badge/Codex-Plugin-111827?logo=openai&logoColor=white"></a>
-  <a href="https://github.com/DarumaPPAP/UnityAgent/actions/workflows/validate-agent-contracts.yml"><img alt="Contracts CI" src="https://github.com/DarumaPPAP/UnityAgent/actions/workflows/validate-agent-contracts.yml/badge.svg"></a>
+  <a href="docs/references/capability-status.md#対応環境"><img alt="対象 Unity 6.x+" src="https://img.shields.io/badge/Unity-6.x%2B-000000?logo=unity&logoColor=white"></a>
+  <a href="https://github.com/DarumaPPAP/UnityAgent/actions/workflows/validate-agent-contracts.yml"><img alt="契約・Host CI" src="https://github.com/DarumaPPAP/UnityAgent/actions/workflows/validate-agent-contracts.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-green.svg"></a>
 </p>
 
 <p align="center">
-  <a href="#quick-start">Quick Start</a> ·
-  <a href="#architecture">Architecture</a> ·
-  <a href="#install">Install</a> ·
-  <a href="#branch-workflow">Branch Workflow</a> ·
-  <a href="#validation">Validation</a> ·
-  <a href="docs/architecture/architecture.md">Architecture Docs</a> ·
-  <a href="docs/README.md">Docs Index</a> ·
-  <a href="docs/references/unity-cli-reference.md">Unity CLI Reference</a> ·
-  <a href="https://darumappap.github.io/UnityAgent/">src/unityagent/context Explorer</a> ·
+  <a href="#install">はじめる</a> ·
+  <a href="docs/README.md">ドキュメント</a> ·
+  <a href="docs/architecture/architecture.md">アーキテクチャ</a> ·
   <a href="https://github.com/DarumaPPAP/UnityAgent/releases">Releases</a>
 </p>
 
-> [!IMPORTANT]
-> **UnityAgentが唯一のControl Planeです。** Unity UI、Codex Plugin、Optional SubAgent、Providerは独自のsrc/unityagent/policy Authorityや第二のControl Planeを持たず、実行要求はUnityAgentへ集約します。
+<a id="what-is-unityagent"></a>
 
-## What is UnityAgent?
+## UnityAgentとは
 
-UnityAgentは、Unity Editor、Codex Plugin、CLIを別々の実行主体として扱うのではなく、要求の解釈、Policy、Approval、環境確認、Capability解決、Provider実行、Evidence化を一つのControl Planeへ集約するための基盤です。
+UnityAgentは、Unity Editor・Codex・開発ツールをつなぎ、作業の計画、承認、実行、検証結果の管理を一貫して扱うAI開発基盤です。UnityAgentを共通のControl Planeとして、対象Projectと許可された範囲に沿って作業を進めます。
 
-「どのToolを直接呼ぶか」ではなく、**何を実現したいか（Capability）**を基準に、現在のProject・Environment・Policy・Evidence条件を満たすProviderを解決します。
+このREADMEは公開Betaからの導入を案内します。**公開ReleaseとDevelopmentのmainは、同じVersion文字列でも機能が異なります。** 各機能の対象Revisionと未検証範囲は [機能の状態表](docs/references/capability-status.md) で確認できます。
 
-## Core Principles
+## できること
 
-| Principle | Contract |
+| 作業 | 利用条件と現在の範囲 |
 |---|---|
-| Single Control Plane | Entry、SubAgent、Providerは独自のsrc/unityagent/policy / src/unityagent/orchestration authorityを持たない |
-| Capability before Provider | OrchestrationはProvider名ではなくCapabilityを要求する |
-| Fail-Closed | 必須条件がfalse / unknownなら候補から除外し、成功扱いしない |
-| Explicit Approval | 変更は対象・Scope・Revisionに結び付いたApprovalを要求する |
-| Evidence before Completion | Compile / Editor / Player / Target Device / Performance / Visualを別々に扱う |
-| No Silent Downgrade | Provider unavailableを理由にSafety Contractを弱めない |
+| Projectと開発環境を調べる | Doctorでツールの状態を確認し、対応する検査経路でProject Factを取得する |
+| 専門担当を活用する | 対応Taskと必要な環境・Contextが揃ったときに、任意のSubAgentを選出する |
+| 許可した範囲を変更する | 対応する変更経路で対象・Revision・承認を確認する。任意の変更を無条件に実行する機能ではない |
+| 検証結果を確認する | 実行結果とEvidenceを記録し、未観測・利用不可・検証済みのGateを区別する |
 
-## Architecture
+<a id="architecture"></a>
+<a id="provider-model"></a>
 
-UnityAgentの正式な製品境界は5層です。機械可読な正本は `src/unityagent/contracts/unityagent-layer-contract.yaml` です。
+## 動作の仕組み
 
-```text
-Unity UI / Codex Plugin
-        │
-        ▼
-┌──────────────────────────────┐
-│      UnityAgent Control Plane │
-└──────────────────────────────┘
-        │
-        ▼
-Capability & src/unityagent/orchestration
-        │
-        ├─ Optional SubAgent resolution
-        ▼
-Provider Layer
-        │
-        ▼
-Evidence & State
-```
+![UnityAgentの簡略実行フロー。Unity Editor・Codex・CLIからControl Plane、Capabilityの解決、ProviderまたはCodexRunnerによる実行を経てEvidenceを保存する](docs/assets/images/architecture-overview.svg)
 
-| Layer | Owns |
-|---|---|
-| Entry | Unity UI / Codex Pluginから要求、表示、明示承認を受け付ける |
-| Control Plane | Task、Policy、Approval、Environment、Project Binding、Run lifecycleを管理する |
-| Capability & src/unityagent/orchestration | 意味解決、Graph / Loop、Capability routing、必要時のOptional SubAgent候補解決を行う |
-| Provider | 許可された具体的な操作だけを実行する |
-| Evidence & State | 実行結果、観測値、Run state、履歴を保存する |
+図は理解のための概念図です。Tool操作はProvider、専門推論はCodexRunnerを経由します。正式な5層の責務・依存関係は [アーキテクチャ](docs/architecture/architecture.md) と既存Contractを参照してください。
 
-EntryからProviderを直接呼び出したり、ProviderがPolicyやdurable stateを所有したりする構成にはしません。
+<a id="install"></a>
+<a id="requirements"></a>
+<a id="unity-package-manager"></a>
+<a id="control-plane-bootstrap"></a>
 
-詳細: [UnityAgent Architecture](docs/architecture/architecture.md) · [Specialist src/unityagent/context Assembly](docs/architecture/specialist-context-assembly.md) · [Production Tool src/unityagent/runtime](docs/architecture/production-tool-runtime.md)
+## はじめる
 
-## Responsibility Boundaries
+Windowsの通常導入は、公開Beta **v0.0.8-beta** のUnity Packageから始めます。Unity 6.x+、Git、Python 3.10以上、Windows PowerShell 5.1以上を用意してください。Codexとの連携には別途Codex CLIが必要です。
 
-### 統合SubAgent
-
-4つのSubAgentの正本はUnityAgentの `subagent/` にあります。Artistのoptional Unity Packageは
-`subagent/artist_subagent/tools/editor/`、Host Toolは `subagent/artist_subagent/tools/host/` に配置しています。
-Releaseは同じUnityAgent checkoutから全成果物を生成し、Python配布にも定義・Instructions・Contractsを同梱します。
-[旧UnitySubAgentHub](https://github.com/DarumaPPAP/UnitySubAgentHub) は移行履歴・互換検証用です。
-現在のReleaseは旧Hubを取得しません。旧HubのArchiveは実Editor移行検証後に別途行います。
-
-- `requested_subagent` はEntry v2の任意指定です。Routeの担当と一致し、既存の導入・互換性・Binding・Context Gateを満たす場合だけ利用できます。
-- Project inspectionはFast、単一の専門TaskはStandardで処理し、選択をOrchestration decisionに記録します。Mode UIはありません。
-- Control Plane実行は同じ物理ProjectへのOS leaseを取得し、Evidence保存まで保持します。競合は `blocked / resource_busy` です。
-- Registry登録は導入・Binding・実行可能を意味しません。SubAgentは自動Installしません。
-- 同居ManifestとConsumer Catalogの一致は `python tools/validate_local_subagent_catalog.py` で検証します。
-- 旧SnapshotのOffline Import CLIとSource Lockは履歴互換検証として維持します。Catalogを書き換えず、変更候補はGit PRとしてレビューします。
-
-複数Task DAGの並列実行、Resource Queue / Device Lock、Graphics / Performance / WorldCreatorの変更権限付きE2Eは未接続です。
-現行診断・計画の成功を実装E2E成功として報告しません。
-
-### Provider model
-
-`Capability` は「実現したいこと」、`Provider` は「具体的に実行する実体」です。
-
-代表的なProviderにはFile、Native Unity Editor、Official Unity CLI、`unity_artist_cli` Backend、Installer、Player Runtimeがあります。これはProvider種別の一覧であり、すべてのProjectやReleaseで常に利用可能という意味ではありません。
-
-## Current Production Surface
-
-| Surface | Current contract |
-|---|---|
-| Entry | `entry-request.v2` のTyped IntentをProduction入口とする。v1はValidation互換用で、Production Control Planeではcaller-owned src/unityagent/context / Route / Capabilityを拒否する |
-| Provider-backed Specialist | `artist_subagent` → `unity_artist_cli`。Eligibilityは現在のEnvironment FactでFail-Closed判定する |
-| Reasoning Specialists | `graphics_subagent`、`world_creator_subagent`、`performance_subagent` をConsumer Catalog v3へ登録済み。Tool Providerを偽装せずCodexRunnerのReasoning Handoffを使う |
-| Full E2E | 固定Typed Intent `fixed_full_e2e_probe` をControl Plane → ToolBroker → Unity Editor → PlayModeまで検証する |
-| Unity baseline | Production対象はUnity 6.x+のBuilt-in / URP / HDRP。Unity 2022.3の記録はHistorical Evidenceであり現行Supportではない |
-
-Specialist登録、Repository fixture、Static Contract PASSは、実Project上のEditor / Player / Target Device / Visual / Performance成功を意味しません。必要なObservationやEvidenceが未取得なら `unavailable` / `not_observed` / `partial_verified` を維持します。
-
-## Request Lifecycle
-
-変更系処理は原則として次の順序で進みます。
-
-```text
-Inspect → Plan / Exact Scope → Approval → Apply → Evidence
-```
-
-Evidenceは一つの成功フラグへ潰しません。
-
-```text
-Compile PASS
-!= Editor PASS
-!= Player PASS
-!= Target Device PASS
-!= Performance PASS
-!= Visual PASS
-```
-
-Providerが利用できない場合は制約を弱めたり別Backendへ無条件に切り替えたりせず、`unavailable` または環境阻害として報告します。
-
-## Install
-
-### Requirements
-
-- Windows PowerShell 5.1以上（Windows Bootstrapを使う場合）
-- Python 3.10以上（Control Planeのローカル導入に使用）
-- Unity 6.x+（現行Production Baseline。Unity CLIはcommand / automation surface、Unity Pipelineは接続済みEditor command用のlocal HTTP bridge）
-- Codex CLI（Codex Pluginを利用する場合）
-
-### Unity Package Manager
-
-Unity EditorでPackage Managerを開き、Git URLからUnityAgent UPM Packageを追加します。
+1. Unity Package Managerの「Add package from git URL」で次を追加する。
+2. `UnityAgent > Setup` を開き、Control Planeを導入・検出する。
+3. [最初の操作](#quick-start) で診断結果とSetup Planを確認する。
 
 ```text
 https://github.com/DarumaPPAP/UnityAgent.git?path=/Packages/com.darumappap.unity-agent#v0.0.8-beta
 ```
 
-追加後、`UnityAgent > Setup` を開いてControl PlaneとCodex CLIの状態を確認します。Setup画面からControl Planeの導入、検出、Codex Pluginの導入・修復を行えます。
-
-### Control Plane bootstrap
-
-```powershell
-irm https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/main/scripts/install.ps1 | iex
-```
-
-BootstrapはRelease artifactをSHA-256検証してControl Planeを導入します。詳細なSetup Plan、Approval、Repair手順は [Setup Guide](.agents/plugins/unity-agent/skills/unity-agent-setup/SKILL.md) を参照してください。
+SetupのControl Plane Bootstrapは、Packageに対応するRelease成果物をSHA-256検証して導入します。ProjectのUPMとHostの両方を確認してください。[導入ガイド](docs/getting-started/installation.md) にReleaseとDevelopmentの使い分け、更新・修復、Revision確認をまとめています。
 
 <details>
-<summary><strong>Manual Codex Plugin install</strong></summary>
+<summary>任意のCodex Pluginを手動で導入する場合</summary>
 
 ```powershell
 codex plugin marketplace add DarumaPPAP/UnityAgent --ref v0.0.8-beta --json
 codex plugin add unity-agent@unity-agent --json
 ```
 
-Plugin追加後は新しいCodex Threadで開始してください。Unity UIとCodex Pluginは同じUnityAgent Control Planeを入口として使用します。
+導入後は新しいCodexのチャットで開始します。既存Marketplaceとの競合時は上書きせず、Setupの診断・計画・承認経路で確認してください。
 
 </details>
 
-## Quick Start
+<a id="quick-start"></a>
 
-Unity Project内でEnvironmentを確認し、まず変更を伴わないSetup Planを生成します。公開CLIは `uagent` です。
+## 最初の操作
+
+Control Plane導入済みの端末で、対象Unity ProjectのRootを指定します。以下は **v0.0.8-beta用** の構文です。
 
 ```powershell
 $Project = "D:\Projects\MyGame"
-cd "$Project"
-uagent doctor --format json --non-interactive
-uagent setup plan --format json --non-interactive
+unity-agent doctor --project-path "$Project" --format json --non-interactive
+unity-agent setup --operation plan --project-path "$Project" --format json --non-interactive
 ```
 
-Setup PlanのApplyは別操作です。承認済みPlanとApproval Referenceを指定し、Planで示されたScopeだけを適用します。
+DoctorとPlanはProjectへ変更を適用しません。診断・Plan・EvidenceはState領域へ記録されます。終了コード0は診断操作の完了を表し、全ツールの利用可能や実Unity動作の成功を意味しません。
 
-ProjectはCWDから親方向に最寄りのRootを検出します。`Assets/`、`Packages/manifest.json`、`ProjectSettings/ProjectVersion.txt` が必要です。
-別Projectは `uagent doctor --project-p "$Project"` で指定します。旧 `unity-agent`、`--project-path`、`setup --operation plan` も互換利用できます。両Projectフラグの同時指定はエラーです。
+Planの適用は別の承認付き操作です。[最初のTaskガイド](docs/getting-started/first-task.md) で結果の見方と次の手順を確認してください。Developmentの `uagent` とCWD検出も同ガイドに分けて説明しています。
 
-RepositoryルートをUnity 6000.3.12f1の開発Projectとして開けます。標準テストProjectは `tests/UnityAgentTest/` です。
-[手動Unityテスト手順](tests/UnityAgentTest/README.md) と [開発・検証環境仕様](docs/development/unity-test.md) を参照してください。
+<a id="responsibility-boundaries"></a>
+<a id="統合subagent"></a>
 
-固定のScene / GameObject / Material / Script生成からCompile、Editor PlayMode、Evidence保存までの手順は [Full E2E Capability](docs/architecture/full-e2e-capability.md) を参照してください。
+## 専門SubAgent
 
-## Local Reference Navigator
+以下はDevelopmentの現行定義です。いずれも任意導入で、登録だけでは実行可能になりません。
 
-UnityAgentのLocal Reference Navigatorは、取得済みReference Snapshotをローカル検索する仕組みです。通常の質問で外部Driveや検索サービスへ常時接続したり、ベクトルDBへ同期したりする機能ではありません。
+| 専門担当 | 公開Capabilityと権限 |
+|---|---|
+| ArtistSubAgent | Cameraの検査・限定調整、Visual Capture。変更は対応Backend・Scope・承認が必要 |
+| GraphicsSubAgent | Rendering・Shaderの読取専用分析。変更のApply権限は持たない |
+| WorldCreatorSubAgent | World Goalから構造化した計画を作る。直接Unityを変更しない |
+| QASubAgent | 観測済みの性能Evidenceを分析する。計測・変更適用はUnityAgent側が管理する |
 
-詳細: [Local Reference Navigator](docs/architecture/local-reference-navigator.md)
+公開 `v0.0.8-beta` ではQA移行前のPerformanceSubAgent名称です。mainの正本IDは `qa_subagent` で、旧 `performance_subagent` は入力互換名として扱います。[選出・必要環境・検証状態](docs/guides/subagents.md) を参照してください。
 
-## Branch Workflow
+<a id="core-principles"></a>
+<a id="request-lifecycle"></a>
 
-開発branchは `main` から作成し、`feature/*`、`fix/*`、`chore/*`、必要時のみ `release/*` を使用します。通常PRは `main` をbaseにし、Squash Merge後の短命branchは自動削除します。
+## 安全性と検証結果
 
-詳細と機械可読な契約は [Branch src/unityagent/policy](docs/development/branch-policy.md) を参照してください。
+- **変更の制御**：対象・Scope・Revisionに結び付いた承認を確認して適用する。
+- **必須条件の保持**：環境・権限・Evidence条件が不明または不足なら、条件を弱めて成功扱いしない。
+- **証拠に基づく確認**：実行完了と検証完了を区別し、Runtimeの観測をPersistenceへ保存する。
 
-## Validation
+Compile、Editor、Player、実機、Visual、Performanceは別のGateです。一部のPASSから他の成功を推測しません。詳しい契約は [検証とEvidence](docs/architecture/architecture.md#8-evidence-contract) にあります。
 
-Repositoryの基本検証:
+<a id="current-production-surface"></a>
+<a id="status--license"></a>
+
+## 対応環境と現在の状態
+
+UnityAgentは **Beta** です。Unity 6.x+のBuilt-in・URP・HDRPを対象としますが、これは全環境での実Editor検証済み宣言ではありません。Unity 2022.3の記録は履歴であり、現行Production対応には含みません。
+
+Developmentには限定C#修正や別Workspaceの最大2worker実行が実装されています。限定並列は既定無効で、実モデル・実UnityのE2Eと性能評価は未完了です。固定E2E、追加Backend、画面録画も、それぞれの条件・検証状態を [機能の状態表](docs/references/capability-status.md) で区別します。
+
+<a id="canonical-sources"></a>
+<a id="local-reference-navigator"></a>
+
+## ドキュメント
+
+| 読者・目的 | 入口 |
+|---|---|
+| 導入と最初の操作 | [導入](docs/getting-started/installation.md) · [最初のTask](docs/getting-started/first-task.md) |
+| 専門担当と利用可否 | [SubAgent](docs/guides/subagents.md) · [機能の状態表](docs/references/capability-status.md) |
+| 仕組みを短時間で知る | [3分で分かる全体構造](docs/architecture/three-minute-architecture.md) |
+| 開発・設計を調べる | [全体構造](docs/architecture/architecture.md) · [ローカル開発](docs/local-project-development.md) · [文書一覧・正本案内](docs/README.md) |
+| Contextや参照資料を調べる | [Context Explorer](https://darumappap.github.io/UnityAgent/) · [Explorer説明](docs/context-explorer.md) · [Local Reference Navigator](docs/architecture/local-reference-navigator.md) |
+
+<a id="branch-workflow"></a>
+<a id="validation"></a>
+
+## 開発への参加
+
+[Branch Policy](docs/development/branch-policy.md) と [PR記述規約](docs/development/pull-request-standards.md) を確認してください。Repositoryの基本検証は次のコマンドです。
 
 ```powershell
-python .\tools\validate_all.py
-python .\tools\SkillValidator\validate_skills.py --strict
-python .\tools\ProductionToolRuntime\validate_production_tool_runtime.py
-python .\tools\run_regression_gate.py
+python tools/validate_all.py
 ```
 
-Local Regression Gateの一部はローカルCodex CLIや認証済み環境を必要とします。GitHub-hosted Release Workflowの検証結果と混同しないでください。
+依存導入、Unity Project、Hostと実Unityの検証手順は [Unity開発・検証環境仕様](docs/development/unity-test.md) にあります。CIの契約・Host検証と実Editor・実機の成功は区別します。
 
-## Canonical Sources
+## ライセンス
 
-| Concern | Source |
-|---|---|
-| Repository authority / mirrored declarations | `src/unityagent/contracts/repository-authority-map.yaml` |
-| Layer boundary | `src/unityagent/contracts/unityagent-layer-contract.yaml` |
-| src/unityagent/policy / Approval | `src/unityagent/policy/` |
-| Routing / src/unityagent/orchestration | `src/unityagent/orchestration/` |
-| src/unityagent/runtime / Provider Registry / Resolution | `src/unityagent/runtime/` |
-| Durable Evidence | `src/unityagent/persistence/` |
-| Regression / eval | `eval/` |
-| Optional SubAgent metadata | [`subagent/`](subagent/) |
-
-詳細は [Architecture](docs/architecture/architecture.md) と [Production Tool src/unityagent/runtime](docs/architecture/production-tool-runtime.md) を参照してください。
-
-## Status & License
-
-UnityAgentは **Beta** です。
-
-Release Workflowは `main/VERSION` をSource of Truthとしてcanonical tagを生成します。さらに `src/unityagent/runtime/distribution/subagent-sources.lock.json` の固定Hub commitを取得・検証し、Artist backend / package / Hub Snapshotを同じUnityAgent Releaseへ同梱します。Hub `main` や個別SubAgent Releaseを実行時DistributionのSource of Truthにはしません。
-
-UnityAgentは [MIT License](LICENSE) で提供されます。
+[MIT License](LICENSE) で提供します。Beta段階のため、正式版までに互換性のない変更を含む可能性があります。

@@ -2,6 +2,18 @@
 
 このページは、現在の仕様を調べるための入口です。**現在有効な設計・実装契約**と、作成当時の状況を記録した**履歴資料**を区別します。
 
+## 利用を始める
+
+| 目的 | 資料 |
+|---|---|
+| 公開Releaseを導入する・Developmentを固定する | [導入とRevision](getting-started/installation.md) |
+| Projectを診断し、Setup Planを読む | [最初のTask](getting-started/first-task.md) |
+| 専門担当と利用条件を調べる | [SubAgentガイド](guides/subagents.md) |
+| 実装と検証状態・対応環境を調べる | [機能の状態表](references/capability-status.md) |
+| 仕組みを短時間で知る | [3分で分かる全体構造](architecture/three-minute-architecture.md) |
+
+公開Releaseの説明とDevelopmentの機能・構文を区別します。説明上の計画、コードの実装、対象Revision・環境・Gateに一致する検証成功はそれぞれ別です。Setupの詳細は [既存のEditorガイド](development/unityagent-setup-unity-verification.md)、承認とScopeは [ローカル開発ガイド](local-project-development.md) を再利用します。
+
 ## 現在の構造と機能
 
 | 内容 | 資料 |
@@ -18,6 +30,8 @@
 | Production E2Eの実装と未検証範囲 | [一連の実行処理](architecture/production-e2e-runtime.md) |
 
 ## 開発・検証環境
+
+Contributorは [Branch運用](development/branch-policy.md)、[PR記述規約](development/pull-request-standards.md)、[Release資格確認](development/p9-release-qualification.md) を確認してください。CI Runnerの詳細は [ci/README.md](../ci/README.md) を参照します。
 
 - [ローカルUnityプロジェクトでの開発](local-project-development.md)
 - [Unity開発・検証環境仕様](development/unity-test.md)
@@ -42,7 +56,7 @@
 - `eval/`
 - `src/unityagent/contracts/unityagent-layer-contract.yaml`
 
-文書と実装が矛盾する場合は、正本の契約・コード・テストを確認して文書を修正します。
+文書と実装が矛盾する場合は、正本の契約・コード・テストを確認して文書を修正します。[Authority Mapに残る外部Hub宣言と同居実装の不一致](references/capability-status.md#正本の既知の不一致) は既知事項として区別し、この文書整理で契約を書き換えません。
 
 ## 履歴資料
 
@@ -51,6 +65,7 @@
 - `migration/`：移行時の構造・実行・比較記録
 - `decisions/`：設計判断と決定事項
 - `superpowers/`：過去の計画・仕様案
+- [Unity環境整備の実装指示](development/unity-setup.md) と `development/plans/`：当時の実装計画。現行の操作ガイドと区別する
 - `architecture/reviews/`：時点監査
 - 日付を含む `*-audit-YYYY-MM-DD.md`、`*-decision-YYYY-MM-DD.md`
 
