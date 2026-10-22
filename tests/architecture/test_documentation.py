@@ -126,7 +126,7 @@ class DocumentationTests(unittest.TestCase):
         self.write("docs/README.md", "[導入](getting-started/installation.md)")
         self.assert_valid()
 
-    def matrix(self, *, header=None, evidence="[定義](../../source.yaml)", revision="`0123456789012345678901234567890123456789`"):
+    def matrix(self, *, header=None, evidence="[定義](../../source.yaml)", revision="[Commit](https://github.com/DarumaPPAP/UnityAgent/commit/0123456789012345678901234567890123456789)"):
         columns = header or ["機能ID／機能名", "利用条件", "実装状態", "検証状態", "制限", "根拠", "対象Revision"]
         self.write("source.yaml", "kind: example")
         self.write("README.md", "[状態](docs/references/capability-status.md)")
@@ -146,6 +146,43 @@ class DocumentationTests(unittest.TestCase):
         self.write("README.md", "[状態](docs/references/capability-status.md)")
         self.write("docs/references/capability-status.md", "# 状態\n後で記入")
         self.assert_invalid("required status columns")
+
+
+    def test_status_matrix_revision_requires_linked_full_commit(self):
+        self.matrix()
+        self.assert_valid()
+        self.matrix(revision="unknown")
+        self.assert_invalid("status revision must link")
+        self.matrix(revision="[Commit](https://github.com/DarumaPPAP/UnityAgent/commit/short)")
+        self.assert_invalid("status revision must link")
+
+    def test_tool_capability_rows_must_match_canonical_schema(self):
+        self.write(
+            validator.CAPABILITY_SCHEMA,
+            "properties:\n  capability:\n    enum: [project.inspect, source.read]\n",
+        )
+        self.write("README.md", "[状態](docs/references/capability-status.md)")
+        revision = "[Commit](https://github.com/DarumaPPAP/UnityAgent/commit/0123456789012345678901234567890123456789)"
+        def matrix(ids):
+            rows = "".join(
+                f"| \`{cap}\` | 条件 | 実装済み | 未観測 | 制限 | [定義](../../source.yaml) | {revision} |\n"
+                for cap in ids
+            )
+            self.write("source.yaml", "kind: example")
+            self.write(
+                "docs/references/capability-status.md",
+                "## Tool Capability\n\n"
+                "| 機能ID／機能名 | 利用条件 | 実装状態 | 検証状態 | 制限 | 根拠 | 対象Revision |\n"
+                "|---|---|---|---|---|---|---|\n" + rows,
+            )
+        matrix(["project.inspect", "source.read"])
+        self.assert_valid()
+        matrix(["project.inspect"])
+        self.assert_invalid("tool capability matrix differs from schema")
+        matrix(["project.inspect", "source.read", "unexpected.capability"])
+        self.assert_invalid("tool capability matrix differs from schema")
+        matrix(["project.inspect", "source.read", "source.read"])
+        self.assert_invalid("duplicate tool capability")
 
 
 if __name__ == "__main__":
