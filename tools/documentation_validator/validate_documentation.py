@@ -7,6 +7,7 @@ from html.parser import HTMLParser
 import re
 import sys
 import unicodedata
+import yaml
 from urllib.parse import unquote, urlsplit
 from pathlib import Path
 
@@ -119,6 +120,8 @@ USER_GUIDES = (
     Path("docs/references/capability-status.md"),
 )
 STATUS_COLUMNS = ("機能ID／機能名", "利用条件", "実装状態", "検証状態", "制限", "根拠", "対象Revision")
+CAPABILITY_SCHEMA = Path("src/unityagent/runtime/contracts/capability-request.schema.yaml")
+REVISION_URL = re.compile(r"https://github\.com/DarumaPPAP/UnityAgent/commit/[0-9a-f]{40}")
 REFERENCE_DEFINITION = re.compile(
     r'^ {0,3}\[([^]\n]+)\]:[ \t]*(<[^>\n]+>|[^\s]+)(?:[ \t]+.*)?$', re.MULTILINE
 )
@@ -361,13 +364,17 @@ def _validate_capability_status(errors: list[str]) -> None:
     found = False
     rows = 0
     active = False
+    tool_section = False
+    tool_capabilities: list[str] = []
     for number, line in enumerate(text.splitlines(), 1):
+        if line.startswith("## "):
+            tool_section = line.strip() == "## Tool Capability"
         if not line.strip().startswith("|"):
             if active and rows == 0:
                 errors.append(f"empty status table: {relative}:{number}")
             active = False
             continue
-        cells = [cell.strip() for cell in re.split(r"(?<!\\)\|", line.strip().strip("|"))]
+        cells = [cell.strip() for cell in re.split(r"(?<!\\)\\|", line.strip().strip("|"))]
         if cells[0] == STATUS_COLUMNS[0]:
             found = True
             active = True
@@ -383,10 +390,32 @@ def _validate_capability_status(errors: list[str]) -> None:
             continue
         if not _links(cells[5], references)[0]:
             errors.append(f"status evidence must contain a link: {relative}:{number}")
+        if not any(REVISION_URL.fullmatch(link) for link in _links(cells[6], references)[0]):
+            errors.append(f"status revision must link to a 40-character UnityAgent commit: {relative}:{number}")
+        if tool_section:
+            match = re.fullmatch(r"`([a-z][a-z0-9_.-]+)`", cells[0])
+            if match is None:
+                errors.append(f"invalid tool capability ID: {relative}:{number}")
+            else:
+                tool_capabilities.append(match[1])
     if active and rows == 0:
         errors.append(f"empty status table: {relative}")
     if not found:
         errors.append(f"required status columns are missing: {relative}")
+
+    schema_path = ROOT / CAPABILITY_SCHEMA
+    if schema_path.is_file():
+        try:
+            declared = yaml.safe_load(schema_path.read_text(encoding="utf-8"))["properties"]["capability"]["enum"]
+        except (OSError, ValueError, KeyError, TypeError, yaml.YAMLError) as exc:
+            errors.append(f"invalid canonical capability schema: {CAPABILITY_SCHEMA}: {exc}")
+            return
+        if len(tool_capabilities) != len(set(tool_capabilities)):
+            errors.append(f"duplicate tool capability in status matrix: {relative}")
+        missing = sorted(set(declared) - set(tool_capabilities))
+        extra = sorted(set(tool_capabilities) - set(declared))
+        if missing or extra:
+            errors.append(f"tool capability matrix differs from schema: missing={missing}, extra={extra}")
 
 
 def _legacy_reference_is_historical(line: str) -> bool:
