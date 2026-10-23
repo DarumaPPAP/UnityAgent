@@ -1,6 +1,7 @@
 from pathlib import Path
 import importlib.util
 import unittest
+from unittest import mock
 import yaml
 from jsonschema import Draft202012Validator, RefResolver
 
@@ -42,6 +43,28 @@ class ContextCutoverTests(unittest.TestCase):
             self.assertTrue(contract.startswith("src/unityagent/orchestration/contracts/task_contracts/"), route_id)
             self.assertFalse(contract.startswith(deprecated_scheme), route_id)
             self.assertTrue((ROOT / contract).is_file(), route_id)
+
+    def test_preflight_checks_all_selected_route_sources(self):
+        materializer = load_module("context_preflight_test", ROOT / "src/unityagent/context/assembly/materialize_context.py")
+        catalog = yaml.safe_load((ROOT / "src/unityagent/context/selection/context-catalog.yaml").read_text(encoding="utf-8"))
+        for route_id in catalog["routes"]:
+            with self.subTest(route=route_id):
+                result = materializer.preflight_context_sources(route_id, root=ROOT)
+                self.assertEqual(result["status"], "passed")
+                self.assertGreaterEqual(result["source_count"], 5)
+
+    def test_preflight_missing_skill_fails_closed(self):
+        materializer = load_module("context_preflight_missing_test", ROOT / "src/unityagent/context/assembly/materialize_context.py")
+        resolve = materializer.resolver.resolve_for_read
+
+        def missing_skill(reference, root):
+            if reference == ".agents/skills/unity-doubt-review/SKILL.md":
+                return ROOT / "missing-skill-for-preflight-test"
+            return resolve(reference, root)
+
+        with mock.patch.object(materializer.resolver, "resolve_for_read", side_effect=missing_skill):
+            with self.assertRaisesRegex(FileNotFoundError, "unity-doubt-review"):
+                materializer.preflight_context_sources("generic-planning", root=ROOT)
 
     def test_materialized_context_uses_direct_task_contract(self):
         materializer = load_module("context_materializer_test", ROOT / "src/unityagent/context/assembly/materialize_context.py")
