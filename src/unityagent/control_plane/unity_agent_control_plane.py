@@ -27,7 +27,7 @@ from unityagent.orchestration.routing.adaptive_execution import select_execution
 from unityagent.orchestration.routing.route_selector import load_routes, resolve_specialist, select_route, select_specialist_capability, task_fingerprint_from_intent
 from unityagent.orchestration.tool_routing.capability_request_builder import (build_capability_requests, build_specialist_capability_requests, conditions_for_intent,
     mutation_scope_for_intent, task_contract_projection)
-from unityagent.context.manifest.build_context_manifest import build as build_context_manifest
+from unityagent.context.manifest.build import build as build_context_manifest
 from unityagent.context.selection.project_context_inputs import derive_context_inputs
 from unityagent.context.selection.specialist_context import observation_items
 from unityagent.orchestration.graph.state_mapping import workflow_state_patch
@@ -614,7 +614,7 @@ class UnityAgentControlPlane:
         if intent['kind'] == 'csharp_local_fix':
             from unityagent.control_plane import csharp_fix
             try:
-                from unityagent.control_plane.workspace_task_execution import WORKSPACE_DISPATCH_TOKEN
+                from unityagent.control_plane.workspace_tasks import WORKSPACE_DISPATCH_TOKEN
                 csharp_session = csharp_fix.prepare(self, entry_request, context, handoff, manifest_ref=manifest_ref,
                     workspace_dispatch_authorized=_workspace_dispatch_token is WORKSPACE_DISPATCH_TOKEN)
                 runtime_provider_arguments['file'] = csharp_session['file_arguments']
@@ -874,7 +874,7 @@ class UnityAgentControlPlane:
                                 root_contract, parallel_enabled=False, resume=False, plan_proposer=None,
                                 timeout_seconds=300.0, cancel_event=None):
         """別Projectの子Runを最大2件に制限し、親だけがPlanとAcceptanceを更新する。"""
-        from unityagent.control_plane.workspace_task_execution import execute_workspace_dag
+        from unityagent.control_plane.workspace_tasks import execute_workspace_dag
         from unityagent.persistence.store.atomic_store import exclusive_file_lock
         with exclusive_file_lock(self.state_store.layout.run_root(run_id) / 'task-execution.lock'), capture_persistence(self, run_id):
             if (len(tasks) == 1 and plan_proposer is None and cancel_event is None and timeout_seconds == 300.0

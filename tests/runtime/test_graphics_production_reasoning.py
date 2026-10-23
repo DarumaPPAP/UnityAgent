@@ -12,7 +12,7 @@ from unityagent.runtime.tooling.capability_resolver import ResolutionContext
 from unityagent.runtime.tooling.environment.discovery import discover_environment
 from unityagent.runtime.tooling.environment.environment_snapshot import UnityCliSnapshot
 from unityagent.runtime.tooling.providers.file.file_provider import FileProvider
-from unityagent.context.manifest.build_context_manifest import build as build_context_manifest
+from unityagent.context.manifest.build import build as build_context_manifest
 from unityagent.context.selection.project_context_inputs import derive_context_inputs
 
 

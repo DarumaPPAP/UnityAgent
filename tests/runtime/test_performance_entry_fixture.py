@@ -7,7 +7,7 @@ import tempfile
 import unittest
 
 from unityagent.context.selection.project_context_inputs import derive_context_inputs
-from unityagent.context.manifest.build_context_manifest import build as build_context_manifest
+from unityagent.context.manifest.build import build as build_context_manifest
 from unityagent.control_plane.unity_agent_control_plane import UnityAgentControlPlane, validate_entry_request
 from unityagent.orchestration.routing.route_selector import load_routes, resolve_specialist, select_route, select_specialist_capability, task_fingerprint_from_intent
 from unityagent.orchestration.tool_routing.capability_request_builder import build_capability_requests, build_specialist_capability_requests, conditions_for_intent

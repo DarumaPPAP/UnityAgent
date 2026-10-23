@@ -19,7 +19,7 @@ from unityagent.runtime.guardrails.mutation_guard import evaluate_mutation_scope
 from unityagent.runtime.health.probes import probe_environment
 from unityagent.runtime.harnesses.task_enforcement import runtime_enforcement_from_task_contract
 from unityagent.runtime.runner.codex import codex_runner
-from unityagent.runtime.telemetry.runtime_telemetry import runtime_event
+from unityagent.runtime.telemetry.builders import runtime_event
 
 
 def fingerprint() -> dict:

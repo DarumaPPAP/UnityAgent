@@ -1,6 +1,6 @@
 """Local-first MyResourceCenter reference navigation."""
 
-from .reference_navigator import (
+from .navigator import (
     ReferenceSnapshotError,
     build_investigation_plan,
     load_snapshot,

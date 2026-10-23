@@ -14,7 +14,7 @@ CATALOG = Path("src/unityagent/context/selection/context-catalog.yaml")
 
 
 from unityagent.context.selection import path_resolver as resolver
-from unityagent.context.budget import budget_runtime as budget
+from unityagent.context.budget import evaluate as budget
 from unityagent.context.selection import capability_selector, specialist_context as specialist_selector
 
 

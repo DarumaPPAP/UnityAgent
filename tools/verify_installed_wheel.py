@@ -17,7 +17,7 @@ from unityagent.policy.security.capability_policy import policy_for_capability
 from unityagent.runtime.tooling.provider_contract import load_provider_registry
 from unityagent.runtime.reference_implementation.profiles import CATALOG
 from unityagent.context.assembly.materialize_context import materialize_context
-from unityagent.context.manifest.build_context_manifest import build
+from unityagent.context.manifest.build import build
 from unityagent.runtime.contracts.reasoning_output import require_reasoning_output_contract
 root = resource_root()
 manifest = json.loads((root / 'resource-manifest.json').read_text())

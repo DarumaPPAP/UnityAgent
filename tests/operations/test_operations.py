@@ -24,7 +24,7 @@ from unityagent.operations.runtime_control.control_gateway import (
 )
 from unityagent.orchestration.control.operations_api import OrchestrationOperationsAPI
 from unityagent.runtime.control.operations_api import RuntimeOperationsAPI
-from unityagent.runtime.telemetry.runtime_telemetry import runtime_audit, runtime_log, runtime_metric, runtime_span
+from unityagent.runtime.telemetry.builders import runtime_audit, runtime_log, runtime_metric, runtime_span
 
 
 ROOT = Path(__file__).resolve().parents[2]

@@ -140,7 +140,7 @@ class WorkspaceTaskExecutionTests(unittest.TestCase):
     def test_single_fast_task_uses_the_existing_inline_dag_without_parallel_records(self):
         self.tasks = [self.tasks[-1]]
         self.tasks[0]['depends_on'] = []
-        with patch('unityagent.control_plane.workspace_task_execution._observations') as physical:
+        with patch('unityagent.control_plane.workspace_tasks._observations') as physical:
             result = self.run_tasks()
         self.assertEqual(result['status'], 'verified', result)
         self.assertNotIn('parallel_execution', result)
@@ -163,7 +163,7 @@ class WorkspaceTaskExecutionTests(unittest.TestCase):
         self.assertNotEqual(result['final_gates'], {'project': 'passed'})
 
     def test_unknown_native_output_never_gets_a_fabricated_verified_path(self):
-        from unityagent.control_plane.workspace_task_execution import _observations
+        from unityagent.control_plane.workspace_tasks import _observations
         for name in ('a', 'b'):
             self.parameters[name]['executors']['native_unity_editor'] = lambda *args: None
         observation = _observations(self.plane, self.tasks[:2], self.parameters,
@@ -199,7 +199,7 @@ class WorkspaceTaskExecutionTests(unittest.TestCase):
             if phase == 'accepted':
                 raise OSError('interrupted after accepted batch')
             return ref
-        with patch('unityagent.control_plane.workspace_task_execution.append_parallel_event', side_effect=interrupt):
+        with patch('unityagent.control_plane.workspace_tasks.append_parallel_event', side_effect=interrupt):
             with self.assertRaises(OSError):
                 self.run_tasks()
         with self.assertRaises(ValueError):
