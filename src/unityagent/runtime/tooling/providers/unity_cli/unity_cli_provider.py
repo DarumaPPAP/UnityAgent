@@ -5,11 +5,14 @@ import tempfile
 import threading
 from pathlib import Path
 from typing import Any, Callable
+from jsonschema.exceptions import ValidationError
 
 from unityagent.runtime.contracts.capability_contract import validate_capability_request
 from unityagent.runtime.dispatcher.subprocess_dispatcher import DispatchRequest, dispatch
 from unityagent.runtime.tooling.environment.environment_snapshot import validate_environment_snapshot
 from unityagent.runtime.tooling.environment.project_identity import same_project_root
+from unityagent.runtime.tooling.providers.unity_cli.artist_command_adapter import ArtistCommand, build_artist_pipeline_command
+from unityagent.runtime.tooling.providers.unity_cli.artist_result_mapper import artist_failure, matches_artist_project, normalize_artist_pipeline_result
 from unityagent.runtime.tooling.providers.unity_cli.command_builder import (
     UnityCliCommand,
     build_compile_observation_command,
@@ -25,6 +28,7 @@ from unityagent.runtime.tooling.providers.unity_cli.discovery import (
 from unityagent.runtime.tooling.providers.unity_cli.profiler_observation import ProfilerObservationError, normalize_profiler_observation
 from unityagent.runtime.tooling.providers.unity_cli.result_mapper import (
     extract_command_catalog,
+    is_finite_number,
     normalize_build_execution,
     normalize_compile_observation,
     normalize_pipeline_command,
@@ -446,6 +450,69 @@ class UnityCliProvider:
             evidence=["editor_observation"],
         )
         return {**normalized, "provider_ref": "unity_cli", "command_name": command_name}
+
+    def run_artist_read_only(self, request: dict[str, Any], *, command: ArtistCommand, timeout_seconds: float, policy_allowed: bool, expected_context_id: str | None = None, expected_context_fingerprint: str | None = None, cancel_event: threading.Event | None = None) -> dict[str, Any]:
+        """移行検証用の非接続入口。Capability広告や承認Authorityを追加しない。"""
+        try:
+            built = build_artist_pipeline_command(str((self.environment_snapshot.get("unity_cli") or {}).get("executable_path") or ""), self.project_root, command)
+            validate_capability_request(request)
+            validate_environment_snapshot(self.environment_snapshot)
+        except PermissionError as exc:
+            return artist_failure("blocked_by_approval", str(exc))
+        except (KeyError, TypeError, ValueError, ValidationError) as exc:
+            return artist_failure("precondition_failed", f"invalid Artist request: {exc}")
+        if not policy_allowed:
+            return artist_failure("blocked_by_policy", "Policy denied Artist execution")
+        if request.get("capability") != "scene.inspect" or request.get("operation_kind") != "read" or request.get("mutation_scope") is not None:
+            return artist_failure("scope_violation", "Artist probe only accepts scene.inspect without a mutation scope; domain.workflow remains mutation-gated")
+        if command.name not in {"inspect", "history", "cinematic"} or command.name == "cinematic" and (command.operation or "inspect") != "inspect":
+            return artist_failure("not_observed", "only Artist inspection is enabled; workflow, Capture and human review paths remain gated")
+        if set(request["required_evidence"]).intersection({"mutation_evidence", "visual_capture", "human_review_decision"}):
+            return artist_failure("scope_violation", "read-only Artist request requires evidence outside its scope")
+        domain = (request.get("qualifiers") or {}).get("domain")
+        if domain != ("cinematic" if command.name == "cinematic" else "visual_art"):
+            return artist_failure("scope_violation", "Artist command does not match requested domain")
+        snapshot_root = (self.environment_snapshot.get("project") or {}).get("root")
+        if not matches_artist_project(request["project_root"], self.project_root) or not matches_artist_project(snapshot_root, self.project_root):
+            return artist_failure("scope_violation", "Artist request and Environment Snapshot must bind to this Project")
+        if cancel_event is not None and cancel_event.is_set():
+            return artist_failure("cancelled", "Artist command was cancelled before transport")
+        if not is_finite_number(timeout_seconds) or timeout_seconds <= 0:
+            return artist_failure("precondition_failed", "timeout_seconds must be finite and greater than zero")
+        editor = self.environment_snapshot.get("unity_editor") or {}
+        artist = self.environment_snapshot.get("unity_artist_cli") or {}
+        cli = self.environment_snapshot.get("unity_cli") or {}
+        if cli.get("available") is not True or editor.get("running") is not True or editor.get("project_bound") is not True or editor.get("safe_mode") is not False or editor.get("project_version_match") is not True:
+            return artist_failure("unavailable", "Artist requires an available CLI and bound Editor outside Safe Mode")
+        # Host実行ファイルの存在は要件にしない。既存DiscoveryのPackage／対応環境Factだけを使う。
+        if any(artist.get(key) is not True for key in ("package_installed", "compatible", "project_bound", "pipeline_reachable")):
+            return artist_failure("not_observed", "Artist Package, compatibility and Pipeline binding are not observed")
+        discovery, failure = self._require_discovery("command")
+        if failure:
+            return failure
+        if discovery is None or discovery.pipeline_reachable is not True or not isinstance(discovery.project_info, dict):
+            return artist_failure("unavailable", "Artist Pipeline discovery is unavailable")
+        root = next((discovery.project_info.get(key) for key in ("path", "projectPath", "project_path", "root") if discovery.project_info.get(key)), None)
+        status = discovery.editor_status
+        instances = status.get("instances") if isinstance(status, dict) else status
+        if not matches_artist_project(root, self.project_root) or not isinstance(instances, list):
+            return artist_failure("scope_violation", "observed CLI Project or Editor identity is missing or mismatched")
+        bound = [item for item in instances if isinstance(item, dict) and matches_artist_project(item.get("projectPath") or item.get("project"), self.project_root) and item.get("state") == "ready"]
+        version = (self.environment_snapshot.get("project") or {}).get("unity_version")
+        if len(bound) != 1 or (bound[0].get("version") or bound[0].get("editorVersion")) != version or artist.get("unity_version") != version:
+            return artist_failure("not_observed", "unique ready Editor with matching Unity version was not observed")
+        entries = [item for item in discovery.command_catalog if item.get("name") == f"artist.{command.name}"]
+        if len(entries) != 1 or entries[0].get("runtime_only") is not False:
+            return artist_failure("unsupported", "Artist command is missing, ambiguous or runtime-only in the current Catalog")
+        if cancel_event is not None and cancel_event.is_set():
+            return artist_failure("cancelled", "Artist command was cancelled during discovery")
+        exit_code, stdout, failure = self._dispatch(built, timeout_seconds=timeout_seconds, cancel_event=cancel_event)
+        if failure:
+            return failure
+        result = normalize_artist_pipeline_result(exit_code=int(exit_code), stdout=stdout, command=command, project_root=self.project_root, unity_version=version, render_pipeline=artist.get("render_pipeline"), expected_context_id=expected_context_id, expected_context_fingerprint=expected_context_fingerprint)
+        if result["status"] == "passed" and not set(request["required_evidence"]).issubset(result["evidence"]):
+            return artist_failure("not_observed", "Artist result does not contain all requested evidence")
+        return result
 
     def run_profiler_observe(
         self,
