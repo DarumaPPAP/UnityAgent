@@ -62,6 +62,7 @@ def build(
     if attempt == 1 and previous_manifest_ref is not None:
         raise ValueError("attempt 1 must not declare previous_manifest_ref")
     materializer = _load_materializer()
+    materializer.preflight_context_sources(route_id, active_conditions=active_conditions, root=ROOT)
     view = materializer.materialize_context(run_id, route_id, prompt_spec_ref, root=ROOT,
         bindings=bindings, capability_ids=capability_ids, active_conditions=active_conditions,
         specialist_selection=specialist_selection, specialist_items=specialist_items,
