@@ -64,7 +64,7 @@ src/unityagent/operations/
 
 ## Runtime telemetry boundary
 
-Runtime remains the producer of execution telemetry. `src/unityagent/runtime/telemetry/runtime_telemetry.py` emits contract-compatible trace spans, metrics, structured logs and audit events. Operations owns ingestion/search/dashboard/detection, not the production execution itself.
+Runtime remains the producer of execution telemetry. `src/unityagent/runtime/telemetry/builders.py` emits contract-compatible trace spans, metrics, structured logs and audit events. Operations owns ingestion/search/dashboard/detection, not the production execution itself.
 
 Telemetry may reference durable Evidence IDs but never becomes the canonical Evidence truth. That remains `src/unityagent/persistence/evidence`.
 

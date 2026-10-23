@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from unityagent.context.retrieval.reference.reference_navigator import (
+from unityagent.context.retrieval.reference.navigator import (
     build_investigation_plan,
     search_snapshot,
 )

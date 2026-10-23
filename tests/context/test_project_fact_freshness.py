@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def load_builder():
-    path = ROOT / "src/unityagent/context/manifest/build_context_manifest.py"
+    path = ROOT / "src/unityagent/context/manifest/build.py"
     spec = importlib.util.spec_from_file_location("phase8_context_manifest_builder", path)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)

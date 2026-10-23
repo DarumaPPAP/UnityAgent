@@ -5,7 +5,7 @@ import math
 import time
 
 from unityagent.operations.observability.event_store import OperationalEventStore
-from unityagent.runtime.telemetry.runtime_telemetry import runtime_metric, runtime_span
+from unityagent.runtime.telemetry.builders import runtime_metric, runtime_span
 
 PHASES = {'preparation', 'coordination', 'context', 'evidence', 'provider', 'lease', 'integration', 'gate', 'model', 'persistence'}
 COUNTERS = {'selected_utf8_bytes': 'bytes', 'snapshot_bytes': 'bytes', 'estimated_tokens': 'estimated_tokens',

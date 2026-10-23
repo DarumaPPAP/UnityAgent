@@ -15,7 +15,7 @@
 Schema: `src/unityagent/context/contracts/memory-projection.schema.yaml`
 
 ```python
-from unityagent.context.retrieval.memory.project_memory import build_memory_projection
+from unityagent.context.retrieval.memory.projections import retrieve_projections
 ```
 
 PersistenceまたはProjectMemoryを利用できない場合、Adapterは不足情報を推測せず安全側に停止します。

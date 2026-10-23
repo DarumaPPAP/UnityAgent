@@ -18,7 +18,7 @@ from unityagent.runtime.evidence_capture.tool_runtime_evidence import (
     normalize_provider_result,
     observation_payload,
 )
-from unityagent.runtime.telemetry.runtime_telemetry import provider_capability_metrics
+from unityagent.runtime.telemetry.builders import provider_capability_metrics
 
 
 class ToolRuntimeEvidenceTests(unittest.TestCase):

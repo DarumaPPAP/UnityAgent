@@ -4,7 +4,7 @@ import unittest
 from copy import deepcopy
 from pathlib import Path
 
-from unityagent.context.retrieval.memory.project_memory import retrieve_projections
+from unityagent.context.retrieval.memory.projections import retrieve_projections
 from unityagent.orchestration.graph.state_mapping import workflow_state_patch
 from unityagent.orchestration.loop.state_mapping import loop_control_state_patch
 from unityagent.persistence.checkpoint.checkpoint_store import CheckpointStore

@@ -38,7 +38,7 @@ def load_integration_plan(plane, identifier):
     state = plane.state_store.load_task_state(plan['parent_run_id'])
     if sha256_json(state.get('parallel_execution')) != plan['parallel_mode_digest']:
         raise ValueError('Integration physical binding metadata changed')
-    from unityagent.control_plane.workspace_task_execution import verify_project_bindings
+    from unityagent.control_plane.workspace_tasks import verify_project_bindings
     verify_project_bindings(state)
     active = read_active_plan(plane.state_store, state)
     origin = read_plan(plane.state_store.layout, plan['source_plan_ref'], plan['parent_run_id'])
@@ -261,7 +261,7 @@ def integrate_workspace_results(plane, run_id, identifier, approval_ref, origina
             raise ValueError('Integration Plan revision was rejected')
     elif any(names.get(task['id']) != task for task in additions):
         raise ValueError('Integration Task definitions or approval changed')
-    from unityagent.control_plane.workspace_task_execution import execute_workspace_dag
+    from unityagent.control_plane.workspace_tasks import execute_workspace_dag
     return execute_workspace_dag(plane, initial['tasks'], run_id=run_id,
         definition_fingerprint=state['definition_fingerprint'], task_parameters=parameters,
         root_contract=initial['root_contract'], parallel_enabled=state['parallel_execution']['enabled'], resume=True,

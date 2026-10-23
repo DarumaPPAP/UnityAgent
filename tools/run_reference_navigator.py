@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from unityagent.context.retrieval.reference.reference_navigator import (  # noqa: E402
+from unityagent.context.retrieval.reference.navigator import (  # noqa: E402
     ReferenceSnapshotError,
     build_investigation_plan,
     load_snapshot,

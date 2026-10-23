@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from unityagent.context.manifest.build_context_manifest import build as build_context_manifest
+from unityagent.context.manifest.build import build as build_context_manifest
 from unityagent.context.selection.project_context_inputs import derive_context_inputs
 from unityagent.orchestration.orchestrator.orchestrator import runtime_handoff
 from unityagent.orchestration.routing.route_selector import load_routes, resolve_specialist, select_route, select_specialist_capability, task_fingerprint_from_intent

@@ -14,7 +14,7 @@ from jsonschema import ValidationError
 from referencing import Registry, Resource
 
 from unityagent.control_plane.unity_agent_control_plane import UnityAgentControlPlane, validate_entry_request
-from unityagent.context.manifest.build_context_manifest import build as build_context_manifest
+from unityagent.context.manifest.build import build as build_context_manifest
 from unityagent.context.selection.project_context_inputs import derive_context_inputs
 from unityagent.runtime.contracts.runtime_handoff import validate_runtime_handoff
 from unityagent.runtime.execution_control.process_runtime import StreamingProcessResult

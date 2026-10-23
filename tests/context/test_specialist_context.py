@@ -101,7 +101,7 @@ class SpecialistContextTests(unittest.TestCase):
         fixture = artist_fixtures.UnityArtistCliResolutionTests()
         fixture.setUp()
         decision = resolve_specialist("artist-lookdev", "visual.capture", fixture.snapshot)
-        builder = load_module("specialist_manifest_builder_test", ROOT / "src/unityagent/context/manifest/build_context_manifest.py")
+        builder = load_module("specialist_manifest_builder_test", ROOT / "src/unityagent/context/manifest/build.py")
         manifest = builder.build("pilot", "artist-lookdev", specialist_selection=decision,
             specialist_items=[item("task_fact", "camera_binding", "MainCamera", required=True)],
             specialist_tags={"camera"}, required_specialist_keys={"task_fact:camera_binding"})

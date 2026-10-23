@@ -20,7 +20,7 @@ UnityAgent candidate selection
 answer / evidence / approved change
 ```
 
-`src/unityagent/context/retrieval/reference/reference_navigator.py` はネットワークアクセスを持ちません。タイトル、要約、Topics、Tags、Collections、Relations、短いEvidence factを正規化して検索します。日本語は短い文字n-gramも使います。
+`src/unityagent/context/retrieval/reference/navigator.py` はネットワークアクセスを持ちません。タイトル、要約、Topics、Tags、Collections、Relations、短いEvidence factを正規化して検索します。日本語は短い文字n-gramも使います。
 
 ## Two operating modes
 
