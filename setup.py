@@ -17,7 +17,7 @@ def copy_resources(destination):
     paths = []
     for base in ('src/unityagent', '.agents', 'docs/standards', 'docs/templates', 'docs/architecture/specifications', 'subagent'):
         paths.extend((ROOT / base).rglob('*'))
-    paths.extend(ROOT / p for p in ('VERSION', 'subagent/artist_subagent/tools/host/artist-backend-contract.yaml', 'src/unityagent/contracts/unityagent-layer-contract.yaml', 'eval/datasets/behavior/production-tool-runtime-environment-matrix.yaml'))
+    paths.extend(ROOT / p for p in ('VERSION', 'AGENTS.md', 'subagent/artist_subagent/tools/host/artist-backend-contract.yaml', 'src/unityagent/contracts/unityagent-layer-contract.yaml', 'eval/datasets/behavior/production-tool-runtime-environment-matrix.yaml'))
     for source in sorted(set(paths)):
         relative = source.relative_to(ROOT)
         if (relative.parts[:3] == ('subagent', 'artist_subagent', 'tools') and relative.as_posix() != 'subagent/artist_subagent/tools/host/artist-backend-contract.yaml') or not source.is_file() or (source.name != 'VERSION' and source.suffix not in {'.yaml', '.yml', '.json', '.md', '.txt', '.cs'}) or any(part in {'_resources', '__pycache__'} for part in relative.parts):
