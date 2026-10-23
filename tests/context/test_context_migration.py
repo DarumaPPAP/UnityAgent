@@ -65,6 +65,8 @@ class ContextCutoverTests(unittest.TestCase):
         with mock.patch.object(materializer.resolver, "resolve_for_read", side_effect=missing_skill):
             with self.assertRaisesRegex(FileNotFoundError, "unity-doubt-review"):
                 materializer.preflight_context_sources("generic-planning", root=ROOT)
+            # A route must not fail due to an unrelated, unselected Skill.
+            self.assertEqual(materializer.preflight_context_sources("csharp-local-fix", root=ROOT)["status"], "passed")
 
     def test_materialized_context_uses_direct_task_contract(self):
         materializer = load_module("context_materializer_test", ROOT / "src/unityagent/context/assembly/materialize_context.py")
