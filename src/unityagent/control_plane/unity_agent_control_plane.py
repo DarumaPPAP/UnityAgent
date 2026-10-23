@@ -172,6 +172,48 @@ class UnityAgentControlPlane:
         self.receipt_store = receipt_store or InstallReceiptStore(persistence_root)
         self.approval_resolver = approval_resolver or ApprovalDecisionResolver(ApprovalDecisionStore(persistence_root))
 
+    def _blocked_before_dispatch(
+        self, *, run_id: str, entry_point: str, definition_fingerprint: Mapping[str, Any],
+        stage: str, error: Exception, started_at: float,
+    ) -> dict[str, Any]:
+        """Persist pre-provider failure as an observed failure, not a provider result."""
+        elapsed_ms = round((time.monotonic() - started_at) * 1000, 3)
+        reason = str(error)
+        failure_class = "precondition_failed"
+        payload = {
+            "schema_version": "1.0", "run_id": run_id, "status": "blocked",
+            "failure_stage": stage, "failure_class": failure_class,
+            "error_type": type(error).__name__, "reason": reason, "elapsed_ms": elapsed_ms,
+            "provider_executed": False,
+        }
+        digest = sha256_json(payload)
+        path = self.evidence_store.layout.snapshot(run_id, "preflight-failure", digest)
+        write_immutable_json(path, payload)
+        payload_ref = relative_ref(self.evidence_store.layout.root, path)
+        evidence_id = f"{run_id}-preflight-evidence-1"
+        self.evidence_store.append({
+            "schema_version": "1.1", "evidence_id": evidence_id, "run_id": run_id,
+            "step_id": stage, "source_type": "preflight_failure",
+            "source_ref": "unityagent.control_plane.preflight",
+            "timestamp": _now(), "hash": digest, "producer": "unityagent.control_plane",
+            "verification_status": "failed", "provenance": [f"control_plane:{stage}"],
+            "payload_ref": payload_ref, "definition_fingerprint": dict(definition_fingerprint),
+            "failure_class": failure_class, "failure_stage": stage, "latency_ms": elapsed_ms,
+        })
+        self.evidence_store.verify_record(evidence_id, expected_run_id=run_id)
+        state_ref = self._save_execution_state(
+            run_id=run_id, step_id=stage, action_id="preflight",
+            status="blocked", evidence_refs=[evidence_id],
+        )
+        return {
+            "schema_version": "2.0", "status": "blocked", "run_id": run_id,
+            "entry_point": entry_point,
+            "layer_trace": ["entry", "control_plane", "preflight", "evidence_state"],
+            "failure_stage": stage, "failure_class": failure_class, "reason": reason,
+            "elapsed_ms": elapsed_ms, "results": [], "evidence_refs": [evidence_id],
+            "state_ref": state_ref, "provider_executed": False,
+        }
+
     def _save_execution_state(
         self,
         *,
@@ -319,6 +361,7 @@ class UnityAgentControlPlane:
         validate_definition_fingerprint(dict(definition_fingerprint))
         snapshot = _snapshot_dict(environment_snapshot)
         resolved_run_id = run_id or _new_run_id(str(entry_request["request_id"]))
+        preflight_started_at = time.monotonic()
         intent = dict(entry_request["intent"])
         try:
             task_fingerprint = task_fingerprint_from_intent(intent, snapshot,
@@ -359,12 +402,17 @@ class UnityAgentControlPlane:
                 for evidence in request["required_evidence"]))
             capabilities = [str(request["capability"]) for request in capability_requests]
         except ValueError as exc:
-            return {"schema_version": "2.0", "status": "blocked", "run_id": resolved_run_id,
-                    "reason": str(exc), "results": [], "evidence_refs": []}
+            return self._blocked_before_dispatch(
+                run_id=resolved_run_id, entry_point=str(entry_request["entry_point"]),
+                definition_fingerprint=definition_fingerprint, stage="routing",
+                error=exc, started_at=preflight_started_at)
         try:
             inputs = measured_call(self, resolved_run_id, 'preparation', derive_context_inputs, str(entry_request["project_root"]), snapshot, intent)
         except ValueError as exc:
-            return {"schema_version": "2.0", "status": "blocked", "run_id": resolved_run_id, "reason": str(exc), "results": [], "evidence_refs": []}
+            return self._blocked_before_dispatch(
+                run_id=resolved_run_id, entry_point=str(entry_request["entry_point"]),
+                definition_fingerprint=definition_fingerprint, stage="preparation",
+                error=exc, started_at=preflight_started_at)
         specialist_selection = resolve_specialist(route_id, selected_capability or capabilities[0], snapshot, pilot_enabled=specialist_pilot_enabled, context_items=inputs["specialist_items"], activation_only=True)
         if specialist_selection["status"] in {"unavailable", "unsupported"}:
             return {"schema_version": "2.0", "status": "blocked", "run_id": resolved_run_id,
@@ -380,9 +428,11 @@ class UnityAgentControlPlane:
                 specialist_items=inputs["specialist_items"] if specialist_selection["status"] == "selected" else None,
                 specialist_tags=inputs["specialist_tags"] if specialist_selection["status"] == "selected" else None,
                 required_specialist_keys=inputs["required_specialist_keys"] if specialist_selection["status"] == "selected" else None)
-        except ValueError as exc:
-            return {"schema_version": "2.0", "status": "blocked", "run_id": resolved_run_id,
-                    "reason": str(exc), "results": [], "evidence_refs": []}
+        except (ValueError, FileNotFoundError) as exc:
+            return self._blocked_before_dispatch(
+                run_id=resolved_run_id, entry_point=str(entry_request["entry_point"]),
+                definition_fingerprint=definition_fingerprint, stage="context",
+                error=exc, started_at=preflight_started_at)
         view = manifest["materialized_context"]
         manifest_path = self.state_store.layout.snapshot(resolved_run_id, "context-manifest", sha256_json(manifest))
         write_immutable_json(manifest_path, manifest)
