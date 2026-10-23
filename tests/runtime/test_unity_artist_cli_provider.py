@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import sys
+import copy
+import threading
 import unittest
 from pathlib import Path
 
@@ -120,6 +122,30 @@ class UnityArtistCliProviderTests(unittest.TestCase):
 
         self.assertEqual(result["status"], "failed")
         self.assertEqual(result["failure_class"], "precondition_failed")
+        self.assertEqual(fake.requests, [])
+
+    def test_project_mismatch_is_rejected_before_transport(self):
+        for boundary in ("request", "snapshot"):
+            with self.subTest(boundary=boundary):
+                request = copy.deepcopy(self.request)
+                snapshot = copy.deepcopy(self.snapshot)
+                if boundary == "request":
+                    request["project_root"] = str(ROOT / "other-project")
+                else:
+                    snapshot["project"]["root"] = str(ROOT / "other-project")
+                fake = FakeArtistDispatch({"status": "passed", "data": {}})
+                provider = UnityArtistCliProvider(self.project_root, snapshot, dispatch_fn=fake)
+                result = provider.execute(request, arguments={"command": "inspect"})
+                self.assertEqual(result["failure_class"], "scope_violation")
+                self.assertEqual(fake.requests, [])
+
+    def test_cancelled_command_never_starts_transport(self):
+        cancelled = threading.Event()
+        cancelled.set()
+        fake = FakeArtistDispatch({"status": "passed", "data": {}})
+        provider = UnityArtistCliProvider(self.project_root, self.snapshot, dispatch_fn=fake)
+        result = provider.execute(self.request, arguments={"command": "inspect"}, cancel_event=cancelled)
+        self.assertEqual(result["failure_class"], "cancelled")
         self.assertEqual(fake.requests, [])
 
 
