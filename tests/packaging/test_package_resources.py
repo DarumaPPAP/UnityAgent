@@ -16,6 +16,10 @@ class PackageResourcesTests(unittest.TestCase):
         view = materialize_context('package-proof', 'csharp-local-fix')
         self.assertTrue(view['selected_refs']['primary_skill']['revision'].startswith('sha256:'))
 
+    def test_generic_planning_skill_is_bundled_and_preflighted(self):
+        from unityagent.context.assembly.materialize_context import preflight_context_sources
+        self.assertEqual(preflight_context_sources('generic-planning')['status'], 'passed')
+
     def test_resource_paths_cannot_escape(self):
         from unityagent.context.selection.path_resolver import resolve_for_read, ReferenceResolutionError
         from unityagent.resources import resource_root
