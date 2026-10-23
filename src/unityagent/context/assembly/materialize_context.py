@@ -50,6 +50,53 @@ def _append_unique(items: list[dict[str, Any]], value: dict[str, Any]) -> None:
         items.append(value)
 
 
+
+def preflight_context_sources(
+    route_id: str, *, active_conditions: set[str] | None = None, root: Path = ROOT,
+) -> dict[str, Any]:
+    """Verify only the resources selected by this route, before provider dispatch.
+
+    Sources are always resolved against the package-owned resource root (or an
+    explicit repository root in tests), never the caller's Unity Project.
+    Optional context includes remain optional; an active repository reference
+    is mandatory because materialization will read it.
+    """
+    root = root.resolve()
+    catalog = _yaml(root / CATALOG)
+    route = (catalog.get("routes") or {}).get(route_id)
+    if not isinstance(route, dict):
+        raise ValueError(f"Unknown route id: {route_id}")
+    refs = [
+        _selected_ref(str(catalog["user_policy"]), "user_policy", root),
+        _selected_ref(str(catalog["capability_catalog"]), "capability_catalog", root),
+        _selected_ref(str(route["context_pack"]), "context_pack", root),
+        _selected_ref(str(route["primary_skill"]), "primary_skill", root),
+        _selected_ref(str(route["task_contract"]), "task_contract", root),
+    ]
+    pack = _yaml(root / refs[2]["resolved_path"])
+    entries = list(pack.get("required") or [])
+    conditional = pack.get("conditional") or {}
+    if not isinstance(conditional, dict):
+        raise ValueError("Context Pack conditional section must be a mapping")
+    for condition in sorted(active_conditions or set()):
+        selected = conditional.get(condition, []) or []
+        if not isinstance(selected, list):
+            raise ValueError(f"Context Pack condition must contain a list: {condition}")
+        entries.extend(selected)
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise ValueError("Context Pack typed entries must be mappings")
+        kind = entry.get("type")
+        if kind == "repository_reference":
+            refs.append(_selected_ref(str(entry["path"]), "required_context", root))
+        elif kind == "context_include" and (
+            entry in (pack.get("required") or []) or entry.get("required_when_active") is True
+        ):
+            context_id = str(entry["context_id"])
+            refs.append(_selected_ref(f"src/unityagent/context/packs/{context_id}.yaml", "context_include", root))
+    return {"status": "passed", "route_id": route_id, "source_count": len(refs)}
+
+
 def _process_entry(
     entry: Any,
     *,

@@ -25,4 +25,4 @@ namespaces = false
 
 [tool.setuptools.package-data]
 "*" = ["*.yaml", "*.yml", "*.json", "*.md", "*.txt", "*.cs"]
-"unityagent" = ["**/*.yaml", "**/*.yml", "**/*.json", "**/*.md", "**/*.txt", "**/*.cs", "_resources/**/*", "_resources/.agents/**/*"]
+"unityagent" = ["_resources/AGENTS.md", "**/*.yaml", "**/*.yml", "**/*.json", "**/*.md", "**/*.txt", "**/*.cs", "_resources/**/*", "_resources/.agents/**/*"]

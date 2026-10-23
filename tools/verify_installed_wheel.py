@@ -47,6 +47,10 @@ assert CATALOG.get('artist_subagent').profile_id == 'artist_subagent'
 import importlib
 for profile_id in CATALOG.to_mapping()['profiles']:
     importlib.import_module(CATALOG.definition(profile_id).session_entrypoint)
+from unityagent.context.assembly.materialize_context import preflight_context_sources
+catalog = yaml.safe_load((root / 'src/unityagent/context/selection/context-catalog.yaml').read_text())
+for route in catalog['routes']:
+    assert preflight_context_sources(route)['status'] == 'passed', route
 for route in ('generic-planning', 'csharp-local-fix', 'rendering-incident', 'world-creation', 'artist-lookdev'):
     view = materialize_context('wheel-' + route, route)
     assert view['selected_refs']['primary_skill']['revision'].startswith('sha256:')

@@ -136,6 +136,73 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertNotIn('strategy_observation_refs', result)
         self.assertNotIn('handoff', result)
 
+    def test_missing_context_skill_records_failure_evidence_before_provider(self):
+        plane = UnityAgentControlPlane(self.root / 'state')
+        with mock.patch('unityagent.control_plane.unity_agent_control_plane.build_context_manifest',
+                        side_effect=FileNotFoundError('selected context source does not exist: .agents/skills/unity-doubt-review/SKILL.md')), \
+             mock.patch.object(plane.broker, 'dispatch') as dispatch:
+            result = self.observe_inspection(plane)
+        dispatch.assert_not_called()
+        self.assertEqual(result['status'], 'blocked')
+        self.assertEqual(result['failure_stage'], 'context')
+        self.assertFalse(result['provider_executed'])
+        self.assertEqual(len(result['evidence_refs']), 1)
+        self.assertIn('state_ref', result)
+        state = plane.state_store.load_execution_state(result['run_id'])
+        self.assertEqual(state['status'], 'blocked')
+        self.assertEqual(state['evidence_refs'], result['evidence_refs'])
+        record = plane.evidence_store.verify_record(result['evidence_refs'][0], expected_run_id=result['run_id'])
+        self.assertEqual(record['verification_status'], 'failed')
+        self.assertEqual(record['source_type'], 'preflight_failure')
+        payload = json.loads((plane.evidence_store.layout.root / record['payload_ref']).read_text(encoding='utf-8'))
+        self.assertEqual(payload['failure_stage'], 'context')
+        self.assertFalse(payload['provider_executed'])
+        self.assertGreaterEqual(payload['elapsed_ms'], 0)
+
+    def test_preflight_evidence_detects_tampered_payload(self):
+        plane = UnityAgentControlPlane(self.root / 'state')
+        with mock.patch('unityagent.control_plane.unity_agent_control_plane.build_context_manifest',
+                        side_effect=FileNotFoundError('missing route Skill')):
+            result = self.observe_inspection(plane)
+        evidence_id = result['evidence_refs'][0]
+        record = plane.evidence_store.verify_record(evidence_id, expected_run_id=result['run_id'])
+        payload_path = plane.evidence_store.layout.root / record['payload_ref']
+        payload = json.loads(payload_path.read_text(encoding='utf-8'))
+        payload['status'] = 'completed'
+        payload_path.write_text(json.dumps(payload), encoding='utf-8')
+        with self.assertRaisesRegex(PersistenceError, 'digest mismatch'):
+            plane.evidence_store.verify_record(evidence_id, expected_run_id=result['run_id'])
+
+    def test_unresolved_provider_has_durable_failure_evidence(self):
+        plane = UnityAgentControlPlane(self.root / 'state')
+        with mock.patch.object(plane.broker, 'dispatch', return_value={
+            'status': 'blocked',
+            'resolution': {'status': 'unavailable', 'failure_class': 'unavailable',
+                           'reason': 'no eligible Provider'},
+            'provider_result': None,
+        }) as dispatch:
+            result = self.observe_inspection(plane)
+        self.assertEqual(dispatch.call_count, 1)
+        self.assertEqual(result['status'], 'blocked')
+        self.assertEqual(len(result['evidence_refs']), 1)
+        self.assertEqual(result['results'][0]['provider_executed'], False)
+        self.assertEqual(result['results'][0]['evidence_ref'], result['evidence_refs'][0])
+        record = plane.evidence_store.verify_record(result['evidence_refs'][0], expected_run_id=result['run_id'])
+        self.assertEqual(record['failure_stage'], 'provider_resolution')
+        self.assertEqual(record['failure_class'], 'unavailable')
+        self.assertEqual(plane.state_store.load_execution_state(result['run_id'])['evidence_refs'],
+                         result['evidence_refs'])
+
+    def test_preparation_failure_records_evidence(self):
+        plane = UnityAgentControlPlane(self.root / 'state')
+        with mock.patch('unityagent.control_plane.unity_agent_control_plane.derive_context_inputs',
+                        side_effect=ValueError('missing observed inputs')):
+            result = self.observe_inspection(plane)
+        self.assertEqual(result['failure_stage'], 'preparation')
+        self.assertEqual(result['status'], 'blocked')
+        self.assertEqual(len(result['evidence_refs']), 1)
+        self.assertTrue(plane.evidence_store.verify_record(result['evidence_refs'][0], expected_run_id=result['run_id']))
+
     def test_observed_failure_keeps_runtime_classification(self):
         for failure in ('blocked_by_approval', 'scope_violation', 'unavailable', 'resource_conflict'):
             with self.subTest(failure=failure):
