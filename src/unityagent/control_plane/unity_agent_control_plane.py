@@ -172,25 +172,24 @@ class UnityAgentControlPlane:
         self.receipt_store = receipt_store or InstallReceiptStore(persistence_root)
         self.approval_resolver = approval_resolver or ApprovalDecisionResolver(ApprovalDecisionStore(persistence_root))
 
-    def _blocked_before_dispatch(
-        self, *, run_id: str, entry_point: str, definition_fingerprint: Mapping[str, Any],
-        stage: str, error: Exception, started_at: float,
-    ) -> dict[str, Any]:
-        """Persist pre-provider failure as an observed failure, not a provider result."""
+    def _record_pre_provider_failure(
+        self, *, run_id: str, definition_fingerprint: Mapping[str, Any],
+        stage: str, error: Exception, started_at: float, evidence_sequence: int = 1,
+        failure_class: str = "precondition_failed",
+    ) -> tuple[str, float]:
+        """Append immutable failure evidence without inventing a Provider result."""
         elapsed_ms = round((time.monotonic() - started_at) * 1000, 3)
-        reason = str(error)
-        failure_class = "precondition_failed"
         payload = {
             "schema_version": "1.0", "run_id": run_id, "status": "blocked",
             "failure_stage": stage, "failure_class": failure_class,
-            "error_type": type(error).__name__, "reason": reason, "elapsed_ms": elapsed_ms,
+            "error_type": type(error).__name__, "reason": str(error), "elapsed_ms": elapsed_ms,
             "provider_executed": False,
         }
         digest = sha256_json(payload)
         path = self.evidence_store.layout.snapshot(run_id, "preflight-failure", digest)
         write_immutable_json(path, payload)
         payload_ref = relative_ref(self.evidence_store.layout.root, path)
-        evidence_id = f"{run_id}-preflight-evidence-1"
+        evidence_id = f"{run_id}-preflight-evidence-{evidence_sequence}"
         self.evidence_store.append({
             "schema_version": "1.1", "evidence_id": evidence_id, "run_id": run_id,
             "step_id": stage, "source_type": "preflight_failure",
@@ -201,6 +200,16 @@ class UnityAgentControlPlane:
             "failure_class": failure_class, "failure_stage": stage, "latency_ms": elapsed_ms,
         })
         self.evidence_store.verify_record(evidence_id, expected_run_id=run_id)
+        return evidence_id, elapsed_ms
+
+    def _blocked_before_dispatch(
+        self, *, run_id: str, entry_point: str, definition_fingerprint: Mapping[str, Any],
+        stage: str, error: Exception, started_at: float,
+    ) -> dict[str, Any]:
+        """Persist a blocked Run before any Provider dispatch."""
+        evidence_id, elapsed_ms = self._record_pre_provider_failure(
+            run_id=run_id, definition_fingerprint=definition_fingerprint,
+            stage=stage, error=error, started_at=started_at)
         state_ref = self._save_execution_state(
             run_id=run_id, step_id=stage, action_id="preflight",
             status="blocked", evidence_refs=[evidence_id],
@@ -209,7 +218,7 @@ class UnityAgentControlPlane:
             "schema_version": "2.0", "status": "blocked", "run_id": run_id,
             "entry_point": entry_point,
             "layer_trace": ["entry", "control_plane", "preflight", "evidence_state"],
-            "failure_stage": stage, "failure_class": failure_class, "reason": reason,
+            "failure_stage": stage, "failure_class": "precondition_failed", "reason": str(error),
             "elapsed_ms": elapsed_ms, "results": [], "evidence_refs": [evidence_id],
             "state_ref": state_ref, "provider_executed": False,
         }
@@ -666,6 +675,17 @@ class UnityAgentControlPlane:
             if result.get("receipt_integrity") == "failed":
                 results.append(result)
                 break
+            if isinstance(resolution, Mapping) and resolution.get("status") != "resolved":
+                failure_class = str(resolution.get("failure_class") or "precondition_failed")
+                failure_reason = str(resolution.get("reason") or "Provider resolution did not resolve")
+                failure_id, _ = self._record_pre_provider_failure(
+                    run_id=resolved_run_id, definition_fingerprint=definition_fingerprint,
+                    stage="provider_resolution", error=ValueError(failure_reason),
+                    started_at=preflight_started_at, evidence_sequence=index + 1,
+                    failure_class=failure_class)
+                evidence_refs.append(failure_id)
+                result["evidence_ref"] = failure_id
+                result["provider_executed"] = False
             if isinstance(resolution, Mapping) and resolution.get("status") == "resolved" and isinstance(provider_result, Mapping):
                 evidence_id = f"{resolved_run_id}-evidence-{index + 1}"
                 observation_ref, observation_provenance = None, []
