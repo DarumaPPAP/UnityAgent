@@ -159,6 +159,40 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertFalse(payload['provider_executed'])
         self.assertGreaterEqual(payload['elapsed_ms'], 0)
 
+    def test_preflight_evidence_detects_tampered_payload(self):
+        plane = UnityAgentControlPlane(self.root / 'state')
+        with mock.patch('unityagent.control_plane.unity_agent_control_plane.build_context_manifest',
+                        side_effect=FileNotFoundError('missing route Skill')):
+            result = self.observe_inspection(plane)
+        evidence_id = result['evidence_refs'][0]
+        record = plane.evidence_store.verify_record(evidence_id, expected_run_id=result['run_id'])
+        payload_path = plane.evidence_store.layout.root / record['payload_ref']
+        payload = json.loads(payload_path.read_text(encoding='utf-8'))
+        payload['status'] = 'completed'
+        payload_path.write_text(json.dumps(payload), encoding='utf-8')
+        with self.assertRaisesRegex(PersistenceError, 'digest mismatch'):
+            plane.evidence_store.verify_record(evidence_id, expected_run_id=result['run_id'])
+
+    def test_unresolved_provider_has_durable_failure_evidence(self):
+        plane = UnityAgentControlPlane(self.root / 'state')
+        with mock.patch.object(plane.broker, 'dispatch', return_value={
+            'status': 'blocked',
+            'resolution': {'status': 'unavailable', 'failure_class': 'unavailable',
+                           'reason': 'no eligible Provider'},
+            'provider_result': None,
+        }) as dispatch:
+            result = self.observe_inspection(plane)
+        self.assertEqual(dispatch.call_count, 1)
+        self.assertEqual(result['status'], 'blocked')
+        self.assertEqual(len(result['evidence_refs']), 1)
+        self.assertEqual(result['results'][0]['provider_executed'], False)
+        self.assertEqual(result['results'][0]['evidence_ref'], result['evidence_refs'][0])
+        record = plane.evidence_store.verify_record(result['evidence_refs'][0], expected_run_id=result['run_id'])
+        self.assertEqual(record['failure_stage'], 'provider_resolution')
+        self.assertEqual(record['failure_class'], 'unavailable')
+        self.assertEqual(plane.state_store.load_execution_state(result['run_id'])['evidence_refs'],
+                         result['evidence_refs'])
+
     def test_preparation_failure_records_evidence(self):
         plane = UnityAgentControlPlane(self.root / 'state')
         with mock.patch('unityagent.control_plane.unity_agent_control_plane.derive_context_inputs',
