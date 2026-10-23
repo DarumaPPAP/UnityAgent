@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -26,12 +27,39 @@ def redact_sensitive(value: Any) -> Any:
     return value
 
 
-def parse_json_sequence(text: str) -> list[Any]:
+def _unique_json_members(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON member: {key}")
+        result[key] = value
+    return result
+
+
+def is_finite_number(value: Any) -> bool:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        # boolをPythonの整数互換性から観測数値へ昇格させない。
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        # JSONで有効な巨大整数でも、実行時の数値表現に収まらなければ拒否する。
+        return False
+
+
+def _finite_json_number(text: str) -> float:
+    value = float(text)
+    if not is_finite_number(value):
+        raise ValueError("non-finite JSON number is prohibited")
+    return value
+
+
+def parse_json_sequence(text: str, *, strict: bool = False) -> list[Any]:
     """Pretty JSON、連結JSON、NDJSONを同じdecoderで厳密に読む。"""
     stripped = text.strip()
     if not stripped:
         return []
-    decoder = json.JSONDecoder()
+    decoder = json.JSONDecoder(object_pairs_hook=_unique_json_members, parse_float=_finite_json_number, parse_constant=_finite_json_number) if strict else json.JSONDecoder()
     index = 0
     values: list[Any] = []
     while index < len(stripped):
