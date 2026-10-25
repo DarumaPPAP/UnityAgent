@@ -1,0 +1,237 @@
+{
+  "status": "FAIL",
+  "run_id": "cinematic-live-7a100e731d8b",
+  "project_root": "D:\\Unity_project\\MyURPLaboratory\\.artist-e2e~",
+  "kinds": [
+    "activation",
+    "binding",
+    "animation",
+    "control",
+    "signal",
+    "marker",
+    "cinemachine_shot",
+    "shot"
+  ],
+  "expected_cases": 10,
+  "cases": {
+    "activation": {
+      "status": "PASS",
+      "run_id": "cinematic-live-7a100e731d8b-activation",
+      "request": {
+        "directorName": "Fixture Director",
+        "trackKind": "activation",
+        "trackName": "Approved activation 0b3664f8"
+      },
+      "steps": [
+        {
+          "operation": "plan",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-18e906aa64a8-evidence"
+          ]
+        },
+        {
+          "operation": "preview",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-daaeab37670a-evidence"
+          ]
+        },
+        {
+          "operation": "apply",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-df54fc9d89ba-evidence"
+          ]
+        },
+        {
+          "operation": "inspect",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-cc291c5d59a9-evidence"
+          ]
+        }
+      ],
+      "actual_state_verified": true,
+      "replay_rejected": true,
+      "approval_decision_id": "artist-cc342e35293043b58fd4e814ba308a60",
+      "plan_id": "artist-cinematic-plan-d5156d3f3f424d24b86ad530d12b9bf1"
+    },
+    "binding": {
+      "status": "PASS",
+      "run_id": "cinematic-live-7a100e731d8b-binding",
+      "request": {
+        "directorName": "Fixture Director",
+        "trackKind": "binding",
+        "trackName": "Approved activation 0b3664f8",
+        "bindingTargetName": "Fixture Director"
+      },
+      "steps": [
+        {
+          "operation": "plan",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-889103388c1f-evidence"
+          ]
+        },
+        {
+          "operation": "preview",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-fa7d79dfc864-evidence"
+          ]
+        },
+        {
+          "operation": "apply",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-d95038ec7a4e-evidence"
+          ]
+        },
+        {
+          "operation": "inspect",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-4b5069ef5a47-evidence"
+          ]
+        },
+        {
+          "operation": "plan",
+          "observation": true,
+          "evidence_refs": [
+            "artist-cinematic-553551e3cf92-evidence"
+          ]
+        }
+      ],
+      "actual_state_verified": true,
+      "replay_rejected": true,
+      "approval_decision_id": "artist-83c5aea0508c423dab67ed7b7781bdf1",
+      "plan_id": "artist-cinematic-plan-9b60144be71246159684ac5daebbd09e"
+    },
+    "animation": {
+      "status": "PASS",
+      "run_id": "cinematic-live-7a100e731d8b-animation",
+      "request": {
+        "directorName": "Fixture Director",
+        "trackKind": "animation",
+        "trackName": "Approved animation 0b3664f8"
+      },
+      "steps": [
+        {
+          "operation": "plan",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-c0bea6f3ceec-evidence"
+          ]
+        },
+        {
+          "operation": "preview",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-8d8b6f9f9d48-evidence"
+          ]
+        },
+        {
+          "operation": "apply",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-9cbfdb4b3840-evidence"
+          ]
+        },
+        {
+          "operation": "inspect",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-f0f213a753ac-evidence"
+          ]
+        }
+      ],
+      "actual_state_verified": true,
+      "replay_rejected": true,
+      "approval_decision_id": "artist-430c290f587743399571df6e856f7a4d",
+      "plan_id": "artist-cinematic-plan-6bc88fa1388b469d979d34952d19c656"
+    },
+    "control": {
+      "status": "PASS",
+      "run_id": "cinematic-live-7a100e731d8b-control",
+      "request": {
+        "directorName": "Fixture Director",
+        "trackKind": "control",
+        "trackName": "Approved control 0b3664f8"
+      },
+      "steps": [
+        {
+          "operation": "plan",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-1b922ce9a902-evidence"
+          ]
+        },
+        {
+          "operation": "preview",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-d7ee0254cae6-evidence"
+          ]
+        },
+        {
+          "operation": "apply",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-70212a04f571-evidence"
+          ]
+        },
+        {
+          "operation": "inspect",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-9ae3892eac19-evidence"
+          ]
+        }
+      ],
+      "actual_state_verified": true,
+      "replay_rejected": true,
+      "approval_decision_id": "artist-dd46a6ea680744ccbaa7be0e126859ae",
+      "plan_id": "artist-cinematic-plan-2ef3572caf1b40249a14fa1991f7022a"
+    },
+    "signal": {
+      "status": "FAIL",
+      "run_id": "cinematic-live-7a100e731d8b-signal",
+      "request": {
+        "directorName": "Fixture Director",
+        "trackKind": "signal",
+        "trackName": "Approved signal 0b3664f8"
+      },
+      "steps": [
+        {
+          "operation": "plan",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-f44b064fc3f6-evidence"
+          ]
+        },
+        {
+          "operation": "preview",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-779210f0f1e3-evidence"
+          ]
+        },
+        {
+          "operation": "apply",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-f7c737dd65d8-evidence"
+          ]
+        }
+      ]
+    }
+  },
+  "save_performed": false,
+  "source_and_disk_stable": true,
+  "disk_hashes": {
+    "D:\\Unity_project\\MyURPLaboratory\\.artist-e2e~\\Assets\\ArtistAuthorityFixture.unity": "99b0b7f854d942b6e849ab3e196291207c2b22e5587d842a0f7cd82c49b5d817",
+    "D:\\Unity_project\\MyURPLaboratory\\.artist-e2e~\\Assets\\ArtistTimelineFixture.playable": "ae1d155561e393efb5ecd2a3aa77e1b19e891feed35c509d6a37ece802740b85"
+  },
+  "error": "Cinematic signal/inspect failed: {'schema_version': '1.0', 'status': 'blocked', 'capability': 'scene.inspect', 'resolution': {'schema_version': '1.0', 'capability': 'scene.inspect', 'status': 'resolved', 'provider_ref': 'unity_cli', 'observed_surface': 'editor', 'evidence_supported': ['editor_observation', 'domain_result', 'visual_art_inspection', 'pipeline_support_fact', 'visual_direction_plan', 'exact_diff', 'expected_revision', 'camera_binding', 'cinematic_plan', 'timeline_evidence', 'artist_validation', 'human_review_decision', 'refinement_plan', 'evaluation_reference'], 'failure_class': None, 'reason': None, 'subagent_profile_id': 'artist_subagent'}, 'provider_result': {'status': 'failed', 'failure_class': 'unavailable', 'reason': 'Artist Pipeline discovery is unavailable', 'provider_ref': 'unity_cli', 'evidence': []}, 'attempts': [{'provider_ref': 'unity_cli', 'status': 'failed', 'failure_class': 'unavailable', 'fallback_from': None}], 'fallback_from': None, 'fallback_decision': {'schema_version': '1.0', 'capability': 'scene.inspect', 'status': 'unsupported', 'provider_ref': None, 'observed_surface': None, 'evidence_supported': [], 'failure_class': 'unsupported', 'reason': \"coplay_mcp does not support qualifier domain='cinematic'\", 'action': 'stop', 'evidence': []}, 'run_id': 'cinematic-live-7a100e731d8b-signal', 'context_id': 'ctx-7d56efe0471665e8', 'context_fingerprint': 'sha256:7d56efe0471665e84cc28a88ce6c78ec283f83ca179a3ff07293934bf9b29729', 'evidence_refs': ['artist-cinematic-bdc0adf67d5e-evidence'], 'durable': True, 'save_state': 'not_saved'}"
+}

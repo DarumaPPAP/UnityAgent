@@ -203,7 +203,7 @@ resolution_examples:
 
   visual.capture:
     canonical_capability: visual.capture
-    likely_candidates: [unity_artist_cli]
+    likely_candidates: [unity_cli]
     minimum_evidence: visual_capture
 
   player.observe:

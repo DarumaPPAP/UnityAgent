@@ -114,7 +114,7 @@ def build_pipeline_catalog_command(
     *,
     runtime_name: str | None = None,
 ) -> UnityCliCommand:
-    argv = [_non_empty(executable, label="executable"), "command"]
+    argv = [_non_empty(executable, label="executable"), "command", "--detail", "full"]
     if runtime_name is not None:
         argv.extend(["--runtime", _non_empty(runtime_name, label="runtime_name")])
     else:

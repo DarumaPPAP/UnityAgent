@@ -1,10 +1,7 @@
-# unity-artist Host CLI Contract Tests
+# 旧Hostの互換Fixture
 
-このSuiteは、Unity Editor Licenseを必要とせずに`unity-artist` Host ExecutableのContractを検証します。
+このディレクトリの `fixtures/` は、旧Hostで使用したUnity 2022.3の最小入力を履歴資料として保持しています。独立Artist Hostとその実行テストは撤去済みです。現在のProduction実行・配布・検証から旧Hostを起動しません。
 
-- JSON Response Envelope
-- Exact Release Matrix
-- Approvalの前提条件
-- Unity 2022.3 Built-inとURPが現行対象外になる事前Compatibility判定
+現行の検証は `tests/runtime/test_artist_*.py`、`tests/subagent/artist/authority/`、`tests/unity/editor/artist/` を使用します。
 
-Host Testが成功しても、Connected Editor / Unity Pipelineでの実行成功は意味しません。Direct EditorやE2EのEvidenceは、Licensed Fixtureを使用するEditor Matrix Workflowと`ci/compatibility/`で確認します。
+実Editorの全9コマンドとCinematic Mutationの記録は `tests/unity/evidence/artist/unity-cli-integration/` にあります。歴史Fixtureは現在のEditor成功や性能の証拠として扱いません。

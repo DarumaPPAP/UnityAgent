@@ -274,10 +274,8 @@ class CapabilityResolverTests(unittest.TestCase):
 
     def test_visual_artist_qualifier_resolves_artist_provider_before_legacy_surfaces(self):
         snapshot = self.snapshot(cli=True, editor=True, myunity=True, coplay=True)
-        snapshot["unity_artist_cli"] = {
+        snapshot["artist"] = {
             "available": True,
-            "version": "2.0.0",
-            "executable_path": "C:/Tools/unity-artist.exe",
             "project_bound": True,
             "package_installed": True,
             "package_version": "2.0.0",
@@ -288,7 +286,6 @@ class CapabilityResolverTests(unittest.TestCase):
             "support_tier": "primary",
             "compatibility_backend": "builtin_editor_api",
             "capabilities": ["visual_art.lookdev_plan"],
-            "failure_class": None,
             "binding_status": "bound",
             "bound_instance_id": "artist-1",
         }
@@ -300,14 +297,12 @@ class CapabilityResolverTests(unittest.TestCase):
             context=ResolutionContext(policy_allowed=True, approval_complete=True),
         )
         self.assertEqual(result["status"], "resolved")
-        self.assertEqual(result["provider_ref"], "unity_artist_cli")
+        self.assertEqual(result["provider_ref"], "unity_cli")
 
     def test_artist_provider_rejects_unowned_semantic_qualifier(self):
         snapshot = self.snapshot(cli=True, editor=True, myunity=True, coplay=True)
-        snapshot["unity_artist_cli"] = {
+        snapshot["artist"] = {
             "available": True,
-            "version": "2.0.0",
-            "executable_path": "C:/Tools/unity-artist.exe",
             "project_bound": True,
             "package_installed": True,
             "package_version": "2.0.0",
@@ -318,7 +313,6 @@ class CapabilityResolverTests(unittest.TestCase):
             "support_tier": "primary",
             "compatibility_backend": "builtin_editor_api",
             "capabilities": [],
-            "failure_class": None,
             "binding_status": "bound",
             "bound_instance_id": "artist-1",
         }

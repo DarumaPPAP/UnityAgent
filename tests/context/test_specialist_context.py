@@ -9,7 +9,7 @@ from jsonschema import Draft202012Validator, RefResolver
 
 from unityagent.orchestration.routing.route_selector import resolve_specialist
 from unityagent.orchestration.tool_routing.capability_request_builder import build_capability_requests
-from tests.runtime import test_unity_artist_cli_resolution as artist_fixtures
+from tests.runtime import test_artist_resolution as artist_fixtures
 from unityagent.runtime.tooling.capability_resolver import ResolutionContext
 from unityagent.runtime.tooling.tool_broker import ToolBroker
 
@@ -24,7 +24,7 @@ def load_materializer():
 
 
 def eligible():
-    return {"unity_artist_cli": {key: True for key in ("available", "compatible", "project_bound", "package_installed", "pipeline_reachable")}}
+    return {"artist": {key: True for key in ("available", "compatible", "project_bound", "package_installed", "pipeline_reachable")}}
 
 
 def item(category, key, value, tags=("camera",), *, required=False):
@@ -98,7 +98,7 @@ class SpecialistContextTests(unittest.TestCase):
                 specialist_items=[item("policy", "bypass", True)], specialist_tags={"camera"}, root=ROOT)
 
     def test_pilot_context_manifest_and_existing_capture_resolution(self):
-        fixture = artist_fixtures.UnityArtistCliResolutionTests()
+        fixture = artist_fixtures.ArtistResolutionTests()
         fixture.setUp()
         decision = resolve_specialist("artist-lookdev", "visual.capture", fixture.snapshot)
         builder = load_module("specialist_manifest_builder_test", ROOT / "src/unityagent/context/manifest/build.py")
@@ -112,7 +112,7 @@ class SpecialistContextTests(unittest.TestCase):
         result = ToolBroker().resolve(next(request for request in requests if request["capability"] == "visual.capture"),
             fixture.snapshot, context=ResolutionContext(policy_allowed=True))
         self.assertEqual(result["subagent_profile_id"], "artist_subagent")
-        self.assertEqual(result["provider_ref"], "unity_artist_cli")
+        self.assertEqual(result["provider_ref"], "unity_cli")
 
     def test_only_explicit_skill_is_loaded_and_measured(self):
         decision = resolve_specialist("artist-lookdev", "visual.capture", eligible())

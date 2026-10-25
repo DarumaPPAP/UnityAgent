@@ -25,7 +25,7 @@ from unityagent.runtime.tooling.providers.installer.toolchain_installer import i
 
 PRODUCTS = frozenset({
     "official_unity_cli",
-    "unity_artist_cli",
+    "artist_subagent",
     "codex_cli",
     "unity_agent_codex_plugin",
     "blender_mcp",
@@ -250,28 +250,9 @@ class InstallerProvider:
                 "reason": None if available else "official_unity_cli_unavailable",
                 "message": None if available else "Official Unity CLI was not found on PATH.",
             }
-        if product == "unity_artist_cli":
-            executable = self.which_fn("unity-artist")
+        if product == "artist_subagent":
             package_id, package_version = _package_version(self.project_root)
-            status = "verified" if executable and package_version else "unavailable"
-            reason = None
-            message = None
-            if not executable:
-                reason = "unity_artist_cli_unavailable"
-                message = "unity-artist CLI was not found on PATH."
-            elif not package_version:
-                reason = "unity_artist_package_not_installed"
-                message = "ArtistSubAgent backend package was not found in Packages/manifest.json."
-            return {
-                "product": product,
-                "status": status,
-                "version": package_version,
-                "location": executable,
-                "source": package_id or "project manifest",
-                "sha256": None,
-                "reason": reason,
-                "message": message,
-            }
+            return {"product": product, "status": "verified" if package_version else "unavailable", "version": package_version, "location": str(self.project_root / "Packages/manifest.json") if package_version else None, "source": package_id or "project manifest", "sha256": None, "reason": None if package_version else "artist_package_not_installed", "message": None if package_version else "ArtistSubAgent UPM package is optional; install it explicitly through Unity Package Manager."}
         if product == "codex_cli":
             return self._observe_codex_cli(request)
         if product == "unity_agent_codex_plugin":
@@ -328,7 +309,7 @@ class InstallerProvider:
             return "blocked_by_observation"
         if status == "verified":
             return "verify"
-        if product in {"codex_cli", "blender_mcp", "unity_cli_loop"}:
+        if product in {"codex_cli", "blender_mcp", "unity_cli_loop", "artist_subagent"}:
             return "manual_required"
         if product == "unity_agent_codex_plugin" and entry.get("reason") in {
             "codex_cli_unavailable",

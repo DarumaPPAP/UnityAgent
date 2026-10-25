@@ -14,7 +14,6 @@ from unityagent.runtime.tooling.providers.unity_cli.artist_result_mapper import 
 from unityagent.runtime.tooling.providers.unity_cli.discovery import UnityCliSurfaceDiscovery
 from unityagent.runtime.tooling.providers.unity_cli.unity_cli_provider import UnityCliProvider
 from tests.runtime import test_unity_cli_provider as cli_fixture
-from tests.runtime import test_unity_artist_cli_provider as artist_fixture
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -63,6 +62,13 @@ class ArtistCommandAdapterTests(unittest.TestCase):
 class ArtistResultMapperTests(unittest.TestCase):
     def map(self, case, *, editor=None, **kwargs):
         return normalize_artist_pipeline_result(exit_code=0, stdout=output(editor or case["editor_result"]), command=kwargs.pop("command", typed(case)), project_root=ROOT, unity_version="6000.3.12f1", render_pipeline=kwargs.pop("render_pipeline", "builtin"), **kwargs)
+
+    def test_observed_cli_beta14_command_identity_matches_the_requested_artist_command(self):
+        envelope = json.loads(output(BASELINE["commands"][0]["editor_result"]))
+        for name, expected in (("command artist.inspect", "passed"), ("command artist.history", "failed"), ("command artist.inspect extra", "failed")):
+            envelope["command"] = name
+            result = normalize_artist_pipeline_result(exit_code=0, stdout=json.dumps(envelope), command=ArtistCommand("inspect"), project_root=ROOT, unity_version="6000.3.12f1", render_pipeline="builtin")
+            self.assertEqual(result["status"], expected, result)
 
     def test_source_results_preserve_payload_without_inventing_mutation(self):
         for case in BASELINE["commands"]:
@@ -180,10 +186,7 @@ class ArtistProviderBoundaryTests(unittest.TestCase):
         self.addCleanup(self.fixture.doCleanups)
         self.root = self.fixture.project
         self.snapshot = self.fixture.snapshot(running=True, project_bound=True)
-        legacy = artist_fixture.UnityArtistCliProviderTests()
-        legacy.setUp()
-        self.snapshot["unity_artist_cli"] = copy.deepcopy(legacy.snapshot["unity_artist_cli"])
-        self.snapshot["unity_artist_cli"].update(available=False, executable_path=None, unity_version="6000.3.12f1")
+        self.snapshot["artist"] = {"available": True, "compatible": True, "project_bound": True, "package_installed": True, "pipeline_reachable": True, "unity_version": "6000.3.12f1", "render_pipeline": "builtin", "support_tier": "primary", "compatibility_backend": "builtin_editor_api", "package_version": "test", "capabilities": ["visual_art.refine", "visual_art.capture"], "binding_status": "bound", "bound_instance_id": "fixture-editor"}
         self.request = self.fixture.request("scene.inspect")
         self.request.update(qualifiers={"domain": "visual_art", "workflow": "inspect"})
         self.calls = []
@@ -217,7 +220,7 @@ class ArtistProviderBoundaryTests(unittest.TestCase):
         self.assertEqual(self.calls, [])
 
     def test_read_only_scope_policy_package_and_binding_fail_closed(self):
-        changes = [(self.request, "project_root", str(self.root / "other")), (self.request, "operation_kind", "arbitrary_code"), (self.request, "required_evidence", ["mutation_evidence"]), (self.snapshot["project"], "root", str(self.root / "other")), (self.snapshot["unity_editor"], "project_bound", False), (self.snapshot["unity_artist_cli"], "package_installed", "unknown"), (self.snapshot["unity_artist_cli"], "compatible", False)]
+        changes = [(self.request, "project_root", str(self.root / "other")), (self.request, "operation_kind", "arbitrary_code"), (self.request, "required_evidence", ["mutation_evidence"]), (self.snapshot["project"], "root", str(self.root / "other")), (self.snapshot["unity_editor"], "project_bound", False), (self.snapshot["artist"], "package_installed", "unknown"), (self.snapshot["artist"], "compatible", False)]
         for target, key, value in changes:
             previous = target[key]
             target[key] = value

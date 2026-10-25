@@ -26,7 +26,7 @@ class HubSourceValidationTests(unittest.TestCase):
         self.git("config", "user.name", "Contract Test")
         self.git("config", "user.email", "contract@example.invalid")
         # 最小Producerは実Import Gateへ渡すSnapshotをGit revisionごとに保持する。
-        self.payload = (ROOT / "tests/runtime/fixtures/hub-artist-subagent-catalog-v3.yaml").read_bytes()
+        self.payload = (ROOT / "tests/runtime/fixtures/unity-cli-hub-artist-subagent-catalog-v3.yaml").read_bytes()
         (self.hub / "snapshot.yaml").write_bytes(self.payload)
         exporter = self.hub / "Tests/Hub/export_agent_snapshot.py"
         exporter.parent.mkdir(parents=True)
@@ -44,7 +44,7 @@ class HubSourceValidationTests(unittest.TestCase):
         self.pinned = self.git("rev-parse", "HEAD").strip()
         self.lock = Path(self.directory.name) / "sources.lock.json"
         self.lock.write_text(json.dumps({"hub": {"repository": "DarumaPPAP/UnitySubAgentHub", "commit": self.pinned}}))
-        self.consumer = ROOT / "tests/runtime/fixtures/artist-consumer-v1.yaml"
+        self.consumer = ROOT / "tests/runtime/fixtures/unity-cli-artist-consumer-v1.yaml"
 
     def git(self, *args: str) -> str:
         return subprocess.check_output(["git", "-C", str(self.hub), *args], text=True)

@@ -17,11 +17,11 @@ from unityagent.cli import _fingerprint
 
 
 ROOT = Path(__file__).resolve().parents[2]
-CATALOG_PATH = ROOT / "tests/runtime/fixtures/artist-consumer-v1.yaml"
+CATALOG_PATH = ROOT / "tests/runtime/fixtures/unity-cli-artist-consumer-v1.yaml"
 # Historical v1/v2 migration tests remain bound to their explicit pre-migration consumer.
 CATALOG = SubAgentProfileCatalog.from_file(CATALOG_PATH)
-HUB_FIXTURE_PATH = ROOT / "tests/runtime/fixtures/hub-artist-subagent-catalog-v1.1.yaml"
-HUB_V3_FIXTURE_PATH = ROOT / "tests/runtime/fixtures/hub-artist-subagent-catalog-v3.yaml"
+HUB_FIXTURE_PATH = ROOT / "tests/runtime/fixtures/unity-cli-hub-artist-subagent-catalog-v1.1.yaml"
+HUB_V3_FIXTURE_PATH = ROOT / "tests/runtime/fixtures/unity-cli-hub-artist-subagent-catalog-v3.yaml"
 
 
 def _raw_catalog() -> dict:
@@ -71,7 +71,7 @@ def _review_profile() -> dict:
     return {
         "profile_id": "review_subagent",
         "display_name": "ReviewSubAgent",
-        "provider_id": "unity_cli",
+        "provider_id": "file",
         "audience": "review_subagent",
         "goal_type": "example.asset.review",
         "capabilities": ["example.asset.inspect", "example.asset.review"],
@@ -80,7 +80,7 @@ def _review_profile() -> dict:
         "activation": {
             "install_mode": "optional",
             "auto_install": False,
-            "required_environment": ["unity_cli.available"],
+            "required_environment": ["filesystem.readable"],
         },
         "scope": {
             "default_target_guid": "asset-guid-001",
@@ -120,7 +120,7 @@ class CatalogImportGateTests(unittest.TestCase):
         plan = _plan(snapshot)
 
         self.assertEqual(plan["status"], "no_op")
-        self.assertEqual(CATALOG.get("artist_subagent").provider_id, "unity_artist_cli")
+        self.assertEqual(CATALOG.get("artist_subagent").provider_id, "unity_cli")
 
     def test_static_hub_v2_rejects_backend_implementation_fields(self) -> None:
         snapshot = _hub_v2_snapshot()
@@ -190,9 +190,9 @@ class CatalogImportGateTests(unittest.TestCase):
         review["manifest_ref"] = "SubAgents/review_subagent/manifest.yaml"
         review["manifest"]["identity"]["id"] = "review_subagent"
         review["manifest"]["identity"]["name"] = "ReviewSubAgent"
-        review["manifest"]["activation"]["required_before_resolution"] = ["unity_cli.available"]
-        review["manifest"]["dependencies"] = [{"id": "unity_cli", "kind": "backend", "required": True, "eligibility_gate": "unity_cli.available"}]
-        review["manifest"]["backends"][0]["id"] = "unity_cli"
+        review["manifest"]["activation"]["required_before_resolution"] = ["filesystem.readable"]
+        review["manifest"]["dependencies"] = [{"id": "file", "kind": "backend", "required": True, "eligibility_gate": "filesystem.readable"}]
+        review["manifest"]["backends"][0]["id"] = "file"
         review["manifest"]["capabilities"].append({"id": "example.asset", "operations": ["review"]})
         snapshot["specialists"].append(review)
 
@@ -311,7 +311,7 @@ class CatalogImportGateTests(unittest.TestCase):
 
     def test_unknown_environment_fact_is_rejected(self) -> None:
         snapshot = _raw_catalog()
-        snapshot["profiles"]["artist_subagent"]["activation"]["required_environment"].append("unity_artist_cli.future_fact")
+        snapshot["profiles"]["artist_subagent"]["activation"]["required_environment"].append("artist.future_fact")
 
         with self.assertRaises(CatalogImportError) as context:
             _plan(snapshot)
@@ -467,7 +467,7 @@ class CatalogImportGateTests(unittest.TestCase):
         profile = CATALOG.get("artist_subagent")
         for compatible, expected in ((False, "unavailable"), ("unknown", "unknown")):
             snapshot = {
-                "unity_artist_cli": {
+                "artist": {
                     "available": True,
                     "compatible": compatible,
                     "project_bound": True,

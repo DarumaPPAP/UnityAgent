@@ -107,6 +107,19 @@ def package_version(payload, editor):
         raise ValueError('No stable SRP 17 package with compatible official Unity minimum')
     return max(candidates)[1]
 
+def bundled_srp(editor, package, version):
+    directory = Path(editor).resolve().parent / 'Data/Resources/PackageManager/BuiltInPackages' / package
+    metadata_path = directory / 'package.json'
+    metadata = json.loads(metadata_path.read_text(encoding='utf-8'))
+    match = re.fullmatch(r'17\.(\d+)\.\d+', metadata.get('version', ''))
+    if metadata.get('name') != package or not match or int(match[1]) != int(version.split('.')[1]):
+        raise ValueError('Bundled SRP does not match exact Editor stream: ' + package)
+    missing = [str(path.relative_to(directory)) for path in directory.rglob('*.cs') if not any(part.endswith('~') for part in path.relative_to(directory).parts) and not Path(str(path) + '.meta').is_file()]
+    if missing:
+        raise ValueError('Incomplete official Editor package, missing C# meta: ' + ', '.join(missing))
+    return dict(package=package, version=metadata['version'], source='official_editor_bundle', metadata=metadata, metadata_sha256=hashlib.sha256(metadata_path.read_bytes()).hexdigest(), path=str(directory), checked_editor=version)
+
+
 def test_evidence(path):
     root = ET.parse(path).getroot()
     if root.tag != 'test-run' or root.get('result') != 'Passed':
@@ -132,7 +145,9 @@ def stage_artist_tests(package_root, project):
     destination = project / 'Assets/CiArtistPackageTests'
     destination.mkdir(parents=True, exist_ok=False)
     inventory = []
-    for test in tests:
+    # SceneFixtureはGUIDで専用Sceneを解決するため、Sceneとmetaも同じ使い捨てProjectへ運ぶ。
+    authored = sorted(path for path in source.rglob('*') if path.is_file() and path.suffix in {'.cs', '.meta', '.unity'})
+    for test in authored:
         target = destination / test.relative_to(source)
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(test, target)
@@ -373,12 +388,12 @@ def run(args):
             evidence['staged_package_tests'] = stage_artist_tests(local_packages[artist], project)
         srp = fixture.get('srp_package')
         if srp:
-            metadata = fetch('https://packages.unity.com/' + srp)
-            selected = package_version(metadata, version)
+            # Core Packageは固定Editorに同梱される。実SDKのVersionと完全性を確認し、別streamへ代替しない。
+            selection = bundled_srp(editor, srp, version)
+            selected = selection['version']
             manifest['dependencies'][srp] = selected
             evidence['packages'][srp] = selected
-            (output / 'srp-selection.json').write_text(json.dumps({'package': srp, 'version': selected,
-                'source': 'https://packages.unity.com/' + srp, 'metadata': metadata['versions'][selected]}, indent=2), encoding='utf-8')
+            (output / 'srp-selection.json').write_text(json.dumps(selection, indent=2), encoding='utf-8')
         (project / 'Packages/manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
         (project / 'ProjectSettings/ProjectVersion.txt').write_text('m_EditorVersion: ' + version + '\n', encoding='utf-8')
         results, log = output / 'results.xml', output / 'editor.log'
@@ -408,7 +423,8 @@ def run(args):
             raise RuntimeError('Measured Editor graphics device unavailable; see Editor logs')
         if completed.returncode:
             # Unity license faults mean no test execution, not an assertion failure.
-            if not results.exists() and re.search(r'(?i)(no valid license|failed to activate|licensing.*(failed|error))', diagnostic_logs):
+            compiler_failed = re.search(r'(?m)\berror CS\d{4}:|Scripts have compiler errors\.', diagnostic_logs) is not None
+            if not compiler_failed and not results.exists() and re.search(r'(?i)(no valid license|failed to activate|licensing.*(failed|error))', diagnostic_logs):
                 evidence['status'] = 'BLOCKED_NOT_RUN'
                 evidence['observation'] = 'not_observed'
                 raise RuntimeError('Editor licensing unavailable; see editor.log')

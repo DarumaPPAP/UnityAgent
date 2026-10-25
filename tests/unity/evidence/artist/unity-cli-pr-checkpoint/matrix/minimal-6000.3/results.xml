@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Passed" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-25 19:09:08Z" end-time="2026-10-25 19:09:08Z" duration="0.0298131">
+  <test-suite type="TestSuite" id="1000" name="p" fullname="p" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-10-25 19:09:08Z" end-time="2026-10-25 19:09:08Z" duration="0.029813" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="EditMode" />
+    </properties>
+    <test-suite type="Assembly" id="1003" name="UnityCi.Tests.dll" fullname="D:/Unity_project/MyURPLaboratory/.m0/ua-38w5a3l0/p/Library/ScriptAssemblies/UnityCi.Tests.dll" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-10-25 19:09:08Z" end-time="2026-10-25 19:09:08Z" duration="0.020380" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="19200" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <test-suite type="TestSuite" id="1004" name="UnityCi" fullname="UnityCi" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-10-25 19:09:08Z" end-time="2026-10-25 19:09:08Z" duration="0.019932" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestFixture" id="1001" name="MinimalTests" fullname="UnityCi.MinimalTests" classname="UnityCi.MinimalTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-10-25 19:09:08Z" end-time="2026-10-25 19:09:08Z" duration="0.019085" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-case id="1002" name="ArtistPackageImportsAndRejectsHistoricalEditor" fullname="UnityCi.MinimalTests.ArtistPackageImportsAndRejectsHistoricalEditor" methodname="ArtistPackageImportsAndRejectsHistoricalEditor" classname="UnityCi.MinimalTests" runstate="Runnable" seed="925390009" result="Passed" start-time="2026-10-25 19:09:08Z" end-time="2026-10-25 19:09:08Z" duration="0.008687" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+            <output><![CDATA[Saving results to: D:\Unity_project\MyURPLaboratory\.m0\results.xml
+]]></output>
+          </test-case>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

@@ -9,9 +9,11 @@
   },
   "specialist_sources": {
     "artist_subagent": {
-      "manifest": "Hub/SubAgents/artist_subagent/manifest.yaml",
-      "backend_package": "Packages/com.darumappap.artist-subagent",
-      "backend_cli_project": "cli/artist/UnityArtist.Cli.csproj"
+      "source_mode": "same_checkout",
+      "repository": "DarumaPPAP/UnityAgent",
+      "manifest": "subagent/artist_subagent/manifest.yaml",
+      "backend_package": "subagent/artist_subagent/tools/editor",
+      "backend_provider": "unity_cli"
     }
   }
 }

@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -86,9 +87,20 @@ namespace UnityArtist
 		public string unityVersion;
 		public string renderPipeline;
 		public string compatibilityBackend;
+		public string approvalProtocol;
+		public string contextProtocol;
 		public string transport;
 		public string errorCode;
 		public string reason;
+	}
+
+	[Serializable]
+	public sealed class ContextReceipt
+	{
+		public string receivedContextId;
+		public string receivedContextFingerprint;
+		public string projectRoot;
+		public string runId;
 	}
 
 	[Serializable]
@@ -108,8 +120,13 @@ namespace UnityArtist
 		public bool savePerformed;
 		public bool undoAvailable;
 		public bool humanReview;
+		public string authoritySessionId;
+		public string authorityNonce;
+		public string authorityReservationId;
+		public ContextReceipt contextReceipt;
 		public ArtistSupport support;
 		public List<ArtistChange> exactDiff = new List<ArtistChange>();
+		public List<string> mutationPaths = new List<string>();
 		public List<ArtistTarget> targets = new List<ArtistTarget>();
 		public List<string> evidence = new List<string>();
 		public List<ArtistError> errors = new List<ArtistError>();
@@ -142,6 +159,11 @@ namespace UnityArtist
 
 	internal static class ArtistSession
 	{
+		internal static ContextReceipt CurrentContext;
+#if UNITY_ARTIST_TEST_FAULTS
+		// 専用テストコンパイルだけで、認可済み適用後の例外とUndoを検証する。
+		internal static Action BeforeLookDevVerificationForTests;
+#endif
 		private static readonly Dictionary<string, StoredPlan> plans = new Dictionary<string, StoredPlan>();
 		private static readonly Dictionary<string, ArtistResult> captures = new Dictionary<string, ArtistResult>();
 		private static readonly List<string> history = new List<string>();
@@ -291,8 +313,64 @@ namespace UnityArtist
 			}
 			ArtistSupport support = Support();
 			if (!support.supported) return Error(result, support.errorCode, support.reason);
-			if (!ApplyIntent(plan.intent, result)) return result;
+			ArtistResult authorizationDiff = Base("artist.apply", support);
+			// Scene を変更する前の diff を再構成し、承認対象と現在の Project 状態を結び付ける。
+			if (!BuildDiff(authorizationDiff, plan.intent))
+			{
+				return authorizationDiff;
+			}
+			if (!new AuthorityClient().Authorize(Directory.GetParent(Application.dataPath).FullName, "artist.apply", planId, currentRevision, approvalToken, authorizationDiff.exactDiff, result, mutationPaths: authorizationDiff.mutationPaths, context: CurrentContext))
+			{
+				result.status = "blocked";
+				return result;
+			}
+			Undo.IncrementCurrentGroup();
+			int undoGroup = Undo.GetCurrentGroup();
+			List<UnityEngine.Object> undoObjects = SceneObjects<Component>().Where(component => authorizationDiff.mutationPaths.Contains(component.gameObject.scene.path)).Cast<UnityEngine.Object>().ToList();
+			undoObjects.AddRange(authorizationDiff.mutationPaths.Where(path => !path.EndsWith(".unity", StringComparison.OrdinalIgnoreCase)).SelectMany(AssetDatabase.LoadAllAssetsAtPath));
+			if (plan.intent.setFog)
+			{
+				undoObjects.Add(Unsupported.GetRenderSettings());
+			}
+			Undo.RegisterCompleteObjectUndo(undoObjects.Where(value => value != null).Distinct().ToArray(), "Artist approved LookDev");
+			bool applied = false;
+			try
+			{
+				applied = ApplyIntent(plan.intent, result);
+#if UNITY_ARTIST_TEST_FAULTS
+				if (applied)
+				{
+					BeforeLookDevVerificationForTests?.Invoke();
+				}
+#endif
+				ArtistResult observed = Base("artist.apply", support);
+				applied = applied && BuildDiff(observed, plan.intent) && observed.exactDiff.Count == authorizationDiff.exactDiff.Count && observed.exactDiff.Zip(authorizationDiff.exactDiff, (actual, approved) => actual.target == approved.target && actual.property == approved.property && actual.before == approved.after).All(value => value);
+				if (!applied)
+				{
+					Error(result, "MUTATION_VERIFICATION_FAILED", "The Editor state differs from the approved exact diff.");
+				}
+			}
+			catch (Exception exception)
+			{
+				// 適用後の検証例外も失敗として戻し、finallyで変更を巻き戻す。
+				applied = false;
+				Error(result, "MUTATION_FAILED", exception.Message);
+			}
+			finally
+			{
+				if (!applied)
+				{
+					Undo.RevertAllDownToGroup(undoGroup);
+					result.exactDiff.Clear();
+					result.evidence.Clear();
+				}
+			}
+			// 部分失敗や実状態の不一致は成功Evidenceを発行せず終了する。
+			if (!applied) return result;
+			result.exactDiff.Clear();
+			result.exactDiff.AddRange(authorizationDiff.exactDiff);
 			result.status = "passed";
+			result.mutationPaths.AddRange(authorizationDiff.mutationPaths);
 			result.verified = true;
 			result.planId = planId;
 			result.baseRevision = currentRevision;
@@ -323,8 +401,27 @@ namespace UnityArtist
 			{
 				return Error(result, "INVALID_CAPTURE_REQUEST", exception.Message);
 			}
-			Camera camera = FindCamera(intent == null ? null : intent.captureCameraName);
-			if (camera == null) return Error(result, "CAMERA_NOT_FOUND", "Capture requires an exact camera target or a Main Camera.");
+			string captureCameraName = intent == null ? null : intent.captureCameraName;
+			Camera camera;
+			if (!string.IsNullOrWhiteSpace(captureCameraName))
+			{
+				Camera[] matches = SceneObjects<Camera>().Where(value => string.Equals(value.name, captureCameraName, StringComparison.Ordinal)).Take(2).ToArray();
+				if (matches.Length != 1)
+				{
+					// 名前が一意でない状態では、異なる Camera の画像を指定対象の証拠として生成しない。
+					return Error(result, matches.Length == 0 ? "CAMERA_NOT_FOUND" : "CAMERA_TARGET_AMBIGUOUS", "Capture の明示 Camera 名は Scene 内の1つの Camera を指す必要があります。");
+				}
+				camera = matches[0];
+			}
+			else
+			{
+				camera = FindCamera(null);
+			}
+			if (camera == null)
+			{
+				// 既定対象も存在しない場合は撮影先を作らず終了する。
+				return Error(result, "CAMERA_NOT_FOUND", "Capture requires an exact camera target or a Main Camera.");
+			}
 			string captureId = "artist-capture-" + Guid.NewGuid().ToString("N");
 			string projectRoot = Directory.GetParent(Application.dataPath).FullName;
 			string directory = Path.Combine(projectRoot, "Library", "UnityArtist", "Captures", captureId);
@@ -416,6 +513,55 @@ namespace UnityArtist
 			return result;
 		}
 
+		internal static ArtistResult EvaluateAuthenticated(string captureId, string decision, string notes, string approvalToken, ContextReceipt context)
+		{
+			EnsurePersistentStateLoaded();
+			ArtistResult authorization = Base("artist.evaluate", Support());
+			if (!captures.TryGetValue(captureId ?? string.Empty, out ArtistResult captured))
+			{
+				// 対象画像が存在しない場合は承認を消費せず、Reviewの記録を開始しない。
+				return Error(authorization, "CAPTURE_NOT_FOUND", "The reviewed capture is not present in this Editor session.");
+			}
+			string normalized = (decision ?? string.Empty).Trim().ToLowerInvariant();
+			AuthorityClient.Review review = new AuthorityClient.Review { captureId = captureId, decision = normalized, notes = notes ?? string.Empty };
+			// Reviewは後続Sceneではなく、承認した不変CaptureのRevisionへ束縛する。
+			if (!new AuthorityClient().Authorize(Directory.GetParent(Application.dataPath).FullName, "artist.evaluate", captureId, captured.revision, approvalToken, new List<ArtistChange>(), authorization, review, context: CurrentContext))
+			{
+				// 自己申告の human decision を記録する前に Control Plane の承認を要求する。
+				authorization.status = "blocked";
+				return authorization;
+			}
+			ArtistResult result = Evaluate(captureId, normalized, notes);
+			if (result.errors.Count == 0)
+			{
+				result.authoritySessionId = authorization.authoritySessionId;
+				result.authorityNonce = authorization.authorityNonce;
+				result.authorityReservationId = authorization.authorityReservationId;
+				if (context != null)
+				{
+					// 互換 Evaluate の履歴とは区別し、同一 run/context の Refine だけへ人間の認証を引き継ぐ。
+					history.Add(AuthenticatedEvaluationLabel(result.evaluationId, context));
+					PersistState();
+				}
+			}
+			return result;
+		}
+
+		internal static ArtistResult RefineAuthenticated(string evaluationId, string requestJson, ContextReceipt context)
+		{
+			EnsurePersistentStateLoaded();
+			if (!history.Contains(AuthenticatedEvaluationLabel(evaluationId, context)))
+			{
+				// 任意の ID や別 run の人間レビューで新しい Production Plan を正当化しない。
+				return Error(Base("artist.refine", Support()), "EVALUATION_AUTHORITY_REQUIRED", "同じ run/context で認証された人間レビューが必要です。");
+			}
+			return Refine(evaluationId, requestJson);
+		}
+
+		private static string AuthenticatedEvaluationLabel(string evaluationId, ContextReceipt context)
+		{
+			return "authenticated_human_evaluation:" + evaluationId + ":" + Convert.ToBase64String(Encoding.UTF8.GetBytes(context.runId)) + ":" + Convert.ToBase64String(Encoding.UTF8.GetBytes(context.receivedContextFingerprint));
+		}
 		public static ArtistResult Refine(string evaluationId, string requestJson)
 		{
 			EnsurePersistentStateLoaded();
@@ -463,9 +609,9 @@ namespace UnityArtist
 
 			if (normalized == "plan")
 			{
-				PlayableDirector director = FindDirector(request.directorName);
-				if (director == null) return Error(result, "TIMELINE_DIRECTOR_NOT_FOUND", "An exact PlayableDirector target is required.");
-				if (!ValidateCinematicRequest(request, result)) return result;
+				// 承認対象を一意に観測できない計画は保存しない。
+				// 対象・実状態・保存先が確定しなければ承認可能なPlanを保存しない。
+				if (!BuildCinematicDiff(request, result)) return result;
 				string currentRevision = CurrentRevision();
 				string newPlanId = "artist-cinematic-plan-" + Guid.NewGuid().ToString("N");
 				result.planId = newPlanId;
@@ -474,7 +620,6 @@ namespace UnityArtist
 				result.approvalRequired = true;
 				result.savePerformed = false;
 				result.undoAvailable = true;
-				result.exactDiff.Add(new ArtistChange { target = director.name, property = CinematicProperty(request), before = "observed", after = CinematicValue(request) });
 				result.evidence.Add("cinematic_plan");
 				result.evidence.Add("timeline_evidence");
 				result.evidence.Add("exact_diff");
@@ -495,8 +640,65 @@ namespace UnityArtist
 				return stored.preview;
 			}
 			if (string.IsNullOrWhiteSpace(approvalToken)) return Error(result, "APPROVAL_REQUIRED", "Cinematic apply requires an opaque approval token from UnityAgent.");
-			if (!string.Equals(expectedRevision, CurrentRevision(), StringComparison.Ordinal)) return Error(result, "STALE_REVISION", "The Editor state changed after the cinematic plan was prepared.");
-			if (!ApplyCinematic(stored.cinematic, result)) return result;
+			// 計画後の変化を認可前に排除し、古い承認でTimelineを変更しない。
+			if (!string.Equals(expectedRevision, stored.baseRevision, StringComparison.Ordinal) || !string.Equals(expectedRevision, CurrentRevision(), StringComparison.Ordinal)) return Error(result, "STALE_REVISION", "The Editor state changed after the cinematic plan was prepared.");
+			ArtistResult authorizationDiff = Base("artist.cinematic", result.support);
+			// 保存された表示用diffを信用せず、現在のTimelineを認可前に再観測する。
+			if (!BuildCinematicDiff(stored.cinematic, authorizationDiff)) return authorizationDiff;
+			// Cinematic も同じ認可境界を通し、Pipeline と Batch の直接呼出しを区別しない。
+			if (!new AuthorityClient().Authorize(Directory.GetParent(Application.dataPath).FullName, "artist.cinematic", planId, expectedRevision, approvalToken, authorizationDiff.exactDiff, result, mutationPaths: authorizationDiff.mutationPaths, context: CurrentContext))
+			{
+				result.status = "blocked";
+				return result;
+			}
+			PlayableDirector targetDirector = FindDirector(stored.cinematic.directorName);
+			Undo.IncrementCurrentGroup();
+			int undoGroup = Undo.GetCurrentGroup();
+			Undo.SetCurrentGroupName("Artist Cinematic approved mutation");
+			Undo.RegisterCompleteObjectUndo(CinematicObjects(targetDirector).ToArray(), "Artist Cinematic approved mutation");
+			bool applied = false;
+			try
+			{
+				applied = ApplyCinematic(stored.cinematic, result);
+				if (applied && TryObserveCinematicChange(targetDirector, stored.cinematic, result, out ArtistChange observed))
+				{
+					ArtistChange approved = authorizationDiff.exactDiff.Single();
+					applied = string.Equals(observed.before, approved.after, StringComparison.Ordinal);
+					if (!applied)
+					{
+						Error(result, "CINEMATIC_VERIFICATION_FAILED", "The resulting Timeline state differs from the approved exact diff.");
+					}
+				}
+				else
+				{
+					applied = false;
+				}
+			}
+			catch (Exception exception)
+			{
+				applied = false;
+				Error(result, "CINEMATIC_CREATE_FAILED", exception.InnerException == null ? exception.Message : exception.InnerException.Message);
+			}
+			finally
+			{
+				if (applied)
+				{
+					Undo.CollapseUndoOperations(undoGroup);
+				}
+				else
+				{
+					Undo.RevertAllDownToGroup(undoGroup);
+					result.verified = false;
+					result.exactDiff.Clear();
+					result.evidence.RemoveAll(value => value == "mutation_evidence" || value == "timeline_evidence");
+				}
+			}
+			// 部分失敗はロールバックして終了し、成功Evidenceを発行しない。
+			if (!applied) return result;
+			result.exactDiff.Clear();
+			result.exactDiff.AddRange(authorizationDiff.exactDiff);
+			result.mutationPaths.AddRange(authorizationDiff.mutationPaths);
+			result.verified = true;
 			result.planId = planId;
 			result.revision = CurrentRevision();
 			result.baseRevision = stored.baseRevision;
@@ -506,6 +708,8 @@ namespace UnityArtist
 			result.evidence.Add("mutation_evidence");
 			result.evidence.Add("undo_registration");
 			result.evidence.Add("save_not_performed");
+			result.evidence.Add("cinematic_operation:apply");
+			result.evidence.Add("timeline_evidence");
 			plans.Remove(planId);
 			history.Add("applied:" + planId);
 			PersistState();
@@ -535,7 +739,7 @@ namespace UnityArtist
 					Undo.IncrementCurrentGroup();
 					RenderSettings.fog = true;
 					RenderSettings.fogDensity = Mathf.Clamp(intent.fogDensity, 0.0f, 1.0f);
-					MarkScenesDirty();
+					EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
 					result.exactDiff.Add(new ArtistChange { target = "RenderSettings", property = "fogDensity", before = "observed", after = RenderSettings.fogDensity.ToString("0.####") });
 				}
 			}
@@ -595,15 +799,197 @@ namespace UnityArtist
 					Error(result, "CAMERA_FOV_OUTSIDE_APPROVAL", fovError);
 					return false;
 				}
-				result.exactDiff.Add(new ArtistChange { target = referenceWorkflow ? intent.targetGuid : camera.name, property = UnityArtist.CameraFovWorkflowAdapter.PropertyPath, before = before.ToString("0.####"), after = after.ToString("0.####") });
+				result.exactDiff.Add(new ArtistChange { target = referenceWorkflow ? intent.targetGuid : camera.name, property = UnityArtist.CameraFovWorkflowAdapter.PropertyPath, before = before.ToString("0.####", CultureInfo.InvariantCulture), after = after.ToString("0.####", CultureInfo.InvariantCulture) });
 			}
 			return result.errors.Count == 0;
+		}
+
+		private static bool BuildCinematicDiff(CinematicRequest request, ArtistResult result)
+		{
+			// 対象不明や非有限値を含む要求から承認可能なPlanを作らない。
+			if (!ValidateCinematicRequest(request, result)) return false;
+			PlayableDirector[] directors = SceneObjects<PlayableDirector>().Where(value => string.Equals(value.name, request.directorName, StringComparison.Ordinal)).ToArray();
+			if (string.IsNullOrWhiteSpace(request.directorName) || directors.Length != 1)
+			{
+				Error(result, "TIMELINE_DIRECTOR_NOT_FOUND", "Exactly one named PlayableDirector is required.");
+				return false;
+			}
+			// 現在状態を観測できない対象から変更差分を生成しない。
+			if (!TryObserveCinematicChange(directors[0], request, result, out ArtistChange change)) return false;
+			string kind = (request.trackKind ?? string.Empty).Trim().ToLowerInvariant();
+			if (kind != "binding" && kind != "marker" && kind != "cinemachine_shot" && kind != "shot" && change.before != "absent")
+			{
+				Error(result, "CINEMATIC_TARGET_AMBIGUOUS", "A new track requires an unused exact trackName; automatic renaming is not an approved exact diff.");
+				return false;
+			}
+			result.exactDiff.Add(change);
+			// Directorの実Sceneを承認Scopeへ束縛できなければ計画を返さない。
+			if (!AddMutationPath(result, directors[0])) return false;
+			return kind == "binding" || AddMutationPath(result, directors[0].playableAsset);
+		}
+
+		private static bool TryObserveCinematicChange(PlayableDirector director, CinematicRequest request, ArtistResult result, out ArtistChange change)
+		{
+			change = null;
+			if (director == null || director.playableAsset == null)
+			{
+				Error(result, "TIMELINE_ASSET_NOT_FOUND", "The exact PlayableDirector requires a Timeline asset.");
+				return false;
+			}
+			string kind = (request.trackKind ?? string.Empty).Trim().ToLowerInvariant();
+			change = new ArtistChange { target = ObjectIdentity(director), property = "Timeline." + kind + ":" + (request.trackName ?? string.Empty) };
+			if (kind == "binding")
+			{
+				UnityEngine.Object[] keys = director.playableAsset.outputs.Select(output => output.sourceObject).Where(key => key != null && string.Equals(key.name, request.trackName, StringComparison.Ordinal)).Distinct().ToArray();
+				GameObject[] targets = SceneObjects<Transform>().Where(value => string.Equals(value.name, request.bindingTargetName, StringComparison.Ordinal)).Select(value => value.gameObject).ToArray();
+				if (keys.Length != 1 || targets.Length != 1)
+				{
+					Error(result, "CINEMATIC_TARGET_NOT_FOUND", "Exactly one Timeline output and one binding GameObject are required.");
+					return false;
+				}
+				UnityEngine.Object binding = targets[0];
+				if (keys[0].GetType().Name.IndexOf("CinemachineTrack", StringComparison.OrdinalIgnoreCase) >= 0)
+				{
+					Type brainType = FindType("Unity.Cinemachine.CinemachineBrain", "Unity.Cinemachine") ?? FindType("Cinemachine.CinemachineBrain", "Cinemachine");
+					binding = brainType == null ? null : targets[0].GetComponent(brainType);
+					if (binding == null)
+					{
+						Error(result, "CINEMATIC_TARGET_NOT_FOUND", "A CinemachineTrack binding requires a CinemachineBrain.");
+						return false;
+					}
+				}
+				change.before = ObjectIdentity(director.GetGenericBinding(keys[0]));
+				change.after = ObjectIdentity(binding);
+				return true;
+			}
+			Type artifactType = CinematicArtifactType(kind);
+			if (artifactType == null)
+			{
+				Error(result, "CAPABILITY_UNAVAILABLE", "The requested allowlisted Timeline or Cinemachine type is not installed.");
+				return false;
+			}
+			if (kind == "marker")
+			{
+				object markerTrack = GetMemberValue(director.playableAsset, "markerTrack");
+				List<string> markers = TimelineItems(markerTrack, "GetMarkers").Select(marker => marker.GetType().FullName + "@" + Convert.ToDouble(GetMemberValue(marker, "time"), CultureInfo.InvariantCulture).ToString("R", CultureInfo.InvariantCulture)).OrderBy(value => value, StringComparer.Ordinal).ToList();
+				change.before = "[" + string.Join("|", markers) + "]";
+				markers.Add(artifactType.FullName + "@" + ((double)request.markerTime).ToString("R", CultureInfo.InvariantCulture));
+				change.after = "[" + string.Join("|", markers.OrderBy(value => value, StringComparer.Ordinal)) + "]";
+				return true;
+			}
+			UnityEngine.Object[] namedTracks = TimelineItems(director.playableAsset, "GetRootTracks").OfType<UnityEngine.Object>().Where(track => string.Equals(track.name, request.trackName, StringComparison.Ordinal)).ToArray();
+			if (namedTracks.Length > 1 || namedTracks.Length == 1 && !artifactType.IsInstanceOfType(namedTracks[0]))
+			{
+				Error(result, "CINEMATIC_TARGET_AMBIGUOUS", "The exact trackName is duplicated or has another track type.");
+				return false;
+			}
+			object track = namedTracks.SingleOrDefault();
+			if (kind == "cinemachine_shot" || kind == "shot")
+			{
+				Type shotType = FindType("Unity.Cinemachine.CinemachineShot", "Unity.Cinemachine") ?? FindType("Cinemachine.CinemachineShot", "Cinemachine");
+				Type cameraType = FindType("Unity.Cinemachine.CinemachineVirtualCameraBase", "Unity.Cinemachine") ?? FindType("Cinemachine.CinemachineVirtualCameraBase", "Cinemachine");
+				GameObject[] cameras = SceneObjects<Transform>().Where(value => string.Equals(value.name, request.bindingTargetName, StringComparison.Ordinal)).Select(value => value.gameObject).ToArray();
+				Component camera = cameraType == null || cameras.Length != 1 ? null : cameras[0].GetComponent(cameraType);
+				if (shotType == null || camera == null)
+				{
+					Error(result, "CINEMATIC_TARGET_NOT_FOUND", "Exactly one installed Cinemachine camera component is required.");
+					return false;
+				}
+				object[] clips = TimelineItems(track, "GetClips").Where(clip => shotType.IsInstanceOfType(GetMemberValue(clip, "asset")) && string.Equals(Convert.ToString(GetMemberValue(clip, "displayName")), request.trackName, StringComparison.Ordinal)).ToArray();
+				if (clips.Length > 1)
+				{
+					Error(result, "CINEMATIC_TARGET_AMBIGUOUS", "The Cinemachine shot name identifies more than one clip.");
+					return false;
+				}
+				object clip = clips.SingleOrDefault();
+				object exposed = GetMemberValue(GetMemberValue(clip, "asset"), "VirtualCamera");
+				UnityEngine.Object previousCamera = exposed == null ? null : exposed.GetType().GetMethod("Resolve").Invoke(exposed, new object[] { director }) as UnityEngine.Object;
+				change.before = clip == null ? "absent" : ShotState(previousCamera, Convert.ToDouble(GetMemberValue(clip, "start"), CultureInfo.InvariantCulture), Convert.ToDouble(GetMemberValue(clip, "duration"), CultureInfo.InvariantCulture));
+				change.after = ShotState(camera, (double)Mathf.Max(0.0f, request.clipStart), (double)(request.clipDuration > 0.0f ? request.clipDuration : 0.5f));
+				return true;
+			}
+			change.before = track == null ? "absent" : track.GetType().FullName + ":" + request.trackName;
+			change.after = artifactType.FullName + ":" + request.trackName;
+			return true;
+		}
+
+		private static string ShotState(UnityEngine.Object camera, double start, double duration) => ObjectIdentity(camera) + "@" + start.ToString("R", CultureInfo.InvariantCulture) + "+" + duration.ToString("R", CultureInfo.InvariantCulture);
+
+		private static string ObjectIdentity(UnityEngine.Object value)
+		{
+			// null参照は実在オブジェクトのIDと混同しない。
+			// 存在しない対象を実体の参照として扱わず、未存在の比較値にする。
+			if (value == null) return "absent";
+			GlobalObjectId identity = GlobalObjectId.GetGlobalObjectIdSlow(value);
+			return identity.targetObjectId == 0 ? value.GetType().FullName + ":instance:" + SessionIdentity(value) : identity.ToString();
+		}
+
+		private static string SessionIdentity(UnityEngine.Object value)
+		{
+#if UNITY_6000_6_OR_NEWER
+			return value.GetEntityId().ToString();
+#else
+			return value.GetInstanceID().ToString(CultureInfo.InvariantCulture);
+#endif
+		}
+
+		private static IEnumerable<object> TimelineItems(object owner, string methodName)
+		{
+			MethodInfo method = owner == null ? null : owner.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.Public, null, Type.EmptyTypes, null);
+			// Optional Timeline surfaceの欠落は空の列挙として扱い、生成時にCapabilityを検証する。
+			// 対応するCollection APIがないAssetをTimeline要素として展開しない。
+			if (method == null) return Enumerable.Empty<object>();
+			return (method.Invoke(owner, null) as System.Collections.IEnumerable)?.Cast<object>() ?? Enumerable.Empty<object>();
+		}
+
+		private static IEnumerable<UnityEngine.Object> CinematicObjects(PlayableDirector director)
+		{
+			List<UnityEngine.Object> objects = new List<UnityEngine.Object> { director };
+			if (director.playableAsset != null)
+			{
+				objects.Add(director.playableAsset);
+				List<object> tracks = TimelineItems(director.playableAsset, "GetRootTracks").ToList();
+				object markerTrack = GetMemberValue(director.playableAsset, "markerTrack");
+				if (markerTrack != null)
+				{
+					tracks.Add(markerTrack);
+				}
+				for (int index = 0; index < tracks.Count; index++)
+				{
+					object track = tracks[index];
+					objects.Add(track as UnityEngine.Object);
+					tracks.AddRange(TimelineItems(track, "GetChildTracks"));
+					objects.AddRange(TimelineItems(track, "GetClips").Select(clip => GetMemberValue(clip, "asset") as UnityEngine.Object));
+					objects.AddRange(TimelineItems(track, "GetMarkers").OfType<UnityEngine.Object>());
+				}
+			}
+			return objects.Where(value => value != null).Distinct();
+		}
+
+		private static Type CinematicArtifactType(string kind)
+		{
+			string typeName = kind switch
+			{
+				"activation" => "UnityEngine.Timeline.ActivationTrack, Unity.Timeline",
+				"animation" => "UnityEngine.Timeline.AnimationTrack, Unity.Timeline",
+				"control" => "UnityEngine.Timeline.ControlTrack, Unity.Timeline",
+				"signal" => "UnityEngine.Timeline.SignalTrack, Unity.Timeline",
+				"marker" => "UnityEngine.Timeline.SignalEmitter, Unity.Timeline",
+				"cinemachine_shot" or "shot" => "Unity.Cinemachine.CinemachineTrack, Unity.Cinemachine",
+				_ => string.Empty
+			};
+			return ResolveCinematicArtifactType(kind, typeName);
 		}
 
 		private static bool ValidateCinematicRequest(CinematicRequest request, ArtistResult result)
 		{
 			string kind = (request.trackKind ?? string.Empty).Trim().ToLowerInvariant();
 			string[] allowed = { "binding", "activation", "animation", "control", "signal", "marker", "cinemachine_shot", "shot" };
+			if (float.IsNaN(request.markerTime) || float.IsInfinity(request.markerTime) || float.IsNaN(request.clipStart) || float.IsInfinity(request.clipStart) || float.IsNaN(request.clipDuration) || float.IsInfinity(request.clipDuration) || request.markerTime < 0.0f)
+			{
+				Error(result, "INVALID_CINEMATIC_REQUEST", "Cinematic times must be finite and markerTime must be non-negative.");
+				return false;
+			}
 			if (!allowed.Contains(kind, StringComparer.Ordinal))
 			{
 				Error(result, "INVALID_CINEMATIC_REQUEST", "trackKind must be one of binding, activation, animation, control, signal, marker, cinemachine_shot, or shot.");
@@ -678,17 +1064,7 @@ namespace UnityArtist
 				return false;
 			}
 			string kind = (request.trackKind ?? string.Empty).Trim().ToLowerInvariant();
-			string typeName = kind switch
-			{
-				"activation" => "UnityEngine.Timeline.ActivationTrack, Unity.Timeline",
-				"animation" => "UnityEngine.Timeline.AnimationTrack, Unity.Timeline",
-				"control" => "UnityEngine.Timeline.ControlTrack, Unity.Timeline",
-				"signal" => "UnityEngine.Timeline.SignalTrack, Unity.Timeline",
-				"marker" => "UnityEngine.Timeline.SignalEmitter, Unity.Timeline",
-				"cinemachine_shot" or "shot" => "Unity.Cinemachine.CinemachineTrack, Unity.Cinemachine.Runtime",
-				_ => string.Empty
-			};
-			Type artifactType = ResolveCinematicArtifactType(kind, typeName);
+			Type artifactType = CinematicArtifactType(kind);
 			if (artifactType == null)
 			{
 				Error(result, "CAPABILITY_UNAVAILABLE", "The requested allowlisted Timeline or Cinemachine type is not installed in this Project.");
@@ -707,8 +1083,13 @@ namespace UnityArtist
 				}
 				try
 				{
+					object previousMarkerTrack = markerTrackProperty.GetValue(director.playableAsset, null);
 					createMarkerTrack.Invoke(director.playableAsset, null);
 					object markerTrack = markerTrackProperty.GetValue(director.playableAsset, null);
+					if (previousMarkerTrack == null && markerTrack is UnityEngine.Object createdMarkerTrack)
+					{
+						Undo.RegisterCreatedObjectUndo(createdMarkerTrack, "Artist Timeline Marker Track");
+					}
 					MethodInfo createMarker = markerTrack == null ? null : markerTrack.GetType().GetMethod("CreateMarker", BindingFlags.Instance | BindingFlags.Public, null, new[] { typeof(Type), typeof(double) }, null);
 					object created = createMarker == null ? null : createMarker.Invoke(markerTrack, new object[] { artifactType, (double)request.markerTime });
 					if (created == null)
@@ -825,6 +1206,7 @@ namespace UnityArtist
 
 			float start = Mathf.Max(0.0f, request.clipStart);
 			float duration = request.clipDuration > 0.0f ? request.clipDuration : 0.5f;
+			SetMemberValue(clip, "displayName", request.trackName);
 			SetMemberValue(clip, "start", (double)start);
 			SetMemberValue(clip, "duration", (double)duration);
 			object clipAsset = GetMemberValue(clip, "asset");
@@ -835,7 +1217,7 @@ namespace UnityArtist
 				if (virtualCameraField != null)
 				{
 					object exposedReference = virtualCameraField.GetValue(clipAsset);
-					if (!SetMemberValue(exposedReference, "defaultValue", virtualCamera))
+					if (!SetMemberValue(exposedReference, "exposedName", new PropertyName()) || !SetMemberValue(exposedReference, "defaultValue", virtualCamera))
 					{
 						Error(result, "CINEMATIC_CREATE_FAILED", "The Cinemachine shot asset does not expose a writable virtual-camera reference.");
 						return false;
@@ -950,10 +1332,6 @@ namespace UnityArtist
 			}
 		}
 
-		private static string CinematicProperty(CinematicRequest request) => (request.trackKind ?? "timeline").Trim().ToLowerInvariant();
-
-		private static string CinematicValue(CinematicRequest request) => string.IsNullOrWhiteSpace(request.trackName) ? request.markerTime.ToString("0.###") : request.trackName;
-
 		private static bool BuildDiff(ArtistResult result, ArtistIntent intent)
 		{
 			if (intent.setFog && DetectPipeline() == "hdrp")
@@ -965,6 +1343,8 @@ namespace UnityArtist
 				}
 				object parameter = GetMemberValue(fog, "meanFreePath");
 				object before = GetMemberValue(parameter, "value");
+				result.exactDiff.Add(new ArtistChange { target = volume.gameObject.name, property = "HDRP.Fog.active", before = ValueText(GetMemberValue(fog, "active")), after = "True" });
+				result.exactDiff.Add(new ArtistChange { target = volume.gameObject.name, property = "HDRP.Fog.meanFreePath.overrideState", before = ValueText(GetMemberValue(parameter, "overrideState")), after = "True" });
 				result.exactDiff.Add(new ArtistChange
 				{
 					target = volume.gameObject.name,
@@ -975,6 +1355,7 @@ namespace UnityArtist
 			}
 			else if (intent.setFog)
 			{
+				result.exactDiff.Add(new ArtistChange { target = "RenderSettings", property = "fog", before = RenderSettings.fog ? "true" : "false", after = "true" });
 				result.exactDiff.Add(new ArtistChange { target = "RenderSettings", property = "fogDensity", before = RenderSettings.fogDensity.ToString("0.####"), after = Mathf.Clamp(intent.fogDensity, 0.0f, 1.0f).ToString("0.####") });
 			}
 			if (intent.setVolumeLookDev)
@@ -998,6 +1379,10 @@ namespace UnityArtist
 				object adjustment = FindVolumeComponent(profile, adjustmentType);
 				object postExposure = adjustment == null ? null : GetMemberValue(adjustment, "postExposure");
 				object contrast = adjustment == null ? null : GetMemberValue(adjustment, "contrast");
+				result.exactDiff.Add(new ArtistChange { target = volume.gameObject.name, property = "URP.ColorAdjustments.component", before = adjustment == null ? "absent" : "present", after = "present" });
+				result.exactDiff.Add(new ArtistChange { target = volume.gameObject.name, property = "URP.ColorAdjustments.active", before = adjustment == null ? "absent" : ValueText(GetMemberValue(adjustment, "active")), after = "True" });
+				result.exactDiff.Add(new ArtistChange { target = volume.gameObject.name, property = "URP.ColorAdjustments.postExposure.overrideState", before = postExposure == null ? "absent" : ValueText(GetMemberValue(postExposure, "overrideState")), after = "True" });
+				result.exactDiff.Add(new ArtistChange { target = volume.gameObject.name, property = "URP.ColorAdjustments.contrast.overrideState", before = contrast == null ? "absent" : ValueText(GetMemberValue(contrast, "overrideState")), after = "True" });
 				result.exactDiff.Add(new ArtistChange
 				{
 					target = volume.gameObject.name,
@@ -1014,7 +1399,16 @@ namespace UnityArtist
 				});
 				result.evidence.Add("urp_volume_plan");
 			}
-			if (intent.setLightIntensity) result.exactDiff.Add(new ArtistChange { target = intent.targetName ?? string.Empty, property = "intensity", before = "observed", after = Mathf.Max(0.0f, intent.lightIntensity).ToString("0.####") });
+			if (intent.setLightIntensity)
+			{
+				Light light = FindLight(intent.targetName);
+				if (light == null)
+				{
+					Error(result, "TARGET_NOT_FOUND", "An exact light target is required.");
+					return false;
+				}
+				result.exactDiff.Add(new ArtistChange { target = light.name, property = "intensity", before = light.intensity.ToString("0.####", CultureInfo.InvariantCulture), after = Mathf.Max(0.0f, intent.lightIntensity).ToString("0.####", CultureInfo.InvariantCulture) });
+			}
 			if (intent.setCameraFieldOfView)
 			{
 				Camera camera = FindCamera(intent.targetName, intent.targetGuid);
@@ -1042,8 +1436,44 @@ namespace UnityArtist
 					Error(result, "CAMERA_FOV_OUTSIDE_APPROVAL", "Camera FOV is outside the approved parameter envelope.");
 					return false;
 				}
-				result.exactDiff.Add(new ArtistChange { target = referenceWorkflow ? intent.targetGuid : camera.name, property = UnityArtist.CameraFovWorkflowAdapter.PropertyPath, before = camera.fieldOfView.ToString("0.####"), after = intent.cameraFieldOfView.ToString("0.####") });
+				result.exactDiff.Add(new ArtistChange { target = referenceWorkflow ? intent.targetGuid : camera.name, property = UnityArtist.CameraFovWorkflowAdapter.PropertyPath, before = camera.fieldOfView.ToString("0.####", CultureInfo.InvariantCulture), after = intent.cameraFieldOfView.ToString("0.####", CultureInfo.InvariantCulture) });
 				result.evidence.Add("camera_binding");
+			}
+			// 実ファイルへの束縛がなければCamera変更を承認させない。
+			if (intent.setCameraFieldOfView && !AddMutationPath(result, FindCamera(intent.targetName, intent.targetGuid))) return false;
+			// Lightも実Sceneを特定してから承認対象へ含める。
+			if (intent.setLightIntensity && !AddMutationPath(result, FindLight(intent.targetName))) return false;
+			// RenderSettingsはアクティブSceneを変更するため、その保存先を必須にする。
+			if (intent.setFog && DetectPipeline() != "hdrp" && !AddMutationPath(result, Unsupported.GetRenderSettings())) return false;
+			if (intent.setFog && DetectPipeline() == "hdrp")
+			{
+				// VolumeとFog Assetの一方でも未束縛なら承認可能な差分にしない。
+				if (!TryFindHdrpFog(false, out Component volume, out object fog, out string reason) || !AddMutationPath(result, volume) || !AddMutationPath(result, fog as UnityEngine.Object)) return false;
+			}
+			if (intent.setVolumeLookDev)
+			{
+				// Volumeと共有Profileの両方を承認Scopeへ含められる場合だけ計画を返す。
+				if (!TryFindUrpVolume(out Component volume, out object profile, out string reason) || !AddMutationPath(result, volume) || !AddMutationPath(result, profile as UnityEngine.Object)) return false;
+			}
+			return true;
+		}
+
+		private static bool AddMutationPath(ArtistResult result, UnityEngine.Object target)
+		{
+			string path = target is Component component ? component.gameObject.scene.path : AssetDatabase.GetAssetPath(target);
+			if (target is RenderSettings)
+			{
+				path = SceneManager.GetActiveScene().path;
+			}
+			if (string.IsNullOrWhiteSpace(path) || !path.StartsWith("Assets/", StringComparison.Ordinal) || path.Contains("..") || !File.Exists(path))
+			{
+				Error(result, "SCOPE_VIOLATION", "Mutation requires an observed saved Scene or Asset under Project/Assets.");
+				return false;
+			}
+			if (!result.mutationPaths.Contains(path))
+			{
+				result.mutationPaths.Add(path);
+				result.mutationPaths.Sort(StringComparer.Ordinal);
 			}
 			return true;
 		}
@@ -1066,7 +1496,15 @@ namespace UnityArtist
 				Error(result, "URP_VOLUME_API_UNAVAILABLE", "The active URP project does not expose ColorAdjustments.");
 				return false;
 			}
-			object adjustment = FindVolumeComponent(profile, adjustmentType) ?? AddVolumeComponent(profile, adjustmentType);
+			object adjustment = FindVolumeComponent(profile, adjustmentType);
+			if (adjustment == null)
+			{
+				adjustment = AddVolumeComponent(profile, adjustmentType);
+				if (adjustment is UnityEngine.Object created)
+				{
+					Undo.RegisterCreatedObjectUndo(created, "Artist ColorAdjustments creation");
+				}
+			}
 			if (adjustment == null)
 			{
 				Error(result, "URP_VOLUME_COMPONENT_UNAVAILABLE", "The URP VolumeProfile could not create ColorAdjustments.");
@@ -1097,7 +1535,7 @@ namespace UnityArtist
 			if (profile is UnityEngine.Object dirtyProfile) EditorUtility.SetDirty(dirtyProfile);
 			if (adjustment is UnityEngine.Object dirtyAdjustment) EditorUtility.SetDirty(dirtyAdjustment);
 			if (volume != null) EditorUtility.SetDirty(volume);
-			MarkScenesDirty();
+			EditorSceneManager.MarkSceneDirty(volume.gameObject.scene);
 			result.exactDiff.Add(new ArtistChange { target = volume.gameObject.name, property = "URP.ColorAdjustments.postExposure", before = ValueText(beforeExposure), after = ValueText(afterExposure) });
 			result.exactDiff.Add(new ArtistChange { target = volume.gameObject.name, property = "URP.ColorAdjustments.contrast", before = ValueText(beforeContrast), after = ValueText(afterContrast) });
 			result.evidence.Add("urp_native_volume");
@@ -1184,7 +1622,7 @@ namespace UnityArtist
 			SetMemberValue(fog, "active", true);
 			if (fogObject != null) EditorUtility.SetDirty(fogObject);
 			if (volume != null) EditorUtility.SetDirty(volume);
-			MarkScenesDirty();
+			EditorSceneManager.MarkSceneDirty(volume.gameObject.scene);
 			result.exactDiff.Add(new ArtistChange
 			{
 				target = volume.gameObject.name,
@@ -1215,8 +1653,7 @@ namespace UnityArtist
 				reason = "An existing scene Volume with an HDRP Fog component is required for a scoped HDRP fog intent.";
 				return false;
 			}
-			object profile = GetMemberValue(volume, forApply ? "profile" : "profileRef");
-			if (profile == null) profile = GetMemberValue(volume, "sharedProfile");
+			object profile = GetMemberValue(volume, "sharedProfile");
 			if (profile == null)
 			{
 				reason = "The exact HDRP Volume has no profile; create and assign one before planning fog.";
@@ -1336,6 +1773,8 @@ namespace UnityArtist
 				unityVersion = version,
 				renderPipeline = pipeline,
 				compatibilityBackend = supported ? ArtistCompatibility.Backend(pipeline) : "none",
+				approvalProtocol = "control_plane_authority_v1",
+				contextProtocol = "artist_context_v1",
 				transport = string.IsNullOrWhiteSpace(transportOverride) ? (persistentBatchSession ? "official_unity_cli_bounded_batch_fallback" : "official_unity_cli_pipeline") : transportOverride,
 				errorCode = supported ? string.Empty : (version.StartsWith("2022.3.", StringComparison.Ordinal) ? "UNSUPPORTED_RENDER_PIPELINE_VERSION" : "UNSUPPORTED_UNITY_VERSION"),
 				reason = supported ? string.Empty : "This Unity version and render pipeline are outside the formal UnityArtistCLI release matrix."
@@ -1372,7 +1811,8 @@ namespace UnityArtist
 
 		private static Light FindLight(string name)
 		{
-			return SceneObjects<Light>().FirstOrDefault(value => string.Equals(value.name, name, StringComparison.Ordinal));
+			Light[] matches = SceneObjects<Light>().Where(value => string.Equals(value.name, name, StringComparison.Ordinal)).Take(2).ToArray();
+			return matches.Length == 1 ? matches[0] : null;
 		}
 
 		private static Camera FindCamera(string name, string globalObjectId = null)
@@ -1388,7 +1828,12 @@ namespace UnityArtist
 				if (!string.IsNullOrWhiteSpace(name) && !string.Equals(exact.name, name, StringComparison.Ordinal)) return null;
 				return exact;
 			}
-			if (!string.IsNullOrWhiteSpace(name)) return cameras.FirstOrDefault(value => string.Equals(value.name, name, StringComparison.Ordinal));
+			if (!string.IsNullOrWhiteSpace(name))
+			{
+				// 名前だけの承認を複数候補の任意の1つへ結び付けない。
+				Camera[] matches = cameras.Where(value => string.Equals(value.name, name, StringComparison.Ordinal)).Take(2).ToArray();
+				return matches.Length == 1 ? matches[0] : null;
+			}
 			return cameras.FirstOrDefault(value => value.CompareTag("MainCamera")) ?? cameras.FirstOrDefault();
 		}
 
@@ -1418,36 +1863,41 @@ namespace UnityArtist
 		private static string CurrentRevision()
 		{
 			StringBuilder material = new StringBuilder(Application.unityVersion);
+			material.Append("|fog:").Append(RenderSettings.fog).Append(':').Append(RenderSettings.fogDensity.ToString("R", CultureInfo.InvariantCulture));
 			for (int index = 0; index < SceneManager.sceneCount; index++) material.Append('|').Append(SceneManager.GetSceneAt(index).path);
-			foreach (Light light in SceneObjects<Light>().OrderBy(value => value.name)) material.Append('|').Append(light.name).Append(':').Append(light.intensity.ToString("R"));
-			foreach (Camera camera in SceneObjects<Camera>().OrderBy(value => value.name)) material.Append('|').Append(camera.name).Append(':').Append(camera.fieldOfView.ToString("R"));
+			// GlobalObjectIdが未保存の削除・再生成で再利用されるため、現在のEditor実体もRevisionへ束縛する。
+			foreach (Light light in SceneObjects<Light>().OrderBy(value => ObjectIdentity(value), StringComparer.Ordinal)) material.Append('|').Append(ObjectIdentity(light)).Append(':').Append(SessionIdentity(light)).Append(':').Append(light.name).Append(':').Append(light.intensity.ToString("R", CultureInfo.InvariantCulture));
+			foreach (Camera camera in SceneObjects<Camera>().OrderBy(value => ObjectIdentity(value), StringComparer.Ordinal)) material.Append('|').Append(ObjectIdentity(camera)).Append(':').Append(SessionIdentity(camera)).Append(':').Append(camera.name).Append(':').Append(camera.fieldOfView.ToString("R", CultureInfo.InvariantCulture));
+			foreach (PlayableDirector director in SceneObjects<PlayableDirector>().OrderBy(value => ObjectIdentity(value), StringComparer.Ordinal))
+			{
+				// Timeline本体・Track・Clip Asset・Marker・Director Bindingの内容を同じRevisionへ束縛する。
+				foreach (UnityEngine.Object item in CinematicObjects(director).OrderBy(value => ObjectIdentity(value), StringComparer.Ordinal))
+				{
+					// Planは現在のEditor実体へ束縛し、参照実体の変更もJSONのままRevisionへ含める。
+					material.Append('|').Append(ObjectIdentity(item)).Append(':').Append(SessionIdentity(item)).Append(':').Append(EditorJsonUtility.ToJson(item));
+				}
+			}
 			if (DetectPipeline() == "hdrp" && TryFindHdrpFog(false, out Component volume, out object fog, out string reason))
 			{
 				object parameter = GetMemberValue(fog, "meanFreePath");
-				material.Append("|hdrp:").Append(volume.gameObject.name).Append(':').Append(ValueText(GetMemberValue(parameter, "value")));
+				material.Append("|hdrp:").Append(ObjectIdentity(volume)).Append(':').Append(SessionIdentity(volume)).Append(':').Append(volume.gameObject.name).Append(':').Append(ValueText(GetMemberValue(parameter, "value")));
+				material.Append(':').Append(EditorJsonUtility.ToJson(fog as UnityEngine.Object));
 			}
 			if (DetectPipeline() == "urp" && TryFindUrpVolume(out Component urpVolume, out object urpProfile, out string urpReason))
 			{
 				Type adjustmentType = FindType("UnityEngine.Rendering.Universal.ColorAdjustments", "Unity.RenderPipelines.Universal.Runtime");
 				object adjustment = FindVolumeComponent(urpProfile, adjustmentType);
-				material.Append("|urp-volume:").Append(urpVolume.gameObject.name);
+				material.Append("|urp-volume:").Append(ObjectIdentity(urpVolume)).Append(':').Append(SessionIdentity(urpVolume)).Append(':').Append(urpVolume.gameObject.name);
+				material.Append(':').Append(EditorJsonUtility.ToJson(urpProfile as UnityEngine.Object));
 				if (adjustment != null)
 				{
+					material.Append(':').Append(EditorJsonUtility.ToJson(adjustment as UnityEngine.Object));
 					material.Append(':').Append(ValueText(GetMemberValue(GetMemberValue(adjustment, "postExposure"), "value")));
 					material.Append(':').Append(ValueText(GetMemberValue(GetMemberValue(adjustment, "contrast"), "value")));
 				}
 				else material.Append(":absent");
 			}
 			using (SHA256 sha = SHA256.Create()) return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(material.ToString()))).Replace("-", string.Empty).ToLowerInvariant();
-		}
-
-		private static void MarkScenesDirty()
-		{
-			for (int index = 0; index < SceneManager.sceneCount; index++)
-			{
-				Scene scene = SceneManager.GetSceneAt(index);
-				if (scene.IsValid() && scene.isLoaded) EditorSceneManager.MarkSceneDirty(scene);
-			}
 		}
 
 		private static string Serialize(ArtistResult result) => JsonUtility.ToJson(result, true);

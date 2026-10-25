@@ -49,7 +49,7 @@ class SetupCliTests(unittest.TestCase):
                 "setup",
                 "--operation", "doctor",
                 "--project-path", str(project_root),
-                "--product", "unity_artist_cli",
+                "--product", "artist_subagent",
                 "--product", "official_unity_cli",
                 "--product", "codex_cli",
                 "--product", "unity_agent_codex_plugin",
@@ -69,10 +69,10 @@ class SetupCliTests(unittest.TestCase):
         provider_result = result["outcome"]["provider_result"]
         self.assertEqual(provider_result["status"], "passed")
         entries_by_product = {entry["product"]: entry for entry in provider_result["entries"]}
-        self.assertEqual(entries_by_product["unity_artist_cli"]["status"], "unavailable")
+        self.assertEqual(entries_by_product["artist_subagent"]["status"], "unavailable")
         self.assertEqual(
-            entries_by_product["unity_artist_cli"]["reason"],
-            "unity_artist_cli_unavailable",
+            entries_by_product["artist_subagent"]["reason"],
+            "artist_package_not_installed",
         )
         self.assertEqual(entries_by_product["official_unity_cli"]["status"], "verified")
         self.assertEqual(entries_by_product["codex_cli"]["status"], "verified")

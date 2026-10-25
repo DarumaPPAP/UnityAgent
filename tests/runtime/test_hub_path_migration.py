@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 class HubPathMigrationTests(unittest.TestCase):
     def plan(self, path_prefix: str) -> dict:
-        payload = yaml.safe_load((ROOT / 'tests/runtime/fixtures/hub-production-specialists-v3.yaml').read_bytes())
+        payload = yaml.safe_load((ROOT / 'tests/runtime/fixtures/unity-cli-hub-production-specialists-v3.yaml').read_bytes())
         for entry in payload['specialists']:
             entry['manifest_ref'] = path_prefix + entry['manifest_ref']
             execution = entry['manifest']['execution']

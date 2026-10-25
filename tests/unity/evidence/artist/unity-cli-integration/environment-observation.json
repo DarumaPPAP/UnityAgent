@@ -1,0 +1,81 @@
+{
+  "builtin": {
+    "support": {
+      "supported": true,
+      "supportTier": "primary",
+      "unityVersion": "6000.3.2f1",
+      "renderPipeline": "builtin",
+      "compatibilityBackend": "builtin_editor_api",
+      "approvalProtocol": "control_plane_authority_v1",
+      "contextProtocol": "artist_context_v1",
+      "transport": "official_unity_cli_pipeline",
+      "errorCode": "",
+      "reason": ""
+    },
+    "context_receipt": {
+      "receivedContextId": "ctx-f55809434b52432d",
+      "receivedContextFingerprint": "sha256:f55809434b52432d0232fa07b0655c4962a9d255389785ca37792396afab69d4",
+      "projectRoot": "d:/unity_project/myurplaboratory/.artist-e2e~",
+      "runId": "artist-live-b45bbae6b8ec"
+    }
+  },
+  "urp": {
+    "support": {
+      "supported": true,
+      "supportTier": "primary",
+      "unityVersion": "6000.3.2f1",
+      "renderPipeline": "urp",
+      "compatibilityBackend": "urp_native_api",
+      "approvalProtocol": "control_plane_authority_v1",
+      "contextProtocol": "artist_context_v1",
+      "transport": "official_unity_cli_pipeline",
+      "errorCode": "",
+      "reason": ""
+    },
+    "context_receipt": {
+      "receivedContextId": "ctx-a8149e3666aee81d",
+      "receivedContextFingerprint": "sha256:a8149e3666aee81d6832c88a650238733af2eaafbffb94ff28fda172d476ec7e",
+      "projectRoot": "d:/unity_project/myurplaboratory/.artist-e2e~",
+      "runId": "artist-live-a5cface6c221"
+    }
+  },
+  "hdrp": {
+    "support": {
+      "supported": true,
+      "supportTier": "primary",
+      "unityVersion": "6000.3.2f1",
+      "renderPipeline": "hdrp",
+      "compatibilityBackend": "hdrp_native_api",
+      "approvalProtocol": "control_plane_authority_v1",
+      "contextProtocol": "artist_context_v1",
+      "transport": "official_unity_cli_pipeline",
+      "errorCode": "",
+      "reason": ""
+    },
+    "context_receipt": {
+      "receivedContextId": "ctx-04f3ee95554de2df",
+      "receivedContextFingerprint": "sha256:04f3ee95554de2df8351d9cc8e0353a7cff8f12288159528eaad996f424ee883",
+      "projectRoot": "d:/unity_project/myurplaboratory/.artist-e2e~",
+      "runId": "artist-live-bb99024900ab"
+    }
+  },
+  "project_version": "m_EditorVersion: 6000.3.2f1\nm_EditorVersionWithRevision: 6000.3.2f1 (a9779f353c9b)\n",
+  "package_dependencies": {
+    "com.darumappap.artist-subagent": "file:C:/Users/PC_User/.codex/visualizations/2026/10/23/01a169e7-c936-7cf1-bcaa-423de26962e5/UnityAgent-integration/subagent/artist_subagent/tools/editor",
+    "com.unity.cinemachine": "3.1.7",
+    "com.unity.pipeline": "0.8.0-exp.1",
+    "com.unity.render-pipelines.high-definition": "17.3.0",
+    "com.unity.render-pipelines.universal": "17.3.0",
+    "com.unity.test-framework": "1.6.0",
+    "com.unity.timeline": "1.8.9",
+    "com.unity.modules.animation": "1.0.0",
+    "com.unity.modules.audio": "1.0.0",
+    "com.unity.modules.director": "1.0.0",
+    "com.unity.modules.imageconversion": "1.0.0",
+    "com.unity.modules.imgui": "1.0.0",
+    "com.unity.modules.jsonserialize": "1.0.0",
+    "com.unity.modules.screencapture": "1.0.0",
+    "com.unity.modules.uielements": "1.0.0"
+  },
+  "source_tree": "584a7def1c64df58c4b79a397cbe913ec1e9ce2d"
+}

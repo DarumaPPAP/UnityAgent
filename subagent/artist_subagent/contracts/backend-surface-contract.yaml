@@ -1,7 +1,11 @@
 schema_version: '2.0'
 kind: specialist_backend_interface
-backend_identity: unity_artist_cli
+backend_identity: unity_cli
 execution_boundary: unity_agent_tool_broker
+backend_commands: [inspect, plan, preview, apply, capture, evaluate, refine, history, cinematic]
+automatic_save: false
+arbitrary_eval: false
+forbidden_surface: [mcp_transport, generic_gameobject_crud, generic_hierarchy_crud, arbitrary_eval]
 input_contract:
   - capability_request
   - context_receipt

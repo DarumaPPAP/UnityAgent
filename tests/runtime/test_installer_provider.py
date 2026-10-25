@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-import hashlib
-import io
 import json
 import shutil
 import sys
 import unittest
 import uuid
+from jsonschema import ValidationError
 from pathlib import Path
-import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -22,6 +20,7 @@ from unityagent.runtime.tooling.providers.installer.codex_plugin_installer impor
 )
 from unityagent.runtime.tooling.providers.installer.installer_provider import InstallerProvider
 from unityagent.runtime.tooling.providers.installer.release_installer import ReleaseInstallError, install_plan
+from unityagent.runtime.contracts.toolchain_setup_contract import validate_toolchain_setup_request
 
 
 class InstallerProviderTests(unittest.TestCase):
@@ -30,65 +29,45 @@ class InstallerProviderTests(unittest.TestCase):
         self.addCleanup(lambda: shutil.rmtree(self.install_root, ignore_errors=True))
 
     @staticmethod
-    def archive(*, unsafe: bool = False) -> bytes:
-        stream = io.BytesIO()
-        with zipfile.ZipFile(stream, "w") as package:
-            package.writestr("payload/unity-artist.exe", b"UnityArtistCLI beta test payload")
-            if unsafe:
-                package.writestr("../escape.txt", b"must not extract")
-        return stream.getvalue()
-
-    @staticmethod
     def codex_version_runner(arguments):
         return CommandResult(0, "codex-cli 0.0-test\n", "")
 
-    def test_release_archive_is_hash_verified_and_installed_to_requested_root(self) -> None:
-        archive = self.archive()
-        digest = hashlib.sha256(archive).hexdigest()
-        urls: list[str] = []
-
-        def download(url: str) -> bytes:
-            urls.append(url)
-            return archive if url.endswith(".zip") else f"{digest}  archive.zip\n".encode("utf-8")
-
-        result = install_plan(
-            {
-                "project_root": str(ROOT),
-                "plan_id": "plan-test",
-                "channel": "0.0.8-beta",
-                "install_root": str(self.install_root),
-                "actions": [{"product": "unity_artist_cli", "action": "install_then_verify"}],
-            },
-            download_fn=download,
-        )
-        self.assertEqual(result["status"], "passed")
-        self.assertEqual(result["channel"], "0.0.8-beta")
-        self.assertEqual(result["entries"][0]["version"], "0.0.2-beta")
-        self.assertTrue((self.install_root / "unity-artist.exe").is_file())
-        self.assertEqual(result["install_receipt"]["entries"][0]["sha256"], f"sha256:{digest}")
-        self.assertEqual(len(urls), 2)
-        release_base = "https://github.com/DarumaPPAP/UnityAgent/releases/download/v0.0.8-beta/UnityAgent-ArtistSubAgent-host-windows-x64-0.0.8-beta.zip"
-        self.assertEqual(urls, [release_base, release_base + ".sha256"])
-        self.assertEqual(result["entries"][0]["source"], release_base)
-
-    def test_archive_path_escape_is_rejected(self) -> None:
-        archive = self.archive(unsafe=True)
-        digest = hashlib.sha256(archive).hexdigest()
-
-        def download(url: str) -> bytes:
-            return archive if url.endswith(".zip") else f"{digest}\n".encode("utf-8")
-
+    def test_removed_host_product_is_rejected_without_installation(self):
         with self.assertRaises(ReleaseInstallError):
-            install_plan(
-                {
-                    "project_root": str(ROOT),
-                    "plan_id": "plan-unsafe",
-                    "channel": "0.0.8-beta",
-                    "install_root": str(self.install_root),
-                    "actions": [{"product": "unity_artist_cli", "action": "install_then_verify"}],
-                },
-                download_fn=download,
-            )
+            install_plan({"actions": [{"product": "unity_artist_cli", "action": "install_then_verify"}]})
+        self.assertFalse(self.install_root.exists())
+
+    def test_artist_package_doctor_never_searches_for_host_and_plan_is_manual(self):
+        lookups = []
+        provider = InstallerProvider(self.install_root, which_fn=lambda name: lookups.append(name), env={})
+        missing = provider.plan({"products": ["artist_subagent"]})
+        self.assertEqual(missing["status"], "unavailable")
+        self.assertEqual(missing["actions"][0]["action"], "manual_required")
+        self.assertFalse(missing["approval_required"])
+        self.assertEqual(lookups, [])
+        packages = self.install_root / "Packages"
+        packages.mkdir(parents=True)
+        (packages / "manifest.json").write_text(json.dumps({"dependencies": {"com.darumappap.artist-subagent": "file:../artist"}}), encoding="utf-8")
+        observed = provider.doctor({"products": ["artist_subagent"]})
+        self.assertEqual(observed["entries"][0]["status"], "verified")
+        self.assertEqual(observed["entries"][0]["location"], str(packages / "manifest.json"))
+        self.assertEqual(lookups, [])
+
+    def test_release_adapter_verifies_official_cli_and_package_without_installing(self):
+        actions = [{"product": product, "action": "verify", "location": "/observed/" + product, "version": "observed"} for product in ("official_unity_cli", "artist_subagent")]
+        result = install_plan({"actions": actions})
+        self.assertEqual(result["status"], "passed")
+        self.assertEqual([entry["product"] for entry in result["entries"]], ["official_unity_cli", "artist_subagent"])
+        with self.assertRaises(ReleaseInstallError):
+            install_plan({"actions": [{"product": "artist_subagent", "action": "install_then_verify"}]})
+
+    def test_current_setup_schema_accepts_package_and_rejects_removed_host(self):
+        request = {"schema_version": "1.0", "request_id": "setup-package", "entry_point": "codex_plugin", "operation": "doctor", "project_root": str(ROOT), "products": ["artist_subagent"], "channel": "0.0.8-beta", "non_interactive": True}
+        validate_toolchain_setup_request(request, root=ROOT)
+        request["products"] = ["unity_artist_cli"]
+        with self.assertRaises(ValidationError) as raised:
+            validate_toolchain_setup_request(request, root=ROOT)
+        self.assertIn("unity_artist_cli", str(raised.exception))
 
     def test_codex_plugin_observation_requires_codex_cli(self) -> None:
         result = observe_codex_plugin(None)
@@ -287,7 +266,7 @@ class InstallerProviderTests(unittest.TestCase):
         result = provider.doctor({
             "products": [
                 "official_unity_cli",
-                "unity_artist_cli",
+                "artist_subagent",
                 "codex_cli",
                 "unity_agent_codex_plugin",
             ],
@@ -297,11 +276,11 @@ class InstallerProviderTests(unittest.TestCase):
         self.assertEqual(result["status"], "passed")
         entries = {entry["product"]: entry for entry in result["entries"]}
         self.assertEqual(entries["official_unity_cli"]["status"], "verified")
-        self.assertEqual(entries["unity_artist_cli"]["status"], "unavailable")
-        self.assertEqual(entries["unity_artist_cli"]["reason"], "unity_artist_cli_unavailable")
+        self.assertEqual(entries["artist_subagent"]["status"], "unavailable")
+        self.assertEqual(entries["artist_subagent"]["reason"], "artist_package_not_installed")
         self.assertEqual(entries["codex_cli"]["status"], "verified")
         self.assertEqual(entries["unity_agent_codex_plugin"]["status"], "verified")
-        self.assertTrue(any("unity-artist" in item for item in result["errors"]))
+        self.assertTrue(any("ArtistSubAgent" in item for item in result["errors"]))
 
     def test_doctor_keeps_product_execution_exception_distinct_from_unavailable(self) -> None:
         project_root = self.install_root / "Project"
@@ -359,7 +338,7 @@ class InstallerProviderTests(unittest.TestCase):
         self.assertEqual(result["entries"][0]["status"], "stale")
         self.assertEqual(result["entries"][0]["reason"], "plugin_version_mismatch")
 
-    def test_missing_artist_plan_waits_for_approval_and_does_not_install(self) -> None:
+    def test_missing_artist_plan_requires_explicit_package_setup_and_does_not_install(self) -> None:
         project_root = self.install_root / "Project"
         project_root.mkdir(parents=True)
         install_calls = []
@@ -372,14 +351,14 @@ class InstallerProviderTests(unittest.TestCase):
 
         plan = provider.plan({
             "project_root": str(project_root),
-            "products": ["unity_artist_cli"],
+            "products": ["artist_subagent"],
             "channel": "0.0.8-beta",
             "install_root": str(self.install_root / "install"),
         })
 
-        self.assertEqual(plan["status"], "passed")
-        self.assertEqual(plan["actions"][0]["action"], "install_then_verify")
-        self.assertTrue(plan["approval_required"])
+        self.assertEqual(plan["status"], "unavailable")
+        self.assertEqual(plan["actions"][0]["action"], "manual_required")
+        self.assertFalse(plan["approval_required"])
         self.assertEqual(install_calls, [])
 
     def test_codex_plugin_plan_is_independent_of_missing_artist_backend(self) -> None:
@@ -410,7 +389,7 @@ class InstallerProviderTests(unittest.TestCase):
             installer_fn=lambda plan: install_calls.append(plan) or {"status": "passed"},
             env={},
         )
-        artist_report = provider.doctor({"products": ["unity_artist_cli"]})
+        artist_report = provider.doctor({"products": ["artist_subagent"]})
         self.assertEqual(artist_report["entries"][0]["status"], "unavailable")
         observed_lookups.clear()
         observed_commands.clear()

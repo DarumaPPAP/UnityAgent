@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Passed" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-25 19:12:21Z" end-time="2026-10-25 19:12:29Z" duration="8.8091412">
+  <test-suite type="TestSuite" id="1000" name="p" fullname="p" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-25 19:12:21Z" end-time="2026-10-25 19:12:29Z" duration="8.809141" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="EditMode" />
+    </properties>
+    <test-suite type="Assembly" id="1009" name="UnityAgent.Production.Tests.dll" fullname="D:/Unity_project/MyURPLaboratory/.m1/ua-76r5u5j6/p/Library/ScriptAssemblies/UnityAgent.Production.Tests.dll" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-25 19:12:21Z" end-time="2026-10-25 19:12:29Z" duration="8.801718" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="43044" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <test-suite type="TestSuite" id="1010" name="UnityAgent" fullname="UnityAgent" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-25 19:12:21Z" end-time="2026-10-25 19:12:29Z" duration="8.801130" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1011" name="Production" fullname="UnityAgent.Production" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-25 19:12:21Z" end-time="2026-10-25 19:12:29Z" duration="8.800792" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestFixture" id="1005" name="LtsPreflightTests" fullname="UnityAgent.Production.LtsPreflightTests" classname="UnityAgent.Production.LtsPreflightTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-10-25 19:12:21Z" end-time="2026-10-25 19:12:29Z" duration="8.799817" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1006" name="UrpRenderGraphCapture" fullname="UnityAgent.Production.LtsPreflightTests.UrpRenderGraphCapture" methodname="UrpRenderGraphCapture" classname="UnityAgent.Production.LtsPreflightTests" runstate="Runnable" seed="1727569253" result="Passed" start-time="2026-10-25 19:12:21Z" end-time="2026-10-25 19:12:29Z" duration="8.786332" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[Saving results to: C:/Users/PC_User/AppData/LocalLow/DefaultCompany/p\TestResults.xml
+]]></output>
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

@@ -250,9 +250,10 @@ def _fallback_floors(
         raise ValueError(
             f"fallback provider {fallback_from_provider_id} did not provide capability {capability}"
         )
-    return max(safety_floor, previous.safety_strength), max(
-        evidence_floor, previous.evidence_strength
-    )
+    offer = previous.capabilities[capability]
+    previous_safety = previous.safety_strength if offer.safety_strength is None else offer.safety_strength
+    previous_evidence = previous.evidence_strength if offer.evidence_strength is None else offer.evidence_strength
+    return max(safety_floor, previous_safety), max(evidence_floor, previous_evidence)
 
 
 def resolve_capability(
@@ -363,17 +364,23 @@ def resolve_capability(
             rejected_reasons.append(f"{provider.provider_id} health is unknown")
             continue
 
-        if provider.safety_strength < safety_floor:
+        safety_strength = provider.safety_strength if offer.safety_strength is None else offer.safety_strength
+        evidence_strength = provider.evidence_strength if offer.evidence_strength is None else offer.evidence_strength
+        if not isinstance(safety_strength, int) or isinstance(safety_strength, bool) or not isinstance(evidence_strength, int) or isinstance(evidence_strength, bool):
+            rejected_classes.append("unknown")
+            rejected_reasons.append(f"{provider.provider_id} capability offer strength is unknown")
+            continue
+        if safety_strength < safety_floor:
             rejected_classes.append("unsupported")
             rejected_reasons.append(
-                f"{provider.provider_id} safety strength {provider.safety_strength} "
+                f"{provider.provider_id} safety strength {safety_strength} "
                 f"is below required {safety_floor}"
             )
             continue
-        if provider.evidence_strength < evidence_floor:
+        if evidence_strength < evidence_floor:
             rejected_classes.append("unsupported")
             rejected_reasons.append(
-                f"{provider.provider_id} evidence strength {provider.evidence_strength} "
+                f"{provider.provider_id} evidence strength {evidence_strength} "
                 f"is below required {evidence_floor}"
             )
             continue

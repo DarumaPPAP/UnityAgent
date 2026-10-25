@@ -33,6 +33,7 @@ from unityagent.runtime.tooling.providers.unity_cli.result_mapper import (
     normalize_compile_observation,
     normalize_pipeline_command,
     normalize_test_execution,
+    parse_json_sequence,
 )
 
 SUPPORTED_CAPABILITIES = frozenset(
@@ -161,6 +162,14 @@ class UnityCliProvider:
         editor = self.environment_snapshot.get("unity_editor") or {}
         if discovery.pipeline_reachable is True and "get_performance_stats" in catalog_names and editor.get("running") is True and editor.get("project_bound") is True and editor.get("safe_mode") is False:
             result.add("profiler.observe")
+        artist = self.environment_snapshot.get("artist") or {}
+        if all(artist.get(key) is True for key in ("available", "compatible", "project_bound", "package_installed", "pipeline_reachable")):
+            if "artist.inspect" in catalog_names:
+                result.add("scene.inspect")
+            if "artist.capture" in catalog_names:
+                result.add("visual.capture")
+            if {"artist." + name for name in ("inspect", "plan", "preview", "apply", "capture", "evaluate", "refine", "history", "cinematic")}.issubset(catalog_names):
+                result.add("domain.workflow")
         return frozenset(result)
 
     def _dispatch(
@@ -452,9 +461,24 @@ class UnityCliProvider:
         return {**normalized, "provider_ref": "unity_cli", "command_name": command_name}
 
     def run_artist_read_only(self, request: dict[str, Any], *, command: ArtistCommand, timeout_seconds: float, policy_allowed: bool, expected_context_id: str | None = None, expected_context_fingerprint: str | None = None, cancel_event: threading.Event | None = None) -> dict[str, Any]:
-        """移行検証用の非接続入口。Capability広告や承認Authorityを追加しない。"""
+        """既存観測APIの範囲を維持し、実行処理を共通入口へ渡す。"""
         try:
-            built = build_artist_pipeline_command(str((self.environment_snapshot.get("unity_cli") or {}).get("executable_path") or ""), self.project_root, command)
+            build_artist_pipeline_command("unity", self.project_root, command)
+        except PermissionError as exc:
+            return artist_failure("blocked_by_approval", str(exc))
+        except (TypeError, ValueError) as exc:
+            return artist_failure("precondition_failed", str(exc))
+        if command.name not in {"inspect", "history", "capture", "cinematic"} or command.name == "cinematic" and (command.operation or "inspect") != "inspect":
+            return artist_failure("not_observed", "observation API does not execute workflow steps")
+        return self.run_artist(request, command=command, timeout_seconds=timeout_seconds, policy_allowed=policy_allowed, expected_context_id=expected_context_id, expected_context_fingerprint=expected_context_fingerprint, cancel_event=cancel_event, require_context=False)
+
+    def run_artist(self, request: dict[str, Any], *, command: ArtistCommand, timeout_seconds: float, policy_allowed: bool, expected_context_id: str | None = None, expected_context_fingerprint: str | None = None, expected_run_id: str | None = None, authority=None, approval_complete: bool = False, require_context: bool = True, cancel_event: threading.Event | None = None) -> dict[str, Any]:
+        """型付き全9操作を同じProject／Policy／Context境界で実行する。"""
+        authorization = None
+        if authority is not None:
+            authorization = {**authority.binding, "token": authority.token, "sessionId": authority.session_id, "reservationId": authority.reservation_id}
+        try:
+            built = build_artist_pipeline_command(str((self.environment_snapshot.get("unity_cli") or {}).get("executable_path") or ""), self.project_root, command, authorization=authorization)
             validate_capability_request(request)
             validate_environment_snapshot(self.environment_snapshot)
         except PermissionError as exc:
@@ -463,14 +487,39 @@ class UnityCliProvider:
             return artist_failure("precondition_failed", f"invalid Artist request: {exc}")
         if not policy_allowed:
             return artist_failure("blocked_by_policy", "Policy denied Artist execution")
-        if request.get("capability") != "scene.inspect" or request.get("operation_kind") != "read" or request.get("mutation_scope") is not None:
-            return artist_failure("scope_violation", "Artist probe only accepts scene.inspect without a mutation scope; domain.workflow remains mutation-gated")
-        if command.name not in {"inspect", "history", "cinematic"} or command.name == "cinematic" and (command.operation or "inspect") != "inspect":
-            return artist_failure("not_observed", "only Artist inspection is enabled; workflow, Capture and human review paths remain gated")
-        if set(request["required_evidence"]).intersection({"mutation_evidence", "visual_capture", "human_review_decision"}):
+        mutation = command.name == "apply" or command.name == "cinematic" and command.operation == "apply"
+        expected_capability = "domain.workflow" if mutation else "visual.capture" if command.name == "capture" else "scene.inspect"
+        scope_present = request.get("mutation_scope") is not None
+        if request.get("capability") != expected_capability or request.get("operation_kind") != ("editor_mutation" if mutation else "read") or scope_present is not mutation:
+            return artist_failure("scope_violation", "Artist command does not match its Capability and mutation scope")
+        if mutation or command.name == "evaluate":
+            if not request.get("approval_ref") or approval_complete is not True or authority is None:
+                return artist_failure("blocked_by_approval", "Artist operation requires a live Control Plane approval")
+            if authorization.get("runId") != expected_run_id or authorization.get("receivedContextId") != expected_context_id or authorization.get("receivedContextFingerprint") != expected_context_fingerprint:
+                return artist_failure("scope_violation", "Artist authorization and current Context do not match")
+        if require_context and (not expected_context_id or not expected_context_fingerprint or not expected_run_id or command.context_json is None):
+            return artist_failure("not_observed", "Production Artist execution requires materialized Context and Run bindings")
+        if command.context_json is not None:
+            received = parse_json_sequence(command.context_json, strict=True)[0]
+            if received["contextId"] != expected_context_id or received["contextFingerprint"] != expected_context_fingerprint or received["runId"] != expected_run_id or not matches_artist_project(received["projectRoot"], self.project_root):
+                return artist_failure("scope_violation", "Command Context differs from the materialized Runtime Context")
+        prohibited_evidence = set()
+        if not mutation:
+            prohibited_evidence.add("mutation_evidence")
+        if command.name != "evaluate":
+            prohibited_evidence.add("human_review_decision")
+        if command.name != "capture":
+            prohibited_evidence.add("visual_capture")
+        if set(request["required_evidence"]).intersection(prohibited_evidence):
             return artist_failure("scope_violation", "read-only Artist request requires evidence outside its scope")
+        if command.name == "capture":
+            capture_request = parse_json_sequence(command.request_json, strict=True)[0] if command.request_json else {}
+            camera = capture_request.get("captureCameraName")
+            if not isinstance(camera, str) or not camera.strip():
+                return artist_failure("precondition_failed", "Capture requires an explicit camera before dispatch")
         domain = (request.get("qualifiers") or {}).get("domain")
-        if domain != ("cinematic" if command.name == "cinematic" else "visual_art"):
+        allowed_domains = {"cinematic"} if command.name == "cinematic" else {"visual_art"} if command.name in {"plan", "preview", "apply"} else {"visual_art", "cinematic"}
+        if domain not in allowed_domains:
             return artist_failure("scope_violation", "Artist command does not match requested domain")
         snapshot_root = (self.environment_snapshot.get("project") or {}).get("root")
         if not matches_artist_project(request["project_root"], self.project_root) or not matches_artist_project(snapshot_root, self.project_root):
@@ -480,12 +529,11 @@ class UnityCliProvider:
         if not is_finite_number(timeout_seconds) or timeout_seconds <= 0:
             return artist_failure("precondition_failed", "timeout_seconds must be finite and greater than zero")
         editor = self.environment_snapshot.get("unity_editor") or {}
-        artist = self.environment_snapshot.get("unity_artist_cli") or {}
+        artist = self.environment_snapshot.get("artist") or {}
         cli = self.environment_snapshot.get("unity_cli") or {}
         if cli.get("available") is not True or editor.get("running") is not True or editor.get("project_bound") is not True or editor.get("safe_mode") is not False or editor.get("project_version_match") is not True:
             return artist_failure("unavailable", "Artist requires an available CLI and bound Editor outside Safe Mode")
-        # Host実行ファイルの存在は要件にしない。既存DiscoveryのPackage／対応環境Factだけを使う。
-        if any(artist.get(key) is not True for key in ("package_installed", "compatible", "project_bound", "pipeline_reachable")):
+        if any(artist.get(key) is not True for key in ("available", "package_installed", "compatible", "project_bound", "pipeline_reachable")):
             return artist_failure("not_observed", "Artist Package, compatibility and Pipeline binding are not observed")
         discovery, failure = self._require_discovery("command")
         if failure:
@@ -499,7 +547,10 @@ class UnityCliProvider:
             return artist_failure("scope_violation", "observed CLI Project or Editor identity is missing or mismatched")
         bound = [item for item in instances if isinstance(item, dict) and matches_artist_project(item.get("projectPath") or item.get("project"), self.project_root) and item.get("state") == "ready"]
         version = (self.environment_snapshot.get("project") or {}).get("unity_version")
-        if len(bound) != 1 or (bound[0].get("version") or bound[0].get("editorVersion")) != version or artist.get("unity_version") != version:
+        # Headless EditorはCLI statusへ登録されないため、空一覧だけは独立した実Process観測と対象Pipeline応答を照合する。
+        process_bound = not instances and editor.get("binding_status") == "bound" and bool(editor.get("bound_instance_id")) and editor.get("version") == version and artist.get("binding_status") == "bound" and bool(artist.get("bound_instance_id"))
+        listed_bound = len(bound) == 1 and (bound[0].get("version") or bound[0].get("editorVersion")) == version
+        if not (process_bound or listed_bound) or not version or artist.get("unity_version") != version:
             return artist_failure("not_observed", "unique ready Editor with matching Unity version was not observed")
         entries = [item for item in discovery.command_catalog if item.get("name") == f"artist.{command.name}"]
         if len(entries) != 1 or entries[0].get("runtime_only") is not False:
@@ -509,10 +560,21 @@ class UnityCliProvider:
         exit_code, stdout, failure = self._dispatch(built, timeout_seconds=timeout_seconds, cancel_event=cancel_event)
         if failure:
             return failure
-        result = normalize_artist_pipeline_result(exit_code=int(exit_code), stdout=stdout, command=command, project_root=self.project_root, unity_version=version, render_pipeline=artist.get("render_pipeline"), expected_context_id=expected_context_id, expected_context_fingerprint=expected_context_fingerprint)
+        if authority is not None:
+            authorization["reservationId"] = authority.reservation_id
+        result = normalize_artist_pipeline_result(exit_code=int(exit_code), stdout=stdout, command=command, project_root=self.project_root, unity_version=version, render_pipeline=artist.get("render_pipeline"), expected_context_id=expected_context_id, expected_context_fingerprint=expected_context_fingerprint, expected_run_id=expected_run_id, authorization=authorization)
         if result["status"] == "passed" and not set(request["required_evidence"]).issubset(result["evidence"]):
             return artist_failure("not_observed", "Artist result does not contain all requested evidence")
         return result
+
+    def execute(self, request: dict[str, Any], context=None, arguments=None) -> dict[str, Any]:
+        """ToolBrokerの標準executor署名。専門ContextはDispatcherから受領する。"""
+        arguments = arguments or {}
+        command = arguments.get("artist_command")
+        if not isinstance(command, ArtistCommand):
+            return artist_failure("precondition_failed", "Artist executor requires a typed command")
+        payload = arguments.get("specialist_execution_context") or {}
+        return self.run_artist(request, command=command, timeout_seconds=arguments.get("timeout_seconds", 60.0), policy_allowed=getattr(context, "policy_allowed", False), approval_complete=getattr(context, "approval_complete", False), expected_context_id=payload.get("context_id"), expected_context_fingerprint=payload.get("context_fingerprint"), expected_run_id=payload.get("run_id"), authority=arguments.get("artist_authority"), cancel_event=arguments.get("cancel_event"))
 
     def run_profiler_observe(
         self,

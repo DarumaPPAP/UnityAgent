@@ -4,12 +4,12 @@ primary_skill: .agents/plugins/unity-agent/skills/artist-subagent-routing/SKILL.
 
 metadata:
   type: context
-  title: UnityArtistCLI LookDev
+  title: ArtistSubAgentのLookDev
   summary:
-    - Route visual intent, LookDev, Lighting, Environment, Camera, Capture, Evaluation, and Refine work.
-    - Preserve UnityAgent approval, revision, evidence, and human visual acceptance boundaries.
+    - LookDev、Lighting、Environment、Camera、Capture、Evaluation、Refineを任意のArtistSubAgentへ委譲する。
+    - 公式Unity CLIを実行Backendとし、UnityAgentの承認、Scope、Revision、Context、Evidence、Human Visual Acceptanceの境界を維持する。
   purpose:
-    - Keep UnityArtistCLI focused on Artist-specific capabilities while generic Unity operations remain delegated.
+    - Artist UPMの専門操作だけを既存Control PlaneとTool Brokerから実行し、汎用Unity操作は既存Capabilityへ委譲する。
   decisions:
     - id: artist-provider-is-semantic
       label: Provider selection is resolved from domain.workflow qualifiers
@@ -59,13 +59,13 @@ required:
   - type: repository_reference
     path: .agents/plugins/unity-agent/skills/artist-subagent-routing/SKILL.md
   - type: repository_reference
-    path: src/unityagent/runtime/contracts/capability-request.schema.yaml
-  - type: repository_reference
-    path: src/unityagent/runtime/tooling/provider_registry.yaml
-  - type: repository_reference
     path: src/unityagent/context/retrieval/knowledge/visual/unity-artist-cli.yaml
   - type: repository_reference
-    path: src/unityagent/runtime/reference_implementation/subagent-catalog.yaml
+    path: subagent/artist_subagent/contracts/capability-contracts.yaml
+  - type: repository_reference
+    path: subagent/artist_subagent/contracts/backend-surface-contract.yaml
+  - type: repository_reference
+    path: docs/architecture/artist-subagent-boundary.md
   - type: context_include
     context_id: visual-direction
 

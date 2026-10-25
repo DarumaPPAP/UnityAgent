@@ -10,6 +10,22 @@ from unittest.mock import patch, Mock
 import unity_ci as ci
 
 class ReleaseResolverTests(unittest.TestCase):
+    def test_bundled_srp_matches_exact_editor_stream_and_complete_meta(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            editor = Path(temporary) / 'Editor/Unity.exe'
+            package = editor.parent / 'Data/Resources/PackageManager/BuiltInPackages/com.unity.render-pipelines.universal'
+            package.mkdir(parents=True)
+            (package / 'package.json').write_text(json.dumps({'name': package.name, 'version': '17.6.0'}))
+            (package / 'Component.cs').write_text('class Component {}')
+            with self.assertRaisesRegex(ValueError, 'meta'):
+                ci.bundled_srp(editor, package.name, '6000.6.0f1')
+            (package / 'Component.cs.meta').write_text('fileFormatVersion: 2\nguid: 12345678901234567890123456789012\n')
+            result = ci.bundled_srp(editor, package.name, '6000.6.0f1')
+            self.assertEqual(result['version'], '17.6.0')
+            self.assertEqual(result['source'], 'official_editor_bundle')
+            with self.assertRaisesRegex(ValueError, 'stream'):
+                ci.bundled_srp(editor, package.name, '6000.3.12f1')
+
     def release(self, version='6000.7.0a9', url='https://download.unity3d.com/x/editor.tar.xz'):
         return dict(version=version, shortRevision='abc123', downloads=[dict(platform='LINUX',architecture='X86_64',type='TAR_XZ',url=url)])
 
@@ -71,12 +87,26 @@ class EvidenceTests(unittest.TestCase):
             self.assertNotIn('tests_passed',evidence)
 
 class TestStagingTests(unittest.TestCase):
+    def test_canonical_preserves_scene_fixture_and_meta_guids(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / 'project'
+            project.mkdir()
+            package = ci.ROOT / 'subagent/artist_subagent/tools/editor'
+            ci.stage_artist_tests(package, project)
+            source = ci.ROOT / 'tests/unity/editor/artist'
+            destination = project / 'Assets/CiArtistPackageTests'
+            for relative in ('Fixtures/Empty.unity', 'Fixtures/Empty.unity.meta', 'Fixtures.meta', 'SceneFixture.cs.meta'):
+                with self.subTest(path=relative):
+                    self.assertTrue((destination / relative).is_file())
+                    self.assertEqual((destination / relative).read_bytes(), (source / relative).read_bytes())
+
     def test_canonical_discovers_existing_unassembled_tests_in_disposable_copy(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary); package = root/'package'; project = root/'project'
-            source = package/'Tests/Editor'; source.mkdir(parents=True)
+            source = root/'tests/unity/editor/artist'; source.mkdir(parents=True)
             test = source/'ExistingTests.cs'; test.write_text('class ExistingTests {}')
-            inventory = ci.stage_artist_tests(package, project)
+            with patch.object(ci, 'ROOT', root):
+                inventory = ci.stage_artist_tests(package, project)
             self.assertEqual(len(inventory),1)
             self.assertTrue((project/'Assets/CiArtistPackageTests/CiArtistPackageTests.asmdef').is_file())
             self.assertEqual(test.read_text(),'class ExistingTests {}')
@@ -118,6 +148,9 @@ class RunnerTests(unittest.TestCase):
                 if mode == 'license':
                     log.write_text('No valid license found')
                     return subprocess.CompletedProcess(command,1)
+                if mode == 'license-then-compile-error':
+                    log.write_text('Licensing handshake failed\nSuccessfully updated license\nFixture.cs(1,1): error CS0619: obsolete API\nScripts have compiler errors.')
+                    return subprocess.CompletedProcess(command, 1)
                 if mode == 'graphics':
                     log.write_text('UNITY_CI_GRAPHICS_UNAVAILABLE: graphicsDeviceType=Null')
                     return subprocess.CompletedProcess(command, 0)
@@ -155,6 +188,12 @@ class RunnerTests(unittest.TestCase):
             evidence['_stdout'] = (output / 'editor.stdout.log').read_text()
             evidence['_stderr'] = (output / 'editor.stderr.log').read_text()
             return code, evidence
+    def test_compiler_failure_is_not_hidden_by_transient_license_diagnostic(self):
+        code, evidence = self.run_fake('license-then-compile-error')
+        self.assertEqual(code, 1)
+        self.assertEqual(evidence['status'], 'FAIL')
+        self.assertEqual(evidence['observation'], 'observed')
+
     def test_short_windows_workspace_path_avoids_observed_packagecache_maxpath(self):
         # Regression for the real Windows failure at p9-retry-4.
         base = PureWindowsPath(r'D:\UnityAgent\artifacts\p9-retry-5')
@@ -332,6 +371,11 @@ class PackageResolutionTests(unittest.TestCase):
 
 
 class FixtureTests(unittest.TestCase):
+    def test_full_fixture_declares_packages_required_by_cinematic_regression(self):
+        dependencies = json.loads((ci.ROOT / 'tests/unity/projects/artist-e2e/Packages/manifest.json').read_text(encoding='utf-8'))['dependencies']
+        self.assertEqual(dependencies.get('com.unity.timeline'), '6.6.0')
+        self.assertEqual(dependencies.get('com.unity.cinemachine'), '6.6.0')
+
     def test_p9_lts_is_canonical_and_does_not_run_g1_rock_workflow(self):
         config = json.loads(ci.MATRIX.read_text())
         self.assertEqual(config['canonical_editor'], '6000.3.12f1')

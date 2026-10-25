@@ -1,0 +1,12 @@
+usage: uagent [-h]
+              {artist,hot-reload,rock,rock-import,e2e,run,doctor,setup} ...
+uagent: error: unrecognized arguments: --context-json {}
+usage: uagent [-h]
+              {artist,hot-reload,rock,rock-import,e2e,run,doctor,setup} ...
+uagent: error: unrecognized arguments: --approval-token forged
+C:\Users\PC_User\.codex\visualizations\2026\10\23\01a169e7-c936-7cf1-bcaa-423de26962e5\UnityAgent-integration\src\unityagent\context\manifest\validate.py:7: DeprecationWarning: jsonschema.RefResolver is deprecated as of v4.18.0, in favor of the https://github.com/python-jsonschema/referencing library, which provides more compliant referencing behavior as well as more flexible APIs for customization. A future release will remove RefResolver. Please file a feature request (on referencing) if you are missing an API for the kind of customization you need.
+  from jsonschema import Draft202012Validator, RefResolver
+----------------------------------------------------------------------
+Ran 98 tests in 5.413s
+
+OK (skipped=1)

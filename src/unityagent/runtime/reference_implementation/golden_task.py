@@ -12,7 +12,6 @@ import time
 from typing import Any, Mapping
 
 from unityagent.persistence.evidence.evidence_store import EvidenceStore
-from unityagent.runtime.tooling.providers.unity_artist_cli.unity_artist_cli_provider import UnityArtistCliProvider
 from unityagent.runtime.tooling.capability_resolver import ResolutionContext
 from unityagent.runtime.tooling.tool_broker import ToolBroker
 
@@ -48,7 +47,7 @@ def _snapshot(project_root: Path) -> dict[str, Any]:
         "git": {"available": True, "repository_bound": True},
         "unity_editor": {"installed": True, "version": "6000.6.0f1", "executable_path": "C:/Unity/Editor.exe", "project_version_match": True, "running": True, "safe_mode": False, "project_bound": True, "binding_status": "bound", "bound_instance_id": "editor-reference"},
         "unity_cli": {"available": True, "version": "1.0.0-beta.8", "executable_path": "C:/Unity/unity.exe", "failure_class": None},
-        "unity_artist_cli": {"available": True, "compatible": True, "version": "0.0.2-beta", "executable_path": "C:/Tools/unity-artist.exe", "project_bound": True, "package_installed": True, "package_version": "0.0.2-beta", "pipeline_reachable": True, "unity_version": "6000.6.0f1", "render_pipeline": "builtin", "support_tier": "primary", "compatibility_backend": "builtin_editor_api", "capabilities": ["visual_art.refine", "visual_art.capture"], "failure_class": None, "binding_status": "bound", "bound_instance_id": "unity-artist-reference"},
+        "artist": {"available": True, "compatible": True, "project_bound": True, "package_installed": True, "package_version": "0.0.2-beta", "pipeline_reachable": True, "unity_version": "6000.6.0f1", "render_pipeline": "builtin", "support_tier": "primary", "compatibility_backend": "builtin_editor_api", "capabilities": ["visual_art.refine", "visual_art.capture"], "failure_class": None, "binding_status": "bound", "bound_instance_id": "unity-artist-reference"},
         "pipeline": {"installed": True, "reachable": True},
         "myunitymcp": {"reachable": False, "available": False, "project_bound": False, "binding_status": "unbound", "bound_instance_id": None},
         "coplay_mcp": {"reachable": False, "available": False, "project_bound": False, "binding_status": "unbound", "bound_instance_id": None},
@@ -79,13 +78,8 @@ class GoldenCameraState:
         return before, self.revision()
 
 
-class GoldenArtistTransport:
-    """Deterministic transport fixture behind UnityArtistCliProvider.
-
-    It exercises the existing provider adapter and ToolBroker without launching
-    an untrusted executable during the contract test. The production adapter
-    remains responsible for the real official Unity CLI transport.
-    """
+class GoldenArtistExecutor:
+    """明示的なメモリ内Fixture。Broker/契約の検証専用でEditor E2Eではない。"""
 
     def __init__(self, state: GoldenCameraState) -> None:
         self.state = state
@@ -93,10 +87,10 @@ class GoldenArtistTransport:
         self.before_value: float | None = None
         self.observed_revision: str | None = None
 
-    def __call__(self, request: Any, *, cancel_event: Any = None) -> dict[str, Any]:
-        if cancel_event is not None and cancel_event.is_set():
+    def execute(self, request: Any, context: Any, arguments: Any) -> dict[str, Any]:
+        if (arguments or {}).get("cancel_event") is not None and arguments["cancel_event"].is_set():
             return {"status": "cancelled", "failure_class": "runtime_cancelled"}
-        if self.action is None or "refine" not in request.command:
+        if self.action is None or arguments.get("command") != "refine":
             return {"status": "failed", "failure_class": "runtime_protocol_failure", "reason": "typed refine action was not bound"}
         self.before_value, self.observed_revision = self.state.apply(self.action)
         pipeline = {
@@ -105,7 +99,7 @@ class GoldenArtistTransport:
             "evidence": ["mutation_evidence", "exact_diff", "expected_revision", "camera_binding", "undo_registration", "save_not_performed"],
         }
         return {
-            "status": "passed",
+            "status": "passed", "provider_ref": "unity_cli", "evidence": list(request["required_evidence"]), "simulation": True,
             "payload": {"status": "passed", "data": {"evidence": pipeline["evidence"], "provider": {"data": {"result": json.dumps(pipeline)}}}},
         }
 
@@ -176,9 +170,8 @@ class GoldenTaskRunner:
         ledger.record_tool_call()
         state_before = camera.value
         state_revision_before = camera.revision()
-        transport = GoldenArtistTransport(camera)
+        transport = GoldenArtistExecutor(camera)
         transport.action = action
-        provider = UnityArtistCliProvider(self.project_root, _snapshot(self.project_root), dispatch_fn=transport)
         broker = ToolBroker()
         request = {
             "schema_version": "1.0", "capability": "domain.workflow", "project_root": str(self.project_root),
@@ -196,7 +189,7 @@ class GoldenTaskRunner:
                 request,
                 _snapshot(self.project_root),
                 context=ResolutionContext(policy_allowed=True, approval_complete=True),
-                executors={profile.provider_id: provider.execute},
+                executors={profile.provider_id: transport.execute},
                 provider_arguments={profile.provider_id: {"command": "refine", "workflow": "lookdev_refine", "expected_revision": action.expected_revision}},
                 maximum_retry_attempts=0,
             )

@@ -3,6 +3,8 @@ import hashlib
 import json
 import unittest
 from pathlib import Path
+import tempfile
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 EDITOR = ROOT / "Packages/com.darumappap.unity-agent/Editor"
@@ -16,7 +18,7 @@ def tracked_sources():
     paths += [ROOT / "tests/unity/matrix.yaml"]
     paths += [x for x in ROOT.glob("subagent/artist_subagent/tools/editor/**/*") if x.is_file()]
     paths += [x for x in ROOT.glob("tests/unity/editor/artist/**/*") if x.is_file()]
-    return {x.relative_to(ROOT).as_posix(): x for x in paths}
+    return {x.relative_to(ROOT).as_posix(): x for x in paths if not any(part in {"__pycache__", "bin", "obj"} for part in x.relative_to(ROOT).parts)}
 
 
 def blob_hash(data):
@@ -24,6 +26,16 @@ def blob_hash(data):
 
 
 class EditorBundledVerificationTests(unittest.TestCase):
+    def test_generated_outputs_are_not_authored_distribution_sources(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for relative in ("tests/unity/matrix.yaml", "tests/unity/verify/verify.py", "tests/unity/verify/__pycache__/verify.pyc", "tests/unity/editor/artist/obj/generated.cs", "tests/unity/editor/artist/bin/runner.dll"):
+                path = root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("owned test fixture", encoding="utf-8")
+            with patch(__name__ + ".ROOT", root):
+                self.assertEqual(set(tracked_sources()), {"tests/unity/matrix.yaml", "tests/unity/verify/verify.py"})
+
     def test_manifest_and_sources_match_bitwise(self):
         payload = json.loads(MANIFEST.read_text(encoding="utf-8"))
         self.assertEqual(payload["kind"], "unityagent_embedded_p9_sources")

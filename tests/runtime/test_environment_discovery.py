@@ -4,6 +4,8 @@ import json
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -16,7 +18,6 @@ from unityagent.runtime.tooling.environment.discovery import (
     ProviderInstanceObservation,
     bind_provider_instances,
     discover_environment,
-    probe_unity_artist_cli,
     probe_unity_cli,
 )
 from unityagent.runtime.tooling.environment.environment_snapshot import (
@@ -235,7 +236,7 @@ class EnvironmentDiscoveryTests(unittest.TestCase):
             )
             after = sorted((path.relative_to(project).as_posix(), path.read_bytes()) for path in project.rglob("*") if path.is_file())
             self.assertEqual(before, after)
-            self.assertEqual(calls, ["git", "unity-artist"])
+            self.assertEqual(calls, ["git"])
 
     def test_manifest_facts_and_mutation_scope_are_observations_only(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -255,10 +256,29 @@ class EnvironmentDiscoveryTests(unittest.TestCase):
                 which_fn=lambda _: None,
             )
             self.assertTrue(snapshot.pipeline.installed)
-            self.assertTrue(snapshot.pipeline.reachable)
+            self.assertIs(snapshot.pipeline.reachable, True)
             self.assertTrue(snapshot.test_framework.available)
             self.assertTrue(snapshot.build.requested_target_module_available)
             self.assertTrue(snapshot.filesystem.writable_in_mutation_scope)
+
+    def test_verified_artist_pipeline_observation_proves_project_pipeline_reachability(self):
+        from unityagent.runtime.tooling.environment.environment_snapshot import ArtistSnapshot
+        with tempfile.TemporaryDirectory() as tmp:
+            project = self.make_project(Path(tmp), pipeline=True)
+            artist = ArtistSnapshot(True, True, True, True, True, "6000.3.15f1", "builtin", "primary", "builtin_editor_api", "test", ["artist.inspect"], "bound", "fixture-project")
+            snapshot = discover_environment(str(project), editor_candidates=[], editor_candidates_observed=True, editor_processes=[], editor_processes_observed=True, unity_cli_observation=UnityCliSnapshot(False, None, None, "unavailable"), artist_observation=artist, which_fn=lambda _: None)
+            self.assertIs(snapshot.pipeline.reachable, True)
+
+    def test_bound_pipeline_version_identifies_custom_editor_without_guessing(self):
+        from unityagent.runtime.tooling.environment.environment_snapshot import ArtistSnapshot
+        with tempfile.TemporaryDirectory() as tmp:
+            project = self.make_project(Path(tmp))
+            candidates, processes = self.editor(project)
+            candidates = [EditorCandidate(candidates[0].executable_path, None)]
+            artist = ArtistSnapshot(True, True, True, True, True, "6000.3.12f1", "builtin", "primary", "builtin_editor_api", "test", ["artist.inspect"], "bound", "fixture-project")
+            snapshot = discover_environment(str(project), editor_candidates=candidates, editor_candidates_observed=True, editor_processes=processes, editor_processes_observed=True, unity_cli_observation=UnityCliSnapshot(True, "test", "/unity", None), artist_observation=artist, which_fn=lambda _: None)
+            self.assertEqual(snapshot.unity_editor.version, "6000.3.12f1")
+            self.assertIs(snapshot.unity_editor.project_version_match, True)
 
     def test_cache_invalidates_when_binding_fingerprint_changes(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -295,73 +315,76 @@ class EnvironmentDiscoveryTests(unittest.TestCase):
             self.assertEqual(health["status"], "healthy")
             self.assertFalse(health["details"]["provider_availability"]["unity_cli"])
 
-    def test_artist_cli_compatibility_is_derived_fail_closed(self):
-        def observe(support):
-            with tempfile.TemporaryDirectory() as tmp:
-                root = Path(tmp)
-                project = self.make_project(root)
-                executable = root / "unity-artist"
-                executable.write_text("fixture", encoding="utf-8")
-                responses = iter([
-                    {"version": "0.0.2-beta"},
-                    {"capabilities": ["artist.camera.inspect"], "support": support},
-                ])
-
-                def dispatch(_request):
-                    return {"status": "passed", "payload": json.dumps(next(responses))}
-
-                snapshot = probe_unity_artist_cli(
-                    project_root=str(project),
-                    cwd=project,
-                    explicit_executable=str(executable),
-                    dispatch_fn=dispatch,
-                )
-                return snapshot.compatible
-
-        supported = {
-            "unityVersion": "6000.6.0f1",
-            "renderPipeline": "builtin",
-            "supportTier": "primary",
-            "compatibilityBackend": "builtin_editor_api",
-        }
-        unsupported = {
-            "unityVersion": "2022.3.42f1",
-            "renderPipeline": "urp",
-            "supportTier": "unsupported",
-            "compatibilityBackend": "urp_native_api",
-        }
-        unobserved = {
-            "unityVersion": "6000.6.0f1",
-            "renderPipeline": "builtin",
-        }
-        unknown_value = {
-            **supported,
-            "unityVersion": "unknown",
-        }
-        malformed = {
-            **supported,
-            "compatibilityBackend": 7,
-        }
-        mismatched_pipeline = {
-            **supported,
-            "renderPipeline": "urp",
-        }
-        self.assertIs(observe(supported), True)
-        self.assertIs(observe(unsupported), False)
-        self.assertIs(observe(mismatched_pipeline), False)
-        self.assertEqual(observe(unobserved), "unknown")
-        self.assertEqual(observe(unknown_value), "unknown")
-        self.assertEqual(observe(malformed), "unknown")
-
     def test_environment_snapshot_serializes_compatibility_tristate(self):
         with tempfile.TemporaryDirectory() as tmp:
             snapshot = self.discover_fixture(self.make_project(Path(tmp)), "NO_EDITOR").to_dict()
-            self.assertIn("compatible", snapshot["unity_artist_cli"])
-            snapshot["unity_artist_cli"]["compatible"] = "unknown"
+            self.assertIn("compatible", snapshot["artist"])
+            self.assertNotIn("unity_artist_cli", snapshot)
+            snapshot["artist"]["compatible"] = "unknown"
             validate_environment_snapshot(snapshot)
+
+    def test_artist_pipeline_uses_unity_cli_catalog_and_observed_editor_support(self):
+        from unityagent.runtime.tooling.environment.discovery import probe_artist_pipeline
+        with tempfile.TemporaryDirectory() as tmp:
+            project = self.make_project(Path(tmp))
+            package = project / "ArtistPackage"
+            package.mkdir()
+            (package / "package.json").write_text(json.dumps({"name": "com.darumappap.artist-subagent", "version": "0.0.2-beta"}), encoding="utf-8")
+            manifest = project / "Packages/manifest.json"
+            manifest.write_text(json.dumps({"dependencies": {"com.unity.pipeline": "0.8.0-exp.1", "com.darumappap.artist-subagent": "file:" + package.as_posix()}}), encoding="utf-8")
+            surface = SimpleNamespace(status="available", pipeline_reachable=True, command_catalog=({"name": "artist.inspect"}, {"name": "artist.capture"}))
+            editor = {"schemaVersion": "2.0", "product": "UnityArtistCLI", "command": "artist.inspect", "status": "passed", "verified": True, "revision": "rev", "baseRevision": "rev", "approvalRequired": False, "savePerformed": False, "undoAvailable": True, "humanReview": False, "support": {"supported": True, "unityVersion": "6000.3.12f1", "renderPipeline": "builtin", "supportTier": "primary", "compatibilityBackend": "builtin_editor_api", "approvalProtocol": "control_plane_authority_v1", "contextProtocol": "artist_context_v1"}, "exactDiff": [], "targets": [], "errors": [], "evidence": ["visual_art_inspection", "pipeline_support_fact"]}
+            calls = []
+            def observe(value=editor, target=project):
+                def dispatch_fixture(request):
+                    calls.append(request.command)
+                    return {"status": "passed", "payload": json.dumps({"success": True, "command": "command artist.inspect", "errors": [], "data": {"target": {"projectPath": str(target)}, "result": json.dumps(value)}})}
+                return probe_artist_pipeline(project_root=str(project), cwd=project, unity_cli=UnityCliSnapshot(True, "1.0.0-beta.14", "/tools/unity", None), dispatch_fn=dispatch_fixture)
+            with patch("unityagent.runtime.tooling.environment.discovery.discover_unity_cli_surface", return_value=surface):
+                result = observe()
+                self.assertIs(result.available, True)
+                self.assertIs(result.compatible, True)
+                self.assertEqual(result.package_version, "0.0.2-beta")
+                self.assertEqual(result.capabilities, ["artist.capture", "artist.inspect"])
+                self.assertIn("artist.inspect", calls[-1])
+                self.assertIn(str(project), calls[-1])
+                self.assertFalse(observe(target=project / "other").available)
+                for key, bad in (("status", "unknown"), ("verified", False), ("schemaVersion", "future"), ("errors", [{"code": "FAILED"}])):
+                    self.assertFalse(observe({**editor, key: bad}).available)
+                for support in ({}, {**editor["support"], "supported": False}, {**editor["support"], "supportTier": "unknown"}, {**editor["support"], "unityVersion": "6000.7.0a2"}, {**editor["support"], "compatibilityBackend": "urp_native_api"}):
+                    self.assertIsNot(observe({**editor, "support": support}).compatible, True)
+            with patch("unityagent.runtime.tooling.environment.discovery.discover_unity_cli_surface", return_value=surface):
+                for key in ("approvalProtocol", "contextProtocol"):
+                    missing = {name: value for name, value in editor["support"].items() if name != key}
+                    result = observe({**editor, "support": missing})
+                    self.assertEqual(result.compatible, "unknown")
+                    self.assertIs(result.available, False)
+                    result = observe({**editor, "support": {**editor["support"], key: "legacy"}})
+                    self.assertIs(result.compatible, False)
+                    self.assertIs(result.available, False)
+                self.assertTrue(all("artist.apply" not in argv for argv in calls))
+            with patch("unityagent.runtime.tooling.environment.discovery.discover_unity_cli_surface", return_value=SimpleNamespace(status="available", pipeline_reachable=True, command_catalog=())):
+                self.assertFalse(observe().available)
 
     def test_schema_is_valid(self):
         validate_environment_snapshot_schema()
+
+    def test_historical_artist_host_snapshot_remains_parseable_without_discovery(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            value = self.discover_fixture(self.make_project(Path(tmp)), "NO_EDITOR").to_dict()
+            value.pop("artist")
+            value["unity_artist_cli"] = {"available": False, "version": "0.0.2-beta", "executable_path": "/historical/unity-artist", "project_bound": False, "package_installed": False, "package_version": None, "pipeline_reachable": False, "unity_version": None, "render_pipeline": None, "support_tier": None, "compatibility_backend": None, "capabilities": [], "failure_class": "unavailable", "binding_status": "unbound", "bound_instance_id": None, "compatible": "unknown"}
+            validate_environment_snapshot(value)
+
+    def test_artist_absent_package_or_cli_never_dispatches(self):
+        from unityagent.runtime.tooling.environment.discovery import probe_artist_pipeline
+        with tempfile.TemporaryDirectory() as tmp:
+            project = self.make_project(Path(tmp))
+            def unexpected(_):
+                raise AssertionError("Artist observation must not start subprocesses without prerequisites")
+            result = probe_artist_pipeline(project_root=str(project), cwd=project, unity_cli=UnityCliSnapshot(True, "version", "/tools/unity", None), dispatch_fn=unexpected)
+            self.assertFalse(result.available)
+            self.assertFalse(result.package_installed)
 
 
 if __name__ == "__main__":

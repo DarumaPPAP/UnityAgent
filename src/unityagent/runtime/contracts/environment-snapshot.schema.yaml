@@ -105,6 +105,27 @@ properties:
       failure_class:
         type: [string, "null"]
         enum: [unavailable, unhealthy, timeout, unknown, null]
+  artist:
+    type: [object, "null"]
+    additionalProperties: false
+    required: [available, compatible, project_bound, package_installed, pipeline_reachable, unity_version, render_pipeline, support_tier, compatibility_backend, package_version, capabilities, binding_status, bound_instance_id]
+    properties:
+      available: { $ref: "#/$defs/tri_state" }
+      compatible: { $ref: "#/$defs/tri_state" }
+      project_bound: { $ref: "#/$defs/tri_state" }
+      package_installed: { $ref: "#/$defs/tri_state" }
+      pipeline_reachable: { $ref: "#/$defs/tri_state" }
+      unity_version: { type: [string, "null"], minLength: 1 }
+      render_pipeline: { type: [string, "null"], minLength: 1 }
+      support_tier: { type: [string, "null"], minLength: 1 }
+      compatibility_backend: { type: [string, "null"], minLength: 1 }
+      package_version: { type: [string, "null"], minLength: 1 }
+      capabilities:
+        type: array
+        uniqueItems: true
+        items: { type: string, minLength: 1 }
+      binding_status: { $ref: "#/$defs/binding_status" }
+      bound_instance_id: { type: [string, "null"], minLength: 1 }
   unity_artist_cli:
     type: [object, "null"]
     additionalProperties: false

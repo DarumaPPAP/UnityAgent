@@ -1,20 +1,28 @@
 import copy
+import json
+from pathlib import Path
 import unittest
 from tools.subagent_source_paths import resolve_source_paths
 
 
 class SourceLockLayoutTests(unittest.TestCase):
+    def test_current_artist_sources_use_the_same_checkout_without_a_host(self):
+        lock = json.loads((Path(__file__).resolve().parents[2] / 'src/unityagent/runtime/distribution/subagent-sources.lock.json').read_text(encoding='utf-8'))
+        paths = resolve_source_paths(lock)
+        self.assertEqual(paths['source_mode'], 'same_checkout')
+        self.assertEqual(paths['artist_provider'], 'unity_cli')
+        self.assertEqual(paths['artist_package'], 'subagent/artist_subagent/tools/editor')
+        self.assertNotIn('artist_cli_project', paths)
+
     def lock(self, layout, cli):
         return {'hub': {'repository': 'DarumaPPAP/UnitySubAgentHub', 'commit': 'a'*40, 'snapshot_exporter': layout+'/export_snapshot.py' if layout.startswith('Hub') else layout+'/export_agent_snapshot.py', 'registry': 'Hub/Registry/subagents.yaml' if layout.startswith('Hub') else 'Registry/subagents.yaml'}, 'specialist_sources': {'artist_subagent': {'manifest': 'Hub/SubAgents/artist_subagent/manifest.yaml' if layout.startswith('Hub') else 'SubAgents/artist_subagent/manifest.yaml', 'backend_package': 'Packages/com.darumappap.artist-subagent', 'backend_cli_project': cli+'/UnityArtist.Cli.csproj'}}}
 
-    def test_catalog_and_artist_transitions_resolve_known_paths(self):
+    def test_historical_host_layouts_are_not_current_execution_sources(self):
         for layout in ('Tests/Hub', 'Hub/Tools'):
             for cli in ('src/UnityArtist.Cli', 'cli/artist'):
                 with self.subTest(layout=layout,cli=cli):
-                    paths = resolve_source_paths(self.lock(layout,cli))
-                    self.assertEqual(paths['artist_cli_project'],cli+'/UnityArtist.Cli.csproj')
-                    self.assertEqual(paths['hub_tests'],'Hub/Tests' if layout.startswith('Hub') else 'Tests/Hub')
-                    self.assertEqual(paths['artist_contract_verifier'],'ci/verify/verify_artist_backend_contract.py' if cli=='cli/artist' else 'Tests/Backend/verify_artist_backend_contract.py')
+                    with self.assertRaises(ValueError):
+                        resolve_source_paths(self.lock(layout,cli))
 
     def test_unknown_sources_or_mixed_catalog_layout_fail_closed(self):
         base=self.lock('Hub/Tools','src/UnityArtist.Cli')

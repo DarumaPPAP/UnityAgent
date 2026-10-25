@@ -60,8 +60,27 @@ class UnityCliSnapshot:
 
 
 @dataclass(frozen=True)
+class ArtistSnapshot:
+    """Artist Packageと公式Pipelineから観測したFact。専用Host executableは持たない。"""
+
+    available: TriState
+    compatible: TriState
+    project_bound: TriState
+    package_installed: TriState
+    pipeline_reachable: TriState
+    unity_version: str | None
+    render_pipeline: str | None
+    support_tier: str | None
+    compatibility_backend: str | None
+    package_version: str | None
+    capabilities: list[str]
+    binding_status: BindingStatus
+    bound_instance_id: str | None
+
+
+@dataclass(frozen=True)
 class UnityArtistCliSnapshot:
-    """Observed UnityArtistCLI facts exposed to the existing Provider Resolver."""
+    """旧Evidence Snapshotの解析互換。現行DiscoveryはArtistSnapshotだけを生成する。"""
 
     available: TriState
     version: str | None
@@ -130,9 +149,13 @@ class EnvironmentSnapshot:
     profile_hint: str | None
     binding_fingerprint: str
     unity_artist_cli: UnityArtistCliSnapshot | None = None
+    artist: ArtistSnapshot | None = None
 
     def to_dict(self) -> dict:
-        return asdict(self)
+        value = asdict(self)
+        if self.unity_artist_cli is None:
+            value.pop("unity_artist_cli")
+        return value
 
     def validate(self, *, root: Path = ROOT) -> None:
         validate_environment_snapshot(self.to_dict(), root=root)

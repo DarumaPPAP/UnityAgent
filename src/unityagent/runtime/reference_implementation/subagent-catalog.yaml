@@ -4,7 +4,7 @@ profiles:
   artist_subagent:
     profile_id: artist_subagent
     display_name: ArtistSubAgent
-    provider_id: unity_artist_cli
+    provider_id: unity_cli
     audience: artist_subagent
     goal_type: artist.camera.refine
     capabilities:
@@ -20,11 +20,11 @@ profiles:
       install_mode: optional
       auto_install: false
       required_environment:
-      - unity_artist_cli.available
-      - unity_artist_cli.compatible
-      - unity_artist_cli.project_bound
-      - unity_artist_cli.package_installed
-      - unity_artist_cli.pipeline_reachable
+      - artist.available
+      - artist.compatible
+      - artist.project_bound
+      - artist.package_installed
+      - artist.pipeline_reachable
     scope:
       default_target_guid: camera-guid-001
       component_type: UnityEngine.Camera

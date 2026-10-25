@@ -9,7 +9,7 @@ provide an existing scene through ``--scene-path``.
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 import hashlib
 import json
 import os
@@ -35,19 +35,14 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from unityagent.control_plane.unity_agent_control_plane import UnityAgentControlPlane
-from unityagent.runtime.reference_implementation.authority import (
-    ApprovalDecisionResolver,
-    TaskContractIssuer,
-    iso_now,
-)
-from unityagent.runtime.reference_implementation.canonicalization import sha256_jcs
-from unityagent.runtime.reference_implementation.contracts import ApprovalDecision, ContractValidationError
-from unityagent.runtime.reference_implementation.runtime import EvidenceCompletionGate, reference_definition_fingerprint
-from unityagent.runtime.reference_implementation.runtime import validate_reference_environment_snapshot
-from unityagent.runtime.tooling.providers.unity_artist_cli.unity_artist_cli_provider import UnityArtistCliProvider
-from unityagent.runtime.tooling.capability_resolver import ResolutionContext
-from unityagent.runtime.tooling.environment.discovery import discover_environment
-from unityagent.runtime.tooling.environment.project_identity import canonical_scene_path
+from unityagent.control_plane.artist_execution import execute_artist, approve_artist_execution
+from unityagent.persistence.evidence.evidence_store import EvidenceStore
+from unityagent.persistence.store.atomic_store import read_json, safe_id, sha256_json, write_immutable_json
+from unityagent.runtime.reference_implementation.contracts import ContractValidationError
+from unityagent.runtime.reference_implementation.runtime import reference_definition_fingerprint
+from unityagent.runtime.tooling.providers.unity_cli.artist_command_adapter import ArtistCommand
+from unityagent.runtime.tooling.environment.project_identity import canonical_scene_path, same_project_root
+
 
 
 class LiveFailure(RuntimeError):
@@ -113,7 +108,7 @@ def _run(
                 ) from exc
             return subprocess.CompletedProcess(command, returncode, "", "")
 
-        # UnityArtistCLI and the official Unity CLI can launch Editor/UPM
+        # The official Unity CLI can launch Editor/UPM
         # descendants.  Captured OS pipes are inherited by those descendants,
         # so communicate() may wait after the CLI parent has exited.  Disk
         # backed handles preserve the same JSON capture without that lifetime
@@ -211,59 +206,6 @@ def _editor_path() -> Path:
     return candidate
 
 
-def _publish_or_resolve_artist_cli(artist_root: Path) -> Path:
-    explicit = os.environ.get("UNITY_ARTIST_CLI_PATH")
-    candidates = [
-        Path(explicit).expanduser().resolve() if explicit else None,
-        artist_root / "Artifacts" / "reference-live" / "publish" / "unity-artist.exe",
-        artist_root / "subagent" / "artist_subagent" / "tools" / "host" / "bin" / "Debug" / "net8.0" / "unity-artist.exe",
-        artist_root / "subagent" / "artist_subagent" / "tools" / "host" / "bin" / "Release" / "net8.0" / "unity-artist.exe",
-    ]
-    for candidate in candidates:
-        if candidate is not None and candidate.is_file():
-            return candidate.resolve()
-
-    project = artist_root / "subagent" / "artist_subagent" / "tools" / "host" / "UnityArtist.Tools.csproj"
-    if not project.is_file():
-        raise LiveFailure(f"UnityArtistCLI project was not found: {project}")
-    output = artist_root / "Artifacts" / "reference-live" / "publish"
-    output.mkdir(parents=True, exist_ok=True)
-    dotnet_home = artist_root / "Artifacts" / "reference-live" / "dotnet-home"
-    nuget = artist_root / "Artifacts" / "reference-live" / "nuget"
-    dotnet_home.mkdir(parents=True, exist_ok=True)
-    nuget.mkdir(parents=True, exist_ok=True)
-    env = dict(os.environ)
-    env.update(
-        {
-            "DOTNET_CLI_HOME": str(dotnet_home),
-            "NUGET_PACKAGES": str(nuget),
-            "DOTNET_SKIP_FIRST_TIME_EXPERIENCE": "1",
-        }
-    )
-    restored = _run(
-        ["dotnet", "restore", str(project)],
-        cwd=artist_root,
-        timeout=300,
-        env=env,
-    )
-    if restored.returncode != 0:
-        raise LiveFailure(
-            "UnityArtistCLI dotnet restore failed in the clean validation environment"
-        )
-    completed = _run(
-        ["dotnet", "publish", str(project), "--no-restore", "--runtime", "win-x64", "--self-contained", "false", "-o", str(output)],
-        cwd=artist_root,
-        timeout=180,
-        env=env,
-    )
-    candidate = output / "unity-artist.exe"
-    if completed.returncode != 0 or not candidate.is_file():
-        raise LiveFailure(
-            "UnityArtistCLI publish did not produce the official apphost",
-        )
-    return candidate.resolve()
-
-
 def _run_official_unity(unity: Path, arguments: list[str], *, artist_root: Path, timeout: int = 90) -> dict[str, Any]:
     command = [str(unity), *arguments]
     completed = _run(command, cwd=artist_root, timeout=timeout)
@@ -276,104 +218,31 @@ def _run_official_unity(unity: Path, arguments: list[str], *, artist_root: Path,
     }
 
 
-def _run_artist(artist_cli: Path, project: Path, command: str, *, artist_root: Path, timeout: int = 120, **options: Any) -> dict[str, Any]:
-    argv = [str(artist_cli), command, "--project-path", str(project)]
-    for key, value in options.items():
-        if value is None:
-            continue
-        option = "--" + key.replace("_", "-")
-        argv.extend([option, json.dumps(value, separators=(",", ":")) if isinstance(value, (dict, list)) else str(value)])
-    argv.extend(["--format", "json", "--non-interactive", "--no-banner"])
-    completed = _run(argv, cwd=artist_root, timeout=timeout)
-    result = _json_output(completed, label=f"UnityArtistCLI {command}")
-    result["_transport"] = {"command": argv, "exit_code": completed.returncode, "stderr": _tail(completed.stderr)}
-    return result
-
-
-def _errors(result: Mapping[str, Any]) -> list[dict[str, Any]]:
-    value = result.get("errors")
-    return [dict(item) for item in value if isinstance(item, Mapping)] if isinstance(value, list) else []
-
-
-def _first_error_code(result: Mapping[str, Any]) -> str | None:
-    errors = _errors(result)
-    return str(errors[0].get("code")) if errors and errors[0].get("code") else None
-
-
-def _provider_result(result: Mapping[str, Any]) -> dict[str, Any]:
-    data = result.get("data")
-    if not isinstance(data, Mapping):
-        raise ExternalBlocker("UnityArtistCLI returned no adapter data", evidence={"result": dict(result)})
-    provider = data.get("provider")
-    if isinstance(provider, Mapping):
-        provider_data = provider.get("data")
-        raw = provider_data.get("result") if isinstance(provider_data, Mapping) else None
-        if isinstance(raw, str):
-            try:
-                parsed = json.loads(raw)
-            except json.JSONDecodeError as exc:
-                raise ExternalBlocker("official Unity CLI returned a non-JSON Artist result", evidence={"provider": dict(provider)}) from exc
-            if isinstance(parsed, dict):
-                return parsed
-        if isinstance(raw, Mapping):
-            return dict(raw)
-    adapter = data.get("adapter")
-    if isinstance(adapter, Mapping):
-        return dict(adapter)
-    raise ExternalBlocker("UnityArtistCLI adapter did not expose the Editor result", evidence={"data": dict(data)})
-
-
 def _successful_command(result: Mapping[str, Any], command: str) -> dict[str, Any]:
-    if result.get("status") != "passed" or result.get("exitCode", 0) not in (0, None):
-        raise ExternalBlocker(
-            f"UnityArtistCLI {command} was not accepted by the live Editor",
-            evidence={"result": dict(result), "error_code": _first_error_code(result)},
-        )
-    payload = _provider_result(result)
-    if payload.get("status") not in {"passed", None}:
-        raise ExternalBlocker(f"Unity Editor rejected artist.{command}", evidence={"host": dict(result), "editor": payload})
-    return payload
+    provider = result.get("provider_result") or {}
+    payload = provider.get("payload") or {}
+    if result.get("status") != "completed" or result.get("durable") is not True or not result.get("evidence_refs") or provider.get("status") != "passed" or provider.get("provider_ref") != "unity_cli" or payload.get("status") != "passed" or payload.get("command") != "artist." + command:
+        raise ExternalBlocker(f"Control Plane artist.{command} did not produce verified durable Editor evidence", evidence={"result": dict(result)})
+    return dict(payload)
 
 
-def _inspect_when_ready(
-    artist_cli: Path,
-    project: Path,
-    artist_root: Path,
-    *,
-    expected_fov: float | None = 40.0,
-    timeout_seconds: int = 120,
-) -> dict[str, Any]:
-    """Wait for the official Pipeline handshake after `unity open`."""
+def _execute(plane, project, run_id, command, **options):
+    return execute_artist(plane, str(project), run_id, command, definition_fingerprint=reference_definition_fingerprint(), **options)
+
+
+def _inspect_when_ready(plane, project: Path, run_id: str, *, expected_fov: float | None = 40.0, timeout_seconds: int = 120, scope=None) -> dict[str, Any]:
     deadline = time.monotonic() + timeout_seconds
-    last_result: dict[str, Any] | None = None
+    last = {}
     while time.monotonic() < deadline:
-        result = _run_artist(artist_cli, project, "inspect", artist_root=artist_root, timeout=30)
-        last_result = result
-        if result.get("status") == "passed" and result.get("exitCode", 0) in (0, None):
+        try:
+            result = _execute(plane, project, run_id, ArtistCommand("inspect"), scope=scope)
             payload = _successful_command(result, "inspect")
-            try:
-                # The official CLI can briefly answer through the previous
-                # fixed-port Pipeline session while `unity open` is handing
-                # the project to the fresh Editor. Accept the handshake only
-                # after the selected camera is observed at its caller-supplied
-                # baseline; otherwise a stale post-mutation session could be
-                # mistaken for the initial golden state.
-                _find_camera(payload, expected_fov=expected_fov)
-            except LiveFailure as exc:
-                expected_text = "any" if expected_fov is None else f"{expected_fov:g}"
-                if f"required {expected_text} degree target" not in str(exc):
-                    raise
-                time.sleep(2.0)
-                continue
-            return payload
-        code = _first_error_code(result)
-        if code not in {"ARTIST_PIPELINE_COMMAND_FAILED", "PIPELINE_UNAVAILABLE", "PIPELINE_NOT_REACHABLE"}:
-            return _successful_command(result, "inspect")
+            _find_camera(payload, expected_fov=expected_fov)
+            return result
+        except (ExternalBlocker, ValueError) as exc:
+            last = {"error": str(exc), "evidence": getattr(exc, "evidence", {})}
         time.sleep(2.0)
-    raise ExternalBlocker(
-        "Unity Editor did not become reachable through the official UnityArtist pipeline within the bounded startup window",
-        evidence={"timeout_seconds": timeout_seconds, "last_inspect": last_result or {}},
-    )
+    raise ExternalBlocker("Unity Editor did not become reachable through the verified Unity CLI Artist route", evidence={"timeout_seconds": timeout_seconds, "last_inspect": last})
 
 
 def _find_camera(inspect: Mapping[str, Any], *, expected_fov: float | None = 40.0) -> dict[str, Any]:
@@ -462,34 +331,6 @@ def _png_proof(path: Path) -> dict[str, Any]:
     return {"path": str(path.resolve()), "bytes": len(data), "resolution": f"{width}x{height}", "sha256": hashlib.sha256(data).hexdigest()}
 
 
-def _environment_snapshot(
-    project: Path,
-    editor: Path,
-    unity_cli: Path,
-    artist_cli: Path,
-    *,
-    instance_id: str,
-    scene_path: str,
-    render_pipeline: str = "builtin",
-    compatibility_backend: str = "builtin_editor_api",
-) -> dict[str, Any]:
-    del editor, instance_id, render_pipeline, compatibility_backend
-    canonical_scene = canonical_scene_path(project, scene_path, require_exists=True)
-    observed = discover_environment(
-        str(project),
-        mutation_allowed_paths=[canonical_scene],
-        # The official inspect handshake above is an actual observation of the
-        # selected project's Pipeline, so this is a measured input rather than
-        # a default/trusted boolean.
-        pipeline_reachable=True,
-        explicit_unity_cli=str(unity_cli),
-        explicit_unity_artist_cli=str(artist_cli),
-    )
-    snapshot = observed.to_dict()
-    validate_reference_environment_snapshot(snapshot, project_root=project, scene_path=canonical_scene)
-    return snapshot
-
-
 def _stop_fixture_editor(project: Path) -> list[int]:
     """Ensure the disposable live fixture has no stale Unity Editor owner.
 
@@ -505,12 +346,12 @@ def _stop_fixture_editor(project: Path) -> list[int]:
 
     project_text = str(project.resolve()).replace("'", "''")
     script = (
-        "$target = '"
-        + project_text
-        + "'.ToLowerInvariant(); "
+        "$target = '" + project_text + "'; "
+        "$escaped = [regex]::Escape($target); "
+        "$targetPattern = '(?i)(?:^|\\s)-projectPath\\s+(?:"' + $escaped + '"|' + $escaped + '(?=\\s|$))'; "
         "$processIds = @(Get-CimInstance Win32_Process | "
         "Where-Object { $_.Name -eq 'Unity.exe' -and $_.CommandLine -and "
-        "$_.CommandLine.ToLowerInvariant().Contains($target) } | "
+        "$_.CommandLine -match $targetPattern } | "
         "Select-Object -ExpandProperty ProcessId); "
         "foreach ($processId in $processIds) { "
         "& taskkill /PID $processId /T /F *> $null }; "
@@ -649,268 +490,157 @@ def _open_scene(unity_cli: Path, project: Path, artist_root: Path, scene_path: s
     return {"command": command, "exit_code": completed.returncode, "payload": payload}
 
 
-def run_live(
-    *,
-    artist_root: Path,
-    project: Path,
-    scene_path: str | None = None,
-    expected_before_fov: float = 40.0,
-) -> dict[str, Any]:
-    # The reference workflow still constructs a v1 caller-owned Context and a
-    # dedicated runtime projection. Stop before its direct live preflight/apply
-    # until Orchestration can generate that projection under the v2 contract.
-    raise LiveFailure("camera_fov_reference requires v2 Orchestration projection migration before live execution")
-    artist_root = artist_root.resolve()
-    project = project.resolve()
-    selected_scene_path = str(scene_path or "").strip().replace("\\", "/") or None
-    run_id = f"run-live-camera-fov-{uuid.uuid4().hex[:12]}"
-    run_root = ROOT / "Artifacts" / "reference-implementation" / "live" / run_id
-    run_root.mkdir(parents=True, exist_ok=True)
+def _source_fingerprint() -> str:
+    sources = {}
+    for base in (ROOT / "src/unityagent", ROOT / "subagent/artist_subagent/tools/editor"):
+        for path in base.rglob("*"):
+            if path.is_file() and path.suffix in {".py", ".cs", ".yaml", ".json", ".asmdef"} and not {"_resources", "__pycache__", "bin", "obj"}.intersection(path.relative_to(base).parts):
+                sources[path.relative_to(ROOT).as_posix()] = hashlib.sha256(path.read_bytes()).hexdigest()
+    for name in ("tools/run_camera_fov_reference_live.py", "tools/reference_implementation_final_gate.py"):
+        sources[name] = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
+    return sha256_json(sources)
 
+
+def _persisted_payload(store, result, run_id, project, command):
+    expected = _successful_command(result, command)
+    for evidence_id in result["evidence_refs"]:
+        record = store.verify_record(evidence_id, expected_run_id=run_id)
+        if record.get("durability") != "durable" or record.get("verification_status") != "passed" or record.get("provider_ref") != "unity_cli" or not same_project_root(record.get("project_root", ""), project):
+            raise LiveFailure("persisted Artist evidence is not verified for the selected Project")
+        reference = record.get("payload_ref")
+        path = (store.layout.root / str(reference)).resolve()
+        if not reference or Path(reference).is_absolute() or not path.is_relative_to(store.layout.run_root(run_id).resolve()):
+            raise LiveFailure("persisted Artist provider payload escapes this Run")
+        raw = read_json(path)
+        if path.stem != sha256_json(raw).removeprefix("sha256:") or raw.get("payload") != expected or raw.get("provider_ref") != "unity_cli":
+            raise LiveFailure("persisted Artist provider payload digest or Editor result differs")
+    return expected
+
+
+def verify_live_evidence(*, run_id: str, persistence_root: Path, project_root: Path, scene_path: str, expected_before_fov: float, expected_after_fov: float = 43.0, _require_gate_record: bool = True, _report=None):
+    run_id = safe_id(run_id, "run_id")
+    store = EvidenceStore(persistence_root)
+    report = _report if _report is not None and not _require_gate_record else read_json(store.layout.root / "artist-live-reports" / (run_id + ".json"))
+    if report.get("status") != "passed" or report.get("run_id") != run_id or report.get("source_fingerprint") != _source_fingerprint() or not same_project_root(report.get("project_root", ""), project_root) or report.get("scene_path") != scene_path:
+        raise LiveFailure("persisted live proof belongs to different sources, Project, Scene or Run")
+    if _require_gate_record:
+        gate_record = store.verify_record(run_id + "-live-gate", expected_run_id=run_id)
+        if gate_record.get("source_type") != "live_gate_verification" or gate_record.get("verification_status") != "passed" or gate_record.get("hash") != sha256_json(report) or gate_record.get("provenance") != ["source_fingerprint:" + report["source_fingerprint"]]:
+            raise LiveFailure("live report is not bound to durable verification evidence")
+    scene = Path(project_root) / canonical_scene_path(project_root, scene_path, require_exists=True)
+    if hashlib.sha256(scene.read_bytes()).hexdigest() != report["scene_file_sha256"]:
+        raise LiveFailure("saved Scene changed since live verification")
+    commands = report["command_results"]
+    before = _persisted_payload(store, commands["inspect_before"], run_id, project_root, "inspect")
+    planned = _persisted_payload(store, commands["plan"], run_id, project_root, "plan")
+    preview = _persisted_payload(store, commands["preview"], run_id, project_root, "preview")
+    applied = _persisted_payload(store, commands["apply"], run_id, project_root, "apply")
+    capture = _persisted_payload(store, commands["capture"], run_id, project_root, "capture")
+    after = _persisted_payload(store, commands["inspect_after"], run_id, project_root, "inspect")
+    camera_before = _find_camera(before, expected_fov=expected_before_fov)
+    camera_after = _find_camera(after, expected_fov=expected_after_fov)
+    target = camera_before["globalObjectId"]
+    expected_diff = [{"target": target, "property": "Camera.fieldOfView", "before": format(expected_before_fov, "g"), "after": format(expected_after_fov, "g")}]
+    if camera_after["globalObjectId"] != target or any(item.get("exactDiff") != expected_diff for item in (planned, preview, applied)):
+        raise LiveFailure("Camera FOV exact Diff or GlobalObjectId does not match the observed Plan")
+    if planned.get("planId") != applied.get("planId") or applied.get("baseRevision") != planned.get("revision") or applied.get("revision") != after.get("revision") or applied.get("revision") == applied.get("baseRevision"):
+        raise LiveFailure("Camera FOV revision or Plan chain is not verified")
+    if applied.get("savePerformed") is not False or applied.get("undoAvailable") is not True or applied.get("verified") is not True or not applied.get("authorityReservationId") or not applied.get("authoritySessionId"):
+        raise LiveFailure("Camera FOV approval, Undo or non-save evidence is missing")
+    if commands["apply"].get("context_fingerprint") != commands["inspect_before"].get("context_fingerprint"):
+        raise LiveFailure("Camera FOV Context changed during execution")
+    capture_proof = _png_proof(_capture_path(capture, Path(project_root)))
+    if capture_proof != report["capture"]:
+        raise LiveFailure("Capture bytes changed since verification")
+    return {"status": "passed", "verification_kind": "persisted_live_evidence_revalidation", "run_id": run_id, "before_fov": expected_before_fov, "after_fov": expected_after_fov, "evidence_refs": [ref for result in commands.values() for ref in result["evidence_refs"]], "capture": capture_proof, "source_fingerprint": report["source_fingerprint"], "live_editor_rerun": "not_observed"}
+
+
+def run_live(*, artist_root: Path, project: Path, scene_path: str | None = None, expected_before_fov: float = 40.0, run_id: str | None = None, state_root: Path | None = None, approval_ref: str | None = None, approve_fixture_mutation: bool = False) -> dict[str, Any]:
+    artist_root, project = artist_root.resolve(), project.resolve()
+    selected_scene = str(scene_path or "").strip().replace("\\", "/") or None
+    if approve_fixture_mutation and (selected_scene is not None or project != DEFAULT_PROJECT.resolve()):
+        raise LiveFailure("fixture approval is limited to the repository-owned disposable fixture")
+    if selected_scene is None and project != DEFAULT_PROJECT.resolve():
+        raise LiveFailure("fixture bootstrap requires the repository-owned disposable fixture; pass an existing scene explicitly")
+    run_id = safe_id(run_id or "run-live-camera-fov-" + uuid.uuid4().hex[:12], "run_id")
+    state_root = (state_root or ROOT / "Artifacts/reference-implementation/live").resolve()
+    run_root = state_root / "artist-live-logs" / run_id
+    run_root.mkdir(parents=True, exist_ok=True)
+    plane = UnityAgentControlPlane(state_root)
     if not project.is_dir():
         raise LiveFailure(f"Unity live project does not exist: {project}")
-    if selected_scene_path is not None:
-        selected_scene_path = canonical_scene_path(project, selected_scene_path, require_exists=True)
     editor = _editor_path()
     unity_cli = _find_executable("unity", "UNITY_CLI_PATH")
-    artist_cli = _publish_or_resolve_artist_cli(artist_root)
-    stopped_editor_pids: list[int] = []
-    if selected_scene_path is None:
-        stopped_editor_pids = _stop_fixture_editor(project)
-        setup = _prepare_fixture(project, editor, artist_root, run_root)
-        setup["stopped_editor_pids"] = stopped_editor_pids
+    scope = {"allowed_paths": [selected_scene or DEFAULT_SCENE_PATH], "prohibited_paths": ["Packages", "ProjectSettings"]}
+    pending_path = state_root / "artist-live-pending" / (run_id + ".json")
+    resuming = approval_ref is not None and pending_path.is_file()
+    if resuming:
+        pending = read_json(pending_path)
+        if pending.get("source_fingerprint") != _source_fingerprint() or not same_project_root(pending.get("project_root", ""), project) or pending.get("scene_path") != (selected_scene or DEFAULT_SCENE_PATH) or pending.get("expected_before_fov") != expected_before_fov:
+            raise LiveFailure("pending Camera Plan belongs to different sources, Project or Scene")
+        setup, opened = pending["project_setup"], pending["official_unity_open"]
+        before_result, planned_result, preview_result = pending["inspect_before"], pending["plan"], pending["preview"]
+        scene_hash = pending["scene_file_sha256"]
+        current = _successful_command(_inspect_when_ready(plane, project, run_id, expected_fov=expected_before_fov, scope=scope), "inspect")
+        if current.get("revision") != _successful_command(planned_result, "plan").get("revision"):
+            raise LiveFailure("Editor Revision changed after explicit Plan review")
     else:
-        setup = {"mode": "existing_project", "scene_path": selected_scene_path, "bootstrap": "not_run"}
-    opened = _open_editor(unity_cli, project, artist_root)
-    if selected_scene_path is not None:
-        setup["scene_open"] = _open_scene(unity_cli, project, artist_root, selected_scene_path)
-
-    inspect = _inspect_when_ready(artist_cli, project, artist_root, expected_fov=expected_before_fov)
-    support = inspect.get("support")
-    if not isinstance(support, Mapping) or support.get("transport") != "official_unity_cli_pipeline" or support.get("unityVersion") != UNITY_VERSION:
-        raise LiveFailure(f"live UnityArtist support proof is not Unity 6000.6.0f1 official pipeline: {inspect}")
+        if selected_scene is None:
+            stopped = _stop_fixture_editor(project)
+            setup = _prepare_fixture(project, editor, artist_root, run_root)
+            setup["stopped_editor_pids"] = stopped
+        else:
+            selected_scene = canonical_scene_path(project, selected_scene, require_exists=True)
+            setup = {"mode": "existing_project", "scene_path": selected_scene, "bootstrap": "not_run"}
+        opened = _open_editor(unity_cli, project, artist_root)
+        if selected_scene is not None:
+            setup["scene_open"] = _open_scene(unity_cli, project, artist_root, selected_scene)
+        scene_hash = hashlib.sha256((project / (selected_scene or DEFAULT_SCENE_PATH)).read_bytes()).hexdigest()
+        before_result = _inspect_when_ready(plane, project, run_id, expected_fov=expected_before_fov, scope=scope)
+        inspect = _successful_command(before_result, "inspect")
+        camera = _find_camera(inspect, expected_fov=expected_before_fov)
+        intent = {"workflow": "camera_fov_reference", "targetName": "Main Camera", "targetGuid": camera["globalObjectId"], "setCameraFieldOfView": True, "cameraFieldOfView": 43.0, "cameraFovMinimum": 35.0, "cameraFovMaximum": 50.0, "requestedChannels": ["camera"]}
+        planned_result = _execute(plane, project, run_id, ArtistCommand("plan", request_json=json.dumps(intent)))
+        planned = _successful_command(planned_result, "plan")
+        if not planned.get("planId") or planned.get("revision") != inspect.get("revision") or planned.get("approvalRequired") is not True:
+            raise LiveFailure("artist.plan is not approval/revision-bound")
+        preview_result = _execute(plane, project, run_id, ArtistCommand("preview", plan_id=planned["planId"], expected_revision=planned["revision"]))
+        _successful_command(preview_result, "preview")
+        pending = {"source_fingerprint": _source_fingerprint(), "project_root": str(project), "scene_path": selected_scene or DEFAULT_SCENE_PATH, "expected_before_fov": expected_before_fov, "scene_file_sha256": scene_hash, "project_setup": setup, "official_unity_open": opened, "inspect_before": before_result, "plan": planned_result, "preview": preview_result}
+        write_immutable_json(pending_path, pending)
+    scene = project / (selected_scene or DEFAULT_SCENE_PATH)
+    inspect = _successful_command(before_result, "inspect")
+    support = inspect.get("support") or {}
+    if support.get("transport") != "official_unity_cli_pipeline":
+        raise LiveFailure("Artist support did not identify the official Unity CLI Pipeline")
     camera = _find_camera(inspect, expected_fov=expected_before_fov)
-    target_guid = str(camera["globalObjectId"])
-    inspect_revision = str(inspect.get("revision") or "")
-    if not inspect_revision:
-        raise LiveFailure("artist.inspect did not return a revision")
-
-    intent = {
-        "workflow": "camera_fov_reference",
-        "targetName": "Main Camera",
-        "targetGuid": target_guid,
-        "setCameraFieldOfView": True,
-        "cameraFieldOfView": 43.0,
-        "cameraFovMinimum": 35.0,
-        "cameraFovMaximum": 50.0,
-        "requestedChannels": ["camera"],
-    }
-    plan_host = _run_artist(artist_cli, project, "plan", artist_root=artist_root, request_json=intent)
-    plan = _successful_command(plan_host, "plan")
-    plan_id = str(plan.get("planId") or "")
-    plan_revision = str(plan.get("revision") or "")
-    if not plan_id or plan_revision != inspect_revision or plan.get("approvalRequired") is not True:
-        raise LiveFailure(f"artist.plan is not approval/revision-bound: {plan}")
-    preview_host = _run_artist(artist_cli, project, "preview", artist_root=artist_root, plan_id=plan_id, expected_revision=plan_revision)
-    preview = _successful_command(preview_host, "preview")
-    if not preview.get("exactDiff"):
-        raise LiveFailure(f"artist.preview did not return exact diff: {preview}")
-
-    no_approval = _run_artist(artist_cli, project, "apply", artist_root=artist_root, plan_id=plan_id, expected_revision=plan_revision)
-    no_approval_code = _first_error_code(no_approval)
-    if no_approval.get("status") != "blocked" or no_approval_code != "APPROVAL_REQUIRED":
-        raise LiveFailure(f"apply without approval was not rejected: {no_approval}")
-
-    project_info = {"root": str(project), "name": project.name}
-    project_fingerprint = sha256_jcs({"project": project_info, "version": "reference-v1.1"})
-    scope = {
-        "target_guids": [target_guid],
-        "component_type": "UnityEngine.Camera",
-        "property_paths": ["Camera.fieldOfView"],
-        "mutation_channels": ["serialized_property"],
-    }
-    budgets = {
-        "max_parent_total_calls": 2,
-        "max_parent_reentries": 0,
-        "max_global_replans": 0,
-        "max_escalations": 1,
-        "max_child_llm_calls": 12,
-        "max_tool_calls": 20,
-        "max_wall_clock_ms": 120000,
-        "max_child_wall_clock_ms": 60000,
-        "max_child_input_tokens": 10000,
-        "max_child_output_tokens": 10000,
-        "max_parent_input_tokens": 20000,
-        "max_parent_output_tokens": 10000,
-        "max_process_restarts": 1,
-        "max_provider_retries": 1,
-    }
-    issued_at = iso_now()
-    task = TaskContractIssuer().issue(
-        task_id=f"artist-camera-fov-live-{uuid.uuid4().hex[:10]}",
-        run_id=run_id,
-        project=project_info,
-        project_fingerprint=project_fingerprint,
-        budgets=budgets,
-        scope=scope,
-        issued_at=issued_at,
-    )
-    approval = ApprovalDecision.approve(
-        approval_decision_id=f"approval-live-{uuid.uuid4().hex[:10]}",
-        task=task,
-        expires_at=(datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat(),
-        lower=35.0,
-        upper=50.0,
-    )
-    projection = {
-        "reference_kind": "camera_fov_v1_1",
-        "task_id": task.task_id,
-        "run_id": run_id,
-        "project_name": project.name,
-        "project_fingerprint": project_fingerprint,
-        "issued_at": issued_at,
-        "target_guid": target_guid,
-        "target_name": "Main Camera",
-        "proposed_value": 43.0,
-        "expected_revision": inspect_revision,
-        "scope": scope,
-        "budgets": budgets,
-    }
-    mutation_scope = {"allowed_paths": [selected_scene_path or DEFAULT_SCENE_PATH], "prohibited_paths": ["ProjectSettings"]}
-    required_evidence = ["domain_result", "mutation_evidence", "exact_diff", "expected_revision", "camera_binding", "undo_registration", "save_not_performed", "visual_capture"]
-    capability_request = {
-        "schema_version": "1.0",
-        "capability": "domain.workflow",
-        "project_root": str(project),
-        "operation_kind": "editor_mutation",
-        "required_evidence": required_evidence,
-        "mutation_scope": mutation_scope,
-        "approval_ref": approval.approval_decision_id,
-        "preferred_surface": "live_editor",
-        "qualifiers": {"domain": "visual_art", "workflow": "camera_fov_reference"},
-    }
-    entry_request = {
-        "schema_version": "1.0",
-        "request_id": f"camera-fov-live-{uuid.uuid4().hex[:10]}",
-        "entry_point": "codex_plugin",
-        "project_root": str(project),
-        "intent": {"kind": "camera_fov_reference", "target": "Main Camera", "value": 43.0},
-        "route_id": "camera_fov_reference",
-        "node_id": "camera-fov-reference",
-        "execution_profile": "camera_fov_reference",
-        "context_id": f"context-{run_id}",
-        "context_fingerprint": sha256_jcs({"run_id": run_id, "target_guid": target_guid, "revision": inspect_revision}),
-        "task_contract_runtime_projection": projection,
-        "mutation_scope": mutation_scope,
-        "validation_requirements": ["domain_result", "mutation_evidence", "exact_diff", "expected_revision", "camera_binding", "undo_registration", "save_not_performed", "visual_capture"],
-        "capability_requests": [capability_request],
-    }
-    snapshot = _environment_snapshot(
-        project,
-        editor,
-        unity_cli,
-        artist_cli,
-        instance_id=f"unity-{run_id}",
-        scene_path=selected_scene_path or DEFAULT_SCENE_PATH,
-        render_pipeline=str(support.get("renderPipeline") or "unknown"),
-        compatibility_backend=str(support.get("compatibilityBackend") or "unknown"),
-    )
-    provider = UnityArtistCliProvider(project, snapshot)
-    # Keep the canonical Persistence root at the shared live-artifact level;
-    # PersistenceLayout adds the run_id exactly once under runs/<run_id>.
-    # Using the per-run log directory as the root would duplicate the run_id
-    # and push LoopControlState paths over Windows MAX_PATH.
-    plane = UnityAgentControlPlane(run_root.parent)
-    plane.approval_resolver.register(approval)
-    result = plane.execute(
-        entry_request,
-        environment_snapshot=snapshot,
-        context=ResolutionContext(policy_allowed=True, approval_complete=True, approval_required=True),
-        executors={"unity_artist_cli": provider.execute},
-        definition_fingerprint=reference_definition_fingerprint(),
-        provider_arguments={"unity_artist_cli": {"timeout_seconds": 120.0}},
-        run_id=run_id,
-    )
-    if result.get("status") != "completed":
-        raise LiveFailure(f"canonical src/unityagent/control_plane route did not complete: {result}")
-    canonical_run_scene = canonical_scene_path(
-        project,
-        selected_scene_path or DEFAULT_SCENE_PATH,
-        require_exists=True,
-    )
-    persisted_proof = EvidenceCompletionGate.verify_persisted_run(
-        run_id=run_id,
-        persistence_root=run_root.parent,
-        project_root=project,
-        scene_path=canonical_run_scene,
-        expected_before_fov=expected_before_fov,
-        expected_after_fov=43.0,
-    )
-    reference = (result.get("results") or [None])[0]
-    if not isinstance(reference, Mapping):
-        raise LiveFailure("src/unityagent/control_plane did not return the Camera FOV reference result")
-    provider_result = reference.get("provider_result")
-    if not isinstance(provider_result, Mapping):
-        raise LiveFailure("src/unityagent/control_plane result did not contain a ProviderResult")
-    if float(provider_result.get("before_value", -1.0)) != expected_before_fov or float(provider_result.get("after_value", -1.0)) != 43.0:
-        raise LiveFailure(f"ProviderResult before/after is not {expected_before_fov:g} -> 43: {provider_result}")
-    exact_diff = provider_result.get("exact_diff")
-    if not isinstance(exact_diff, Mapping) or exact_diff.get("target") != target_guid or exact_diff.get("property") != "Camera.fieldOfView":
-        raise LiveFailure(f"ProviderResult exact diff is not bound to the inspected camera: {provider_result}")
-    completion = reference.get("completion")
-    if not isinstance(completion, Mapping) or completion.get("state") != "eligible":
-        raise LiveFailure(f"Evidence completion was not eligible: {completion}")
-    evidence_refs = list(reference.get("evidence_refs") or [])
-    if set(evidence_refs) != {f"{run_id}-mutation-diff", f"{run_id}-editor-observation", f"{run_id}-visual-capture"}:
-        raise LiveFailure(f"src/unityagent/control_plane evidence union is incomplete: {evidence_refs}")
-
-    metadata = reference.get("metadata") if isinstance(reference.get("metadata"), Mapping) else {}
-    capture = _find_named_mapping(metadata, "capture") or metadata
-    capture_file = _capture_path(capture, project)
-    capture_proof = _png_proof(capture_file)
-    apply_payload = _find_named_mapping(metadata, "apply")
-    if apply_payload is None:
-        apply_payload = _find_mapping(metadata, ("savePerformed", "save_performed"))
-    if isinstance(apply_payload, Mapping):
-        if apply_payload.get("savePerformed", apply_payload.get("save_performed", False)) is not False:
-            raise LiveFailure(f"Unity Artist apply unexpectedly saved the scene: {apply_payload}")
-        if apply_payload.get("undoAvailable", apply_payload.get("undo_available", False)) is not True:
-            raise LiveFailure(f"Unity Artist apply did not expose Undo evidence: {apply_payload}")
-
-    final_host = _run_artist(artist_cli, project, "inspect", artist_root=artist_root)
-    final_inspect = _successful_command(final_host, "inspect")
-    final_camera = _find_camera(final_inspect, expected_fov=43.0)
-    if final_camera.get("globalObjectId") != target_guid or float(final_camera.get("fieldOfView", -1.0)) != 43.0:
-        raise LiveFailure(f"post-apply inspect did not observe the real camera at FOV 43: {final_camera}")
-    final_revision = str(final_inspect.get("revision") or final_camera.get("revision") or "")
-    if not final_revision or final_revision != str(provider_result.get("observed_revision") or ""):
-        raise LiveFailure(
-            "post-apply inspect revision does not bind to the ProviderResult mutation revision"
-        )
-
-    return {
-        "status": "passed",
-        "run_id": run_id,
-        "project_setup": setup,
-        "official_unity_open": opened,
-        "before": {"inspect": inspect, "camera": camera, "revision": inspect_revision, "plan": plan, "preview": preview, "no_approval_apply": no_approval},
-        "control_plane": result,
-        "after": {"inspect": final_inspect, "camera": final_camera},
-        "capture": capture_proof,
-        "proof": {
-            "transport": support.get("transport"),
-            "unity_version": support.get("unityVersion"),
-            "target_global_object_id": target_guid,
-            "before_fov": provider_result.get("before_value"),
-            "after_fov": provider_result.get("after_value"),
-            "action_digest": ((reference.get("dispatch") or {}).get("provider_result_digest") if isinstance(reference.get("dispatch"), Mapping) else None) or provider_result.get("provider_result_digest"),
-            "completion_state": completion.get("state"),
-            "evidence_refs": evidence_refs,
-            "save_performed": False,
-            "undo_available": True,
-            "canonical_persisted_gate": persisted_proof,
-        },
-    }
+    planned = _successful_command(planned_result, "plan")
+    plan_id = planned["planId"]
+    try:
+        _execute(plane, project, run_id, ArtistCommand("apply", plan_id=plan_id))
+    except ValueError:
+        no_approval = {"status": "blocked", "reason": "explicit_plan_approval_required"}
+    else:
+        raise LiveFailure("Apply without explicit approval was not rejected")
+    if approve_fixture_mutation:
+        decision = approve_artist_execution(plane, str(project), run_id, planned_result["approval_plan_id"])
+        approval_ref = decision["approval_decision_id"]
+    if not approval_ref:
+        raise ExternalBlocker("exact Camera FOV Plan requires explicit approval before Apply", evidence={"gate": "BLOCKED_NOT_RUN", "run_id": run_id, "state_root": str(state_root), "approval_plan_id": planned_result["approval_plan_id"], "plan": planned, "no_approval": no_approval})
+    applied_result = _execute(plane, project, run_id, ArtistCommand("apply", plan_id=plan_id), approval_ref=approval_ref)
+    _successful_command(applied_result, "apply")
+    capture_result = _execute(plane, project, run_id, ArtistCommand("capture", request_json=json.dumps({"captureCameraName": "Main Camera"})))
+    capture = _successful_command(capture_result, "capture")
+    after_result = _execute(plane, project, run_id, ArtistCommand("inspect"))
+    _successful_command(after_result, "inspect")
+    if hashlib.sha256(scene.read_bytes()).hexdigest() != scene_hash:
+        raise LiveFailure("Camera FOV live workflow unexpectedly saved the Scene")
+    report = {"status": "passed", "run_id": run_id, "project_root": str(project), "scene_path": selected_scene or DEFAULT_SCENE_PATH, "source_fingerprint": _source_fingerprint(), "scene_file_sha256": scene_hash, "project_setup": setup, "official_unity_open": opened, "before": {"inspect": inspect, "camera": camera, "plan": planned, "no_approval_apply": no_approval}, "command_results": {"inspect_before": before_result, "plan": planned_result, "preview": preview_result, "apply": applied_result, "capture": capture_result, "inspect_after": after_result}, "capture": _png_proof(_capture_path(capture, project)), "human_visual_acceptance": "not_observed"}
+    path = state_root / "artist-live-reports" / (run_id + ".json")
+    proof = verify_live_evidence(run_id=run_id, persistence_root=state_root, project_root=project, scene_path=report["scene_path"], expected_before_fov=expected_before_fov, _require_gate_record=False, _report=report)
+    write_immutable_json(path, report)
+    plane.evidence_store.append({"schema_version": "1.0", "evidence_id": run_id + "-live-gate", "run_id": run_id, "step_id": "camera-fov-live-gate", "source_type": "live_gate_verification", "source_ref": path.relative_to(state_root).as_posix(), "timestamp": datetime.now(timezone.utc).isoformat(), "hash": sha256_json(report), "producer": "camera_fov_live_gate", "verification_status": "passed", "provenance": ["source_fingerprint:" + report["source_fingerprint"]], "definition_fingerprint": reference_definition_fingerprint()})
+    return {**report, "proof": proof}
 
 
 def main() -> int:
@@ -919,6 +649,10 @@ def main() -> int:
     parser.add_argument("--project-path", type=Path, default=DEFAULT_PROJECT)
     parser.add_argument("--scene-path", help="Existing Assets-relative scene path; omit to bootstrap the disposable reference fixture.")
     parser.add_argument("--expected-before-fov", type=float, default=40.0)
+    parser.add_argument("--run-id")
+    parser.add_argument("--state-root", type=Path)
+    parser.add_argument("--approval-ref")
+    parser.add_argument("--approve-fixture-mutation", action="store_true", help="Explicitly approve only the repository-owned disposable test fixture Plan.")
     args = parser.parse_args()
     output: dict[str, Any]
     exit_code = 1
@@ -927,7 +661,7 @@ def main() -> int:
             artist_root=args.unityartist_root,
             project=args.project_path,
             scene_path=args.scene_path,
-            expected_before_fov=args.expected_before_fov,
+            expected_before_fov=args.expected_before_fov, run_id=args.run_id, state_root=args.state_root, approval_ref=args.approval_ref, approve_fixture_mutation=args.approve_fixture_mutation,
         )
         output = report
         exit_code = 0
@@ -939,7 +673,7 @@ def main() -> int:
         exit_code = 1
     finally:
         try:
-            if not args.scene_path:
+            if exit_code == 0 and not args.scene_path and args.project_path.resolve() == DEFAULT_PROJECT.resolve():
                 stopped_after_run = _stop_fixture_editor(args.project_path)
                 if exit_code == 0 and isinstance(output.get("project_setup"), dict):
                     output["project_setup"]["stopped_editor_pids_after_run"] = stopped_after_run
