@@ -198,5 +198,7 @@ def execute_artist(plane, project_root, run_id, command, *, definition_fingerpri
         if command.name == "capture":
             capture = {"payload": payload, "evidence_id": refs[0], "project_root": project, "context_id": context_id, "context_fingerprint": fingerprint}
             write_immutable_json(_artifact_path(plane, run_id, "captures", payload["captureId"]), capture)
-    plane._save_execution_state(run_id=run_id, step_id="artist-" + command.name, action_id=capability, status=result["status"], evidence_refs=refs)
+    # Brokerのpartialは成功未証明を保持する応答であり、ExecutionStateでは再開待ちのblockedとして保存する。
+    state_status = "blocked" if result["status"] == "partial" else result["status"]
+    plane._save_execution_state(run_id=run_id, step_id="artist-" + command.name, action_id=capability, status=state_status, evidence_refs=refs)
     return response

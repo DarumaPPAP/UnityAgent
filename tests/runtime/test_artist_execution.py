@@ -107,6 +107,25 @@ class ArtistExecutionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "already"):
             self.execute(ArtistCommand("apply", plan_id="artist-plan-entry"), approval_ref=decision["approval_decision_id"])
 
+    def test_unobserved_partial_result_is_preserved_with_blocked_durable_state(self):
+        self.execute(ArtistCommand("plan", request_json='{"setLightIntensity":true,"targetName":"Key","lightIntensity":2}'))
+        decision = self.api().approve_artist_execution(self.plane, self.root, "artist-entry-run", "artist-plan-entry")
+        successful_boundary = self.fake_execute
+
+        def timeout_after_authorization(request, arguments, received):
+            result = successful_boundary(request, arguments, received)
+            result.update(status="failed", failure_class="not_observed", reason="injected missing observation after authorization", evidence=[])
+            return result
+
+        with patch.object(self, "fake_execute", side_effect=timeout_after_authorization):
+            result = self.execute(ArtistCommand("apply", plan_id="artist-plan-entry"), approval_ref=decision["approval_decision_id"])
+        self.assertEqual(result["status"], "partial")
+        self.assertEqual(result["provider_result"]["failure_class"], "not_observed")
+        self.assertTrue(result["durable"])
+        self.assertEqual(self.plane.state_store.load_execution_state("artist-entry-run")["status"], "blocked")
+        with self.assertRaisesRegex(ValueError, "already"):
+            self.execute(ArtistCommand("apply", plan_id="artist-plan-entry"), approval_ref=decision["approval_decision_id"])
+
     def test_evaluate_without_approval_creates_review_plan_without_dispatch_or_human_record(self):
         captured = self.execute(ArtistCommand("capture", request_json='{"captureCameraName":"Main Camera"}'))
         self.assertEqual(captured["status"], "completed", captured)

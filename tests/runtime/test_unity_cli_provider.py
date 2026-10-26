@@ -338,6 +338,26 @@ class UnityCliProviderTests(unittest.TestCase):
         catalog = next(command for command in fake.calls if command[1:3] == ["command", "--detail"])
         self.assertEqual(catalog[catalog.index("--project-path") + 1], str(self.project.resolve()))
 
+    def test_observed_editor_status_command_avoids_incompatible_cli_status(self):
+        fake = FakeUnityCliDispatch()
+        calls = []
+
+        def observe(request, **kwargs):
+            command = list(request.command)
+            calls.append(command)
+            if command[1] == "status":
+                raise AssertionError("Global CLI status sends an incompatible editor status command")
+            if command[1:3] == ["command", "--detail"]:
+                return fake._outcome(0, envelope("command", [{"name": "editor_status", "runtimeOnly": False}]))
+            if command[1:3] == ["command", "editor_status"]:
+                return fake._outcome(0, envelope("command editor_status", {"target": {"projectPath": str(self.project)}, "result": {"status": "ready", "compiling": False, "domainReloadInProgress": False, "projectPath": str(self.project), "unityVersion": "6000.3.12f1"}}))
+            return fake(request, **kwargs)
+
+        discovered = discover_unity_cli_surface(self.project, self.snapshot(), dispatch_fn=observe)
+        self.assertEqual(discovered.editor_status["instances"], [{"projectPath": str(self.project), "version": "6000.3.12f1", "state": "ready"}])
+        observed = next(command for command in calls if command[1:3] == ["command", "editor_status"])
+        self.assertEqual(observed[observed.index("--project-path") + 1], str(self.project.resolve()))
+
     def test_target_catalog_failure_preserves_classification_and_never_retries(self):
         cases = (("runtime_timeout", 124, "", "timeout"), (None, 0, "{broken", "not_observed"), (None, 0, envelope("command", []), "not_observed"), (None, 1, envelope("command", success=False), "unavailable"))
         for failure, code, stdout, expected in cases:
