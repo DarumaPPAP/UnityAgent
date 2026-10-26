@@ -353,6 +353,23 @@ class EnvironmentDiscoveryTests(unittest.TestCase):
                     self.assertFalse(observe({**editor, key: bad}).available)
                 for support in ({}, {**editor["support"], "supported": False}, {**editor["support"], "supportTier": "unknown"}, {**editor["support"], "unityVersion": "6000.7.0a2"}, {**editor["support"], "compatibilityBackend": "urp_native_api"}):
                     self.assertIsNot(observe({**editor, "support": support}).compatible, True)
+            import io
+            import tarfile
+            tarball = project / "artist.tgz"
+            metadata = json.dumps({"name": "com.darumappap.artist-subagent", "version": "0.0.2-beta"}).encode("utf-8")
+            with tarfile.open(tarball, "w:gz") as archive:
+                entry = tarfile.TarInfo("package/package.json")
+                entry.size = len(metadata)
+                archive.addfile(entry, io.BytesIO(metadata))
+            manifest.write_text(json.dumps({"dependencies": {"com.unity.pipeline": "0.8.0-exp.1", "com.darumappap.artist-subagent": "file:" + tarball.as_posix()}}), encoding="utf-8")
+            with patch("unityagent.runtime.tooling.environment.discovery.discover_unity_cli_surface", return_value=surface):
+                self.assertTrue(observe().available)
+                self.assertEqual(observe().package_version, "0.0.2-beta")
+            tarball.write_bytes(b"invalid archive")
+            calls.clear()
+            self.assertFalse(observe().available)
+            self.assertEqual(calls, [])
+            manifest.write_text(json.dumps({"dependencies": {"com.unity.pipeline": "0.8.0-exp.1", "com.darumappap.artist-subagent": "file:" + package.as_posix()}}), encoding="utf-8")
             with patch("unityagent.runtime.tooling.environment.discovery.discover_unity_cli_surface", return_value=surface):
                 for key in ("approvalProtocol", "contextProtocol"):
                     missing = {name: value for name, value in editor["support"].items() if name != key}

@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import shutil
+import tarfile
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Callable, Mapping, Sequence
@@ -242,10 +243,19 @@ def probe_artist_pipeline(*, project_root: str, cwd: Path, unity_cli: UnityCliSn
         location = Path(package_version[5:])
         location = location if location.is_absolute() else Path(project_root) / "Packages" / location
         try:
-            package = json.loads((location / "package.json").read_text(encoding="utf-8-sig"))
+            if location.is_file():
+                # Unityのlocal-tarballは展開・実行せず、正規Package metadataだけを観測する。
+                with tarfile.open(location, "r:*") as archive:
+                    entry = archive.getmember("package/package.json")
+                    if not entry.isfile() or entry.size > 65536:
+                        raise ValueError("Artist Package metadata must be a bounded regular file")
+                    with archive.extractfile(entry) as stream:
+                        package = json.loads(stream.read().decode("utf-8-sig"))
+            else:
+                package = json.loads((location / "package.json").read_text(encoding="utf-8-sig"))
             package_version = _support_text(package.get("version")) if isinstance(package, dict) and package.get("name") == package_name else None
             package_installed = package_version is not None
-        except (OSError, UnicodeError, ValueError):
+        except (OSError, UnicodeError, ValueError, KeyError, tarfile.TarError):
             package_installed, package_version = False, None
     empty = ArtistSnapshot(False, "unknown", "unknown", package_installed, "unknown", None, None, None, None, package_version, [], "unknown", None)
     # Packageも公式CLIも未観測なら、無関係なHost探索やEditor操作を始める根拠がない。
