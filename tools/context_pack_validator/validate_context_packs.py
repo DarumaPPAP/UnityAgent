@@ -21,9 +21,9 @@ REPOSITORY_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 CONTEXT_TYPES = {"binding", "repository_reference", "external_reference", "context_include", "route_handoff"}
 LOCAL_PATH_PREFIXES = (
     ".agents/", "src/unityagent/policy/", "src/unityagent/context/", "src/unityagent/orchestration/", "src/unityagent/runtime/",
-    "src/unityagent/persistence/", "src/unityagent/operations/", "eval/", "docs/standards/", "docs/architecture/specifications/", "tools/",
+    "src/unityagent/persistence/", "src/unityagent/operations/", "eval/", "docs/standards/", "docs/architecture/specifications/", "tools/", "subagent/artist_subagent/contracts/",
 )
-TOP_LEVEL_LOCAL_FILES = {"AGENTS.md", "README.md"}
+ALLOWED_LOCAL_FILES = {"AGENTS.md", "README.md", "docs/architecture/artist-subagent-boundary.md"}
 
 
 def load_yaml(path: Path) -> dict[str, Any]:
@@ -40,7 +40,7 @@ def canonical_local_path(root: Path, value: str) -> Path:
     if not text or text.startswith(compatibility_scheme) or text == legacy_root or text.startswith(legacy_root + "/"):
         raise ValueError(f"legacy/non-canonical repository reference: {value}")
     source = text.split("#", 1)[0]
-    if not (source.startswith(LOCAL_PATH_PREFIXES) or source in TOP_LEVEL_LOCAL_FILES):
+    if not (source.startswith(LOCAL_PATH_PREFIXES) or source in ALLOWED_LOCAL_FILES):
         raise ValueError(f"repository reference uses an unsupported root: {source}")
     target = (root / source).resolve()
     resolved_root = root.resolve()
