@@ -554,8 +554,10 @@ class UnityCliProvider:
         root = next((discovery.project_info.get(key) for key in ("path", "projectPath", "project_path", "root") if discovery.project_info.get(key)), None)
         status = discovery.editor_status
         instances = status.get("instances") if isinstance(status, dict) else status
-        if not matches_artist_project(root, self.project_root) or not isinstance(instances, list):
-            return artist_failure("scope_violation", "observed CLI Project or Editor identity is missing or mismatched")
+        if not matches_artist_project(root, self.project_root):
+            return artist_failure("scope_violation", "observed CLI Project identity is missing or mismatched")
+        if not isinstance(instances, list):
+            return artist_failure("not_observed", "Target Project Editor status was not observed")
         bound = [item for item in instances if isinstance(item, dict) and matches_artist_project(item.get("projectPath") or item.get("project"), self.project_root) and item.get("state") == "ready"]
         version = (self.environment_snapshot.get("project") or {}).get("unity_version")
         # Headless EditorはCLI statusへ登録されないため、空一覧だけは独立した実Process観測と対象Pipeline応答を照合する。

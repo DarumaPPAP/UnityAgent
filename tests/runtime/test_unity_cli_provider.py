@@ -286,13 +286,18 @@ class UnityCliProviderTests(unittest.TestCase):
         self.assertEqual(discovery.failure_class, "permission_denied")
 
     def test_editor_status_is_observed_from_structured_output(self) -> None:
+        fake = FakeUnityCliDispatch()
         discovery = discover_unity_cli_surface(
             self.project,
             self.snapshot(),
-            dispatch_fn=FakeUnityCliDispatch(),
+            dispatch_fn=fake,
         )
         self.assertIsInstance(discovery.editor_status, list)
         self.assertEqual(discovery.editor_status[0]["state"], "ready")
+        statuses = [command for command in fake.calls if command[1] == "status"]
+        self.assertEqual(len(statuses), 1)
+        self.assertIn("--project-path", statuses[0])
+        self.assertEqual(statuses[0][statuses[0].index("--project-path") + 1], str(self.project.resolve()))
 
     def test_current_cli_uses_structured_version_and_command_manifest(self) -> None:
         supported = {"projects", "run", "test", "build", "status", "pipeline", "command", "shell", "version", "commands"}

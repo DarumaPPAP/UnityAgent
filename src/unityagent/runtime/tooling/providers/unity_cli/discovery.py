@@ -245,7 +245,7 @@ def discover_unity_cli_surface(
 
     editor_status: Any | None = None
     if "status" in supported:
-        command = build_status_command(executable)
+        command = build_status_command(executable, root)
         outcome, _ = _dispatch_safe(
             DispatchRequest(list(command.argv), root, timeout_seconds),
             dispatch_fn=dispatch_fn,
