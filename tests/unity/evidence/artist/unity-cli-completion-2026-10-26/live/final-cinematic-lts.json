@@ -1,0 +1,511 @@
+{
+  "status": "PASS",
+  "run_id": "cinematic-live-a3294f860a88",
+  "project_root": "D:\\UA227\\artifacts\\lts-builtin\\.artist-e2e~",
+  "kinds": [
+    "activation",
+    "binding",
+    "animation",
+    "control",
+    "signal",
+    "marker",
+    "cinemachine_shot",
+    "shot"
+  ],
+  "expected_cases": 10,
+  "cases": {
+    "activation": {
+      "status": "PASS",
+      "run_id": "cinematic-live-a3294f860a88-activation",
+      "request": {
+        "directorName": "Fixture Director",
+        "trackKind": "activation",
+        "trackName": "Approved activation 04718c09"
+      },
+      "steps": [
+        {
+          "operation": "plan",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-c4f1816845fc-evidence"
+          ]
+        },
+        {
+          "operation": "preview",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-9d4d6d1ff035-evidence"
+          ]
+        },
+        {
+          "operation": "apply",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-21d131191c83-evidence"
+          ]
+        },
+        {
+          "operation": "inspect",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-888e16241ea3-evidence"
+          ]
+        }
+      ],
+      "actual_state_verified": true,
+      "replay_rejected": true,
+      "approval_decision_id": "artist-dcf55a20a37e4fe4a34e2dcd48d457b9",
+      "plan_id": "artist-cinematic-plan-66c3bdcb2d484a7d8e5a47a7557da6c0"
+    },
+    "binding": {
+      "status": "PASS",
+      "run_id": "cinematic-live-a3294f860a88-binding",
+      "request": {
+        "directorName": "Fixture Director",
+        "trackKind": "binding",
+        "trackName": "Approved activation 04718c09",
+        "bindingTargetName": "Fixture Director"
+      },
+      "steps": [
+        {
+          "operation": "plan",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-b1d2d2674952-evidence"
+          ]
+        },
+        {
+          "operation": "preview",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-26d5a21ea784-evidence"
+          ]
+        },
+        {
+          "operation": "apply",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-407eb15a6969-evidence"
+          ]
+        },
+        {
+          "operation": "inspect",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-6d20bf5735cd-evidence"
+          ]
+        },
+        {
+          "operation": "plan",
+          "observation": true,
+          "evidence_refs": [
+            "artist-cinematic-afe14f29884f-evidence"
+          ]
+        }
+      ],
+      "actual_state_verified": true,
+      "replay_rejected": true,
+      "approval_decision_id": "artist-73f85b9b899c44b79560928badbedfca",
+      "plan_id": "artist-cinematic-plan-d225e97cb8034c3c9275324171f8f499"
+    },
+    "animation": {
+      "status": "PASS",
+      "run_id": "cinematic-live-a3294f860a88-animation",
+      "request": {
+        "directorName": "Fixture Director",
+        "trackKind": "animation",
+        "trackName": "Approved animation 04718c09"
+      },
+      "steps": [
+        {
+          "operation": "plan",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-3442ece6d2b7-evidence"
+          ]
+        },
+        {
+          "operation": "preview",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-642d0053cc90-evidence"
+          ]
+        },
+        {
+          "operation": "apply",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-63994cc002ed-evidence"
+          ]
+        },
+        {
+          "operation": "inspect",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-15519e7d0ccc-evidence"
+          ]
+        }
+      ],
+      "actual_state_verified": true,
+      "replay_rejected": true,
+      "approval_decision_id": "artist-1ddac5ddd05e41dd872726e5b1d0fee2",
+      "plan_id": "artist-cinematic-plan-d01b3eeb01844827b5d1029502979879"
+    },
+    "control": {
+      "status": "PASS",
+      "run_id": "cinematic-live-a3294f860a88-control",
+      "request": {
+        "directorName": "Fixture Director",
+        "trackKind": "control",
+        "trackName": "Approved control 04718c09"
+      },
+      "steps": [
+        {
+          "operation": "plan",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-5d3555f26b63-evidence"
+          ]
+        },
+        {
+          "operation": "preview",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-083e1def4fa1-evidence"
+          ]
+        },
+        {
+          "operation": "apply",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-4cb349534506-evidence"
+          ]
+        },
+        {
+          "operation": "inspect",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-98c77c7b8504-evidence"
+          ]
+        }
+      ],
+      "actual_state_verified": true,
+      "replay_rejected": true,
+      "approval_decision_id": "artist-31958227d0434cbdab9bc3e4fdac92cf",
+      "plan_id": "artist-cinematic-plan-ce50b01a82c648a582c3d1c5b46f6bf7"
+    },
+    "signal": {
+      "status": "PASS",
+      "run_id": "cinematic-live-a3294f860a88-signal",
+      "request": {
+        "directorName": "Fixture Director",
+        "trackKind": "signal",
+        "trackName": "Approved signal 04718c09"
+      },
+      "steps": [
+        {
+          "operation": "plan",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-81f8d2b84b86-evidence"
+          ]
+        },
+        {
+          "operation": "preview",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-29c1199cbe3b-evidence"
+          ]
+        },
+        {
+          "operation": "apply",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-63116d540ec8-evidence"
+          ]
+        },
+        {
+          "operation": "inspect",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-c1ff6b1c392a-evidence"
+          ]
+        }
+      ],
+      "actual_state_verified": true,
+      "replay_rejected": true,
+      "approval_decision_id": "artist-f052f4c9f62f480a9dccf0921fe6835d",
+      "plan_id": "artist-cinematic-plan-5f4e2d2a4c264c72940866e53fda2cad"
+    },
+    "marker": {
+      "status": "PASS",
+      "run_id": "cinematic-live-a3294f860a88-marker",
+      "request": {
+        "directorName": "Fixture Director",
+        "trackKind": "marker",
+        "trackName": "Approved marker 04718c09",
+        "markerTime": 0.1234567
+      },
+      "steps": [
+        {
+          "operation": "plan",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-bc2266766cb3-evidence"
+          ]
+        },
+        {
+          "operation": "preview",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-933e08dc2584-evidence"
+          ]
+        },
+        {
+          "operation": "apply",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-61b91dda62ee-evidence"
+          ]
+        },
+        {
+          "operation": "inspect",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-cf7aa30d1786-evidence"
+          ]
+        },
+        {
+          "operation": "plan",
+          "observation": true,
+          "evidence_refs": [
+            "artist-cinematic-f58f8095db3c-evidence"
+          ]
+        }
+      ],
+      "actual_state_verified": true,
+      "replay_rejected": true,
+      "approval_decision_id": "artist-8b28d2f0395642938692281d0cb423f9",
+      "plan_id": "artist-cinematic-plan-5e1043d72e74495d8b68d9f818aecb4a"
+    },
+    "cinemachine_shot": {
+      "status": "PASS",
+      "run_id": "cinematic-live-a3294f860a88-cinemachine_shot",
+      "request": {
+        "directorName": "Fixture Director",
+        "trackKind": "cinemachine_shot",
+        "trackName": "Approved cinemachine_shot 04718c09",
+        "bindingTargetName": "Fixture Cinematic Camera A",
+        "clipStart": 0.125,
+        "clipDuration": 1.234567
+      },
+      "steps": [
+        {
+          "operation": "plan",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-7ff3144eb9ac-evidence"
+          ]
+        },
+        {
+          "operation": "preview",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-4bd14f9a002a-evidence"
+          ]
+        },
+        {
+          "operation": "apply",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-10944b0255ff-evidence"
+          ]
+        },
+        {
+          "operation": "inspect",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-2b85d6e4e6a5-evidence"
+          ]
+        },
+        {
+          "operation": "plan",
+          "observation": true,
+          "evidence_refs": [
+            "artist-cinematic-1e7b3860aa32-evidence"
+          ]
+        }
+      ],
+      "actual_state_verified": true,
+      "replay_rejected": true,
+      "approval_decision_id": "artist-bf6817a1edb84a3391f2ca54332a7fe9",
+      "plan_id": "artist-cinematic-plan-fd826c76a70a44258a2e995b1327f983"
+    },
+    "cinemachine_shot-update": {
+      "status": "PASS",
+      "run_id": "cinematic-live-a3294f860a88-cinemachine_shot-update",
+      "request": {
+        "directorName": "Fixture Director",
+        "trackKind": "cinemachine_shot",
+        "trackName": "Approved cinemachine_shot 04718c09",
+        "bindingTargetName": "Fixture Cinematic Camera B",
+        "clipStart": 1.125,
+        "clipDuration": 2.234567
+      },
+      "steps": [
+        {
+          "operation": "plan",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-f6a53727c4a1-evidence"
+          ]
+        },
+        {
+          "operation": "preview",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-2ebbdbc6c7ae-evidence"
+          ]
+        },
+        {
+          "operation": "apply",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-15f8d93f11c9-evidence"
+          ]
+        },
+        {
+          "operation": "inspect",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-08aea6f04b69-evidence"
+          ]
+        },
+        {
+          "operation": "plan",
+          "observation": true,
+          "evidence_refs": [
+            "artist-cinematic-502c56861a73-evidence"
+          ]
+        }
+      ],
+      "actual_state_verified": true,
+      "replay_rejected": true,
+      "approval_decision_id": "artist-85242df7dffe47708c68c8e457e2719a",
+      "plan_id": "artist-cinematic-plan-34e1351270034b93a171f48e2c0747a2"
+    },
+    "shot": {
+      "status": "PASS",
+      "run_id": "cinematic-live-a3294f860a88-shot",
+      "request": {
+        "directorName": "Fixture Director",
+        "trackKind": "shot",
+        "trackName": "Approved shot 04718c09",
+        "bindingTargetName": "Fixture Cinematic Camera A",
+        "clipStart": 0.125,
+        "clipDuration": 1.234567
+      },
+      "steps": [
+        {
+          "operation": "plan",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-a41ac5d35a72-evidence"
+          ]
+        },
+        {
+          "operation": "preview",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-42f889a3b46c-evidence"
+          ]
+        },
+        {
+          "operation": "apply",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-2c3e8f2380aa-evidence"
+          ]
+        },
+        {
+          "operation": "inspect",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-51587499f863-evidence"
+          ]
+        },
+        {
+          "operation": "plan",
+          "observation": true,
+          "evidence_refs": [
+            "artist-cinematic-73add592d728-evidence"
+          ]
+        }
+      ],
+      "actual_state_verified": true,
+      "replay_rejected": true,
+      "approval_decision_id": "artist-e54ad8fde3d7435caa9258f673cd0112",
+      "plan_id": "artist-cinematic-plan-3aee6a775d964ac69ab9a7c74cfd0cb5"
+    },
+    "shot-update": {
+      "status": "PASS",
+      "run_id": "cinematic-live-a3294f860a88-shot-update",
+      "request": {
+        "directorName": "Fixture Director",
+        "trackKind": "shot",
+        "trackName": "Approved shot 04718c09",
+        "bindingTargetName": "Fixture Cinematic Camera B",
+        "clipStart": 1.125,
+        "clipDuration": 2.234567
+      },
+      "steps": [
+        {
+          "operation": "plan",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-5ac84f8d2499-evidence"
+          ]
+        },
+        {
+          "operation": "preview",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-c76ffc659b6a-evidence"
+          ]
+        },
+        {
+          "operation": "apply",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-47c5a736aaef-evidence"
+          ]
+        },
+        {
+          "operation": "inspect",
+          "observation": false,
+          "evidence_refs": [
+            "artist-cinematic-1f9ca1eab3e6-evidence"
+          ]
+        },
+        {
+          "operation": "plan",
+          "observation": true,
+          "evidence_refs": [
+            "artist-cinematic-ab6ba90bfbd8-evidence"
+          ]
+        }
+      ],
+      "actual_state_verified": true,
+      "replay_rejected": true,
+      "approval_decision_id": "artist-51b8bdd4ea6340d79e3f65229dcd780b",
+      "plan_id": "artist-cinematic-plan-3b26c12ee2894b00a0d7a8f542d44e46"
+    }
+  },
+  "save_performed": false,
+  "source_and_disk_stable": true,
+  "disk_hashes": {
+    "D:\\UA227\\artifacts\\lts-builtin\\.artist-e2e~\\Assets\\ArtistAuthorityFixture.unity": "0820c46f3e5bbc19a59d006339205ae091012ca99eee3b42d8215c9d16e5a909",
+    "D:\\UA227\\artifacts\\lts-builtin\\.artist-e2e~\\Assets\\ArtistTimelineFixture.playable": "ae1d155561e393efb5ecd2a3aa77e1b19e891feed35c509d6a37ece802740b85"
+  },
+  "error": null
+}

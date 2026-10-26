@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="3" result="Passed" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-26 04:35:11Z" end-time="2026-10-26 04:36:38Z" duration="86.5489855">
+  <test-suite type="TestSuite" id="1000" name="p" fullname="p" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-10-26 04:35:11Z" end-time="2026-10-26 04:36:38Z" duration="86.548986" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="EditMode" />
+    </properties>
+    <test-suite type="Assembly" id="1012" name="UnityCi.Tests.dll" fullname="D:/UA227/artifacts/v6/ua-kbrlo0n9/p/Library/ScriptAssemblies/UnityCi.Tests.dll" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-10-26 04:35:11Z" end-time="2026-10-26 04:36:38Z" duration="86.540391" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="45060" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <test-suite type="TestSuite" id="1013" name="UnityCi" fullname="UnityCi" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-10-26 04:35:11Z" end-time="2026-10-26 04:36:38Z" duration="86.539613" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestFixture" id="1008" name="PipelineSmokeTests" fullname="UnityCi.PipelineSmokeTests" classname="UnityCi.PipelineSmokeTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-10-26 04:35:11Z" end-time="2026-10-26 04:36:38Z" duration="86.538209" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-case id="1011" name="CameraRendersConcreteSubjectAndReadbackHasSpatialVariation" fullname="UnityCi.PipelineSmokeTests.CameraRendersConcreteSubjectAndReadbackHasSpatialVariation" methodname="CameraRendersConcreteSubjectAndReadbackHasSpatialVariation" classname="UnityCi.PipelineSmokeTests" runstate="Runnable" seed="1835961446" result="Passed" start-time="2026-10-26 04:35:11Z" end-time="2026-10-26 04:36:36Z" duration="84.335611" asserts="0">
+            <properties>
+              <property name="_JOINTYPE" value="UnityCombinatorial" />
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+            <output><![CDATA[Warning in Graph at Packages/com.unity.shadergraph/GraphTemplates/Cross Pipeline/2_Particle Lit.shadergraph on line 5: Treating '#include_with_pragmas' directive as '#include'
+Warning in Graph at Packages/com.unity.shadergraph/GraphTemplates/Cross Pipeline/0_Particle Unlit.shadergraph on line 5: Treating '#include_with_pragmas' directive as '#include'
+Warning in Graph at Packages/com.unity.shadergraph/GraphTemplates/Cross Pipeline/2_Particle Lit.shadergraph on line 5: Treating '#include_with_pragmas' directive as '#include'
+Warning in Graph at Packages/com.unity.shadergraph/GraphTemplates/Cross Pipeline/0_Particle Unlit.shadergraph on line 5: Treating '#include_with_pragmas' directive as '#include'
+]]></output>
+          </test-case>
+          <test-case id="1010" name="NativePipelineSettingsCanBeConfigured" fullname="UnityCi.PipelineSmokeTests.NativePipelineSettingsCanBeConfigured" methodname="NativePipelineSettingsCanBeConfigured" classname="UnityCi.PipelineSmokeTests" runstate="Runnable" seed="45904061" result="Passed" start-time="2026-10-26 04:36:36Z" end-time="2026-10-26 04:36:38Z" duration="1.984284" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1009" name="SceneContainsCameraLightAndRenderableSubject" fullname="UnityCi.PipelineSmokeTests.SceneContainsCameraLightAndRenderableSubject" methodname="SceneContainsCameraLightAndRenderableSubject" classname="UnityCi.PipelineSmokeTests" runstate="Runnable" seed="1806060619" result="Passed" start-time="2026-10-26 04:36:38Z" end-time="2026-10-26 04:36:38Z" duration="0.203202" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+            <output><![CDATA[Saving results to: C:/Users/RengameDskPc0019/AppData/LocalLow/DefaultCompany/p\TestResults.xml
+]]></output>
+          </test-case>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

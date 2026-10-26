@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "com.darumappap.artist-subagent": "file:D:/UA227/artifacts/final-dist/com.darumappap.artist-subagent-0.0.2-beta.tgz",
+    "com.darumappap.unity-agent": "file:D:/UA227/artifacts/final-dist/com.darumappap.unity-agent-0.0.8-beta.tgz",
+    "com.unity.pipeline": "0.8.0-exp.1",
+    "com.unity.test-framework": "1.6.0",
+    "com.unity.timeline": "1.8.10",
+    "com.unity.cinemachine": "3.1.5"
+  }
+}

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="2" result="Passed" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-26 04:25:34Z" end-time="2026-10-26 04:25:34Z" duration="0.291922">
+  <test-suite type="TestSuite" id="1000" name="undo-fixture" fullname="undo-fixture" runstate="Runnable" testcasecount="36" result="Passed" start-time="2026-10-26 04:25:34Z" end-time="2026-10-26 04:25:34Z" duration="0.291922" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="EditMode" />
+    </properties>
+    <test-suite type="Assembly" id="1052" name="UnityCi.ArtistPackage.Tests.dll" fullname="D:/UA227/artifacts/undo-fixture/Library/ScriptAssemblies/UnityCi.ArtistPackage.Tests.dll" runstate="Runnable" testcasecount="36" result="Passed" start-time="2026-10-26 04:25:34Z" end-time="2026-10-26 04:25:34Z" duration="0.280955" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="15768" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <test-suite type="TestSuite" id="1053" name="UnityArtist" fullname="UnityArtist" runstate="Runnable" testcasecount="36" result="Passed" start-time="2026-10-26 04:25:34Z" end-time="2026-10-26 04:25:34Z" duration="0.277695" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1054" name="Tests" fullname="UnityArtist.Tests" runstate="Runnable" testcasecount="36" result="Passed" start-time="2026-10-26 04:25:34Z" end-time="2026-10-26 04:25:34Z" duration="0.276162" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestFixture" id="1048" name="LookDevVerificationFailureTests" fullname="UnityArtist.Tests.LookDevVerificationFailureTests" classname="UnityArtist.Tests.LookDevVerificationFailureTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-26 04:25:34Z" end-time="2026-10-26 04:25:34Z" duration="0.273760" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-suite type="ParameterizedMethod" id="1051" name="ExceptionAfterSuccessfulMutationReportsFailureAndRejectsReuse" fullname="UnityArtist.Tests.LookDevVerificationFailureTests.ExceptionAfterSuccessfulMutationReportsFailureAndRejectsReuse" classname="UnityArtist.Tests.LookDevVerificationFailureTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-26 04:25:34Z" end-time="2026-10-26 04:25:34Z" duration="0.270249" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1049" name="ExceptionAfterSuccessfulMutationReportsFailureAndRejectsReuse(False)" fullname="UnityArtist.Tests.LookDevVerificationFailureTests.ExceptionAfterSuccessfulMutationReportsFailureAndRejectsReuse(False)" methodname="ExceptionAfterSuccessfulMutationReportsFailureAndRejectsReuse" classname="UnityArtist.Tests.LookDevVerificationFailureTests" runstate="Runnable" seed="1733689725" result="Passed" start-time="2026-10-26 04:25:34Z" end-time="2026-10-26 04:25:34Z" duration="0.222266" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1050" name="ExceptionAfterSuccessfulMutationReportsFailureAndRejectsReuse(True)" fullname="UnityArtist.Tests.LookDevVerificationFailureTests.ExceptionAfterSuccessfulMutationReportsFailureAndRejectsReuse(True)" methodname="ExceptionAfterSuccessfulMutationReportsFailureAndRejectsReuse" classname="UnityArtist.Tests.LookDevVerificationFailureTests" runstate="Runnable" seed="1272849356" result="Passed" start-time="2026-10-26 04:25:34Z" end-time="2026-10-26 04:25:34Z" duration="0.039394" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+                <output><![CDATA[Saving results to: D:\UA227\artifacts\completion\undo-two.xml
+]]></output>
+              </test-case>
+            </test-suite>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>
