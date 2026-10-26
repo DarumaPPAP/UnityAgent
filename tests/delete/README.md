@@ -21,12 +21,12 @@ Baseline: `ae68c17ff9db19370067a7aa45f9492a724e63c4`（旧スイートがCanonic
 | `tests/runtime/test_persistence_measurement.py` | 2 | 同上 |
 | `tests/runtime/test_model_usage.py` | 4 | 同上 |
 
-旧ファイルは `tests/delete/runtime/` に**元の内容・Blob SHAで**移動しています。新正本は、Metric失敗時の非再実行、Exception原型・秘密情報の非漏洩、型付きToken計測、Immutable Snapshot、失敗Telemetry時の書込保持、Read計測、Token集計、不正Token値の拒否を8ケースで検証します。
+旧ファイルは `tests/delete/runtime/` に**元の内容・Blob SHAで（ファイル名だけ\`frozen_test_*.py\`へ変更して通常のunittest/pytest自動発見を防ぐ）**移動しています。新正本は、Metric失敗時の非再実行、Exception原型・秘密情報の非漏洩、型付きToken計測、Immutable Snapshot、失敗Telemetry時の書込保持、Read計測、Token集計、不正Token値の拒否を8ケースで検証します。
 
 比較実行例（開発時だけ。凍結Testは通常のCIスイートに含めない）:
 
 ```bash
-python -m unittest discover -s tests/delete/runtime -p 'test_*.py' -q -b
+python -m unittest discover -s tests/delete/runtime -p 'frozen_test_*.py' -q -b
 python -m unittest tests.runtime.test_observability_contracts -q -b
 ```
 
