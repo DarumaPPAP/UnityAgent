@@ -35,3 +35,25 @@ Artist UPMの製品IDは `artist_subagent`、Package IDは `com.darumappap.artis
 出力には意味的Capability、qualifiers、`profile_id=artist_subagent`、選出済みBackendの `provider_id=unity_cli`、観測Fact、承認／Scope／Revision、Evidence参照を記載します。未実行のGateは `BLOCKED_NOT_RUN`、未観測は `not_observed` とし、Compile、Editor、Player、Human Visual Acceptanceを区別します。
 
 一般的なProject、Hierarchy、Compile、Test、Build、Play／Stop、Log、UI、Audio、Addressables操作はArtistSubAgentの責務に追加しません。未知のActivation Factをtrueへ補完せず、未導入のArtistを要求充足のためにInstallしません。
+
+## Output Contract
+
+- 選出結果には意味的Capabilityとqualifiers、`profile_id=artist_subagent`、`provider_id=unity_cli`、対象Project、Run、Context参照、Package互換性とPipeline到達性の観測根拠を含めます。不明なFactは不明のまま報告します。
+- Mutation結果にはControl Planeが管理するPlan／Approval参照、承認Scope、実行時Revision、Exact Diff、`mutationPaths`、保存有無、失敗時のUndo結果を含めます。Policyは承認要否、Control Planeは承認と実行境界を管理し、Artistは独自の承認を発行しません。
+- EvidenceはPersistenceへのappendと整合性確認を終えた参照を返します。Editor応答だけの結果、部分的な実行、通信断、Undo失敗、Evidence欠落を成功へ変換しません。Compile、Editor、Player、実機、Human Visual Acceptance、Performanceの判定は個別に記録します。
+
+## Checklist
+
+- [ ] 正本CatalogでArtistSubAgentの導入、互換性、Project binding、Pipeline到達性を実測し、既存Context AssemblyのProject／Run／Scopeへの束縛を確認した。
+- [ ] EntryからControl Plane、Policy／Context、Tool Broker、`unity_cli`、Unity Pipeline、Artist UPMを通り、直接Mutationや旧HostへのFallbackを使っていない。
+- [ ] Mutation前に承認参照、期限／取消、Revision、Exact Diff、Scope、単回消費を照合し、失敗したMutationを無条件に再実行していない。
+- [ ] Apply後の実状態、変更先、保存禁止条件と必要なUndoを確認し、成功・失敗双方のEvidenceをPersistenceで検証した。
+- [ ] 未実行Gateと未観測Gateを明示し、Capture生成を人間の視覚承認として報告していない。
+
+## Common Mistakes
+
+- `unity_artist_cli` や独立Artist Hostを実行Providerとして復活させること。全9コマンドは `unity_cli` を使い、旧IDの履歴読取互換から新規実行経路を作りません。
+- Discoveryのunknownをtrueに補完したり、Package欠落時に自動Installしたりすること。既存Setupの明示的な計画・承認・適用契約を使います。
+- 呼出し側でToken／Contextを作成し、Editor Pipelineへ直接Mutationを送ること。Control Planeの承認Authorityと既存Context Assemblyを維持します。
+- Plan／PreviewやCLI外側の成功をApply成功とみなすこと。Editor内部結果、実状態、Revision／Exact Diff、永続Evidenceを照合します。
+- 通信断や実行失敗で消費済み承認を未使用へ戻し、Mutationを再送すること。承認の消費状態を保持し、観測した失敗とUndo結果を記録します。
