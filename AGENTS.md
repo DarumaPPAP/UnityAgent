@@ -25,6 +25,12 @@ branch運用の正本は `.github/branch-policy.json`、説明は `docs/developm
 6. 開発中は変更範囲と影響する安全性契約に限定したテストを先に実行する。Python unittest は `-q -b` で成功ログを抑え、AI Contextに成功ログ全文を取り込まない。必要な失敗箇所だけを読む。Canonical Full ValidationはPRの必須CIで実行し、変更・失敗・リスクがなければ同じPASSを反復しない。Skip・未観測をPASS扱いしない。
 7. 承認済み依頼に複数段階が含まれるなら全体のGoalまで継続する。依頼外の次Taskには進まない。LoopはGoal / Failureを基準とし、既存Retry Budgetを守る。
 
+## Test lifecycle
+- テストは機能の責務・Failureごとに適度な大きさのTest Moduleへまとめ、異なる責務や実Unity E2Eを巨大な1ファイルに押し込まない。テスト数やファイル数を削減目的だけで変更しない。
+- 調査や修復のための一時TestはTask専用Worktree／TemporaryDirectory等で実行し、Task終了時に不要な作業ファイルを清掃する。セッション終了イベントだけにCleanupを依存させない。
+- 恒久的なRegression Testは、既存Testとの差分・保護Invariant・Failureリスク・実行/保守コストを通常PRに記載して審査する。Eval起点なら既存ChangeProposalに紐付け、新しい承認機構を追加しない。
+- 既存テストの置換はB案。移行対象だけを `tests/delete/` に原本のまま凍結し、最小スイートへの置換と重要な負例の検出を検証してから削除する。凍結TestをCanonicalのPASSとして扱わず、未置換の旧テストは通常Gateで維持する。詳細は `tests/delete/README.md`。
+
 Skillが確認要求・停止・ユーザー要求との競合を生む場合、Skill path、該当instruction、effect、判断理由を明示する。
 Policy追加の前にKnowledge / Retrieval / Tool / Harness / Eval / Architectureの原因を調べる。
 
