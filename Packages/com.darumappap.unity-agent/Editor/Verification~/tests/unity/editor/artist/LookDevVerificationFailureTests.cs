@@ -18,8 +18,9 @@ namespace UnityArtist.Tests
 	public sealed class LookDevVerificationFailureTests
 	{
 #if UNITY_ARTIST_TEST_FAULTS
-		[Test]
-		public void ExceptionAfterSuccessfulMutationRollsBackAndRetryRequiresFreshAuthorization()
+		[TestCase(false)]
+		[TestCase(true)]
+		public void ExceptionAfterSuccessfulMutationReportsFailureAndRejectsReuse(bool discardOwnedUndoHistory)
 		{
 			Type session = typeof(ArtistResult).Assembly.GetType("UnityArtist.ArtistSession", true);
 			FieldInfo fault = session.GetField("BeforeLookDevVerificationForTests", BindingFlags.NonPublic | BindingFlags.Static);
@@ -56,11 +57,16 @@ namespace UnityArtist.Tests
 					file.Write(bytes, 0, bytes.Length);
 				}
 				// 外部Authorityの一回限りの認可を再現し、Editor内に承認の代替経路を作らない。
-				server = Task.Run(() => ServeOneShotAuthority(listener, sessionId, secret, token, plan.planId));
+				server = Task.Run(() => ServeOneShotAuthority(listener, sessionId, secret, token, plan.planId, discardOwnedUndoHistory ? 1 : 2));
 				fault.SetValue(null, (Action)(() =>
 				{
 					faultCalls++;
 					Assert.That(light.intensity, Is.EqualTo(2.5f), "適用前の例外ではRollbackの回帰を検出できません。");
+					if (discardOwnedUndoHistory)
+					{
+						// 復元不能でも成功を報告しないことを、テスト所有Lightの履歴だけで検証する。
+						UnityEditor.Undo.ClearUndo(light);
+					}
 					throw new InvalidOperationException(failure);
 				}));
 				ArtistResult result = (ArtistResult)session.GetMethod("Apply").Invoke(null, new object[] { plan.planId, plan.revision, token });
@@ -71,16 +77,16 @@ namespace UnityArtist.Tests
 				Assert.That(result.exactDiff, Is.Empty);
 				Assert.That(result.evidence, Is.Empty, "失敗応答へ成功Evidenceを残してはいけません。");
 				Assert.That(result.authorityReservationId, Is.EqualTo("owned-reservation"));
-				Assert.That(light.intensity, Is.EqualTo(1.25f), "検証例外でも適用済みの変更をUndoで戻します。");
+				Assert.That(light.intensity, Is.EqualTo(discardOwnedUndoHistory ? 2.5f : 1.25f), "所有Undo履歴の有無に応じた実状態を確認し、復元できたと推測しません。");
 				Assert.That(((IList)session.GetField("history", BindingFlags.NonPublic | BindingFlags.Static).GetValue(null)).Contains("applied:" + plan.planId), Is.False);
 				ArtistResult retried = (ArtistResult)session.GetMethod("Apply").Invoke(null, new object[] { plan.planId, plan.revision, token });
 				Assert.That(server.Wait(5000), Is.True);
 				Assert.That(retried.status, Is.EqualTo("blocked"));
-				Assert.That(retried.errors.Any(error => error.code == "APPROVAL_INVALID"), Is.True);
+				Assert.That(retried.errors.Any(error => error.code == (discardOwnedUndoHistory ? "STALE_REVISION" : "APPROVAL_INVALID")), Is.True);
 				Assert.That(retried.authorityReservationId, Is.Null.Or.Empty);
 				Assert.That(retried.verified, Is.False);
 				Assert.That(retried.evidence, Is.Empty);
-				Assert.That(light.intensity, Is.EqualTo(1.25f));
+				Assert.That(light.intensity, Is.EqualTo(discardOwnedUndoHistory ? 2.5f : 1.25f));
 				Assert.That(faultCalls, Is.EqualTo(1), "再認可が拒否された場合は適用後の処理へ進みません。");
 			}
 			finally
@@ -102,9 +108,9 @@ namespace UnityArtist.Tests
 			}
 		}
 
-		private void ServeOneShotAuthority(TcpListener listener, string sessionId, byte[] secret, string token, string planId)
+		private void ServeOneShotAuthority(TcpListener listener, string sessionId, byte[] secret, string token, string planId, int requestCount)
 		{
-			for (int requestIndex = 0; requestIndex < 2; requestIndex++)
+			for (int requestIndex = 0; requestIndex < requestCount; requestIndex++)
 			{
 				using TcpClient client = listener.AcceptTcpClient();
 				using NetworkStream stream = client.GetStream();

@@ -930,8 +930,8 @@
     },
     {
       "path": "tests/unity/editor/artist/LookDevVerificationFailureTests.cs",
-      "sha1": "e1babe68c5e71550c1526227df47dfde674e5c94",
-      "size": 8519
+      "sha1": "77c7080e0b2353cbc689078d5242d32864f1b299",
+      "size": 8980
     },
     {
       "path": "tests/unity/editor/artist/LookDevVerificationFailureTests.cs.meta",

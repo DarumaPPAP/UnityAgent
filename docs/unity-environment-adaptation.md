@@ -1,6 +1,6 @@
 # Unity環境に応じたProduction Runtime適応
 
-UnityAgentはUnity CLIやArtist系Backendを必須依存にしません。UnityAgentはArchitect / Commander / Loop Ownerとして既存Runtimeを運用し、ArtistSubAgentはoptional specialistです。`unity_artist_cli` はArtistSubAgentが利用する現在のBackend Provider互換IDに限定します。現行境界は [ArtistSubAgent boundary](architecture/artist-subagent-boundary.md) にあります。
+UnityAgentはUnity CLIやArtist系Backendを必須依存にしません。UnityAgentはArchitect / Commander / Loop Ownerとして既存Runtimeを運用し、ArtistSubAgentはoptional specialistです。Artistの実行Providerは `unity_cli` です。旧 `unity_artist_cli` は過去のSnapshot／Receiptの読取互換に限定し、独立Hostの導入やFallbackには使いません。現行境界は [ArtistSubAgent boundary](architecture/artist-subagent-boundary.md) にあります。
 
 **必要なCapabilityを先に決め、現在のEnvironment Snapshotから実行可能なProviderをRuntimeが解決します。**
 
@@ -10,7 +10,7 @@ UnityAgentはUnity CLIやArtist系Backendを必須依存にしません。UnityA
 
 ```text
 Unity CLIあり / なし
-UnityArtistCLIあり / なし
+Unity CLI / Artist UPMあり / なし
 Unity Editorあり / なし
 Safe Mode
 Test Frameworkあり / なし
@@ -77,7 +77,7 @@ Player unavailable = false
 - Unity Editor running / Safe Mode / Project binding
 - Unity CLI availability / version
 - Pipeline installed / reachable
-- UnityArtistCLI availability / version / Project binding / package / Pipeline / support tier
+- artist.available / package_version / Project binding / Artist UPM / Pipeline / support tier
 - Legacy bridge observations（移行互換のみ）
 - Test Framework availability
 - requested Build Target / Build Module availability
@@ -117,7 +117,7 @@ flowchart TD
 
     C1 --> P1[File / Unity CLI]
     C2 --> P2[Unity CLI / Native Editor]
-    C3 --> P3[UnityArtistCLI / safe CLI surface]
+    C3 --> P3[Unity CLI / Artist UPM / safe Pipeline surface]
     C4 --> P4[Player src/unityagent/runtime]
 ```
 
@@ -132,7 +132,7 @@ flowchart TD
 ```text
 project.inspect -> Unity CLI / File
 project.test    -> Unity CLI
-domain.workflow -> UnityArtistCLI when Artist facts are verified
+domain.workflow -> Unity CLI / Artist UPM when Artist facts are verified
 player.observe  -> Player src/unityagent/runtime
 ```
 
@@ -180,7 +180,7 @@ Legacy bridge / available compatibility Provider
 source.read      -> File
 scene.inspect    -> legacy bridge only when explicitly running a migration fixture
 profiler.observe -> legacy bridge only when explicitly running a migration fixture
-visual.capture   -> UnityArtistCLI when supported; otherwise unavailable
+visual.capture   -> Unity CLI / Artist UPM when supported; otherwise unavailable
 project.test     -> MCPに実行可能Capabilityが証明できなければunavailable
 ```
 

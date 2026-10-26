@@ -10,7 +10,7 @@
 - Scene / Asset操作
 - Build / Test
 - Player / Target Device観測
-- UnityArtistCLIによるArtist / Cinematic workflow
+- Unity CLIとArtist UPMによるArtist / Cinematic workflow
 
 ---
 
@@ -189,7 +189,7 @@ flowchart LR
 
 旧UnitySubAgentHubと固定Source Lockは履歴・明示的な互換検証のために残ります。現行mainのRelease Workflowは同じUnityAgent checkoutから成果物を生成し、旧Hubを取得しません。過去の公開Releaseの生成元は、そのTagのWorkflowとProvenanceを参照してください。
 
-### UnityArtistCLI Backendが担当
+### Artist UPMが担当（Unity CLI経由）
 
 - Artist CLI command implementation
 - Manifestで公開済みのArtist操作を実行するCLI
@@ -257,7 +257,7 @@ flowchart TD
     P --> F[File]
     P --> N[Native Unity Editor]
     P --> U[Unity CLI]
-    P --> A[UnityArtistCLI]
+    P --> A[Unity CLI / Artist UPM]
     P --> R[Player src/unityagent/runtime]
 ```
 
@@ -312,7 +312,7 @@ Unity公式CLIが現在利用可能な場合に使用します。
 
 CLI Surfaceはversionで変わり得るため、Runtime discoveryを使います。
 
-### UnityArtistCLI Provider
+### Unity CLI ProviderのArtist操作
 
 Visual art / cinematicのsemantic workflowに使用します。要求はProvider名ではなく `domain.workflow` / `visual.capture` と `qualifiers` で表します。
 
@@ -337,7 +337,7 @@ Inspect
 
 このSafety Contractをraw mutation、arbitrary eval、暗黙保存へdowngradeしません。Captureは実測できたチャンネルだけをEvidenceにします。
 
-旧 `myunitymcp` Runtime Adapterは現行Registryから削除済みです。過去の候補記録をUnityArtistCLIの現行Production経路として扱いません。
+旧 `myunitymcp` Runtime Adapterは現行Registryから削除済みです。過去の候補記録をArtistSubAgentの現行Production経路として扱いません。
 
 Registryに記述されていても、Concrete Production executorと現在Tool exposureが証明できなければ実行可能扱いしません。
 
@@ -398,7 +398,7 @@ Fallback可
 
 ```text
 domain.workflow
-UnityArtistCLI unavailable
+Artist UPM / Unity Pipeline unavailable
         ↓
 × raw YAML edit
 × arbitrary eval
@@ -597,7 +597,7 @@ Providerは固定せず、RuntimeのEnvironment / Safety Contractから解決し
 ### 間違い2: Provider名をGoalにする
 
 ```text
-× UnityArtistCLIを必ず使う
+× 未観測のArtist実行環境を必須とする
 ○ scene.inspectが必要
 ```
 
