@@ -89,8 +89,9 @@ class LiveUnityCliTests(unittest.TestCase):
                 live._persisted_payload(store, result, "run", temporary, "inspect")
 
     def test_fixture_cleanup_matches_project_argument_instead_of_path_substring(self):
-        with patch.object(live.os, "name", "nt"), patch.object(live.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "[]", "")) as run:
-            live._stop_fixture_editor(Path("C:/Fixtures/Artist"))
+        fixture = Path("C:/Fixtures/Artist")
+        with patch.object(live.os, "name", "nt"), patch.object(Path, "resolve", return_value=fixture), patch.object(live.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "[]", "")) as run:
+            live._stop_fixture_editor(fixture)
         script = run.call_args.args[0][-1]
         self.assertIn("-projectPath", script)
         self.assertIn("-match $targetPattern", script)
