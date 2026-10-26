@@ -52,7 +52,7 @@ Artist UPMの製品IDは `artist_subagent`、Package IDは `com.darumappap.artis
 
 ## Common Mistakes
 
-- `unity_artist_cli` や独立Artist Hostを実行Providerとして復活させること。全9コマンドは `unity_cli` を使い、旧IDの履歴読取互換から新規実行経路を作りません。
+- `unity_artist_cli` や独立Artist Hostを実行Providerとして復活させること。全9コマンドは `unity_cli` を使い、旧IDのSnapshot・Receiptを受理せず、新規実行経路へ戻しません。
 - Discoveryのunknownをtrueに補完したり、Package欠落時に自動Installしたりすること。既存Setupの明示的な計画・承認・適用契約を使います。
 - 呼出し側でToken／Contextを作成し、Editor Pipelineへ直接Mutationを送ること。Control Planeの承認Authorityと既存Context Assemblyを維持します。
 - Plan／PreviewやCLI外側の成功をApply成功とみなすこと。Editor内部結果、実状態、Revision／Exact Diff、永続Evidenceを照合します。
