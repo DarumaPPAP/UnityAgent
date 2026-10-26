@@ -323,8 +323,10 @@ class UnityCliProviderTests(unittest.TestCase):
 
     def test_target_catalog_does_not_depend_on_global_pipeline_enumeration(self):
         fake = FakeUnityCliDispatch()
+        calls = []
 
         def observe(request, **kwargs):
+            calls.append(list(request.command))
             if list(request.command)[1:3] == ["pipeline", "list"]:
                 return {"status": "failed", "failure_class": "runtime_timeout", "result": SimpleNamespace(returncode=124, stdout="", stderr="")}
             return fake(request, **kwargs)
@@ -332,7 +334,7 @@ class UnityCliProviderTests(unittest.TestCase):
         discovered = discover_unity_cli_surface(self.project, self.snapshot(), dispatch_fn=observe)
         self.assertIs(discovered.pipeline_reachable, True)
         self.assertTrue(discovered.command_catalog)
-        self.assertFalse(any(command[1:3] == ["pipeline", "list"] for command in fake.calls))
+        self.assertFalse(any(command[1:3] == ["pipeline", "list"] for command in calls))
         catalog = next(command for command in fake.calls if command[1:3] == ["command", "--detail"])
         self.assertEqual(catalog[catalog.index("--project-path") + 1], str(self.project.resolve()))
 
