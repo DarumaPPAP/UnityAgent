@@ -21,6 +21,9 @@ class SubagentDistributionTests(unittest.TestCase):
             self.assertTrue(registry_path.is_file(), 'SubAgent registry missing from Python distribution')
             self.assertTrue((destination / 'subagent/artist_subagent/tools/host/artist-backend-contract.yaml').is_file())
             hashes = json.loads((destination / 'resource-manifest.json').read_text())
+            boundary = 'docs/architecture/artist-subagent-boundary.md'
+            self.assertEqual((ROOT / boundary).read_bytes(), (destination / boundary).read_bytes())
+            self.assertEqual(hashes[boundary], hashlib.sha256((destination / boundary).read_bytes()).hexdigest())
             registry = yaml.safe_load(registry_path.read_text())
             for entry in registry['entries']:
                 manifest_path = destination / entry['manifest']
