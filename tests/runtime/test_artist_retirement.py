@@ -1,4 +1,4 @@
-"""旧Artist BackendをProductionへ戻さない撤去Gate。履歴データは保持する。"""
+"""旧Artist BackendをProductionへ戻さない撤去Gate。移行済み旧経路の再混入を防止する。"""
 import ast
 from pathlib import Path
 import unittest
@@ -10,9 +10,15 @@ ROOT = Path(__file__).resolve().parents[2]
 
 class ArtistRetirementTests(unittest.TestCase):
     def test_retired_provider_and_standalone_host_sources_are_absent(self):
-        for relative in ("src/unityagent/runtime/tooling/providers/unity_artist_cli", "subagent/artist_subagent/tools/host"):
+        for relative in ("src/unityagent/runtime/tooling/providers/unity_artist_cli", "subagent/artist_subagent/tools/host", "subagent/artist_subagent/tools/editor/Editor/Batch", "tests/unity/projects/historical/2022.3", "tests/subagent/artist/tools"):
             with self.subTest(path=relative):
                 self.assertFalse((ROOT / relative).exists())
+
+    def test_retired_snapshot_and_receipt_are_not_accepted(self):
+        snapshot = (ROOT / "src/unityagent/runtime/contracts/environment-snapshot.schema.yaml").read_text(encoding="utf-8")
+        receipt = (ROOT / "src/unityagent/runtime/contracts/install-receipt.schema.yaml").read_text(encoding="utf-8")
+        self.assertNotIn("  unity_artist_cli:", snapshot)
+        self.assertNotIn("artist_subagent, unity_artist_cli", receipt)
 
     def test_production_python_has_no_retired_provider_import(self):
         for path in (ROOT / "src/unityagent").rglob("*.py"):

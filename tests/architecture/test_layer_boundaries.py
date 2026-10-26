@@ -32,13 +32,14 @@ class LayerBoundaryTests(unittest.TestCase):
         )
         triggers = workflow["on"]
         self.assertIn("pull_request", triggers)
-        # PR本文編集も記述Validatorを再評価する。Path Filterで対象PRを除外しない。
+        # PR本文編集はPR Qualityのみで検証する。Canonical CIは変更があるPRとmainで実行。
         pr_triggers = triggers["pull_request"]
         self.assertIsInstance(pr_triggers, dict)
         self.assertTrue(
-            {"opened", "synchronize", "reopened", "edited", "ready_for_review"}
+            {"opened", "synchronize", "reopened", "ready_for_review"}
             <= set(pr_triggers["types"])
         )
+        self.assertNotIn("edited", pr_triggers["types"])
         self.assertNotIn("paths", pr_triggers)
         self.assertEqual(triggers["push"]["branches"], ["main"])
         self.assertNotIn("paths", triggers["push"])

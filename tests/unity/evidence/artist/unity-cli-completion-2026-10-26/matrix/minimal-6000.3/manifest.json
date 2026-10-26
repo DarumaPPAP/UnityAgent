@@ -1,9 +1,0 @@
-{
-  "dependencies": {
-    "com.darumappap.artist-subagent": "file:D:/UA227/subagent/artist_subagent/tools/editor",
-    "com.unity.test-framework": "1.6.0"
-  },
-  "testables": [
-    "com.darumappap.artist-subagent"
-  ]
-}

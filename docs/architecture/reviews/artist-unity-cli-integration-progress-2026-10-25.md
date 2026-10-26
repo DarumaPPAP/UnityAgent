@@ -42,4 +42,4 @@ Camera／Lightの名前指定は一意の場合だけ採用します。削除・
 - 全Runtimeスイート：上記の既存失敗があるためPASSとは扱いません。比較対象は開始SHA `6288cd106614913e0466a71ed539fe11ea5c0411` です。
 - Release／Tag／Merge、公開Release成果物のインストール：未実行。利用者の別指示に従います。Development wheelは分離展開して実行済み、UPM tarballは同一treeの内容一致を検証済みです。
 
-証拠は [現在のEvidence索引](../../../tests/unity/evidence/artist/unity-cli-integration/index.json) に保存しています。履歴EvidenceのPASSを現在の成功として転用していません。Development配布物の記録にあるGit treeは検証対象内容を示し、mainへのMergeや公開Releaseを示しません。
+証拠は [当時のEvidence索引](https://github.com/DarumaPPAP/UnityAgent/blob/806783ced882494a238de770eeda82502f53af6a/tests/unity/evidence/artist/unity-cli-integration/index.json) に保存しています。履歴EvidenceのPASSを現在の成功として転用していません。Development配布物の記録にあるGit treeは検証対象内容を示し、mainへのMergeや公開Releaseを示しません。

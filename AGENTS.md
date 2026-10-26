@@ -22,7 +22,7 @@ branch運用の正本は `.github/branch-policy.json`、説明は `docs/developm
 3. `src/unityagent/context/assembly/materialize_context.py` でcurrent-call Contextを構築する。Context / Retrieval Budgetと圧縮時の必須制約保持は `src/unityagent/context/budget/context-budget.yaml` に従う。
 4. bounded TaskはFast Pathを使う。Graph、Local Loop、SubAgentは分解・修復・独立並列作業が必要な場合にだけ利用する。
 5. Orchestrationは必要Capabilityを要求する。専門作業はSubAgent Definitionから適格なSubAgentを解決する。Provider-backed CapabilityはRuntime Tool Brokerが実行Backendを解決・実行し、Providerless reasoningはCanonical Runtime HandoffからCodexRunnerが実行する。SubAgent / Providerの直接呼出しでApproval / Scopeを迂回しない。
-6. 変更リスクと必須Gateに応じて検証する。新しい変更・失敗・未解決リスクがなければ同じPASS検証を反復しない。
+6. 開発中は変更範囲と影響する安全性契約に限定したテストを先に実行する。Python unittest は `-q -b` で成功ログを抑え、AI Contextに成功ログ全文を取り込まない。必要な失敗箇所だけを読む。Canonical Full ValidationはPRの必須CIで実行し、変更・失敗・リスクがなければ同じPASSを反復しない。Skip・未観測をPASS扱いしない。
 7. 承認済み依頼に複数段階が含まれるなら全体のGoalまで継続する。依頼外の次Taskには進まない。LoopはGoal / Failureを基準とし、既存Retry Budgetを守る。
 
 Skillが確認要求・停止・ユーザー要求との競合を生む場合、Skill path、該当instruction、effect、判断理由を明示する。
@@ -62,7 +62,7 @@ Policy追加の前にKnowledge / Retrieval / Tool / Harness / Eval / Architectur
 - Unknown Project Fact / Bindingを推測で補完しない。legacy path fallbackやGolden期待値のProduction Prompt注入を行わない。
 - Static / Compile / Editor / Player / 実機 / Visual / Performanceの検証状態を分け、未観測は`not_observed`、利用不可は`unavailable`として報告する。
 - Goal達成、変更差分、実施した検証、残る制約を報告する。実行不能な必須Gateを成功扱いしない。
-- SubAgentの `profile_id` が専門Agentの正本IDであり、`provider_id` は実行BackendのIDに限定する。Artistの正本名は `artist_subagent` / `ArtistSubAgent`、実行Backendは `unity_cli`。旧 `unity_artist_cli` は履歴Snapshot／Receiptの読取互換に限定する。
+- SubAgentの `profile_id` が専門Agentの正本IDであり、`provider_id` は実行BackendのIDに限定する。Artistの正本名は `artist_subagent` / `ArtistSubAgent`、実行Backendは `unity_cli`。旧 `unity_artist_cli` は新規Providerとして登録せず、実行依存へ戻さない。
 - Specialist の選出は Orchestration、型付き Fact / 明示 Decision / Skill / Policy の選別と Budget 記録は既存 Context Assembly が行う。未観測の項目や Budget `unmeasured` を実行可能として扱わない。詳細は `docs/architecture/specialist-context-assembly.md`。
 - SubAgentはoptional installとし、未インストール・未Bind・非互換・必要Environment Fact未成立のSubAgentを候補から除外する。RuntimeはCapabilityを満たすためにSubAgentを自動インストールしない。
 - UI / CodexはSubAgentやProviderへ直接到達しない。必ずEntry → UnityAgent Control Plane → Capability / Policy → SubAgent Resolver（必要時）→ Runtime Handoffを通る。Tool CapabilityはBackend Provider Resolver、Providerless reasoningはCodexRunnerを経由し、Evidenceへ到達する。

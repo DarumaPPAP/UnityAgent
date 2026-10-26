@@ -1,6 +1,6 @@
 # Unity環境に応じたProduction Runtime適応
 
-UnityAgentはUnity CLIやArtist系Backendを必須依存にしません。UnityAgentはArchitect / Commander / Loop Ownerとして既存Runtimeを運用し、ArtistSubAgentはoptional specialistです。Artistの実行Providerは `unity_cli` です。旧 `unity_artist_cli` は過去のSnapshot／Receiptの読取互換に限定し、独立Hostの導入やFallbackには使いません。現行境界は [ArtistSubAgent boundary](architecture/artist-subagent-boundary.md) にあります。
+UnityAgentはUnity CLIやArtist系Backendを必須依存にしません。UnityAgentはArchitect / Commander / Loop Ownerとして既存Runtimeを運用し、ArtistSubAgentはoptional specialistです。Artistの実行Providerは `unity_cli` です。旧 `unity_artist_cli` のSnapshot／Receipt受入は廃止し、独立Hostの導入やFallbackには使いません。現行境界は [ArtistSubAgent boundary](architecture/artist-subagent-boundary.md) にあります。
 
 **必要なCapabilityを先に決め、現在のEnvironment Snapshotから実行可能なProviderをRuntimeが解決します。**
 
@@ -361,7 +361,7 @@ Current Production SupportはUnity 6.x+の3ケースです。
 | Unity 6.x+ | URP | primary | Official Unity CLI + Unity Pipeline |
 | Unity 6.x+ | HDRP | primary | Official Unity CLI + Unity Pipeline |
 
-Unity 2022.3のbounded fallback / compatibility記録はHistorical Evidenceとして保持しますが、現行Production Supportには含めません。Support Matrix外はMutation前にunsupportedまたはunavailableとしてFail-Closedします。
+Unity 2022.3の限定Batch Fallbackは削除しました。現行Production Supportには含めません。Support Matrix外はMutation前にunsupportedまたはunavailableとしてFail-Closedします。
 
 ## 16. Environment Regression Matrix
 
@@ -396,7 +396,7 @@ UnityAgentはArtist Providerを要求しない。
 UnityAgentはCapabilityを要求する。
 
 Current Production baselineはUnity 6.x+（Built-in / URP / HDRP）。
-Unity 2022.3の記録はHistorical Evidenceとして扱う。
+Unity 2022.3は現行サポート対象外とする。
 
 RuntimeがEnvironmentを観測し、
 現在安全に実行できるProviderだけを使う。

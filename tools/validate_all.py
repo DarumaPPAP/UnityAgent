@@ -137,7 +137,7 @@ def main() -> int:
             failed.append(f"missing:{suite}")
             continue
         label = f"unittest:{suite}"
-        command = [sys.executable, "-m", "unittest", "discover", "-s", str(suite), "-p", "test_*.py"]
+        command = [sys.executable, "-m", "unittest", "discover", "-s", str(suite), "-p", "test_*.py", "-q", "-b"]
         if run_command(label, command) != 0:
             failed.append(label)
 

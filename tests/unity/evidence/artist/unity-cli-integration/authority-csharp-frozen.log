@@ -1,1 +1,0 @@
-PASS: absent/invalid descriptor, authenticated request/response, deny, signature, nonce, session, reservation

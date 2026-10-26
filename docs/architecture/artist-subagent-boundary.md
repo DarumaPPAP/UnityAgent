@@ -85,7 +85,7 @@ Plan登録、承認、Editor変更、永続Evidence、全9コマンドE2Eは別�
 
 ## 互換名
 
-`unity_artist_cli` は過去のSnapshot／InstallReceiptを読むための履歴識別子です。新規Provider登録、Setup要求、実行選出には使いません。独立実行ファイル `unity-artist` は不要です。Editorの製品識別子 `UnityArtistCLI` と既存UPM Package IDは結果Schema互換のため保持します。
+`unity_artist_cli` は廃止済みの旧識別子です。現行Snapshot／InstallReceiptの契約から撤去し、新規Provider登録、Setup要求、実行選出では拒否します。独立実行ファイル `unity-artist` は不要です。Editorの製品識別子 `UnityArtistCLI` と既存UPM Package IDは結果Schema互換のため保持します。
 
 <a id="offline-catalog-import-gate"></a>
 

@@ -11,15 +11,12 @@ import sys
 
 import yaml
 
-from historical_evidence import validate_historical_evidence
 
 ROOT = Path(__file__).resolve().parents[3]
 PACKAGE_PATH = ROOT / "subagent/artist_subagent/tools/editor/package.json"
 CLI_SOURCE = ROOT / "src/unityagent/runtime/tooling/providers/unity_cli/artist_command_adapter.py"
 EDITOR_ROOT = ROOT / "subagent/artist_subagent/tools/editor/Editor"
 MATRIX_PATH = ROOT / "ci/compatibility/support-matrix.yaml"
-GATE_EVIDENCE_PATH = ROOT / "tests/unity/evidence/artist/historical/cli-pipeline-gate-evidence.yaml"
-CLI_REFERENCE_AUDIT_PATH = ROOT / "tests/unity/evidence/artist/historical/unity-cli-reference-audit.yaml"
 MANIFEST_PATH = ROOT / "subagent/artist_subagent/manifest.yaml"
 SURFACE_PATH = ROOT / "subagent/artist_subagent/contracts/backend-surface-contract.yaml"
 BACKEND_CONTRACT_PATH = SURFACE_PATH
@@ -36,6 +33,7 @@ FORBIDDEN_SOURCE_TOKENS = (
     "MCPForUnity",
     "using Unity.MCP",
     "AutoRegister",
+    "UnityGraphicsMcp",
 )
 EXPECTED_ROWS = {
     ("Unity 6.x+", "builtin"),
@@ -109,9 +107,9 @@ def check_cli_surface(errors: list[str]) -> None:
 
 
 def check_editor_surface(errors: list[str]) -> None:
-    sources = "\n".join(path.read_text(encoding="utf-8") for path in EDITOR_ROOT.rglob("*.cs")) if EDITOR_ROOT.is_dir() else ""
+    sources = "\n".join(path.read_text(encoding="utf-8") for path in EDITOR_ROOT.rglob("*") if path.is_file() and path.suffix.lower() in {".cs", ".asmdef", ".json"}) if EDITOR_ROOT.is_dir() else ""
     for token in FORBIDDEN_SOURCE_TOKENS:
-        if token in sources:
+        if token.casefold() in sources.casefold():
             error(errors, f"forbidden legacy/MCP token remains in current Editor source: {token}")
     if "CliCommand" not in sources or "Unity.Pipeline" not in sources:
         error(errors, "current Editor package does not expose official Pipeline CliCommand registrations")
@@ -139,56 +137,6 @@ def check_matrix(errors: list[str]) -> None:
     if matrix.get("verification_contract", {}).get("unsupported_result_before_mutation") is not True:
         error(errors, "unsupported result before mutation is not required")
 
-
-def check_cli_pipeline_gate_evidence(errors: list[str]) -> None:
-    evidence = read_yaml(errors, GATE_EVIDENCE_PATH)
-    if evidence.get("case") != "unity-2022.3-builtin":
-        error(errors, "CLI/Pipeline gate evidence must cover the 2022.3 Built-in case")
-    candidate = evidence.get("official_first_candidate") or {}
-    if candidate.get("transport") != "official_unity_cli_pipeline":
-        error(errors, "2022.3 gate evidence must record Official Unity CLI + Pipeline as first candidate")
-    pipeline = candidate.get("pipeline") or {}
-    if pipeline.get("failure_class") != "concrete_cli_pipeline_gate_failure":
-        error(errors, "2022.3 gate evidence must preserve a concrete Pipeline gate failure")
-    plugin = evidence.get("artist_plugin") or {}
-    if plugin.get("version_status") != "passed" or plugin.get("help_status") != "passed":
-        error(errors, "Artist plugin version/help command evidence is incomplete")
-    if plugin.get("global_help_status") != "blocked_by_official_cli_global_parser":
-        error(errors, "global unity artist --help behavior must remain explicitly recorded")
-    fallback = evidence.get("fallback_evaluation") or {}
-    if fallback.get("selected") is not True or fallback.get("status") != "verified_bounded_non_mcp":
-        error(errors, "2022.3 bounded fallback selection/evidence is incomplete")
-
-
-def check_cli_reference_audit(errors: list[str]) -> None:
-    audit = read_yaml(errors, CLI_REFERENCE_AUDIT_PATH)
-    if audit.get("schema_version") != "1.0":
-        error(errors, "Unity CLI reference audit schema version must be 1.0")
-    if audit.get("documented_release") != "1.0.0-beta.10":
-        error(errors, "Unity CLI reference audit must record the current documented release")
-    observation = audit.get("runtime_observation") or {}
-    if observation.get("status") != "not_observed" or observation.get("historical_evidence_preserved") is not True:
-        error(errors, "Unity CLI reference audit must distinguish documentation from runtime observation")
-    required_urls = {
-        "https://docs.unity.com/en-us/unity-cli",
-        "https://docs.unity.com/en-us/unity-cli/unity-cli-reference",
-        "https://docs.unity.com/en-us/unity-cli/release-notes",
-        "https://docs.unity.com/en-us/unity-production-pipeline/local-tools-cli/unity-pipeline-package",
-    }
-    actual_urls = {
-        str(source.get("url"))
-        for source in audit.get("sources", [])
-        if isinstance(source, dict)
-    }
-    missing_urls = sorted(required_urls - actual_urls)
-    if missing_urls:
-        error(errors, f"Unity CLI reference audit is missing official sources: {missing_urls}")
-    scope = audit.get("audit_scope") or {}
-    forbidden_hub_ownership = {"runtime_execution", "resolver", "installer", "environment_observation", "automatic_installation"}
-    if not forbidden_hub_ownership.issubset(set(scope.get("hub_does_not_own") or [])):
-        error(errors, "Unity CLI reference audit weakens the Hub boundary")
-    if "1.0.0-beta.8" not in set(scope.get("historical_versions_to_preserve") or []):
-        error(errors, "historical beta.8 evidence must remain explicitly preserved")
 
 
 def check_catalog(errors: list[str]) -> None:
@@ -289,14 +237,11 @@ def check_legacy_anchor(errors: list[str]) -> None:
 
 
 def main() -> int:
-    validate_historical_evidence()
     errors: list[str] = []
     check_identity(errors)
     check_cli_surface(errors)
     check_editor_surface(errors)
     check_matrix(errors)
-    check_cli_pipeline_gate_evidence(errors)
-    check_cli_reference_audit(errors)
     check_catalog(errors)
     check_agent_distribution(errors)
     print(f"ArtistSubAgent backend contract: {len(errors)} error(s)")

@@ -82,7 +82,10 @@ class PRQualityTests(unittest.TestCase):
         content=path.read_text(encoding="utf-8")
         self.assertIn('Enforce Japanese PR title and required sections',content)
         self.assertIn('python tools/pr_quality/validate_pr.py --event "$GITHUB_EVENT_PATH"',content)
-        self.assertIn('edited, ready_for_review',content)
+        self.assertIn('opened, synchronize, reopened, ready_for_review', content)
+        self.assertNotIn('edited, ready_for_review', content)
+        pr_quality = (Path(__file__).resolve().parents[2] / ".github/workflows/pr-quality.yml").read_text(encoding="utf-8")
+        self.assertIn('opened, edited, synchronize', pr_quality)
 
     def test_event_cli(self):
         with tempfile.TemporaryDirectory() as tmp:
