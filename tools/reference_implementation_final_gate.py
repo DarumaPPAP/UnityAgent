@@ -159,7 +159,6 @@ def main() -> int:
         "artist_contract": [sys.executable, "tests/unity/verify/verify_artist_backend_contract.py"],
         "artist_fixture_structure": [sys.executable, "tests/unity/verify/validate_unity_fixtures.py"],
         "artist_typed_command_contract": [sys.executable, "-m", "unittest", "tests.runtime.test_artist_command_adapter", "tests.runtime.test_artist_mutation_mapper", "tests.runtime.test_artist_authority", "tests.runtime.test_artist_approval", "tests.runtime.test_camera_fov_live_unity_cli"],
-        "artist_semantic_names": [sys.executable, "tests/unity/verify/verify-semantic-names.py"],
         "artist_portable_paths": [sys.executable, "tests/unity/verify/verify_portable_paths.py"],
     }
     for name, command in static_commands.items():

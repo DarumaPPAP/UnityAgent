@@ -570,18 +570,13 @@
     },
     {
       "path": "tests/unity/verify/verify_artist_backend_contract.py",
-      "sha1": "9bac052770e240650be3a0d752fcad637a77eba3",
-      "size": 12445
+      "sha1": "420fce5dc2f90356cd7456e2c5f5f8e4d76faadd",
+      "size": 12561
     },
     {
       "path": "tests/unity/verify/verify_portable_paths.py",
       "sha1": "a10288b2aa27fcd45b035792f9f2a7efca888ad1",
       "size": 1394
-    },
-    {
-      "path": "tests/unity/verify/verify-semantic-names.py",
-      "sha1": "0473339c3a47d002f224b5f9759ae8f5f622d5d9",
-      "size": 1012
     },
     {
       "path": "tests/unity/verify/verify-unity-api-compatibility.py",

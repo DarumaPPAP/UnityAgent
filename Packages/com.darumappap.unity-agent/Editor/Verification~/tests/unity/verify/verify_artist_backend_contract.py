@@ -33,6 +33,7 @@ FORBIDDEN_SOURCE_TOKENS = (
     "MCPForUnity",
     "using Unity.MCP",
     "AutoRegister",
+    "UnityGraphicsMcp",
 )
 EXPECTED_ROWS = {
     ("Unity 6.x+", "builtin"),
@@ -106,9 +107,9 @@ def check_cli_surface(errors: list[str]) -> None:
 
 
 def check_editor_surface(errors: list[str]) -> None:
-    sources = "\n".join(path.read_text(encoding="utf-8") for path in EDITOR_ROOT.rglob("*.cs")) if EDITOR_ROOT.is_dir() else ""
+    sources = "\n".join(path.read_text(encoding="utf-8") for path in EDITOR_ROOT.rglob("*") if path.is_file() and path.suffix.lower() in {".cs", ".asmdef", ".json"}) if EDITOR_ROOT.is_dir() else ""
     for token in FORBIDDEN_SOURCE_TOKENS:
-        if token in sources:
+        if token.casefold() in sources.casefold():
             error(errors, f"forbidden legacy/MCP token remains in current Editor source: {token}")
     if "CliCommand" not in sources or "Unity.Pipeline" not in sources:
         error(errors, "current Editor package does not expose official Pipeline CliCommand registrations")
