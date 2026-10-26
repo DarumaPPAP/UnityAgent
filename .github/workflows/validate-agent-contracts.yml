@@ -2,7 +2,7 @@ name: UnityAgent CI
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, edited, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
   workflow_dispatch:
@@ -53,16 +53,16 @@ jobs:
 
       - name: Verify Artist Editor authority and Control Plane interop
         run: |
-          python -m unittest discover -s tests/subagent/artist/authority -p "test_*.py" -v
+          python -m unittest discover -s tests/subagent/artist/authority -p "test_*.py" -q -b
           dotnet run --project tests/subagent/artist/authority/AuthorityClientTests.csproj
           PYTHONPATH=.:src python tests/subagent/artist/authority/verify_authority_interop.py
 
       - name: Validate migrated Unity P9 fixtures and host runner
         run: |
           python tests/unity/verify/validate_unity_fixtures.py
-          python -m unittest discover -s tests/unity/verify -p "test_unity_ci*.py" -v
-          python -m unittest discover -s tests/packaging -p "test_p9_release_evidence.py" -v
-          python -m unittest discover -s tests/packaging -p "test_unity63_video_encoder_compile_contract.py" -v
+          python -m unittest discover -s tests/unity/verify -p "test_unity_ci*.py" -q -b
+          python -m unittest discover -s tests/packaging -p "test_p9_release_evidence.py" -q -b
+          python -m unittest discover -s tests/packaging -p "test_unity63_video_encoder_compile_contract.py" -q -b
 
       - name: Validate Unity Editor PackageInfo qualification
         run: |

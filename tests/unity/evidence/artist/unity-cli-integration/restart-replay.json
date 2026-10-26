@@ -1,8 +1,0 @@
-{
-  "status": "PASS",
-  "editor_restarted": true,
-  "control_plane_process_restarted": true,
-  "reason": "Artist approval has already started execution",
-  "run_id": "artist-live-b45bbae6b8ec",
-  "approval_consumed_before_restart": true
-}

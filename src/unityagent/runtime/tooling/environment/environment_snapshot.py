@@ -79,28 +79,6 @@ class ArtistSnapshot:
 
 
 @dataclass(frozen=True)
-class UnityArtistCliSnapshot:
-    """旧Evidence Snapshotの解析互換。現行DiscoveryはArtistSnapshotだけを生成する。"""
-
-    available: TriState
-    version: str | None
-    executable_path: str | None
-    project_bound: TriState
-    package_installed: TriState
-    package_version: str | None
-    pipeline_reachable: TriState
-    unity_version: str | None
-    render_pipeline: str | None
-    support_tier: str | None
-    compatibility_backend: str | None
-    capabilities: list[str]
-    failure_class: Literal["unavailable", "unhealthy", "timeout", "unknown"] | None
-    binding_status: BindingStatus
-    bound_instance_id: str | None
-    compatible: TriState = "unknown"
-
-
-@dataclass(frozen=True)
 class PipelineSnapshot:
     installed: TriState
     reachable: TriState
@@ -148,13 +126,10 @@ class EnvironmentSnapshot:
     player_runtime: PlayerRuntimeSnapshot
     profile_hint: str | None
     binding_fingerprint: str
-    unity_artist_cli: UnityArtistCliSnapshot | None = None
     artist: ArtistSnapshot | None = None
 
     def to_dict(self) -> dict:
         value = asdict(self)
-        if self.unity_artist_cli is None:
-            value.pop("unity_artist_cli")
         return value
 
     def validate(self, *, root: Path = ROOT) -> None:

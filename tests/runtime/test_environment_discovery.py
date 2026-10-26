@@ -386,12 +386,14 @@ class EnvironmentDiscoveryTests(unittest.TestCase):
     def test_schema_is_valid(self):
         validate_environment_snapshot_schema()
 
-    def test_historical_artist_host_snapshot_remains_parseable_without_discovery(self):
+
+    def test_retired_artist_host_snapshot_is_rejected(self):
+        from jsonschema.exceptions import ValidationError
         with tempfile.TemporaryDirectory() as tmp:
             value = self.discover_fixture(self.make_project(Path(tmp)), "NO_EDITOR").to_dict()
-            value.pop("artist")
-            value["unity_artist_cli"] = {"available": False, "version": "0.0.2-beta", "executable_path": "/historical/unity-artist", "project_bound": False, "package_installed": False, "package_version": None, "pipeline_reachable": False, "unity_version": None, "render_pipeline": None, "support_tier": None, "compatibility_backend": None, "capabilities": [], "failure_class": "unavailable", "binding_status": "unbound", "bound_instance_id": None, "compatible": "unknown"}
-            validate_environment_snapshot(value)
+            value["unity_artist_cli"] = {"available": False}
+            with self.assertRaises(ValidationError):
+                validate_environment_snapshot(value)
 
     def test_artist_absent_package_or_cli_never_dispatches(self):
         from unityagent.runtime.tooling.environment.discovery import probe_artist_pipeline
