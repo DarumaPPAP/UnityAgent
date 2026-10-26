@@ -243,6 +243,22 @@ class ArtistProviderBoundaryTests(unittest.TestCase):
             self.assertEqual(self.run_command()["status"], "failed")
         self.assertEqual(self.calls, [])
 
+    def test_artist_discovery_failure_reports_observed_boundary_without_dispatch(self):
+        from dataclasses import replace
+        cases = (
+            (replace(self.discovery, pipeline_reachable=False), "unavailable", "pipeline_reachable=False"),
+            (replace(self.discovery, pipeline_reachable="unknown"), "not_observed", "pipeline_reachable=unknown"),
+            (replace(self.discovery, project_info=None), "not_observed", "current Project info"),
+        )
+        for discovery, expected_class, message in cases:
+            with self.subTest(message=message):
+                self.discovery = discovery
+                result = self.run_command()
+                self.assertEqual(result["status"], "failed")
+                self.assertEqual(result["failure_class"], expected_class)
+                self.assertIn(message, result["reason"])
+        self.assertEqual(self.calls, [])
+
     def test_workflow_commands_and_required_context_do_not_claim_success(self):
         for command in (ArtistCommand("plan", request_json="{}"), ArtistCommand("preview", plan_id="plan"), ArtistCommand("capture"), ArtistCommand("evaluate", capture_id="capture", decision="accepted"), ArtistCommand("refine", evaluation_id="evaluation", request_json="{}")):
             self.assertEqual(self.run_command(command)["status"], "failed")
