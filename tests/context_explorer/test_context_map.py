@@ -31,6 +31,23 @@ class ContextExplorerMapTests(unittest.TestCase):
         errors = validate_context_packs(ROOT)
         self.assertEqual(errors, [], "\n".join(errors))
 
+    def test_artist_contract_and_boundary_references_remain_narrowly_allowlisted(self) -> None:
+        from validate_context_packs import canonical_local_path
+        for relative in (
+            "subagent/artist_subagent/contracts/capability-contracts.yaml",
+            "subagent/artist_subagent/contracts/backend-surface-contract.yaml",
+            "docs/architecture/artist-subagent-boundary.md",
+        ):
+            with self.subTest(relative=relative):
+                self.assertTrue(canonical_local_path(ROOT, relative).is_file())
+        for relative in (
+            "subagent/artist_subagent/tools/editor/package.json",
+            "docs/architecture/architecture.md",
+            "../AGENTS.md",
+        ):
+            with self.subTest(rejected=relative), self.assertRaises(ValueError):
+                canonical_local_path(ROOT, relative)
+
     def test_context_nodes_have_canonical_source_hash_and_provenance(self) -> None:
         for node in load_context_map(ROOT).to_dict()["nodes"]:
             self.assertEqual(node["type"], "context")
