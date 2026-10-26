@@ -1,7 +1,7 @@
 # UnityAgent remote bootstrap installer.
 #
 # Intended usage from Windows PowerShell:
-#   irm https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/migration/unity-artist-cli-v2/scripts/install-remote.ps1 | iex
+#   irm https://raw.githubusercontent.com/DarumaPPAP/UnityAgent/main/scripts/install-remote.ps1 | iex
 #
 # The bootstrap installs the host Control Plane from this GitHub repository into
 # the current user's Python environment. Unity UPM and Codex Plugin entries remain

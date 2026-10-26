@@ -32,7 +32,7 @@ preferred_surface: live_editor
 次のようなProvider製品指定はSemantic Contractにしません。
 
 ```text
-× UnityArtistCLIを使ってSceneを見る
+× Artistの実行Backendを指示してSceneを見る
 × Unity CLIでTestする
 
 ○ scene.inspect が必要
@@ -58,13 +58,11 @@ flowchart TD
     D -->|file| PF[File Provider]
     D -->|native_unity_editor| PN[Native Unity Editor Provider]
     D -->|unity_cli| PC[Unity CLI Provider]
-    D -->|unity_artist_cli| PA[ArtistSubAgent Backend Provider]
     D -->|player_runtime| PP[Player Runtime Provider]
 
     PF --> X[Structured ProviderResult]
     PN --> X
     PC --> X
-    PA --> X
     PP --> X
 
     X --> F{Infrastructure failure?}
@@ -267,7 +265,7 @@ RuntimeはProviderを選ぶ前にEnvironment Factを観測します。
 - Unity Editor install / version / running / Safe Mode / binding
 - Unity CLI availability
 - Pipeline reachability
-- UnityArtistCLI version / package / Pipeline / render pipeline / support tier / binding
+- Artist UPM version / Unity CLI / Pipeline / render pipeline / support tier / binding
 - legacy bridge binding（移行互換のみ）
 - Test Framework
 - Build target module
@@ -303,7 +301,7 @@ flowchart LR
 
     A --> PF[File / Unity CLI]
     B --> CLI[Unity CLI / Native Editor]
-    C --> ART[UnityArtistCLI / safe CLI surface]
+    C --> ART[Unity CLI / Artist UPM / safe Pipeline surface]
     D --> PR[Player src/unityagent/runtime]
 ```
 
@@ -324,7 +322,7 @@ Native Unity Editorが同じtest_execution Evidenceを満たす
 
 ```text
 domain.workflow
-UnityArtistCLI unavailable
+Artist UPM / Unity CLI Pipeline unavailable
         ↓
 × raw .unity YAML edit
 × arbitrary eval

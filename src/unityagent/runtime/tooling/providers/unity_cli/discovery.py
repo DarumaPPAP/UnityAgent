@@ -11,7 +11,6 @@ from unityagent.runtime.tooling.providers.unity_cli.command_builder import (
     build_commands_manifest_command,
     build_help_probe,
     build_pipeline_catalog_command,
-    build_pipeline_list_command,
     build_project_info_command,
     build_status_command,
     build_version_command,
@@ -262,25 +261,29 @@ def discover_unity_cli_surface(
     pipeline = environment_snapshot.get("pipeline") or {}
     pipeline_reachable: bool | str = False if pipeline.get("installed") is False else "unknown"
     command_catalog: tuple[dict[str, Any], ...] = ()
-    if pipeline.get("installed") is True and "pipeline" in supported:
-        command = build_pipeline_list_command(executable)
-        outcome, _ = _dispatch_safe(
-            DispatchRequest(list(command.argv), root, timeout_seconds),
-            dispatch_fn=dispatch_fn,
-        )
-        pipeline_reachable = bool(outcome is not None and _returncode(outcome) == 0 and _structured_success(outcome))
-
-    if pipeline_reachable is True and "command" in supported:
+    catalog_failure = None
+    catalog_reason = None
+    if pipeline.get("installed") is True and "command" in supported:
+        # 全Editor列挙は無関係なProjectの応答待ちを含むため、対象ProjectのCatalogを直接観測する。
         command = build_pipeline_catalog_command(executable, root)
-        outcome, _ = _dispatch_safe(
-            DispatchRequest(list(command.argv), root, timeout_seconds),
-            dispatch_fn=dispatch_fn,
-        )
-        if outcome is not None and _returncode(outcome) == 0:
+        outcome, dispatch_failure = _dispatch_safe(DispatchRequest(list(command.argv), root, timeout_seconds), dispatch_fn=dispatch_fn)
+        pipeline_reachable = False
+        if outcome is None:
+            catalog_failure = dispatch_failure or "unavailable"
+        elif outcome.get("failure_class") == "runtime_timeout":
+            catalog_failure = "timeout"
+        elif _returncode(outcome) != 0:
+            catalog_failure = "unavailable"
+        else:
             try:
                 command_catalog = extract_command_catalog(_stdout(outcome))
             except ValueError:
                 command_catalog = ()
+            pipeline_reachable = bool(command_catalog)
+            if not pipeline_reachable:
+                catalog_failure = "not_observed"
+        if catalog_failure:
+            catalog_reason = "Target Project Pipeline Catalog was not observed: " + catalog_failure
 
     return UnityCliSurfaceDiscovery(
         status="available",
@@ -291,4 +294,6 @@ def discover_unity_cli_surface(
         editor_status=editor_status,
         pipeline_reachable=pipeline_reachable,
         command_catalog=command_catalog,
+        failure_class=catalog_failure,
+        reason=catalog_reason,
     )

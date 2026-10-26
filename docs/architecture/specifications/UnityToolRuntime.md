@@ -355,7 +355,7 @@ RegistryのPotential SurfaceとConcrete adapterの実装範囲を混同しませ
 MyUnityMCP v1.1.1のRuntime Adapterは現行Provider Registryから削除済みです。
 旧Tool名、MCP transport、Prepare/Apply互換経路はProduction Runtimeへ復活させません。
 
-Legacy由来のSafety知識はPolicy / Runtime Guard / Evidence Contractへ必要な部分だけ残し、現行CapabilityはUnity CLI、UnityArtistCLI、File、Native Editor、Player Runtime等の現在登録済みProviderから解決します。
+Legacy由来のSafety知識はPolicy / Runtime Guard / Evidence Contractへ必要な部分だけ残し、現行CapabilityはUnity CLI（Artist UPMを含む）、File、Native Editor、Player Runtime等の現在登録済みProviderから解決します。
 
 ### 9.5 Coplay MCP
 

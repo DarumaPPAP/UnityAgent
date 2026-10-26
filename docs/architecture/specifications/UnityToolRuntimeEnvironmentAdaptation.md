@@ -196,7 +196,7 @@ player.observe  -> Player providerが無ければunavailable
 source.read      -> File
 scene.inspect    -> Coplay MCPがCapabilityを証明できればCoplay MCP、なければunavailable
 profiler.observe -> Unity CLI / Pipelineが無いためunavailable
-visual.capture   -> UnityArtistCLIが無ければunavailable
+visual.capture   -> Artist UPMとUnity CLI Pipelineの到達性が無ければunavailable
 project.test     -> executable Providerが証明できなければunavailable
 ```
 

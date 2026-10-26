@@ -247,6 +247,7 @@ class ArtistProviderBoundaryTests(unittest.TestCase):
         from dataclasses import replace
         cases = (
             (replace(self.discovery, pipeline_reachable=False), "unavailable", "pipeline_reachable=False"),
+            (replace(self.discovery, pipeline_reachable=False, failure_class="timeout", reason="Target Project Pipeline Catalog was not observed: timeout"), "timeout", "Catalog"),
             (replace(self.discovery, pipeline_reachable="unknown"), "not_observed", "pipeline_reachable=unknown"),
             (replace(self.discovery, project_info=None), "not_observed", "current Project info"),
         )

@@ -542,11 +542,12 @@ class UnityCliProvider:
             return artist_failure("not_observed", "Artist Pipeline discovery returned no surface")
         if discovery.pipeline_reachable is not True:
             return artist_failure(
-                "unavailable" if discovery.pipeline_reachable is False else "not_observed",
+                discovery.failure_class or ("unavailable" if discovery.pipeline_reachable is False else "not_observed"),
                 "Artist Pipeline discovery is unavailable: "
                 f"pipeline_reachable={discovery.pipeline_reachable}, "
                 f"catalog_status={discovery.status}, "
-                f"project_info_observed={isinstance(discovery.project_info, dict)}",
+                f"project_info_observed={isinstance(discovery.project_info, dict)}, "
+                f"reason={discovery.reason}",
             )
         if not isinstance(discovery.project_info, dict):
             return artist_failure("not_observed", "Artist Pipeline discovery did not observe current Project info")

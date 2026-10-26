@@ -14,7 +14,7 @@
   "interface": {
     "displayName": "UnityAgent",
     "shortDescription": "Route Unity work through safe capabilities.",
-    "longDescription": "UnityAgent owns architecture, policy, routing, approval, loop control and evidence while Unity CLI, UnityArtistCLI and other providers execute bounded capabilities.",
+    "longDescription": "UnityAgent owns architecture, policy, routing, approval, loop control and evidence while Unity CLI with optional Artist UPM and other providers execute bounded capabilities.",
     "developerName": "DarumaPPAP",
     "category": "Developer tools",
     "capabilities": ["capability routing", "provider resolution", "evidence-backed Unity execution"],

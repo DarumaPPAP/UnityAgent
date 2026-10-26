@@ -11,8 +11,8 @@
 [6000.6 Artist E2E Project](../../tests/unity/projects/artist-e2e/) のSceneとResourceを維持します。[2022.3 Project](../../tests/unity/projects/historical/2022.3/) は履歴用です。使い捨てコピーでのLive確認には、対象を明示したライセンス済み・接続済みEditorが必要です。
 
 ```powershell
-python subagent/artist_subagent/tools/host/scripts/run_minimal_live_smoke.py --project-path .\tests\unity\projects\artist-e2e
-.\subagent\artist_subagent\tools\host\scripts\verify-external-cli.ps1 -ProjectPath .\tests\unity\projects\artist-e2e
+python -m tools.run_artist_unity_cli_live --project-path <この実行が所有する.artist-e2e~の絶対パス> --camera-name "Main Camera" --output artifacts/artist-live
+python -m tools.run_artist_cinematic_live <この実行が所有する.artist-e2e~の絶対パス> artifacts/artist-cinematic
 ```
 
-これらは変更を伴い得るLive検証で、Host契約検査とは別です。文書更新では実行していません。履歴の整合やRegistry登録から実行準備完了を推測せず、ManifestのActivation条件を現在のProjectで独立に観測します。
+これらは変更を伴い得るLive検証で、静的契約検査とは別です。Control Plane → Tool Broker → Unity CLI → Unity Pipeline → Artist UPMを通り、独立Artist Hostは使用しません。文書更新では実行していません。履歴の整合やRegistry登録から実行準備完了を推測せず、ManifestのActivation条件を現在のProjectで独立に観測します。
