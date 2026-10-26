@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 class ArtistRetirementTests(unittest.TestCase):
     def test_retired_provider_and_standalone_host_sources_are_absent(self):
-        for relative in ("src/unityagent/runtime/tooling/providers/unity_artist_cli", "subagent/artist_subagent/tools/host", "subagent/artist_subagent/tools/editor/Editor/Batch", "tests/unity/projects/historical/2022.3"):
+        for relative in ("src/unityagent/runtime/tooling/providers/unity_artist_cli", "subagent/artist_subagent/tools/host", "subagent/artist_subagent/tools/editor/Editor/Batch", "tests/unity/projects/historical/2022.3", "tests/subagent/artist/tools"):
             with self.subTest(path=relative):
                 self.assertFalse((ROOT / relative).exists())
 

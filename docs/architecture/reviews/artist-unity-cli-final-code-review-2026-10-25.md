@@ -23,5 +23,5 @@ Reviewerは `identity-final-green.xml` の34件成功と、`live-builtin-reviewe
 ## 検証上の限界
 
 - LookDev適用後の検証処理への例外注入は実Editorで未実行（`not_observed`）。例外経路の修正はコードレビューによる確認。
-- この再レビュー時点では、別実行の最終Cinematic Mutation、URP／HDRP、配布物生成の結果をReviewerは確認していない。これらは[統合検証記録](artist-unity-cli-integration-progress-2026-10-25.md)と[Evidence索引](../../../tests/unity/evidence/artist/unity-cli-integration/index.json)の各Gateで判定する。
+- この再レビュー時点では、別実行の最終Cinematic Mutation、URP／HDRP、配布物生成の結果をReviewerは確認していない。これらは[統合検証記録](artist-unity-cli-integration-progress-2026-10-25.md)と[当時のEvidence索引](https://github.com/DarumaPPAP/UnityAgent/blob/806783ced882494a238de770eeda82502f53af6a/tests/unity/evidence/artist/unity-cli-integration/index.json)の各Gateで判定する。
 - 同一OSユーザーによる任意ファイル改竄・任意C#実行を防ぐsandboxの監査ではなく、型付きCLI／Pipeline境界の承認・実行契約を確認した。

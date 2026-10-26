@@ -8,7 +8,7 @@
 
 ## 参照の分類
 
-[参照一覧](../../../tests/runtime/fixtures/artist-cutover-inventory.json) は上記SHAの追跡済みファイルに対し、`unity_artist_cli`、`unity-artist`、`UnityArtist.Tools.csproj`、`UNITY_ARTIST_CLI_PATH`を検索した結果である。検索語に一致しない推移的依存まで網羅するものではない。
+[当時の参照一覧](https://github.com/DarumaPPAP/UnityAgent/blob/806783ced882494a238de770eeda82502f53af6a/tests/runtime/fixtures/artist-cutover-inventory.json) は上記SHAの追跡済みファイルに対し、`unity_artist_cli`、`unity-artist`、`UnityArtist.Tools.csproj`、`UNITY_ARTIST_CLI_PATH`を検索した結果である。検索語に一致しない推移的依存まで網羅するものではない。
 
 | 分類 | 主な対象 | 扱い |
 |---|---|---|

@@ -1,6 +1,7 @@
-# Preserved Artist projects
+# Unity Editor検証Fixture
 
+現行の実行対象とサポートVersionは [tests/unity/matrix.yaml](../matrix.yaml) を正本とします。
 
-The READMEs inside these preserved projects describe their original sessions. Their old `Tests/Compatibility/` paths refer to [archived records](../evidence/artist/historical/index.json), never to current successful runs. Original URP/HDRP projects referenced by those records were absent from the baseline. Current licensed Editor, Pipeline, capture and visual validation is `BLOCKED_NOT_RUN` / `not_observed`.
+過去の移行時Evidenceは [Artist Unity CLI統合PR #227](https://github.com/DarumaPPAP/UnityAgent/pull/227) の履歴にあり、現在のEditor検証成功の代わりにはなりません。
 
-The preserved 6000.6 package lock also updates only the local Artist file dependency depth to match its relocated manifest; all external package version/dependency observations remain unchanged.
+Editor・Pipeline・Capture・Visualの結果は、実行ごとの証跡で個別に判定します。未観測は `not_observed`、前提不足は `BLOCKED_NOT_RUN` として扱います。
