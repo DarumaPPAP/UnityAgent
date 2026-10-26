@@ -2,7 +2,7 @@
   "schema_version": 1,
   "canonical_editor": "6000.3.12f1",
   "observation": "not_observed",
-  "package_policy": "official-registry-stable-17-exact-editor-stream",
+  "package_policy": "official-editor-bundled-stable-17-exact-editor-stream",
   "fixtures": [
     {
       "id": "canonical-full",

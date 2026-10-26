@@ -452,8 +452,7 @@ class Issue136HardeningTests(unittest.TestCase):
             capture_path.write_bytes(b"reuse-capture")
             fake_editor = project / "fake-unity-editor.exe"
             fake_cli = project / "fake-unity-cli.exe"
-            fake_artist = project / "fake-unity-artist.exe"
-            for executable in (fake_editor, fake_cli, fake_artist):
+            for executable in (fake_editor, fake_cli):
                 executable.write_bytes(b"test executable")
             profile, task, approval, resolver, grant, action, result = _fixture(project, run_id="reuse-run")
             environment = {
@@ -479,10 +478,8 @@ class Issue136HardeningTests(unittest.TestCase):
                     "bound_instance_id": "editor-reuse",
                 },
                 "unity_cli": {"available": True, "version": "1.0.0", "executable_path": str(fake_cli), "failure_class": None},
-                "unity_artist_cli": {
+                "artist": {
                     "available": True,
-                    "version": "1.0.0",
-                    "executable_path": str(fake_artist),
                     "project_bound": True,
                     "package_installed": True,
                     "package_version": "1.0.0",
@@ -493,7 +490,6 @@ class Issue136HardeningTests(unittest.TestCase):
                     "support_tier": "primary",
                     "compatibility_backend": "builtin_editor_api",
                     "capabilities": ["artist.camera.refine", "visual.capture"],
-                    "failure_class": None,
                     "binding_status": "bound",
                     "bound_instance_id": "artist-reuse",
                 },
@@ -721,31 +717,13 @@ class Issue136HardeningTests(unittest.TestCase):
         self.assertLess(restore, build)
         self.assertIn('"--no-restore"', source[build:])
 
-    def test_live_publish_restores_a_clean_checkout_before_no_restore_publish(self) -> None:
+    def test_live_runner_uses_control_plane_without_building_or_resolving_host(self) -> None:
         from tools import run_camera_fov_reference_live as live_runner
-
-        with tempfile.TemporaryDirectory() as directory:
-            artist_root = Path(directory)
-            project_file = artist_root / "subagent" / "artist_subagent" / "tools" / "host" / "UnityArtist.Tools.csproj"
-            project_file.parent.mkdir(parents=True)
-            project_file.write_text("<Project />", encoding="utf-8")
-            commands: list[list[str]] = []
-
-            def fake_run(command: list[str], **_: object) -> subprocess.CompletedProcess[str]:
-                commands.append(list(command))
-                if command[0] == "dotnet" and command[1] == "publish":
-                    output = Path(command[command.index("-o") + 1])
-                    output.mkdir(parents=True, exist_ok=True)
-                    (output / "unity-artist.exe").write_bytes(b"published")
-                return subprocess.CompletedProcess(command, 0, "", "")
-
-            with mock.patch.object(live_runner, "_run", side_effect=fake_run):
-                resolved = live_runner._publish_or_resolve_artist_cli(artist_root)
-            self.assertEqual(resolved.name, "unity-artist.exe")
-            self.assertGreaterEqual(len(commands), 2)
-            self.assertEqual(commands[0][0:2], ["dotnet", "restore"])
-            self.assertEqual(commands[1][0:2], ["dotnet", "publish"])
-            self.assertIn("--no-restore", commands[1])
+        source = Path(live_runner.__file__).read_text(encoding="utf-8")
+        self.assertNotIn("_publish_or_resolve_artist_cli", source)
+        self.assertNotIn("UnityArtistCliProvider", source)
+        self.assertIn("execute_artist(", source)
+        self.assertIn("approve_artist_execution(", source)
 
     def test_environment_validation_fails_closed_on_unobserved_fact(self) -> None:
         from unityagent.runtime.reference_implementation.golden_task import _snapshot

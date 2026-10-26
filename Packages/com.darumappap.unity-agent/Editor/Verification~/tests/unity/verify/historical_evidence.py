@@ -15,18 +15,21 @@ def validate_historical_evidence(path: Path | None = None) -> None:
     if index.get("current_editor_status") != "BLOCKED_NOT_RUN" or index.get("current_observation") != "not_observed":
         raise ValueError("Historical records cannot certify current Editor validation")
     records = index["records"]
-    selected = records if path is None else [row for row in records if ROOT / row["path"] == path]
+    def current_path(row):
+        return ROOT / row["path"].replace("ci/evidence/artist/historical/", "tests/unity/evidence/artist/historical/")
+    selected = records if path is None else [row for row in records if current_path(row) == path]
     if not selected:
         raise ValueError(f"Historical record is not indexed: {path}")
     for row in selected:
-        archived = ROOT / row["path"]
+        archived = current_path(row)
         if row.get("classification") != "historical" or row.get("current_observation") != "not_observed":
             raise ValueError(f"Incorrect historical classification: {archived}")
-        if hashlib.sha256(archived.read_bytes()).hexdigest() != row["sha256"]:
+        raw = archived.read_bytes()
+        if hashlib.sha256(raw).hexdigest() != row["sha256"] and hashlib.sha256(raw.replace(b"\r\n", b"\n")).hexdigest() != row["sha256"]:
             raise ValueError(f"Preserved historical record bytes changed: {archived}")
     if path is None:
-        actual = {str(p.relative_to(ROOT)) for p in INDEX.parent.iterdir() if p.is_file() and p != INDEX}
-        if actual != {row["path"] for row in records}:
+        actual = {p.relative_to(ROOT).as_posix() for p in INDEX.parent.iterdir() if p.is_file() and p != INDEX}
+        if actual != {current_path(row).relative_to(ROOT).as_posix() for row in records}:
             raise ValueError("Historical evidence inventory differs from its preservation index")
 
 

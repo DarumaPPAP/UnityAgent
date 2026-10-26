@@ -1,6 +1,6 @@
 ---
 name: unity-agent-setup
-description: Use when setting up or verifying the UnityAgent Control Plane, Unity toolchain, UnityArtistCLI, or UnityAgent Codex Plugin for a Unity project. Routes all setup through the existing Control Plane and Installer Provider. Does not invoke Providers directly.
+description: Use when setting up or verifying the UnityAgent Control Plane, Unity toolchain, Artist UPM, or UnityAgent Codex Plugin for a Unity project. Routes all setup through the existing Control Plane and Installer Provider. Does not invoke Providers directly.
 ---
 
 # UnityAgent setup
@@ -36,7 +36,7 @@ For UnityAgent Codex Plugin setup, scope the request with `--product unity_agent
 
 UnityAgent remains the Architect, Commander and Loop Owner. It must submit semantic requests through the existing Runtime and must not create another Player / Provider registry.
 
-The underlying Official Unity CLI, UnityArtistCLI, Codex CLI and Installer Provider commands are never invoked from this Entry skill. Provider and installer implementation details stay behind the Control Plane / ToolBroker boundary.
+The underlying Official Unity CLI, Artist UPM, Codex CLI and Installer Provider commands are never invoked from this Entry skill. Provider and installer implementation details stay behind the Control Plane / ToolBroker boundary.
 
 ## Safety
 

@@ -55,6 +55,8 @@ class CapabilityOffer:
     evidence_supported: tuple[str, ...]
     environment_requirements: tuple[tuple[str, bool], ...]
     scope_preservation: bool
+    safety_strength: int | None = None
+    evidence_strength: int | None = None
 
 
 @dataclass(frozen=True)
@@ -174,6 +176,8 @@ def _parse_offer(
         evidence_supported=evidence_supported,
         environment_requirements=tuple(sorted(normalized_requirements)),
         scope_preservation=scope_preservation,
+        safety_strength=_strength(raw["safety_strength"], label=f"{capability}.safety_strength") if raw.get("safety_strength") is not None else None,
+        evidence_strength=_strength(raw["evidence_strength"], label=f"{capability}.evidence_strength") if raw.get("evidence_strength") is not None else None,
     )
 
 
@@ -235,6 +239,8 @@ def parse_provider_registry(value: Any, *, root: Path = ROOT) -> ProviderRegistr
 
     providers: dict[str, ProviderDescriptor] = {}
     for provider_id, raw in raw_providers.items():
+        if provider_id == "unity_artist_cli":
+            raise ValueError("unity_artist_cli is a removed Host; Artist uses the unity_cli Provider")
         if not isinstance(provider_id, str) or not provider_id.strip():
             raise ValueError("provider id must be a non-empty string")
         if not isinstance(raw, dict):

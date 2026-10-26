@@ -44,8 +44,7 @@
     "subagent/tools/validate_registry.py": "in-repository SubAgent contract validator",
     "subagent/artist_subagent/tools/editor/package.json": "Artist optional UPM backend identity",
     "subagent/artist_subagent/manifest.yaml": "Artist semantic identity and version",
-    "ci/compatibility/support-matrix.yaml": "Artist supported Unity 6 matrix",
-    "subagent/artist_subagent/tools/host/UnityArtist.Tools.csproj": "Artist tools host executable project"
+    "ci/compatibility/support-matrix.yaml": "Artist supported Unity 6 matrix"
   },
   "forbidden_roots": [
     "Context",

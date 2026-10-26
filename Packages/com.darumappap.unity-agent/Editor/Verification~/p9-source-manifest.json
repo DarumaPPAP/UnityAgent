@@ -65,8 +65,8 @@
     },
     {
       "path": "subagent/artist_subagent/tools/editor/Editor/Commands/ArtistPipelineCommands.cs",
-      "sha1": "6b6b0486bd95df053bf9661ee79f9880d2a993ce",
-      "size": 65441
+      "sha1": "6012b6a9690a83ec6130ebc0ddfa8407d5904384",
+      "size": 90961
     },
     {
       "path": "subagent/artist_subagent/tools/editor/Editor/Commands/ArtistPipelineCommands.cs.meta",
@@ -110,8 +110,8 @@
     },
     {
       "path": "subagent/artist_subagent/tools/editor/Editor/Pipeline/ArtistPipelineCommandRegistration.cs",
-      "sha1": "b3f93f28d5230d38bb7c21c20ce8015e3e7c2131",
-      "size": 3678
+      "sha1": "d26198af30638046514c1cffc62cd5c8bf359816",
+      "size": 9155
     },
     {
       "path": "subagent/artist_subagent/tools/editor/Editor/Pipeline/ArtistPipelineCommandRegistration.cs.meta",
@@ -120,8 +120,8 @@
     },
     {
       "path": "subagent/artist_subagent/tools/editor/Editor/Pipeline/UnityArtist.Pipeline.Editor.asmdef",
-      "sha1": "0084ed8cf52ecffe89ab81e5d6ff16ab3c28133e",
-      "size": 587
+      "sha1": "8c447bf5a1a9d3875074fa6e91eaadc3efb3d226",
+      "size": 604
     },
     {
       "path": "subagent/artist_subagent/tools/editor/Editor/Pipeline/UnityArtist.Pipeline.Editor.asmdef.meta",
@@ -170,8 +170,8 @@
     },
     {
       "path": "subagent/artist_subagent/tools/editor/package.json",
-      "sha1": "0c2ab804f6a0a6a60e965d6f985f2c49c6056ed2",
-      "size": 568
+      "sha1": "44f4b8d7fe557ebf20b59704268f3328ebc9bbc0",
+      "size": 674
     },
     {
       "path": "subagent/artist_subagent/tools/editor/package.json.meta",
@@ -190,8 +190,8 @@
     },
     {
       "path": "tests/unity/matrix.yaml",
-      "sha1": "42c461177dad70620d84079d0a887704f62abf7e",
-      "size": 2790
+      "sha1": "3c643781adeff108d6ee1dc2e54a300b23b4a118",
+      "size": 2796
     },
     {
       "path": "tests/unity/projects/artist-e2e/Assets.meta",
@@ -235,12 +235,12 @@
     },
     {
       "path": "tests/unity/projects/artist-e2e/Packages/manifest.json",
-      "sha1": "a7f26c399be53218118eaa26aa7b3eb2e4241f2a",
-      "size": 208
+      "sha1": "470a1d31989b19e346b8f33d9ee6dd3559e1f9a7",
+      "size": 281
     },
     {
       "path": "tests/unity/projects/artist-e2e/Packages/packages-lock.json",
-      "sha1": "6fff61b8b56432e0a4a77dd93f255ea80a433294",
+      "sha1": "962c348eb60f41b0b3e6a73656b044ac8d9a83d6",
       "size": 3104
     },
     {
@@ -360,7 +360,7 @@
     },
     {
       "path": "tests/unity/projects/pipelines/builtin/Packages/manifest.json",
-      "sha1": "5d59f2f0d72353cb43f113714e5e95c27f5921f6",
+      "sha1": "43df023c66786583d1b81893ace615d7595f1856",
       "size": 270
     },
     {
@@ -410,7 +410,7 @@
     },
     {
       "path": "tests/unity/projects/pipelines/hdrp/Packages/manifest.json",
-      "sha1": "5d59f2f0d72353cb43f113714e5e95c27f5921f6",
+      "sha1": "43df023c66786583d1b81893ace615d7595f1856",
       "size": 270
     },
     {
@@ -460,7 +460,7 @@
     },
     {
       "path": "tests/unity/projects/pipelines/urp/Packages/manifest.json",
-      "sha1": "5d59f2f0d72353cb43f113714e5e95c27f5921f6",
+      "sha1": "43df023c66786583d1b81893ace615d7595f1856",
       "size": 270
     },
     {
@@ -555,7 +555,7 @@
     },
     {
       "path": "tests/unity/projects/versions/6000.3/Packages/manifest.json",
-      "sha1": "d5e6ab07290d3234675ca618cbcb7c5398ef8a2d",
+      "sha1": "a1251265d1aa06bd94a5a34cb516ba415d36bace",
       "size": 229
     },
     {
@@ -590,7 +590,7 @@
     },
     {
       "path": "tests/unity/projects/versions/6000.6/Packages/manifest.json",
-      "sha1": "5d59f2f0d72353cb43f113714e5e95c27f5921f6",
+      "sha1": "43df023c66786583d1b81893ace615d7595f1856",
       "size": 270
     },
     {
@@ -615,8 +615,8 @@
     },
     {
       "path": "tests/unity/verify/historical_evidence.py",
-      "sha1": "17456a21be7f8c0051695db7e5f2037f1116d667",
-      "size": 3500
+      "sha1": "43e0536c877602fdea30f81ec8d147889031f6a7",
+      "size": 3780
     },
     {
       "path": "tests/unity/verify/test_unity_ci_platform.py",
@@ -625,13 +625,13 @@
     },
     {
       "path": "tests/unity/verify/test_unity_ci.py",
-      "sha1": "6e08e064dc2debda2dd551d014826b597e61f81e",
-      "size": 31121
+      "sha1": "be4238c9026996fcb3feb9fde10bcd871ef2dd19",
+      "size": 34094
     },
     {
       "path": "tests/unity/verify/unity_ci.py",
-      "sha1": "7fb5de30a1db77a48d016435a9da7986c7131a69",
-      "size": 28632
+      "sha1": "f88c80166ddac8dce2e41f53f415b1f0e60d0e36",
+      "size": 30084
     },
     {
       "path": "tests/unity/verify/validate_unity_fixtures.py",
@@ -640,8 +640,8 @@
     },
     {
       "path": "tests/unity/verify/verify_artist_backend_contract.py",
-      "sha1": "1c6c89dbfb8730832edb919dba2cb3856e3a613f",
-      "size": 16877
+      "sha1": "b55496264586a017c593466948ab0b546bc2977b",
+      "size": 15996
     },
     {
       "path": "tests/unity/verify/verify_portable_paths.py",
@@ -685,8 +685,8 @@
     },
     {
       "path": "tests/unity/verify/verify-semantic-names.py",
-      "sha1": "5ff534b05548742a5966608c52c45e548d4a4833",
-      "size": 1058
+      "sha1": "0473339c3a47d002f224b5f9759ae8f5f622d5d9",
+      "size": 1012
     },
     {
       "path": "tests/unity/verify/verify-unity-api-compatibility.py",
@@ -832,6 +832,121 @@
       "path": "tests/unity/projects/parallel-csharp-fix/ProjectSettings/ProjectVersion.txt",
       "sha1": "ebe1ff4e76af434fa02d69858b7cf8a4d7eb93ab",
       "size": 29
+    },
+    {
+      "path": "subagent/artist_subagent/tools/editor/Editor/Commands/AuthorityClient.cs",
+      "sha1": "c63819cf10744132ffcd0d68f1f2e48bc072c5a4",
+      "size": 9140
+    },
+    {
+      "path": "subagent/artist_subagent/tools/editor/Editor/Commands/AuthorityClient.cs.meta",
+      "sha1": "ad8af22680e8ad6918920313737980b2a641c4eb",
+      "size": 60
+    },
+    {
+      "path": "tests/unity/editor/artist/ApplyAuthorityTests.cs",
+      "sha1": "2491eea144e6f0a945be6b74cb6811cf9b66fcf5",
+      "size": 2626
+    },
+    {
+      "path": "tests/unity/editor/artist/ApplyAuthorityTests.cs.meta",
+      "sha1": "6c90244c7cf23fc07a33cd769f7d6c3b1b8cf73f",
+      "size": 60
+    },
+    {
+      "path": "tests/unity/editor/artist/CameraBindingTests.cs",
+      "sha1": "7118effb5ec756be34b0c274274ea8f2783d0f6c",
+      "size": 5684
+    },
+    {
+      "path": "tests/unity/editor/artist/CameraBindingTests.cs.meta",
+      "sha1": "c41ba24a21e48cdb75610c844104a8c351151cba",
+      "size": 60
+    },
+    {
+      "path": "tests/unity/editor/artist/CinematicApprovalTests.cs",
+      "sha1": "9d2d00de03a85a4470df5bf3a272acbc6b670989",
+      "size": 9736
+    },
+    {
+      "path": "tests/unity/editor/artist/CinematicApprovalTests.cs.meta",
+      "sha1": "3875c5244e4707ea63a6c7118811f59c5c36a405",
+      "size": 60
+    },
+    {
+      "path": "tests/unity/editor/artist/ContextReceiptTests.cs",
+      "sha1": "d6b272c787bcec451649262e941b20c3714ecd9b",
+      "size": 8592
+    },
+    {
+      "path": "tests/unity/editor/artist/ContextReceiptTests.cs.meta",
+      "sha1": "c50a765dedccbb70124c2ff63bfc076effa84097",
+      "size": 60
+    },
+    {
+      "path": "tests/unity/editor/artist/Fixtures.meta",
+      "sha1": "4f3886473651f01233e9dc9abc7442cff0b4f3db",
+      "size": 169
+    },
+    {
+      "path": "tests/unity/editor/artist/Fixtures/Empty.unity",
+      "sha1": "b44c970964c99155ee40e182e0ba08d8e8fb33ee",
+      "size": 3539
+    },
+    {
+      "path": "tests/unity/editor/artist/Fixtures/Empty.unity.meta",
+      "sha1": "a7680e0330c5f155c637a46424852e3242d947b4",
+      "size": 152
+    },
+    {
+      "path": "tests/unity/editor/artist/LookDevApprovalTests.cs",
+      "sha1": "4f2907fa94fb05441e3d246c7dbf8bab56e34628",
+      "size": 6187
+    },
+    {
+      "path": "tests/unity/editor/artist/LookDevApprovalTests.cs.meta",
+      "sha1": "25f2c7299b4ebeffc8eeb2b1e57aa2cfdcb987b3",
+      "size": 240
+    },
+    {
+      "path": "tests/unity/editor/artist/SceneFixture.cs",
+      "sha1": "c166420f4a9877989e8d185142826712de56cde8",
+      "size": 1549
+    },
+    {
+      "path": "tests/unity/editor/artist/SceneFixture.cs.meta",
+      "sha1": "2de72b29c2941602029e1ec81e1277153325a360",
+      "size": 240
+    },
+    {
+      "path": "tests/unity/editor/artist/CaptureReviewRevisionTests.cs",
+      "sha1": "86ed81ebea37560d61f33ba2b102644725e7eac4",
+      "size": 4967
+    },
+    {
+      "path": "tests/unity/editor/artist/CaptureReviewRevisionTests.cs.meta",
+      "sha1": "2b01811ed3280caa464617e0bba68fc54727c3b9",
+      "size": 240
+    },
+    {
+      "path": "tests/unity/editor/artist/LookDevVerificationFailureTests.cs",
+      "sha1": "77c7080e0b2353cbc689078d5242d32864f1b299",
+      "size": 8980
+    },
+    {
+      "path": "tests/unity/editor/artist/LookDevVerificationFailureTests.cs.meta",
+      "sha1": "ee825787625e883d72e2dfc0826ced2975f5ba12",
+      "size": 240
+    },
+    {
+      "path": "tests/unity/projects/artist-e2e/Assets/Editor/CinematicFixtureBootstrap.cs",
+      "sha1": "05c9e8886cf9e7dec6b1283817a5cb83f1d78e17",
+      "size": 2862
+    },
+    {
+      "path": "tests/unity/projects/artist-e2e/Assets/Editor/CinematicFixtureBootstrap.cs.meta",
+      "sha1": "bd97558842c3325da6a3139602d39d13633de1ed",
+      "size": 60
     }
   ]
 }

@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 class ProductionSpecialistRegistrationTests(unittest.TestCase):
     def test_pinned_production_hub_snapshot_matches_current_catalog(self):
-        snapshot = yaml.safe_load((ROOT / "tests/runtime/fixtures/hub-production-specialists-v3.yaml").read_text(encoding="utf-8"))
+        snapshot = yaml.safe_load((ROOT / "tests/runtime/fixtures/unity-cli-hub-production-specialists-v3.yaml").read_text(encoding="utf-8"))
         self.assertEqual(_plan(snapshot, current_catalog=CATALOG)["status"], "no_op")
         changed = copy.deepcopy(snapshot)
         graphics = next(item["manifest"] for item in changed["specialists"] if item["manifest"]["identity"]["id"] == "graphics_subagent")
@@ -34,7 +34,7 @@ class ProductionSpecialistRegistrationTests(unittest.TestCase):
                 self.assertEqual(profile.execution["required_observation_capabilities"], required)
                 require_reasoning_output_contract(profile.execution["output_contract_ref"])
                 self.assertTrue((ROOT / profile.execution["instructions_ref"]).is_file())
-        self.assertEqual(CATALOG.get("artist_subagent").provider_id, "unity_artist_cli")
+        self.assertEqual(CATALOG.get("artist_subagent").provider_id, "unity_cli")
         self.assertTrue(CATALOG.get("qa_subagent").selection["capability_context"]["performance.analyze"]["receipt_required"])
 
     def test_production_routes_use_registered_semantic_owner(self):

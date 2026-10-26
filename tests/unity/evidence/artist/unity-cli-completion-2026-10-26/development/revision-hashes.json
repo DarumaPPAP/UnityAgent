@@ -1,0 +1,22 @@
+{
+  "source_commit": "85bcfb4cd41e89efaf63c8345fe36ae7162bda08",
+  "artifacts": {
+    "com.darumappap.artist-subagent-0.0.2-beta.tgz": {
+      "sha256": "ef38b47b046d025035a0769eb8318eb056638252d7deaf82a7226d4c41eea935",
+      "bytes": 29721,
+      "source_files_verified": 37
+    },
+    "com.darumappap.unity-agent-0.0.8-beta.tgz": {
+      "sha256": "d3b0568518791be3019a82da247cf032323edbffea212e2a24bcaa497724650c",
+      "bytes": 162293,
+      "source_files_verified": 223
+    },
+    "unityagent_control_plane-0.0.8b0-py3-none-any.whl": {
+      "sha256": "594925b53e0fb5cbe86c80ed10372de76ebd6b9cb9ee8a87e29a63bd43861dbc",
+      "bytes": 1028162,
+      "resource_files_verified": 266
+    }
+  },
+  "release_created": false,
+  "tag_created": false
+}

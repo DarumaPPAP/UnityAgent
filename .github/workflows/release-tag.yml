@@ -74,7 +74,6 @@ jobs:
           codex_plugin = json.loads(pathlib.Path(".agents/plugins/unity-agent/.codex-plugin/plugin.json").read_text(encoding="utf-8"))
           marketplace = json.loads(pathlib.Path(".agents/plugins/marketplace.json").read_text(encoding="utf-8"))
           pyproject = tomllib.loads(pathlib.Path("pyproject.toml").read_text(encoding="utf-8"))
-          installer = pathlib.Path("src/unityagent/runtime/tooling/providers/installer/release_installer.py").read_text(encoding="utf-8")
 
           assert upm["version"] == version
           assert plugin["version"] == version
@@ -82,9 +81,6 @@ jobs:
           assert pyproject["project"]["version"] == expected_python
           assert [item.get("name") for item in marketplace.get("plugins", [])] == ["unity-agent"]
           assert pathlib.Path("subagent/registry.yaml").is_file()
-          assert 'DISTRIBUTION_REPOSITORY = "DarumaPPAP/UnityAgent"' in installer
-          assert f'DISTRIBUTION_TAG = "v{version}"' in installer
-          assert f'ARCHIVE_NAME = "UnityAgent-ArtistSubAgent-host-windows-x64-{version}.zip"' in installer
           print(f"UnityAgent release: v{version}")
           print("SubAgent source: UnityAgent checkout")
           PY
@@ -117,23 +113,11 @@ jobs:
           python3 -m unittest discover -s tests/subagent -p 'test_*.py' -v
           python3 tools/validate_artist_product_identity.py
           python3 tests/unity/verify/validate_unity_fixtures.py
-          dotnet build subagent/artist_subagent/tools/host/UnityArtist.Tools.csproj --configuration Release
-          python3 -m unittest discover -s tests/subagent/artist/tools -p 'test_*.py' -v
 
       - name: Build co-located SubAgent distribution
         run: |
           set -euo pipefail
-          mkdir -p artifacts .release-build/artist-host-windows-x64
-
-          dotnet publish "subagent/artist_subagent/tools/host/UnityArtist.Tools.csproj" \
-            --configuration Release \
-            --runtime win-x64 \
-            --self-contained true \
-            --output .release-build/artist-host-windows-x64
-
-          artist_archive="UnityAgent-ArtistSubAgent-host-windows-x64-$RELEASE_VERSION.zip"
-          (cd .release-build/artist-host-windows-x64 && zip -qr "$GITHUB_WORKSPACE/artifacts/$artist_archive" .)
-          sha256sum "artifacts/$artist_archive" > "artifacts/$artist_archive.sha256"
+          mkdir -p artifacts
 
           (
             cd "subagent/artist_subagent/tools/editor"
@@ -167,24 +151,6 @@ jobs:
               json.dumps(provenance, indent=2) + "\n",
               encoding="utf-8",
           )
-          PY
-
-      - name: Validate bundled Artist backend version
-        run: |
-          set -euo pipefail
-          backend_version="$(python3 - <<'PY'
-          import json
-          print(json.load(open("subagent/artist_subagent/tools/editor/package.json", encoding="utf-8"))["version"])
-          PY
-          )"
-          python3 - "$backend_version" <<'PY'
-          import pathlib
-          import sys
-          source = pathlib.Path("src/unityagent/runtime/tooling/providers/installer/release_installer.py").read_text(encoding="utf-8")
-          expected = sys.argv[1]
-          token = f'BACKEND_VERSION = "{expected}"'
-          if token not in source:
-              raise SystemExit(f"release installer backend version pin does not match bundled UnityAgent source: {expected}")
           PY
 
       - name: Build Python distribution

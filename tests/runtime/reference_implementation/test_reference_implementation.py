@@ -83,7 +83,7 @@ def contract_fixture():
 
 def provider_result(action: TypedAction, *, before: float = 40.0, after: float = 43.0, revision: str = "revision-after") -> ProviderResult:
     value = {
-        "schema_version": "1.1", "status": "passed", "provider_ref": "unity_artist_cli", "action_id": action.action_id,
+        "schema_version": "1.1", "status": "passed", "provider_ref": "unity_cli", "action_id": action.action_id,
         "project": dict(action.project), "target": dict(action.target), "property_path": action.property_path,
         "before_value": before, "after_value": after, "observed_revision": revision,
         "exact_diff": {"target": action.target["guid"], "property": action.property_path, "before": before, "after": after},

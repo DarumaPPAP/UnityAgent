@@ -27,7 +27,7 @@ UnityAgentを利用する入口は、必ず次の5層を通ります。機械可
         │ provider-independent CapabilityRequest
         ▼
 ④ Provider Layer
-   Official Unity CLI / UnityArtistCLI / Installer Provider / future Providers
+   Official Unity CLI / Installer Provider / future Providers
         │ structured ProviderResult
         ▼
 ⑤ Evidence & State

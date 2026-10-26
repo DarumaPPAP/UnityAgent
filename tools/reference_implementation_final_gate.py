@@ -18,7 +18,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from unityagent.persistence.store.atomic_store import PersistenceError
-from unityagent.runtime.reference_implementation.runtime import EvidenceCompletionGate
+from tools.run_camera_fov_reference_live import verify_live_evidence
 
 
 def _run(command: list[str], *, cwd: Path, env: dict[str, str], timeout: int = 300) -> tuple[bool, str]:
@@ -69,7 +69,7 @@ def _run_json(command: list[str], *, cwd: Path, env: dict[str, str], timeout: in
 
 def _reference_tests(env: dict[str, str]) -> tuple[bool, str]:
     # GoldenArtistTransport is intentionally fixture-only. The real Named Pipe
-    # path is exercised by run_camera_fov_reference_live.py below.
+    # Artist CLI path is exercised by run_camera_fov_reference_live.py below.
     env["UNITYAGENT_RUN_WINDOWS_IPC_TESTS"] = "1"
     env.pop("UNITYAGENT_RUN_GOLDEN_FIXTURE_TESTS", None)
     os.environ["UNITYAGENT_RUN_WINDOWS_IPC_TESTS"] = "1"
@@ -88,7 +88,7 @@ def _reference_tests(env: dict[str, str]) -> tuple[bool, str]:
 
 def _namespace_check(artist_root: Path) -> tuple[bool, str]:
     violations: list[str] = []
-    roots = [artist_root / "subagent" / "artist_subagent" / "tools" / "editor", artist_root / "subagent" / "artist_subagent" / "tools" / "host"]
+    roots = [artist_root / "subagent" / "artist_subagent" / "tools" / "editor"]
     for root in roots:
         if not root.is_dir():
             violations.append(f"missing namespace root: {root}")
@@ -108,7 +108,7 @@ def _reused_live_evidence(
     expected_before_fov: float,
 ) -> dict[str, object]:
     """Revalidate a completed real-project run through the canonical Runtime gate."""
-    return EvidenceCompletionGate.verify_persisted_run(
+    return verify_live_evidence(
         run_id=run_id,
         persistence_root=ROOT / "Artifacts" / "reference-implementation" / "live",
         project_root=project_path,
@@ -126,6 +126,8 @@ def main() -> int:
     parser.add_argument("--expected-before-fov", type=float, default=LIVE_EXPECTED_BEFORE_FOV_DEFAULT)
     parser.add_argument("--reuse-live-run-id", help="Revalidate a completed real-project live run without applying it again.")
     parser.add_argument("--skip-full-repository", action="store_true")
+    parser.add_argument("--run-id")
+    parser.add_argument("--approval-ref")
     args = parser.parse_args()
     env = dict(os.environ)
     env["UNITYAGENT_RUN_WINDOWS_IPC_TESTS"] = "1"
@@ -155,9 +157,10 @@ def main() -> int:
 
     static_commands = {
         "artist_contract": [sys.executable, "tests/unity/verify/verify_artist_backend_contract.py"],
-        "artist_api_compatibility": [sys.executable, "tests/unity/verify/verify-unity-api-compatibility.py"],
-        "artist_cli_pipeline_gate": [sys.executable, "tests/unity/verify/verify-cli-pipeline-gate-evidence.py"],
-        "artist_2022_bounded_fallback": [sys.executable, "tests/unity/verify/verify-2022-3-bounded-fallback-evidence.py"],
+        "artist_fixture_structure": [sys.executable, "tests/unity/verify/validate_unity_fixtures.py"],
+        "artist_typed_command_contract": [sys.executable, "-m", "unittest", "tests.runtime.test_artist_command_adapter", "tests.runtime.test_artist_mutation_mapper", "tests.runtime.test_artist_authority", "tests.runtime.test_artist_approval", "tests.runtime.test_camera_fov_live_unity_cli"],
+        "historical_artist_cli_pipeline_gate": [sys.executable, "tests/unity/verify/verify-cli-pipeline-gate-evidence.py"],
+        "historical_artist_2022_bounded_fallback": [sys.executable, "tests/unity/verify/verify-2022-3-bounded-fallback-evidence.py"],
         "artist_semantic_names": [sys.executable, "tests/unity/verify/verify-semantic-names.py"],
         "artist_portable_paths": [sys.executable, "tests/unity/verify/verify_portable_paths.py"],
     }
@@ -174,16 +177,16 @@ def main() -> int:
     env["DOTNET_CLI_HOME"] = str(dotnet_home)
     env["NUGET_PACKAGES"] = str(nuget)
     env["DOTNET_SKIP_FIRST_TIME_EXPERIENCE"] = "1"
-    restore_command = ["dotnet", "restore", "subagent/artist_subagent/tools/host/UnityArtist.Tools.csproj"]
+    restore_command = ["dotnet", "restore", "tests/subagent/artist/authority/AuthorityClientTests.csproj"]
     restore_ok, restore_output = _run(restore_command, cwd=artist_root, env=env, timeout=300)
-    checks["artist_cli_restore"] = {"passed": restore_ok, "command": restore_command, "tail": restore_output[-5000:]}
+    checks["artist_authority_restore"] = {"passed": restore_ok, "command": restore_command, "tail": restore_output[-5000:]}
     if not restore_ok:
-        failures.append("UnityArtistCLI clean-checkout restore")
-    build_command = ["dotnet", "build", "subagent/artist_subagent/tools/host/UnityArtist.Tools.csproj", "--no-restore"]
+        failures.append("Artist authority clean-checkout restore")
+    build_command = ["dotnet", "build", "tests/subagent/artist/authority/AuthorityClientTests.csproj", "--no-restore"]
     ok, output = (False, "restore failed; build was not attempted") if not restore_ok else _run(build_command, cwd=artist_root, env=env, timeout=300)
-    checks["artist_cli_build"] = {"passed": ok, "command": build_command, "tail": output[-5000:]}
+    checks["artist_authority_build"] = {"passed": ok, "command": build_command, "tail": output[-5000:]}
     if not ok:
-        failures.append("UnityArtistCLI build")
+        failures.append("Artist authority build")
 
     if args.reuse_live_run_id:
         try:
@@ -205,12 +208,16 @@ def main() -> int:
             "--scene-path", str(args.scene_path),
             "--expected-before-fov", str(args.expected_before_fov),
         ]
+        if args.run_id:
+            live_command.extend(["--run-id", args.run_id])
+        if args.approval_ref:
+            live_command.extend(["--approval-ref", args.approval_ref])
         live_code, live_report, live_output = _run_json(live_command, cwd=ROOT, env=env, timeout=900)
     checks["live_unity_control_plane_e2e"] = {"exit_code": live_code, "report": live_report, "tail": live_output[-6000:]}
     if live_report and live_report.get("status") == "blocked_external":
         external_blockers.append("real Unity 6000.6.0f1 E2E: " + str(live_report.get("error")))
     elif live_code != 0 or not live_report or live_report.get("status") != "passed":
-        failures.append("real Unity Control Plane/named Pipe E2E")
+        failures.append("real Unity Control Plane/Unity CLI Artist E2E")
 
     terminal = "GOAL_COMPLETE"
     if failures:
@@ -222,7 +229,7 @@ def main() -> int:
         "failures": failures,
         "external_blockers": external_blockers,
         "checks": checks,
-        "production_path": "src/unityagent/control_plane -> ToolBroker -> UnityArtistCLI Provider -> Evidence/Persistence",
+        "production_path": "src/unityagent/control_plane -> ToolBroker -> Unity CLI Artist commands -> Evidence/Persistence",
         "live_project_path": str(args.project_path.resolve()),
         "live_scene_path": str(args.scene_path),
         "live_expected_before_fov": args.expected_before_fov,

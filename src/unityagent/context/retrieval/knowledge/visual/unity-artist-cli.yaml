@@ -14,13 +14,15 @@ required_inputs:
   - prohibited_changes
 
 principles:
-  - UnityAgent owns src/unityagent/policy, Approval, Mutation Scope, routing, loop control, fallback, and Evidence persistence.
-  - UnityArtistCLI is a specialist Provider; Player is a conceptual alias, not a second framework.
-  - Requests use semantic `domain.workflow` or `visual.capture` qualifiers, never a hard-coded Provider identity.
-  - Unity CLI is the automation surface; Unity Pipeline bridges commands to a running Editor for the three Unity 6+ release rows.
-  - Unity 2022.3 is not currently supported; historical bounded batch evidence is not an active fallback.
-  - Unsupported version/pipeline and unknown Pipeline reachability fail before mutation.
-  - Capture is technical Evidence, not human visual acceptance.
+  - UnityAgentがPolicy、Approval、Mutation Scope、Routing、Loop、Fallback、Evidence永続化を所有する。
+  - ArtistSubAgentが専門Agentであり、unity_cliは導入済みArtist UPMの全9コマンドをUnity Pipelineから実行する。独立Artist Hostは使用しない。
+  - 要求はscene.inspect、visual.capture、domain.workflowの意味的Capabilityとdomain／workflow qualifiersを用い、Provider identityを利用者の意図へ混ぜない。
+  - Unity CLIは自動化の入口であり、Unity Pipelineが対象ProjectにBindした実Editorへ接続する。
+  - Unity 2022.3は現行Production対象外であり、過去のBatch Evidenceを現在のFallbackへ昇格しない。
+  - 未対応Version／Pipeline、未観測の到達性、Project binding不成立はMutation前に拒否する。
+  - Plan、Revision、Exact Diff、mutationPathsとScope、Project／Run／Context、承認期限／取消／再利用をControl PlaneとEditorの実行直前照合で検証する。
+  - Captureは技術Evidenceであり、Human Visual Acceptanceではない。EvaluateはCaptureとdecisionの計画を明示承認した後に記録し、Refineは同Run／ContextのEvaluationへ接続する。
+  - Editor製品名UnityArtistCLIとこのKnowledge IDは互換性のため維持するが、旧Hostや旧Providerの実行依存を意味しない。
 
 workflow:
   - inspect

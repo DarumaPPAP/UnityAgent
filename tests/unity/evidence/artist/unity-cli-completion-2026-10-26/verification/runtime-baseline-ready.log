@@ -1,0 +1,180 @@
+.........................................s....................................usage: uagent [-h]
+              {artist,hot-reload,rock,rock-import,e2e,run,doctor,setup} ...
+uagent: error: unrecognized arguments: --context-json {}
+usage: uagent [-h]
+              {artist,hot-reload,rock,rock-import,e2e,run,doctor,setup} ...
+uagent: error: unrecognized arguments: --approval-token forged
+..........................................................................................................................................................E......EE.................................................................................s........................s..................................warning: in the working copy of 'snapshot.yaml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'snapshot.yaml', LF will be replaced by CRLF the next time Git touches it
+.warning: in the working copy of 'snapshot.yaml', LF will be replaced by CRLF the next time Git touches it
+...warning: in the working copy of 'snapshot.yaml', LF will be replaced by CRLF the next time Git touches it
+.warning: in the working copy of 'snapshot.yaml', LF will be replaced by CRLF the next time Git touches it
+.warning: in the working copy of 'snapshot.yaml', LF will be replaced by CRLF the next time Git touches it
+Fwarning: in the working copy of 'snapshot.yaml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'snapshot.yaml', LF will be replaced by CRLF the next time Git touches it
+.warning: in the working copy of 'snapshot.yaml', LF will be replaced by CRLF the next time Git touches it
+.warning: in the working copy of 'snapshot.yaml', LF will be replaced by CRLF the next time Git touches it
+..............................................E.EE.E.....................................................................EFE....FEF........s..s.................................s...............................E............................................................................................................................
+======================================================================
+ERROR: test_project_directory_alias_or_replacement_is_not_an_owned_fixture (test_csharp_fix_e2e.OwnedFixtureE2ETests.test_project_directory_alias_or_replacement_is_not_an_owned_fixture)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\UA227\artifacts\baseline\tests\runtime\test_csharp_fix_e2e.py", line 53, in test_project_directory_alias_or_replacement_is_not_an_owned_fixture
+    project.symlink_to(outside, target_is_directory=True)
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\Lib\pathlib.py", line 1386, in symlink_to
+    os.symlink(target, self, target_is_directory)
+OSError: [WinError 1314] クライアントは要求された特権を保有していません。: 'D:\\UA227\\artifacts\\tmp\\tmpwj541bh3\\external-project' -> 'D:\\UA227\\artifacts\\tmp\\tmpwj541bh3\\new-owned-fixture\\project'
+
+======================================================================
+ERROR: test_alias_targets_never_mutate_scope_outside_the_approved_file (test_csharp_local_fix.CSharpBackendTests.test_alias_targets_never_mutate_scope_outside_the_approved_file) (alias='symlink')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\UA227\artifacts\baseline\tests\runtime\test_csharp_local_fix.py", line 94, in test_alias_targets_never_mutate_scope_outside_the_approved_file
+    target.symlink_to(outside)
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\Lib\pathlib.py", line 1386, in symlink_to
+    os.symlink(target, self, target_is_directory)
+OSError: [WinError 1314] クライアントは要求された特権を保有していません。: 'D:\\UA227\\artifacts\\tmp\\tmpwhlvt18k\\outside.cs' -> 'D:\\UA227\\artifacts\\tmp\\tmpwhlvt18k\\project\\Assets\\Calculator.cs'
+
+======================================================================
+ERROR: test_alias_targets_never_mutate_scope_outside_the_approved_file (test_csharp_local_fix.CSharpBackendTests.test_alias_targets_never_mutate_scope_outside_the_approved_file) (alias='hardlink')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\UA227\artifacts\baseline\tests\runtime\test_csharp_local_fix.py", line 92, in test_alias_targets_never_mutate_scope_outside_the_approved_file
+    target.unlink()
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\Lib\pathlib.py", line 1342, in unlink
+    os.unlink(self)
+FileNotFoundError: [WinError 2] 指定されたファイルが見つかりません。: 'D:\\UA227\\artifacts\\tmp\\tmpwhlvt18k\\project\\Assets\\Calculator.cs'
+
+======================================================================
+ERROR: test_directory_symlink_inside_worker_is_rejected (test_parallel_workspaces.ParallelWorkspaceTests.test_directory_symlink_inside_worker_is_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\UA227\artifacts\baseline\tests\runtime\test_parallel_workspaces.py", line 63, in test_directory_symlink_inside_worker_is_rejected
+    (assets / 'external').symlink_to(self.original / 'Assets', target_is_directory=True)
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\Lib\pathlib.py", line 1386, in symlink_to
+    os.symlink(target, self, target_is_directory)
+OSError: [WinError 1314] クライアントは要求された特権を保有していません。: 'D:\\UA227\\artifacts\\tmp\\tmpsaaub0eb\\original\\Assets' -> 'D:\\UA227\\artifacts\\tmp\\tmpsaaub0eb\\left\\Assets\\external'
+
+======================================================================
+ERROR: test_git_pointer_and_common_directory_cannot_hide_symlink_aliases (test_parallel_workspaces.ParallelWorkspaceTests.test_git_pointer_and_common_directory_cannot_hide_symlink_aliases) (common=False)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\UA227\artifacts\baseline\tests\runtime\test_parallel_workspaces.py", line 158, in test_git_pointer_and_common_directory_cannot_hide_symlink_aliases
+    alias.symlink_to(real, target_is_directory=True)
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\Lib\pathlib.py", line 1386, in symlink_to
+    os.symlink(target, self, target_is_directory)
+OSError: [WinError 1314] クライアントは要求された特権を保有していません。: 'D:\\UA227\\artifacts\\tmp\\tmpo61pldho\\real-git-False' -> 'D:\\UA227\\artifacts\\tmp\\tmpo61pldho\\git-alias-False'
+
+======================================================================
+ERROR: test_git_pointer_and_common_directory_cannot_hide_symlink_aliases (test_parallel_workspaces.ParallelWorkspaceTests.test_git_pointer_and_common_directory_cannot_hide_symlink_aliases) (common=True)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\UA227\artifacts\baseline\tests\runtime\test_parallel_workspaces.py", line 158, in test_git_pointer_and_common_directory_cannot_hide_symlink_aliases
+    alias.symlink_to(real, target_is_directory=True)
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\Lib\pathlib.py", line 1386, in symlink_to
+    os.symlink(target, self, target_is_directory)
+OSError: [WinError 1314] クライアントは要求された特権を保有していません。: 'D:\\UA227\\artifacts\\tmp\\tmpo61pldho\\real-git-True' -> 'D:\\UA227\\artifacts\\tmp\\tmpo61pldho\\git-alias-True'
+
+======================================================================
+ERROR: test_original_project_or_its_alias_is_never_a_worker (test_parallel_workspaces.ParallelWorkspaceTests.test_original_project_or_its_alias_is_never_a_worker)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\UA227\artifacts\baseline\tests\runtime\test_parallel_workspaces.py", line 49, in test_original_project_or_its_alias_is_never_a_worker
+    target.symlink_to(self.original, target_is_directory=True)
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\Lib\pathlib.py", line 1386, in symlink_to
+    os.symlink(target, self, target_is_directory)
+OSError: [WinError 1314] クライアントは要求された特権を保有していません。: 'D:\\UA227\\artifacts\\tmp\\tmpb1m5ajz_\\original' -> 'D:\\UA227\\artifacts\\tmp\\tmpb1m5ajz_\\alias'
+
+======================================================================
+ERROR: test_existing_project_lease_blocks_mutating_provider (test_production_tool_runtime.ProductionToolRuntimeTests.test_existing_project_lease_blocks_mutating_provider)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\UA227\artifacts\baseline\tests\runtime\test_production_tool_runtime.py", line 215, in test_existing_project_lease_blocks_mutating_provider
+    with RuntimeProjectLease(self.project_root):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\UA227\artifacts\baseline\src\unityagent\runtime\execution_control\resource_lease.py", line 71, in __init__
+    self.directory, self.project = _lease_directory(project_root, lease_root)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\UA227\artifacts\baseline\src\unityagent\runtime\execution_control\resource_lease.py", line 34, in _lease_directory
+    raise ProjectLeaseError("a bound absolute Project path is required")
+unityagent.runtime.execution_control.resource_lease.ProjectLeaseError: a bound absolute Project path is required
+
+======================================================================
+ERROR: test_no_silent_weaker_mutation_fallback (test_production_tool_runtime.ProductionToolRuntimeTests.test_no_silent_weaker_mutation_fallback)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\UA227\artifacts\baseline\tests\runtime\test_production_tool_runtime.py", line 248, in test_no_silent_weaker_mutation_fallback
+    self.assertEqual(outcome["attempts"][0]["provider_ref"], "unity_cli")
+                     ~~~~~~~~~~~~~~~~~~~^^^
+IndexError: list index out of range
+
+======================================================================
+ERROR: test_source_read_fast_path_does_not_acquire_editor_lease (test_production_tool_runtime.ProductionToolRuntimeTests.test_source_read_fast_path_does_not_acquire_editor_lease)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\UA227\artifacts\baseline\tests\runtime\test_production_tool_runtime.py", line 228, in test_source_read_fast_path_does_not_acquire_editor_lease
+    with RuntimeProjectLease(self.project_root):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\UA227\artifacts\baseline\src\unityagent\runtime\execution_control\resource_lease.py", line 71, in __init__
+    self.directory, self.project = _lease_directory(project_root, lease_root)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\UA227\artifacts\baseline\src\unityagent\runtime\execution_control\resource_lease.py", line 34, in _lease_directory
+    raise ProjectLeaseError("a bound absolute Project path is required")
+unityagent.runtime.execution_control.resource_lease.ProjectLeaseError: a bound absolute Project path is required
+
+======================================================================
+ERROR: test_forbid_raw_unity_mutation_scope_escape_and_symlink (test_staged_assets.StagedAssetsTests.test_forbid_raw_unity_mutation_scope_escape_and_symlink)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\UA227\artifacts\baseline\tests\runtime\test_staged_assets.py", line 56, in test_forbid_raw_unity_mutation_scope_escape_and_symlink
+    alias.symlink_to(self.asset)
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.12_3.12.2800.0_x64__qbz5n2kfra8p0\Lib\pathlib.py", line 1386, in symlink_to
+    os.symlink(target, self, target_is_directory)
+OSError: [WinError 1314] クライアントは要求された特権を保有していません。: 'D:\\UA227\\artifacts\\tmp\\tmpsteav1ab\\project\\Assets\\Rock.fbx' -> 'D:\\UA227\\artifacts\\tmp\\tmpsteav1ab\\project\\Assets\\Alias.fbx'
+
+======================================================================
+FAIL: test_development_and_pinned_are_distinct_immutable_sources (test_hub_source_validation.HubSourceValidationTests.test_development_and_pinned_are_distinct_immutable_sources)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\UA227\artifacts\baseline\tests\runtime\test_hub_source_validation.py", line 83, in test_development_and_pinned_are_distinct_immutable_sources
+    self.assertEqual(plan["source"]["sha256"], "sha256:" + hashlib.sha256(payload).hexdigest())
+AssertionError: 'sha256:412e92401e2ffd1efcd807da0429676442b77aabd1795cffa89b26f3312eb1db' != 'sha256:9dd04b7690dae6104e345a2e2f26520370404bbe0a8d7989c37d64ba087e851b'
+- sha256:412e92401e2ffd1efcd807da0429676442b77aabd1795cffa89b26f3312eb1db
++ sha256:9dd04b7690dae6104e345a2e2f26520370404bbe0a8d7989c37d64ba087e851b
+
+
+======================================================================
+FAIL: test_missing_primary_executor_falls_back_same_capability (test_production_tool_runtime.ProductionToolRuntimeTests.test_missing_primary_executor_falls_back_same_capability)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\UA227\artifacts\baseline\tests\runtime\test_production_tool_runtime.py", line 206, in test_missing_primary_executor_falls_back_same_capability
+    self.assertEqual(outcome["status"], "completed")
+AssertionError: 'blocked' != 'completed'
+- blocked
++ completed
+
+
+======================================================================
+FAIL: test_safe_mode_is_revalidated_at_execution_boundary (test_production_tool_runtime.ProductionToolRuntimeTests.test_safe_mode_is_revalidated_at_execution_boundary)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\UA227\artifacts\baseline\tests\runtime\test_production_tool_runtime.py", line 272, in test_safe_mode_is_revalidated_at_execution_boundary
+    self.assertEqual(outcome["provider_result"]["failure_class"], "precondition_failed")
+AssertionError: 'resource_conflict' != 'precondition_failed'
+- resource_conflict
++ precondition_failed
+
+
+======================================================================
+FAIL: test_absent_project_does_not_search_children_and_explains_flag (test_project_cli.ProjectCliTests.test_absent_project_does_not_search_children_and_explains_flag)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\UA227\artifacts\baseline\tests\runtime\test_project_cli.py", line 74, in test_absent_project_does_not_search_children_and_explains_flag
+    with redirect_stderr(output), self.assertRaises(SystemExit):
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: SystemExit not raised
+
+----------------------------------------------------------------------
+Ran 722 tests in 604.389s
+
+FAILED (failures=4, errors=11, skipped=6)

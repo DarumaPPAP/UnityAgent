@@ -11,7 +11,7 @@ from unityagent.runtime.tooling.providers.unity_cli.command_builder import (
     build_commands_manifest_command,
     build_help_probe,
     build_pipeline_catalog_command,
-    build_pipeline_list_command,
+    build_pipeline_command,
     build_project_info_command,
     build_status_command,
     build_version_command,
@@ -244,13 +244,56 @@ def discover_unity_cli_surface(
                 if observed_root is None or same_project_root(observed_root, str(root)):
                     project_info = candidate
 
+    pipeline = environment_snapshot.get("pipeline") or {}
+    pipeline_reachable: bool | str = False if pipeline.get("installed") is False else "unknown"
+    command_catalog: tuple[dict[str, Any], ...] = ()
+    catalog_failure = None
+    catalog_reason = None
+    if pipeline.get("installed") is True and "command" in supported:
+        # 全Editor列挙は無関係なProjectの応答待ちを含むため、対象ProjectのCatalogを直接観測する。
+        command = build_pipeline_catalog_command(executable, root)
+        outcome, dispatch_failure = _dispatch_safe(DispatchRequest(list(command.argv), root, timeout_seconds), dispatch_fn=dispatch_fn)
+        pipeline_reachable = False
+        if outcome is None:
+            catalog_failure = dispatch_failure or "unavailable"
+        elif outcome.get("failure_class") == "runtime_timeout":
+            catalog_failure = "timeout"
+        elif _returncode(outcome) != 0:
+            catalog_failure = "unavailable"
+        else:
+            try:
+                command_catalog = extract_command_catalog(_stdout(outcome))
+            except ValueError:
+                command_catalog = ()
+            pipeline_reachable = bool(command_catalog)
+            if not pipeline_reachable:
+                catalog_failure = "not_observed"
+        if catalog_failure:
+            catalog_reason = "Target Project Pipeline Catalog was not observed: " + catalog_failure
+
     editor_status: Any | None = None
-    if "status" in supported:
-        command = build_status_command(executable)
-        outcome, _ = _dispatch_safe(
-            DispatchRequest(list(command.argv), root, timeout_seconds),
-            dispatch_fn=dispatch_fn,
-        )
+    if any(item["name"] == "editor_status" and item["runtime_only"] is False for item in command_catalog):
+        # 固定Pipelineが公開する実名を使い、CLI status内部の互換probeを他Editorへ送らない。
+        command = build_pipeline_command(executable, root, "editor_status")
+        outcome, _ = _dispatch_safe(DispatchRequest(list(command.argv), root, timeout_seconds), dispatch_fn=dispatch_fn)
+        if outcome is not None and _returncode(outcome) == 0:
+            try:
+                envelope = terminal_envelope(parse_json_sequence(_stdout(outcome), strict=True))
+                data = envelope_data(envelope) if envelope and envelope.get("success") is True and envelope.get("errors") == [] and envelope.get("command") == "command editor_status" else None
+                target = data.get("target") if isinstance(data, dict) else None
+                result = data.get("result") if isinstance(data, dict) else None
+                if isinstance(result, str):
+                    values = parse_json_sequence(result, strict=True)
+                    result = values[0] if len(values) == 1 else None
+                bound = isinstance(target, dict) and isinstance(result, dict) and isinstance(target.get("projectPath"), str) and isinstance(result.get("projectPath"), str)
+                if bound and same_project_root(target["projectPath"], str(root)) and same_project_root(result["projectPath"], str(root)) and isinstance(result.get("unityVersion"), str):
+                    ready = result.get("status") == "ready" and result.get("compiling") is False and result.get("domainReloadInProgress") is False
+                    editor_status = {"instances": [{"projectPath": result["projectPath"], "version": result["unityVersion"], "state": "ready" if ready else "busy"}]}
+            except (ValueError, TypeError):
+                editor_status = None
+    elif "status" in supported:
+        command = build_status_command(executable, root)
+        outcome, _ = _dispatch_safe(DispatchRequest(list(command.argv), root, timeout_seconds), dispatch_fn=dispatch_fn)
         if outcome is not None:
             try:
                 envelope = terminal_envelope(parse_json_sequence(_stdout(outcome)))
@@ -258,29 +301,6 @@ def discover_unity_cli_surface(
                 envelope = None
             if envelope is not None:
                 editor_status = envelope_data(envelope)
-
-    pipeline = environment_snapshot.get("pipeline") or {}
-    pipeline_reachable: bool | str = False if pipeline.get("installed") is False else "unknown"
-    command_catalog: tuple[dict[str, Any], ...] = ()
-    if pipeline.get("installed") is True and "pipeline" in supported:
-        command = build_pipeline_list_command(executable)
-        outcome, _ = _dispatch_safe(
-            DispatchRequest(list(command.argv), root, timeout_seconds),
-            dispatch_fn=dispatch_fn,
-        )
-        pipeline_reachable = bool(outcome is not None and _returncode(outcome) == 0 and _structured_success(outcome))
-
-    if pipeline_reachable is True and "command" in supported:
-        command = build_pipeline_catalog_command(executable, root)
-        outcome, _ = _dispatch_safe(
-            DispatchRequest(list(command.argv), root, timeout_seconds),
-            dispatch_fn=dispatch_fn,
-        )
-        if outcome is not None and _returncode(outcome) == 0:
-            try:
-                command_catalog = extract_command_catalog(_stdout(outcome))
-            except ValueError:
-                command_catalog = ()
 
     return UnityCliSurfaceDiscovery(
         status="available",
@@ -291,4 +311,6 @@ def discover_unity_cli_surface(
         editor_status=editor_status,
         pipeline_reachable=pipeline_reachable,
         command_catalog=command_catalog,
+        failure_class=catalog_failure,
+        reason=catalog_reason,
     )

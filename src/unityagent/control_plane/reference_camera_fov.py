@@ -103,6 +103,8 @@ def _find_value(value: Any, names: tuple[str, ...]) -> Any:
 def _provider_result(action: TypedAction, raw: Mapping[str, Any], *, before_value: float | None = None) -> ProviderResult:
     if "provider_result_digest" in raw and "action_id" in raw:
         return ProviderResult.from_dict(raw)
+    if raw.get("provider_ref") != "unity_cli":
+        raise ContractValidationError("Camera FOV requires a verified Unity CLI Provider result")
     payload = raw.get("payload", raw)
     diff_value = _find_value(raw, ("exactDiff", "exact_diff"))
     if diff_value is None:
@@ -139,7 +141,7 @@ def _provider_result(action: TypedAction, raw: Mapping[str, Any], *, before_valu
     value = {
         "schema_version": "1.1",
         "status": "passed",
-        "provider_ref": "unity_artist_cli",
+        "provider_ref": raw["provider_ref"],
         "action_id": action.action_id,
         "project": dict(action.project),
         "target": dict(action.target),

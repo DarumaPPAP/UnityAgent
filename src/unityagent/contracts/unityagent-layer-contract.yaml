@@ -32,7 +32,7 @@ layers:
     forbidden_dependencies: [entry_layer, provider_selection_in_semantic_route]
   provider_layer:
     title: Provider Layer
-    owner: Official Unity CLI / UnityArtistCLI / Installer Provider
+    owner: Official Unity CLI / Installer Provider
     responsibilities:
       - perform bounded external work
       - return structured ProviderResult or management result

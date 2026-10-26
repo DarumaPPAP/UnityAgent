@@ -95,7 +95,7 @@ def validate_reference_environment_snapshot(
     git = value.get("git") if isinstance(value.get("git"), Mapping) else {}
     editor = value.get("unity_editor") if isinstance(value.get("unity_editor"), Mapping) else {}
     cli = value.get("unity_cli") if isinstance(value.get("unity_cli"), Mapping) else {}
-    artist = value.get("unity_artist_cli") if isinstance(value.get("unity_artist_cli"), Mapping) else {}
+    artist = value.get("artist") if isinstance(value.get("artist"), Mapping) else {}
     pipeline = value.get("pipeline") if isinstance(value.get("pipeline"), Mapping) else {}
     required_true = {
         "project.exists": project.get("exists"),
@@ -115,12 +115,12 @@ def validate_reference_environment_snapshot(
         "unity_editor.safe_mode": editor.get("safe_mode") is False,
         "unity_editor.binding_status": editor.get("binding_status") == "bound",
         "unity_cli.available": cli.get("available"),
-        "unity_artist_cli.available": artist.get("available"),
-        "unity_artist_cli.compatible": artist.get("compatible"),
-        "unity_artist_cli.project_bound": artist.get("project_bound"),
-        "unity_artist_cli.package_installed": artist.get("package_installed"),
-        "unity_artist_cli.pipeline_reachable": artist.get("pipeline_reachable"),
-        "unity_artist_cli.binding_status": artist.get("binding_status") == "bound",
+        "artist.available": artist.get("available"),
+        "artist.compatible": artist.get("compatible"),
+        "artist.project_bound": artist.get("project_bound"),
+        "artist.package_installed": artist.get("package_installed"),
+        "artist.pipeline_reachable": artist.get("pipeline_reachable"),
+        "artist.binding_status": artist.get("binding_status") == "bound",
         "pipeline.installed": pipeline.get("installed"),
         "pipeline.reachable": pipeline.get("reachable"),
     }
@@ -132,7 +132,7 @@ def validate_reference_environment_snapshot(
     if not isinstance(snapshot_root, str) or not same_project_root(snapshot_root, requested_root):
         raise ContractValidationError("environment snapshot project root is not bound to the requested project")
     canonical_scene_path(requested_root, scene_path, require_exists=True)
-    for name, section in (("unity_editor", editor), ("unity_cli", cli), ("unity_artist_cli", artist)):
+    for name, section in (("unity_editor", editor), ("unity_cli", cli)):
         executable = section.get("executable_path")
         if not isinstance(executable, str) or not Path(executable).is_file():
             raise ContractValidationError(f"environment snapshot {name} executable was not observed on disk")
@@ -144,12 +144,11 @@ def validate_reference_environment_snapshot(
         "project.unity_version": (project, "unity_version"),
         "unity_editor.version": (editor, "version"),
         "unity_cli.version": (cli, "version"),
-        "unity_artist_cli.version": (artist, "version"),
-        "unity_artist_cli.package_version": (artist, "package_version"),
-        "unity_artist_cli.unity_version": (artist, "unity_version"),
-        "unity_artist_cli.render_pipeline": (artist, "render_pipeline"),
-        "unity_artist_cli.support_tier": (artist, "support_tier"),
-        "unity_artist_cli.compatibility_backend": (artist, "compatibility_backend"),
+        "artist.package_version": (artist, "package_version"),
+        "artist.unity_version": (artist, "unity_version"),
+        "artist.render_pipeline": (artist, "render_pipeline"),
+        "artist.support_tier": (artist, "support_tier"),
+        "artist.compatibility_backend": (artist, "compatibility_backend"),
     }
     missing_facts = sorted(
         name for name, (section, field_name) in non_empty_facts.items()

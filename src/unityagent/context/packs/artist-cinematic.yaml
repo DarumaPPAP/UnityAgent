@@ -4,12 +4,12 @@ primary_skill: .agents/plugins/unity-agent/skills/artist-subagent-routing/SKILL.
 
 metadata:
   type: context
-  title: UnityArtistCLI Cinematic
+  title: ArtistSubAgentのCinematic
   summary:
-    - Route Timeline, Cinemachine Shot, Track, Clip, Binding, Marker, Signal, Activation, Control, and Animation work.
-    - Preserve exact scope, approval, Undo, Timeline evidence, capture, and human review boundaries.
+    - Timeline、Cinemachine Shot、Track、Clip、Binding、Marker、Signal、Activation、Control、AnimationをArtistSubAgentへ委譲する。
+    - 公式Unity CLIを実行Backendとし、正確なScope、承認、Context、Undo、Timeline Evidence、Capture、Human Reviewの境界を維持する。
   purpose:
-    - Keep cinematic mutation bounded to an explicitly named PlayableDirector and allowlisted Timeline operations.
+    - 明示されたPlayableDirectorと許可されたTimeline操作の変更を、既存Control Planeの承認と実変更先のScopeに束縛する。
   decisions:
     - id: cinematic-provider-is-semantic
       label: Cinematic Provider selection is resolved from domain.workflow qualifiers
@@ -59,14 +59,13 @@ required:
   - type: repository_reference
     path: .agents/plugins/unity-agent/skills/artist-subagent-routing/SKILL.md
   - type: repository_reference
-    path: src/unityagent/runtime/contracts/capability-request.schema.yaml
-  - type: repository_reference
-    path: src/unityagent/runtime/tooling/provider_registry.yaml
-  - type: repository_reference
     path: src/unityagent/context/retrieval/knowledge/visual/unity-artist-cli.yaml
-  - type: external_reference
-    repository: DarumaPPAP/UnitySubAgentHub
-    path: docs/architecture/artist-subagent-spec.md
+  - type: repository_reference
+    path: subagent/artist_subagent/contracts/capability-contracts.yaml
+  - type: repository_reference
+    path: subagent/artist_subagent/contracts/backend-surface-contract.yaml
+  - type: repository_reference
+    path: docs/architecture/artist-subagent-boundary.md
   - type: context_include
     context_id: visual-direction
 

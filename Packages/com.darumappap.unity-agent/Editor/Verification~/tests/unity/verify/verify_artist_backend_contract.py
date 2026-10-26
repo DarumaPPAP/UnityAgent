@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import ast
 from pathlib import Path
 import re
 import subprocess
@@ -14,20 +15,19 @@ from historical_evidence import validate_historical_evidence
 
 ROOT = Path(__file__).resolve().parents[3]
 PACKAGE_PATH = ROOT / "subagent/artist_subagent/tools/editor/package.json"
-CLI_PROJECT = ROOT / "subagent/artist_subagent/tools/host/UnityArtist.Tools.csproj"
-CLI_SOURCE = ROOT / "subagent/artist_subagent/tools/host/Program.cs"
+CLI_SOURCE = ROOT / "src/unityagent/runtime/tooling/providers/unity_cli/artist_command_adapter.py"
 EDITOR_ROOT = ROOT / "subagent/artist_subagent/tools/editor/Editor"
 MATRIX_PATH = ROOT / "ci/compatibility/support-matrix.yaml"
 GATE_EVIDENCE_PATH = ROOT / "tests/unity/evidence/artist/historical/cli-pipeline-gate-evidence.yaml"
 CLI_REFERENCE_AUDIT_PATH = ROOT / "tests/unity/evidence/artist/historical/unity-cli-reference-audit.yaml"
-MANIFEST_PATH = ROOT / "Hub/SubAgents/artist_subagent/manifest.yaml"
-SURFACE_PATH = ROOT / "Hub/SubAgents/artist_subagent/contracts/backend-surface-contract.yaml"
-BACKEND_CONTRACT_PATH = ROOT / "subagent/artist_subagent/tools/host/artist-backend-contract.yaml"
+MANIFEST_PATH = ROOT / "subagent/artist_subagent/manifest.yaml"
+SURFACE_PATH = ROOT / "subagent/artist_subagent/contracts/backend-surface-contract.yaml"
+BACKEND_CONTRACT_PATH = SURFACE_PATH
 REPO_SKILLS_ROOT = ROOT / ".agents/skills"
 LEGACY_PLUGIN_ROOT = ROOT / ".agents/plugins/unity-artist"
 
 REQUIRED_COMMANDS = {
-    "help", "version", "doctor", "capabilities", "install", "inspect", "plan",
+    "inspect", "plan",
     "preview", "apply", "capture", "evaluate", "refine", "history", "cinematic",
 }
 FORBIDDEN_SOURCE_TOKENS = (
@@ -94,30 +94,18 @@ def check_identity(errors: list[str]) -> None:
 
 
 def check_cli_surface(errors: list[str]) -> None:
-    source = CLI_SOURCE.read_text(encoding="utf-8") if CLI_SOURCE.is_file() else ""
-    command_block = re.search(r"SupportedCommands.*?\{(?P<body>.*?)\};", source, re.DOTALL)
-    commands = set(re.findall(r'"([a-z]+)"', command_block.group("body") if command_block else ""))
-    missing = sorted(REQUIRED_COMMANDS - commands)
-    if missing:
-        error(errors, f"CLI is missing commands: {missing}")
-    if '"official_unity_cli_pipeline"' not in source:
-        error(errors, "CLI does not declare official_unity_cli_pipeline transport")
-    if '"pipeline", "install"' not in source or '"command"' not in source:
-        error(errors, "CLI does not expose install and official Pipeline command delegation")
-    if not CLI_PROJECT.is_file():
-        error(errors, "CLI project file is missing")
-    else:
-        project = CLI_PROJECT.read_text(encoding="utf-8")
-        package = read_json(errors, PACKAGE_PATH)
-        version = str(package.get("version") or "")
-        if f"<Version>{version}</Version>" not in project:
-            error(errors, "CLI project version disagrees with Artist backend package version")
-    package = read_json(errors, PACKAGE_PATH)
-    version = str(package.get("version") or "")
-    if f'private const string Version = "{version}";' not in source:
-        error(errors, "CLI Version constant disagrees with Artist backend package version")
-    if f'private const string SemanticVersion = "{version}";' not in source:
-        error(errors, "CLI SemanticVersion constant disagrees with Artist backend package version")
+    source = CLI_SOURCE.read_text(encoding="utf-8")
+    options = next(node.value for node in ast.parse(source).body if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id == "_OPTIONS" for target in node.targets))
+    commands = set(ast.literal_eval(options))
+    if not REQUIRED_COMMANDS.issubset(commands):
+        error(errors, f"typed Unity CLI adapter is missing commands: {sorted(REQUIRED_COMMANDS - commands)}")
+    registration = (EDITOR_ROOT / "Pipeline/ArtistPipelineCommandRegistration.cs").read_text(encoding="utf-8")
+    if set(re.findall(r'CliCommand\("artist\.([a-z]+)"', registration)) != REQUIRED_COMMANDS:
+        error(errors, "Pipeline registration must expose exactly nine Artist commands")
+    authority = (EDITOR_ROOT / "Commands/AuthorityClient.cs").read_text(encoding="utf-8")
+    for token in ("HMACSHA256", "sessionId", "nonce", "reservationId"):
+        if token not in authority:
+            error(errors, f"Editor authority protocol missing {token}")
 
 
 def check_editor_surface(errors: list[str]) -> None:
@@ -125,7 +113,7 @@ def check_editor_surface(errors: list[str]) -> None:
     for token in FORBIDDEN_SOURCE_TOKENS:
         if token in sources:
             error(errors, f"forbidden legacy/MCP token remains in current Editor source: {token}")
-    if "CliCommand" not in sources or "Unity.Pipeline.Commands" not in sources:
+    if "CliCommand" not in sources or "Unity.Pipeline" not in sources:
         error(errors, "current Editor package does not expose official Pipeline CliCommand registrations")
     for command in ("artist.inspect", "artist.plan", "artist.preview", "artist.apply", "artist.capture", "artist.evaluate", "artist.refine", "artist.cinematic", "artist.history"):
         if command not in sources:
@@ -232,9 +220,9 @@ def check_catalog(errors: list[str]) -> None:
         error(errors, "manifest supported version/pipeline pairs disagree with the Artist support matrix")
     backends = manifest.get("backends") or []
     backend_ids = [backend.get("id") for backend in backends if isinstance(backend, dict)]
-    if "unity_artist_cli" not in backend_ids or identity.get("id") in backend_ids:
-        error(errors, "unity_artist_cli must remain a backend id distinct from the specialist")
-    if surface.get("kind") != "specialist_backend_interface" or surface.get("backend_identity") != "unity_artist_cli":
+    if "unity_cli" not in backend_ids or identity.get("id") in backend_ids:
+        error(errors, "unity_cli must remain the backend id distinct from the specialist")
+    if surface.get("kind") != "specialist_backend_interface" or surface.get("backend_identity") != "unity_cli":
         error(errors, "Artist backend interface identity is invalid")
     if surface.get("execution_boundary") != "unity_agent_tool_broker":
         error(errors, "Artist backend must execute through UnityAgent ToolBroker")
@@ -253,14 +241,10 @@ def check_catalog(errors: list[str]) -> None:
 def check_agent_distribution(errors: list[str]) -> None:
     if LEGACY_PLUGIN_ROOT.exists():
         error(errors, "standalone .agents/plugins/unity-artist surface must be removed")
-    expected = {
-        "artist-subagent-cinematic-evidence",
-        "artist-subagent-lookdev-refine",
-        "artist-subagent-backend-setup",
-    }
+    expected = {"artist-subagent-routing"}
     actual = {
         path.parent.name
-        for path in REPO_SKILLS_ROOT.rglob("SKILL.md")
+        for path in (ROOT / ".agents").rglob("SKILL.md")
         if path.parent.name.startswith("artist-subagent-")
     } if REPO_SKILLS_ROOT.is_dir() else set()
     missing = sorted(expected - actual)
@@ -315,7 +299,6 @@ def main() -> int:
     check_cli_reference_audit(errors)
     check_catalog(errors)
     check_agent_distribution(errors)
-    check_legacy_anchor(errors)
     print(f"ArtistSubAgent backend contract: {len(errors)} error(s)")
     return 1 if errors else 0
 

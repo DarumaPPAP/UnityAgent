@@ -92,8 +92,11 @@ def build_project_info_command(executable: str | Path, project_root: str | Path)
     )
 
 
-def build_status_command(executable: str | Path) -> UnityCliCommand:
-    return _machine([_non_empty(executable, label="executable"), "status"], operation="editor.status")
+def build_status_command(executable: str | Path, project_root: str | Path | None = None) -> UnityCliCommand:
+    argv = [_non_empty(executable, label="executable"), "status"]
+    if project_root is not None:
+        argv.extend(["--project-path", _non_empty(project_root, label="project_root")])
+    return _machine(argv, operation="editor.status")
 
 
 def build_version_command(executable: str | Path) -> UnityCliCommand:
@@ -114,7 +117,7 @@ def build_pipeline_catalog_command(
     *,
     runtime_name: str | None = None,
 ) -> UnityCliCommand:
-    argv = [_non_empty(executable, label="executable"), "command"]
+    argv = [_non_empty(executable, label="executable"), "command", "--detail", "full"]
     if runtime_name is not None:
         argv.extend(["--runtime", _non_empty(runtime_name, label="runtime_name")])
     else:

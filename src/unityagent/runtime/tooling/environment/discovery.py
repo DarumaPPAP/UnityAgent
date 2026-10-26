@@ -9,12 +9,14 @@ import hashlib
 import json
 import os
 import shutil
-from dataclasses import dataclass
+import tarfile
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Callable, Mapping, Sequence
 
 from unityagent.runtime.dispatcher.subprocess_dispatcher import DispatchRequest, dispatch
 from unityagent.runtime.tooling.environment.environment_snapshot import (
+    ArtistSnapshot,
     AvailabilitySnapshot,
     BuildSnapshot,
     EnvironmentSnapshot,
@@ -25,10 +27,12 @@ from unityagent.runtime.tooling.environment.environment_snapshot import (
     ProjectSnapshot,
     ProviderBindingSnapshot,
     TriState,
-    UnityArtistCliSnapshot,
     UnityCliSnapshot,
     UnityEditorSnapshot,
 )
+from unityagent.runtime.tooling.providers.unity_cli.discovery import discover_unity_cli_surface
+from unityagent.runtime.tooling.providers.unity_cli.command_builder import build_pipeline_command
+from unityagent.runtime.tooling.providers.unity_cli.result_mapper import parse_json_sequence, terminal_envelope
 from unityagent.runtime.tooling.environment.native_editor_discovery import (
     EditorCandidate,
     EditorProcessObservation,
@@ -188,41 +192,6 @@ def probe_unity_cli(
     return UnityCliSnapshot(True, version, executable, None)
 
 
-def _dispatch_json(
-    executable: str,
-    arguments: Sequence[str],
-    *,
-    cwd: Path,
-    dispatch_fn: Callable[..., dict],
-    timeout_seconds: float,
-) -> tuple[bool, dict | None, str | None]:
-    try:
-        outcome = dispatch_fn(
-            DispatchRequest([executable, *arguments], cwd, timeout_seconds)
-        )
-    except (OSError, PermissionError):
-        return False, None, "unavailable"
-    if outcome.get("status") != "passed":
-        failure_class = outcome.get("failure_class")
-        return False, None, "timeout" if failure_class == "runtime_timeout" else "unhealthy"
-    payload = outcome.get("payload")
-    if payload is None:
-        result = outcome.get("result")
-        payload = getattr(result, "stdout", None)
-    try:
-        value = json.loads(str(payload or ""))
-    except (TypeError, ValueError):
-        return False, None, "unknown"
-    if not isinstance(value, dict):
-        return False, None, "unknown"
-    return True, value, None
-
-
-def _artist_data(value: dict) -> dict:
-    data = value.get("Data", value.get("data"))
-    return data if isinstance(data, dict) else value
-
-
 def _manifest_package_version(project_root: str, package_name: str) -> str | None:
     manifest = Path(project_root).expanduser() / "Packages/manifest.json"
     try:
@@ -265,108 +234,84 @@ def _artist_compatibility(
     )
 
 
-def probe_unity_artist_cli(
-    *,
-    project_root: str,
-    cwd: Path,
-    explicit_executable: str | None = None,
-    which_fn: Callable[[str], str | None] = shutil.which,
-    dispatch_fn: Callable[..., dict] = dispatch,
-    timeout_seconds: float = ARTIST_CLI_TIMEOUT_SECONDS,
-) -> UnityArtistCliSnapshot:
-    """Observe the UnityArtistCLI adapter; never installs or mutates anything."""
-    executable = explicit_executable or which_fn("unity-artist")
-    if executable is not None:
-        candidate = Path(executable).expanduser()
-        executable = str(candidate.resolve(strict=False)) if candidate.is_file() else None
-    if executable is None:
-        return UnityArtistCliSnapshot(
-            False, None, None, "unknown", "unknown", None, "unknown", None, None,
-            None, None, [], "unavailable", "unknown", None,
-        )
-
-    version_ok, version_value, failure = _dispatch_json(
-        executable,
-        ["version", "--format", "json", "--non-interactive", "--no-banner"],
-        cwd=cwd,
-        dispatch_fn=dispatch_fn,
-        timeout_seconds=timeout_seconds,
-    )
-    if not version_ok:
-        return UnityArtistCliSnapshot(
-            False, None, executable, "unknown", "unknown", None, "unknown", None, None,
-            None, None, [], failure or "unknown", "unknown", None,
-        )
-
-    project = Path(project_root).expanduser().resolve(strict=False)
-    package_version = _manifest_package_version(str(project), "com.darumappap.artist-subagent")
-    package_installed: TriState = package_version is not None
-    project_bound: TriState = package_installed if project.is_dir() else False
-    binding_status: BindingStatus = "bound" if project_bound is True else (
-        "unbound" if project_bound is False else "unknown"
-    )
-    version_data = _artist_data(version_value or {})
-    version = version_data.get("version")
-    if version is not None:
-        version = str(version)
-
-    capabilities: list[str] = []
-    unity_version: str | None = None
-    render_pipeline: str | None = None
-    support_tier: str | None = None
-    compatibility_backend: str | None = None
-    support_observed = False
-    capability_ok, capability_value, capability_failure = _dispatch_json(
-        executable,
-        [
-            "capabilities", "--project-path", str(project), "--format", "json",
-            "--non-interactive", "--no-banner",
-        ],
-        cwd=cwd,
-        dispatch_fn=dispatch_fn,
-        timeout_seconds=timeout_seconds,
-    )
-    if capability_ok:
-        capability_data = _artist_data(capability_value or {})
-        raw_capabilities = capability_data.get("capabilities")
-        if isinstance(raw_capabilities, list):
-            capabilities = [str(item) for item in raw_capabilities if str(item).strip()]
-        support = capability_data.get("support")
-        if isinstance(support, dict):
-            support_observed = True
-            unity_version = _support_text(support.get("unityVersion"))
-            render_pipeline = _support_text(support.get("renderPipeline"))
-            support_tier = _support_text(support.get("supportTier"))
-            compatibility_backend = _support_text(support.get("compatibilityBackend"))
-
-    failure_class = None if capability_ok else (capability_failure or "unknown")
-    artist_pipeline_reachable: TriState = (
-        True if capability_ok and support_observed and project_bound is True else
-        (False if capability_failure in {"unavailable", "unhealthy", "timeout"} else "unknown")
-    )
-    return UnityArtistCliSnapshot(
-        True,
-        version,
-        executable,
-        project_bound,
-        package_installed,
-        package_version,
-        artist_pipeline_reachable,
-        unity_version,
-        render_pipeline,
-        support_tier,
-        compatibility_backend,
-        capabilities,
-        failure_class,
-        binding_status,
-        f"unity-artist:{project}" if project_bound is True else None,
-        compatible=_artist_compatibility(
-            unity_version=unity_version,
-            render_pipeline=render_pipeline,
-            support_tier=support_tier,
-            compatibility_backend=compatibility_backend,
-        ),
-    )
+def probe_artist_pipeline(*, project_root: str, cwd: Path, unity_cli: UnityCliSnapshot, dispatch_fn: Callable[..., dict] = dispatch, timeout_seconds: float = ARTIST_CLI_TIMEOUT_SECONDS) -> ArtistSnapshot:
+    """公式Unity CLIのCatalogと対象ProjectのEditor応答だけでArtistを観測する。"""
+    package_name = "com.darumappap.artist-subagent"
+    package_installed = _package_fact(project_root, package_name)
+    package_version = _manifest_package_version(project_root, package_name)
+    if package_version and package_version.startswith("file:"):
+        location = Path(package_version[5:])
+        location = location if location.is_absolute() else Path(project_root) / "Packages" / location
+        try:
+            if location.is_file():
+                # Unityのlocal-tarballは展開・実行せず、正規Package metadataだけを観測する。
+                with tarfile.open(location, "r:*") as archive:
+                    entry = archive.getmember("package/package.json")
+                    if not entry.isfile() or entry.size > 65536:
+                        raise ValueError("Artist Package metadata must be a bounded regular file")
+                    with archive.extractfile(entry) as stream:
+                        package = json.loads(stream.read().decode("utf-8-sig"))
+            else:
+                package = json.loads((location / "package.json").read_text(encoding="utf-8-sig"))
+            package_version = _support_text(package.get("version")) if isinstance(package, dict) and package.get("name") == package_name else None
+            package_installed = package_version is not None
+        except (OSError, UnicodeError, ValueError, KeyError, tarfile.TarError):
+            package_installed, package_version = False, None
+    empty = ArtistSnapshot(False, "unknown", "unknown", package_installed, "unknown", None, None, None, None, package_version, [], "unknown", None)
+    # Packageも公式CLIも未観測なら、無関係なHost探索やEditor操作を始める根拠がない。
+    if package_installed is not True or unity_cli.available is not True or not unity_cli.executable_path:
+        return empty
+    surface = discover_unity_cli_surface(project_root, {"unity_cli": {"available": unity_cli.available, "executable_path": unity_cli.executable_path}, "pipeline": {"installed": _package_fact(project_root, PIPELINE_PACKAGE)}}, dispatch_fn=dispatch_fn, timeout_seconds=timeout_seconds)
+    names = sorted({item["name"] for item in surface.command_catalog if isinstance(item, dict) and isinstance(item.get("name"), str) and item["name"].startswith("artist.")})
+    empty = ArtistSnapshot(**{**empty.__dict__, "pipeline_reachable": surface.pipeline_reachable, "capabilities": names})
+    # CatalogにないCommandを能力として推測して実行しない。
+    if surface.status != "available" or surface.pipeline_reachable is not True or "artist.inspect" not in names:
+        return empty
+    command = build_pipeline_command(unity_cli.executable_path, project_root, "artist.inspect", [])
+    try:
+        outcome = dispatch_fn(DispatchRequest(list(command.argv), cwd, timeout_seconds))
+        raw = outcome.get("payload")
+        if raw is None:
+            raw = getattr(outcome.get("result"), "stdout", "")
+        envelope = terminal_envelope(parse_json_sequence(raw, strict=True))
+        if outcome.get("status") != "passed" or envelope is None or envelope.get("success") is not True or envelope.get("errors") != [] or envelope.get("command") not in {"command", "command artist.inspect"}:
+            return empty
+        data = envelope.get("data")
+        if not isinstance(data, dict) or not isinstance(data.get("target"), dict) or not isinstance(data["target"].get("projectPath"), str) or not same_project_root(data["target"]["projectPath"], project_root):
+            return ArtistSnapshot(**{**empty.__dict__, "project_bound": False, "binding_status": "unbound"})
+        raw_editor = data.get("result")
+        values = parse_json_sequence(raw_editor, strict=True) if isinstance(raw_editor, str) else [raw_editor]
+        editor = values[0] if len(values) == 1 else None
+        if not isinstance(editor, dict):
+            return empty
+        support = editor.get("support")
+        if not isinstance(support, dict):
+            return empty
+        unity_version = _support_text(support.get("unityVersion"))
+        render_pipeline = _support_text(support.get("renderPipeline"))
+        support_tier = _support_text(support.get("supportTier"))
+        backend = _support_text(support.get("compatibilityBackend"))
+        compatible = _artist_compatibility(unity_version=unity_version, render_pipeline=render_pipeline, support_tier=support_tier, compatibility_backend=backend)
+        expected_version = observe_project_identity(project_root)["unity_version"]
+        if support.get("supported") is not True or not expected_version or expected_version != unity_version:
+            compatible = False
+        # 同versionの旧Assemblyが応答しても、実Mutation前の認証・Context契約を推測で有効化しない。
+        protocols = {"approvalProtocol": "control_plane_authority_v1", "contextProtocol": "artist_context_v1"}
+        for name, expected in protocols.items():
+            observed = support.get(name)
+            if observed is None or observed == "" or observed == "unknown":
+                if compatible is not False:
+                    compatible = "unknown"
+            elif observed != expected:
+                compatible = False
+        # 正規化器と同じ構造・Revision・Evidence契約を満たした観測だけを利用可能とする。
+        from unityagent.runtime.tooling.providers.unity_cli.artist_command_adapter import ArtistCommand
+        from unityagent.runtime.tooling.providers.unity_cli.artist_result_mapper import normalize_artist_pipeline_result
+        normalized = normalize_artist_pipeline_result(exit_code=0, stdout=raw, command=ArtistCommand("inspect"), project_root=project_root, unity_version=expected_version or "", render_pipeline=render_pipeline or "")
+        available = compatible is True and normalized.get("status") == "passed"
+        return ArtistSnapshot(available, compatible if normalized.get("status") == "passed" else False, True, package_installed, True, unity_version, render_pipeline, support_tier, backend, package_version, names, "bound", "unity-cli:" + canonicalize_project_root(project_root))
+    except (OSError, ValueError, TypeError, RuntimeError):
+        return empty
 
 
 def bind_provider_instances(
@@ -455,11 +400,10 @@ def _binding_fingerprint(snapshot: EnvironmentSnapshot) -> str:
             "instance": snapshot.coplay_mcp.bound_instance_id,
         },
         "player_runtime": snapshot.player_runtime.instance_id,
-        "unity_artist_cli": None if snapshot.unity_artist_cli is None else {
-            "status": snapshot.unity_artist_cli.binding_status,
-            "instance": snapshot.unity_artist_cli.bound_instance_id,
-            "version": snapshot.unity_artist_cli.version,
-            "package_version": snapshot.unity_artist_cli.package_version,
+        "artist": None if snapshot.artist is None else {
+            "status": snapshot.artist.binding_status,
+            "instance": snapshot.artist.bound_instance_id,
+            "package_version": snapshot.artist.package_version,
         },
     }
     encoded = json.dumps(material, sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -480,8 +424,7 @@ def discover_environment(
     editor_processes: Sequence[EditorProcessObservation] | None = None,
     editor_processes_observed: bool = False,
     unity_cli_observation: UnityCliSnapshot | None = None,
-    unity_artist_cli_observation: UnityArtistCliSnapshot | None = None,
-    explicit_unity_artist_cli: str | None = None,
+    artist_observation: ArtistSnapshot | None = None,
     explicit_unity_cli: str | None = None,
     platform_name: str | None = None,
     which_fn: Callable[[str], str | None] = shutil.which,
@@ -548,17 +491,15 @@ def discover_environment(
         which_fn=which_fn,
         dispatch_fn=dispatch_fn,
     )
-    unity_artist_cli = unity_artist_cli_observation or probe_unity_artist_cli(
-        project_root=canonical_root,
-        cwd=cwd,
-        explicit_executable=explicit_unity_artist_cli,
-        which_fn=which_fn,
-        dispatch_fn=dispatch_fn,
-    )
+    artist = artist_observation or probe_artist_pipeline(project_root=canonical_root, cwd=cwd, unity_cli=unity_cli, dispatch_fn=dispatch_fn)
+    if unity_editor.installed is True and unity_editor.version is None and unity_editor.binding_status == "bound" and unity_editor.project_bound is True and artist.project_bound is True and artist.pipeline_reachable is True and artist.unity_version and artist.unity_version == project["unity_version"]:
+        unity_editor = replace(unity_editor, version=artist.unity_version, project_version_match=True)
 
     pipeline_installed = _package_fact(project_root, PIPELINE_PACKAGE)
     if pipeline_installed is False:
         pipeline_reachable = False
+    elif pipeline_installed is True and pipeline_reachable == "unknown" and artist.project_bound is True and artist.pipeline_reachable is True:
+        pipeline_reachable = True
     pipeline = PipelineSnapshot(pipeline_installed, pipeline_reachable)
 
     instances = provider_instances or {}
@@ -587,7 +528,7 @@ def discover_environment(
         player_runtime=player_runtime,
         profile_hint=None,
         binding_fingerprint="0" * 64,
-        unity_artist_cli=unity_artist_cli,
+        artist=artist,
     )
     profile = _derive_profile(base)
     fingerprint = _binding_fingerprint(base)

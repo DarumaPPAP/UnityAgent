@@ -2,6 +2,8 @@
 
 Date: 2026-09-10
 
+状態: **履歴Decision（後継契約へ移行済み）**。現在の実行Providerは `unity_cli` で、旧 `unity_artist_cli` は履歴読取互換だけに残します。現行契約は [ArtistSubAgent境界](../architecture/artist-subagent-boundary.md) を参照してください。以下は当時の判断を保持した記録です。
+
 ## Decision
 
 UnityAgentは新しいPlayer Frameworkを実装せず、既存の Capability → Provider Registry → Resolver → Dispatcher → Provider Adapter → Evidence chainへ `unity_artist_cli` を追加する。UnityAgentはArchitect / Commander / Loop Owner、UnityArtistCLIはvisual art / cinematicを実行するspecialist Provider（概念上のPlayer）とする。

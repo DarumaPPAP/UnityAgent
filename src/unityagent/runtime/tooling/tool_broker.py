@@ -29,14 +29,20 @@ class ToolBroker:
     @staticmethod
     def _subagent_provider_gates(
         environment_snapshot,
+        request,
     ) -> tuple[dict[str, tuple[str, str]], dict[str, str]]:
         # Import lazily: the ReferenceImplementation package exports GoldenTaskRunner,
         # which imports ToolBroker during package initialization.
         from unityagent.runtime.reference_implementation.profiles import CATALOG, ProfileValidationError
 
+        qualifiers = request.get("qualifiers")
+        artist_requested = isinstance(qualifiers, Mapping) and qualifiers.get("domain") in {"visual_art", "cinematic"}
         profiles_by_provider: dict[str, list[Any]] = {}
         for definition in CATALOG.definitions():
             profile = definition.profile
+            # 公式CLIの汎用処理はArtistのoptional導入に依存させない。
+            if profile.profile_id == "artist_subagent" and not artist_requested:
+                continue
             profiles_by_provider.setdefault(profile.provider_id, []).append(profile)
 
         excluded: dict[str, tuple[str, str]] = {}
@@ -70,7 +76,12 @@ class ToolBroker:
         context: ResolutionContext,
         fallback_from_provider_id: str | None = None,
     ) -> dict:
-        excluded, eligible_profiles = self._subagent_provider_gates(environment_snapshot)
+        excluded, eligible_profiles = self._subagent_provider_gates(environment_snapshot, request)
+        qualifiers = request.get("qualifiers")
+        if isinstance(qualifiers, Mapping) and qualifiers.get("domain") in {"visual_art", "cinematic"} and "unity_cli" in excluded:
+            # Artistの成立条件は同CapabilityのFallbackでも保持し、別Backendで迂回させない。
+            failure = excluded["unity_cli"]
+            excluded.update({provider.provider_id: failure for provider in self._registry.candidates(str(request.get("capability")))})
         resolution = resolve_capability(
             request,
             environment_snapshot,

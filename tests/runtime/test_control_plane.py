@@ -79,11 +79,11 @@ class ControlPlaneTests(unittest.TestCase):
         return request
 
     def make_artist_available(self) -> None:
-        self.snapshot["unity_artist_cli"].update(available=True, compatible=True, project_bound=True,
-            package_installed=True, pipeline_reachable=True, version="1.0", executable_path="/bin/true",
+        self.snapshot["artist"].update(available=True, compatible=True, project_bound=True,
+            package_installed=True, pipeline_reachable=True,
             package_version="1.0", unity_version="6000.3.15f1", render_pipeline="builtin",
             support_tier="supported", compatibility_backend="official", capabilities=["visual.capture"],
-            failure_class=None, binding_status="bound", bound_instance_id="unity-test")
+            binding_status="bound", bound_instance_id="unity-test")
 
     def observe_inspection(self, plane, **extra):
         from unityagent.runtime.tooling.providers.file.file_provider import FileProvider
@@ -444,7 +444,7 @@ class ControlPlaneTests(unittest.TestCase):
         with mock.patch("unityagent.control_plane.unity_agent_control_plane.resolve_specialist", wraps=resolve_specialist) as selection:
             result = plane.execute(request, environment_snapshot=self.snapshot,
                 context=ResolutionContext(policy_allowed=True),
-                executors={"unity_artist_cli": self.artist_receipt_executor, "file": lambda *_: {"status": "passed", "provider_ref": "file",
+                executors={"unity_cli": self.artist_receipt_executor, "file": lambda *_: {"status": "passed", "provider_ref": "file",
                     "evidence": ["project_fact"]}}, definition_fingerprint=fingerprint())
         self.assertEqual(selection.call_args.args[:2], ("artist-lookdev", "visual.capture"))
         self.assertEqual(result["status"], "completed")
@@ -476,7 +476,7 @@ class ControlPlaneTests(unittest.TestCase):
         assert execution_context["context_id"] == view["context_id"]
         assert execution_context["context_fingerprint"] == view["context_fingerprint"]["value"]
         assert execution_context["specialist_context"] == view["specialist_context"]
-        return {"status": "passed", "provider_ref": "unity_artist_cli", "evidence": ["visual_capture"],
+        return {"status": "passed", "provider_ref": "unity_cli", "evidence": ["visual_capture"],
             "received_context_id": view["context_id"],
             "received_context_fingerprint": view["context_fingerprint"]["value"]}
 
@@ -497,7 +497,7 @@ class ControlPlaneTests(unittest.TestCase):
                 plane = UnityAgentControlPlane(self.root / f"receipt-{case_index}")
                 result = plane.execute(self.capture_request(), environment_snapshot=self.snapshot,
                     context=ResolutionContext(policy_allowed=True), executors={
-                        "unity_artist_cli": artist,
+                        "unity_cli": artist,
                         "file": lambda *_: {"status": "passed", "provider_ref": "file", "evidence": ["project_fact"]}},
                     definition_fingerprint=fingerprint())
                 self.assertEqual(result["status"], "blocked")
@@ -511,7 +511,7 @@ class ControlPlaneTests(unittest.TestCase):
             context=ResolutionContext(policy_allowed=True),
             executors={"file": lambda *_: {"status": "passed", "provider_ref": "file",
                 "evidence": ["project_fact"]}}, definition_fingerprint=fingerprint())
-        self.assertEqual(self.snapshot["unity_artist_cli"]["available"], False)
+        self.assertEqual(self.snapshot["artist"]["available"], False)
         self.assertEqual(result["status"], "completed")
         self.assertEqual(result["results"][0]["resolution"]["provider_ref"], "file")
 
@@ -543,10 +543,10 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertIn("project access", result["reason"])
         self.assertEqual(called, [])
 
-    def test_legacy_camera_fov_runner_stops_before_live_actions(self) -> None:
+    def test_camera_fov_runner_cannot_approve_user_project_as_fixture(self) -> None:
         from tools.run_camera_fov_reference_live import LiveFailure, run_live
-        with self.assertRaisesRegex(LiveFailure, "projection migration"):
-            run_live(artist_root=self.root, project=self.project)
+        with self.assertRaisesRegex(LiveFailure, "fixture"):
+            run_live(artist_root=self.root, project=self.project, scene_path="Assets/Scene.unity", approve_fixture_mutation=True)
 
     def test_runtime_entry_rejects_semantic_loop_identity(self) -> None:
         request = self.entry_request()
@@ -571,7 +571,7 @@ class ControlPlaneTests(unittest.TestCase):
                 "request_id": "doctor-1",
                 "operation": "doctor",
                 "project_root": str(self.project.resolve()),
-                "products": ["official_unity_cli", "unity_artist_cli"],
+                "products": ["official_unity_cli", "artist_subagent"],
                 "channel": "0.0.8-beta",
                 "non_interactive": True,
             },
@@ -613,7 +613,7 @@ class ControlPlaneTests(unittest.TestCase):
                 "project_root": str(self.project.resolve()),
                 "products": [
                     "official_unity_cli",
-                    "unity_artist_cli",
+                    "artist_subagent",
                     "codex_cli",
                     "unity_agent_codex_plugin",
                 ],
@@ -630,15 +630,15 @@ class ControlPlaneTests(unittest.TestCase):
         provider_result = result["outcome"]["provider_result"]
         self.assertEqual(provider_result["status"], "passed")
         entries_by_product = {entry["product"]: entry for entry in provider_result["entries"]}
-        self.assertEqual(entries_by_product["unity_artist_cli"]["status"], "unavailable")
+        self.assertEqual(entries_by_product["artist_subagent"]["status"], "unavailable")
         self.assertEqual(
-            entries_by_product["unity_artist_cli"]["reason"],
-            "unity_artist_cli_unavailable",
+            entries_by_product["artist_subagent"]["reason"],
+            "artist_package_not_installed",
         )
         product_statuses = {entry["product"]: entry["status"] for entry in provider_result["entries"]}
         self.assertEqual(product_statuses, {
             "official_unity_cli": "verified",
-            "unity_artist_cli": "unavailable",
+            "artist_subagent": "unavailable",
             "codex_cli": "verified",
             "unity_agent_codex_plugin": "verified",
         })
@@ -648,10 +648,10 @@ class ControlPlaneTests(unittest.TestCase):
 
     def test_approved_setup_persists_install_receipt_after_evidence_id_is_known(self) -> None:
         receipt_entry = {
-            "product": "unity_artist_cli",
+            "product": "artist_subagent",
             "status": "installed",
             "version": "0.0.2-beta",
-            "location": "C:/Users/test/AppData/Local/UnityArtistCLI/Beta/unity-artist.exe",
+            "location": "Packages/com.darumappap.artist-subagent",
             "source": "github:DarumaPPAP/UnityAgent@v0.0.8-beta",
             "sha256": "sha256:" + "a" * 64,
         }
@@ -684,7 +684,7 @@ class ControlPlaneTests(unittest.TestCase):
                 "request_id": "apply-1",
                 "operation": "apply",
                 "project_root": str(self.project.resolve()),
-                "products": ["unity_artist_cli"],
+                "products": ["artist_subagent"],
                 "channel": "0.0.8-beta",
                 "non_interactive": True,
                 "approval_ref": "approval-1",
@@ -696,7 +696,7 @@ class ControlPlaneTests(unittest.TestCase):
                 "approved_plan": {
                     "plan_id": "plan-approved",
                     "project_root": str(self.project.resolve()),
-                    "actions": [{"product": "unity_artist_cli", "action": "install_then_verify"}],
+                    "actions": [{"product": "artist_subagent", "action": "manual_required"}],
                 },
             },
             definition_fingerprint=fingerprint(),

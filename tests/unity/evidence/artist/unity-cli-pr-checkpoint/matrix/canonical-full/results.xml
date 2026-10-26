@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="35" result="Passed" total="35" passed="35" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-25 19:14:26Z" end-time="2026-10-25 19:14:28Z" duration="2.1343588">
+  <test-suite type="TestSuite" id="1000" name="p" fullname="p" runstate="Runnable" testcasecount="35" result="Passed" start-time="2026-10-25 19:14:26Z" end-time="2026-10-25 19:14:28Z" duration="2.134359" total="35" passed="35" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="EditMode" />
+    </properties>
+    <test-suite type="Assembly" id="1050" name="UnityCi.ArtistPackage.Tests.dll" fullname="D:/Unity_project/MyURPLaboratory/.m3/ua-2vn1q1r5/p/Library/ScriptAssemblies/UnityCi.ArtistPackage.Tests.dll" runstate="Runnable" testcasecount="35" result="Passed" start-time="2026-10-25 19:14:26Z" end-time="2026-10-25 19:14:28Z" duration="2.124913" total="35" passed="35" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="40436" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <test-suite type="TestSuite" id="1051" name="UnityArtist" fullname="UnityArtist" runstate="Runnable" testcasecount="35" result="Passed" start-time="2026-10-25 19:14:26Z" end-time="2026-10-25 19:14:28Z" duration="2.124458" total="35" passed="35" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1052" name="Tests" fullname="UnityArtist.Tests" runstate="Runnable" testcasecount="35" result="Passed" start-time="2026-10-25 19:14:26Z" end-time="2026-10-25 19:14:28Z" duration="2.124219" total="35" passed="35" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestFixture" id="1002" name="ApplyAuthorityTests" fullname="UnityArtist.Tests.ApplyAuthorityTests" classname="UnityArtist.Tests.ApplyAuthorityTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-10-25 19:14:26Z" end-time="2026-10-25 19:14:26Z" duration="0.263803" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1003" name="DirectApplyWithoutControlPlaneCannotChangeScene" fullname="UnityArtist.Tests.ApplyAuthorityTests.DirectApplyWithoutControlPlaneCannotChangeScene" methodname="DirectApplyWithoutControlPlaneCannotChangeScene" classname="UnityArtist.Tests.ApplyAuthorityTests" runstate="Runnable" seed="1606088565" result="Passed" start-time="2026-10-25 19:14:26Z" end-time="2026-10-25 19:14:26Z" duration="0.250146" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1004" name="ArtistCompatibilityTests" fullname="UnityArtist.Tests.ArtistCompatibilityTests" classname="UnityArtist.Tests.ArtistCompatibilityTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-25 19:14:26Z" end-time="2026-10-25 19:14:26Z" duration="0.002217" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1005" name="ReleaseMatrixAcceptsUnity6Pipelines" fullname="UnityArtist.Tests.ArtistCompatibilityTests.ReleaseMatrixAcceptsUnity6Pipelines" methodname="ReleaseMatrixAcceptsUnity6Pipelines" classname="UnityArtist.Tests.ArtistCompatibilityTests" runstate="Runnable" seed="1643790434" result="Passed" start-time="2026-10-25 19:14:26Z" end-time="2026-10-25 19:14:26Z" duration="0.000254" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1006" name="UnsupportedPipelineIsRejectedBeforeMutation" fullname="UnityArtist.Tests.ArtistCompatibilityTests.UnsupportedPipelineIsRejectedBeforeMutation" methodname="UnsupportedPipelineIsRejectedBeforeMutation" classname="UnityArtist.Tests.ArtistCompatibilityTests" runstate="Runnable" seed="180920331" result="Passed" start-time="2026-10-25 19:14:26Z" end-time="2026-10-25 19:14:26Z" duration="0.000448" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1007" name="CameraBindingTests" fullname="UnityArtist.Tests.CameraBindingTests" classname="UnityArtist.Tests.CameraBindingTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-25 19:14:26Z" end-time="2026-10-25 19:14:26Z" duration="0.092367" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1008" name="CameraPlanUsesInvariantNumbersUnderGermanCulture" fullname="UnityArtist.Tests.CameraBindingTests.CameraPlanUsesInvariantNumbersUnderGermanCulture" methodname="CameraPlanUsesInvariantNumbersUnderGermanCulture" classname="UnityArtist.Tests.CameraBindingTests" runstate="Runnable" seed="1665774229" result="Passed" start-time="2026-10-25 19:14:26Z" end-time="2026-10-25 19:14:26Z" duration="0.088293" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1009" name="CaptureWithDuplicateExplicitCameraNameIsRejectedBeforeArtifacts" fullname="UnityArtist.Tests.CameraBindingTests.CaptureWithDuplicateExplicitCameraNameIsRejectedBeforeArtifacts" methodname="CaptureWithDuplicateExplicitCameraNameIsRejectedBeforeArtifacts" classname="UnityArtist.Tests.CameraBindingTests" runstate="Runnable" seed="688510265" result="Passed" start-time="2026-10-25 19:14:26Z" end-time="2026-10-25 19:14:26Z" duration="0.003157" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1010" name="CaptureReviewRevisionTests" fullname="UnityArtist.Tests.CaptureReviewRevisionTests" classname="UnityArtist.Tests.CaptureReviewRevisionTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-10-25 19:14:26Z" end-time="2026-10-25 19:14:26Z" duration="0.162837" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1011" name="AuthorizationUsesCaptureRevisionAfterSceneChanges" fullname="UnityArtist.Tests.CaptureReviewRevisionTests.AuthorizationUsesCaptureRevisionAfterSceneChanges" methodname="AuthorizationUsesCaptureRevisionAfterSceneChanges" classname="UnityArtist.Tests.CaptureReviewRevisionTests" runstate="Runnable" seed="2116294744" result="Passed" start-time="2026-10-25 19:14:26Z" end-time="2026-10-25 19:14:26Z" duration="0.161618" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1012" name="CinematicApprovalTests" fullname="UnityArtist.Tests.CinematicApprovalTests" classname="UnityArtist.Tests.CinematicApprovalTests" runstate="Runnable" testcasecount="11" result="Passed" start-time="2026-10-25 19:14:26Z" end-time="2026-10-25 19:14:28Z" duration="1.066280" total="11" passed="11" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1022" name="BindingExactDiffMatchesActualObjectReferences" fullname="UnityArtist.Tests.CinematicApprovalTests.BindingExactDiffMatchesActualObjectReferences" methodname="BindingExactDiffMatchesActualObjectReferences" classname="UnityArtist.Tests.CinematicApprovalTests" runstate="Runnable" seed="170865195" result="Passed" start-time="2026-10-25 19:14:26Z" end-time="2026-10-25 19:14:27Z" duration="0.131359" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1014" name="BindingPlanRejectsMissingTargetBeforeApproval" fullname="UnityArtist.Tests.CinematicApprovalTests.BindingPlanRejectsMissingTargetBeforeApproval" methodname="BindingPlanRejectsMissingTargetBeforeApproval" classname="UnityArtist.Tests.CinematicApprovalTests" runstate="Runnable" seed="554538733" result="Passed" start-time="2026-10-25 19:14:27Z" end-time="2026-10-25 19:14:27Z" duration="0.085217" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-suite type="ParameterizedMethod" id="1021" name="PlannedExactStateMatchesActualTimelineArtifact" fullname="UnityArtist.Tests.CinematicApprovalTests.PlannedExactStateMatchesActualTimelineArtifact" classname="UnityArtist.Tests.CinematicApprovalTests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-10-25 19:14:27Z" end-time="2026-10-25 19:14:27Z" duration="0.471872" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1016" name="PlannedExactStateMatchesActualTimelineArtifact(&quot;activation&quot;)" fullname="UnityArtist.Tests.CinematicApprovalTests.PlannedExactStateMatchesActualTimelineArtifact(&quot;activation&quot;)" methodname="PlannedExactStateMatchesActualTimelineArtifact" classname="UnityArtist.Tests.CinematicApprovalTests" runstate="Runnable" seed="735599681" result="Passed" start-time="2026-10-25 19:14:27Z" end-time="2026-10-25 19:14:27Z" duration="0.092960" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1017" name="PlannedExactStateMatchesActualTimelineArtifact(&quot;animation&quot;)" fullname="UnityArtist.Tests.CinematicApprovalTests.PlannedExactStateMatchesActualTimelineArtifact(&quot;animation&quot;)" methodname="PlannedExactStateMatchesActualTimelineArtifact" classname="UnityArtist.Tests.CinematicApprovalTests" runstate="Runnable" seed="773852771" result="Passed" start-time="2026-10-25 19:14:27Z" end-time="2026-10-25 19:14:27Z" duration="0.085513" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1018" name="PlannedExactStateMatchesActualTimelineArtifact(&quot;control&quot;)" fullname="UnityArtist.Tests.CinematicApprovalTests.PlannedExactStateMatchesActualTimelineArtifact(&quot;control&quot;)" methodname="PlannedExactStateMatchesActualTimelineArtifact" classname="UnityArtist.Tests.CinematicApprovalTests" runstate="Runnable" seed="808518698" result="Passed" start-time="2026-10-25 19:14:27Z" end-time="2026-10-25 19:14:27Z" duration="0.093518" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1019" name="PlannedExactStateMatchesActualTimelineArtifact(&quot;signal&quot;)" fullname="UnityArtist.Tests.CinematicApprovalTests.PlannedExactStateMatchesActualTimelineArtifact(&quot;signal&quot;)" methodname="PlannedExactStateMatchesActualTimelineArtifact" classname="UnityArtist.Tests.CinematicApprovalTests" runstate="Runnable" seed="76510623" result="Passed" start-time="2026-10-25 19:14:27Z" end-time="2026-10-25 19:14:27Z" duration="0.107830" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1020" name="PlannedExactStateMatchesActualTimelineArtifact(&quot;marker&quot;)" fullname="UnityArtist.Tests.CinematicApprovalTests.PlannedExactStateMatchesActualTimelineArtifact(&quot;marker&quot;)" methodname="PlannedExactStateMatchesActualTimelineArtifact" classname="UnityArtist.Tests.CinematicApprovalTests" runstate="Runnable" seed="975606939" result="Passed" start-time="2026-10-25 19:14:27Z" end-time="2026-10-25 19:14:27Z" duration="0.085127" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+            <test-suite type="ParameterizedMethod" id="1025" name="ShotExactDiffMatchesCreatedAndUpdatedClip" fullname="UnityArtist.Tests.CinematicApprovalTests.ShotExactDiffMatchesCreatedAndUpdatedClip" classname="UnityArtist.Tests.CinematicApprovalTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-25 19:14:27Z" end-time="2026-10-25 19:14:27Z" duration="0.200343" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1023" name="ShotExactDiffMatchesCreatedAndUpdatedClip(&quot;cinemachine_shot&quot;)" fullname="UnityArtist.Tests.CinematicApprovalTests.ShotExactDiffMatchesCreatedAndUpdatedClip(&quot;cinemachine_shot&quot;)" methodname="ShotExactDiffMatchesCreatedAndUpdatedClip" classname="UnityArtist.Tests.CinematicApprovalTests" runstate="Runnable" seed="1459596325" result="Passed" start-time="2026-10-25 19:14:27Z" end-time="2026-10-25 19:14:27Z" duration="0.113606" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1024" name="ShotExactDiffMatchesCreatedAndUpdatedClip(&quot;shot&quot;)" fullname="UnityArtist.Tests.CinematicApprovalTests.ShotExactDiffMatchesCreatedAndUpdatedClip(&quot;shot&quot;)" methodname="ShotExactDiffMatchesCreatedAndUpdatedClip" classname="UnityArtist.Tests.CinematicApprovalTests" runstate="Runnable" seed="1529891617" result="Passed" start-time="2026-10-25 19:14:27Z" end-time="2026-10-25 19:14:27Z" duration="0.085016" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+            <test-case id="1015" name="TimelineChangesInvalidatePreparedApprovalBeforeAuthorityContact" fullname="UnityArtist.Tests.CinematicApprovalTests.TimelineChangesInvalidatePreparedApprovalBeforeAuthorityContact" methodname="TimelineChangesInvalidatePreparedApprovalBeforeAuthorityContact" classname="UnityArtist.Tests.CinematicApprovalTests" runstate="Runnable" seed="1108406874" result="Passed" start-time="2026-10-25 19:14:27Z" end-time="2026-10-25 19:14:27Z" duration="0.091074" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1013" name="TrackPlanReportsExactAbsentStateAndDoesNotCreateTrack" fullname="UnityArtist.Tests.CinematicApprovalTests.TrackPlanReportsExactAbsentStateAndDoesNotCreateTrack" methodname="TrackPlanReportsExactAbsentStateAndDoesNotCreateTrack" classname="UnityArtist.Tests.CinematicApprovalTests" runstate="Runnable" seed="589606987" result="Passed" start-time="2026-10-25 19:14:27Z" end-time="2026-10-25 19:14:28Z" duration="0.084440" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1026" name="ContextReceiptTests" fullname="UnityArtist.Tests.ContextReceiptTests" classname="UnityArtist.Tests.ContextReceiptTests" runstate="Runnable" testcasecount="10" result="Passed" start-time="2026-10-25 19:14:28Z" end-time="2026-10-25 19:14:28Z" duration="0.017759" total="10" passed="10" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1035" name="ContextReceiptMatchesEachRunAndIsNotReusedByLegacyCall" fullname="UnityArtist.Tests.ContextReceiptTests.ContextReceiptMatchesEachRunAndIsNotReusedByLegacyCall" methodname="ContextReceiptMatchesEachRunAndIsNotReusedByLegacyCall" classname="UnityArtist.Tests.ContextReceiptTests" runstate="Runnable" seed="1605490615" result="Passed" start-time="2026-10-25 19:14:28Z" end-time="2026-10-25 19:14:28Z" duration="0.005468" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-suite type="ParameterizedMethod" id="1034" name="EveryCommandRejectsInvalidContextBeforeExecution" fullname="UnityArtist.Tests.ContextReceiptTests.EveryCommandRejectsInvalidContextBeforeExecution" classname="UnityArtist.Tests.ContextReceiptTests" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-10-25 19:14:28Z" end-time="2026-10-25 19:14:28Z" duration="0.007440" total="6" passed="6" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1028" name="EveryCommandRejectsInvalidContextBeforeExecution(&quot;empty&quot;)" fullname="UnityArtist.Tests.ContextReceiptTests.EveryCommandRejectsInvalidContextBeforeExecution(&quot;empty&quot;)" methodname="EveryCommandRejectsInvalidContextBeforeExecution" classname="UnityArtist.Tests.ContextReceiptTests" runstate="Runnable" seed="900653615" result="Passed" start-time="2026-10-25 19:14:28Z" end-time="2026-10-25 19:14:28Z" duration="0.003234" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1029" name="EveryCommandRejectsInvalidContextBeforeExecution(&quot;number&quot;)" fullname="UnityArtist.Tests.ContextReceiptTests.EveryCommandRejectsInvalidContextBeforeExecution(&quot;number&quot;)" methodname="EveryCommandRejectsInvalidContextBeforeExecution" classname="UnityArtist.Tests.ContextReceiptTests" runstate="Runnable" seed="2002765445" result="Passed" start-time="2026-10-25 19:14:28Z" end-time="2026-10-25 19:14:28Z" duration="0.000661" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1030" name="EveryCommandRejectsInvalidContextBeforeExecution(&quot;unknown&quot;)" fullname="UnityArtist.Tests.ContextReceiptTests.EveryCommandRejectsInvalidContextBeforeExecution(&quot;unknown&quot;)" methodname="EveryCommandRejectsInvalidContextBeforeExecution" classname="UnityArtist.Tests.ContextReceiptTests" runstate="Runnable" seed="1811828416" result="Passed" start-time="2026-10-25 19:14:28Z" end-time="2026-10-25 19:14:28Z" duration="0.000737" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1031" name="EveryCommandRejectsInvalidContextBeforeExecution(&quot;duplicate&quot;)" fullname="UnityArtist.Tests.ContextReceiptTests.EveryCommandRejectsInvalidContextBeforeExecution(&quot;duplicate&quot;)" methodname="EveryCommandRejectsInvalidContextBeforeExecution" classname="UnityArtist.Tests.ContextReceiptTests" runstate="Runnable" seed="1829998108" result="Passed" start-time="2026-10-25 19:14:28Z" end-time="2026-10-25 19:14:28Z" duration="0.000686" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1032" name="EveryCommandRejectsInvalidContextBeforeExecution(&quot;project&quot;)" fullname="UnityArtist.Tests.ContextReceiptTests.EveryCommandRejectsInvalidContextBeforeExecution(&quot;project&quot;)" methodname="EveryCommandRejectsInvalidContextBeforeExecution" classname="UnityArtist.Tests.ContextReceiptTests" runstate="Runnable" seed="126194497" result="Passed" start-time="2026-10-25 19:14:28Z" end-time="2026-10-25 19:14:28Z" duration="0.000916" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1033" name="EveryCommandRejectsInvalidContextBeforeExecution(&quot;malformed&quot;)" fullname="UnityArtist.Tests.ContextReceiptTests.EveryCommandRejectsInvalidContextBeforeExecution(&quot;malformed&quot;)" methodname="EveryCommandRejectsInvalidContextBeforeExecution" classname="UnityArtist.Tests.ContextReceiptTests" runstate="Runnable" seed="525197144" result="Passed" start-time="2026-10-25 19:14:28Z" end-time="2026-10-25 19:14:28Z" duration="0.000393" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+            <test-case id="1027" name="InspectionIdentifiesTheImplementedAuthorityAndContextProtocols" fullname="UnityArtist.Tests.ContextReceiptTests.InspectionIdentifiesTheImplementedAuthorityAndContextProtocols" methodname="InspectionIdentifiesTheImplementedAuthorityAndContextProtocols" classname="UnityArtist.Tests.ContextReceiptTests" runstate="Runnable" seed="415267282" result="Passed" start-time="2026-10-25 19:14:28Z" end-time="2026-10-25 19:14:28Z" duration="0.000494" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1037" name="LegacyEvaluationCannotAuthorizeProductionRefinement" fullname="UnityArtist.Tests.ContextReceiptTests.LegacyEvaluationCannotAuthorizeProductionRefinement" methodname="LegacyEvaluationCannotAuthorizeProductionRefinement" classname="UnityArtist.Tests.ContextReceiptTests" runstate="Runnable" seed="2022194497" result="Passed" start-time="2026-10-25 19:14:28Z" end-time="2026-10-25 19:14:28Z" duration="0.001692" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1036" name="NonemptyFakeApprovalCannotCreateHumanAcceptance" fullname="UnityArtist.Tests.ContextReceiptTests.NonemptyFakeApprovalCannotCreateHumanAcceptance" methodname="NonemptyFakeApprovalCannotCreateHumanAcceptance" classname="UnityArtist.Tests.ContextReceiptTests" runstate="Runnable" seed="1281305173" result="Passed" start-time="2026-10-25 19:14:28Z" end-time="2026-10-25 19:14:28Z" duration="0.000906" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1038" name="LookDevApprovalTests" fullname="UnityArtist.Tests.LookDevApprovalTests" classname="UnityArtist.Tests.LookDevApprovalTests" runstate="Runnable" testcasecount="7" result="Passed" start-time="2026-10-25 19:14:28Z" end-time="2026-10-25 19:14:28Z" duration="0.515836" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-suite type="ParameterizedMethod" id="1042" name="AmbiguousNamedTargetsCannotCreateApprovalPlan" fullname="UnityArtist.Tests.LookDevApprovalTests.AmbiguousNamedTargetsCannotCreateApprovalPlan" classname="UnityArtist.Tests.LookDevApprovalTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-25 19:14:28Z" end-time="2026-10-25 19:14:28Z" duration="0.131334" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1040" name="AmbiguousNamedTargetsCannotCreateApprovalPlan(True)" fullname="UnityArtist.Tests.LookDevApprovalTests.AmbiguousNamedTargetsCannotCreateApprovalPlan(True)" methodname="AmbiguousNamedTargetsCannotCreateApprovalPlan" classname="UnityArtist.Tests.LookDevApprovalTests" runstate="Runnable" seed="595102399" result="Passed" start-time="2026-10-25 19:14:28Z" end-time="2026-10-25 19:14:28Z" duration="0.062695" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1041" name="AmbiguousNamedTargetsCannotCreateApprovalPlan(False)" fullname="UnityArtist.Tests.LookDevApprovalTests.AmbiguousNamedTargetsCannotCreateApprovalPlan(False)" methodname="AmbiguousNamedTargetsCannotCreateApprovalPlan" classname="UnityArtist.Tests.LookDevApprovalTests" runstate="Runnable" seed="1733090754" result="Passed" start-time="2026-10-25 19:14:28Z" end-time="2026-10-25 19:14:28Z" duration="0.064900" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+            <test-case id="1039" name="FogMutationDoesNotDirtyOtherLoadedScene" fullname="UnityArtist.Tests.LookDevApprovalTests.FogMutationDoesNotDirtyOtherLoadedScene" methodname="FogMutationDoesNotDirtyOtherLoadedScene" classname="UnityArtist.Tests.LookDevApprovalTests" runstate="Runnable" seed="1259645707" result="Passed" start-time="2026-10-25 19:14:28Z" end-time="2026-10-25 19:14:28Z" duration="0.125325" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1047" name="FogPlanIncludesEnabledStateAndFogChangesInvalidateRevision" fullname="UnityArtist.Tests.LookDevApprovalTests.FogPlanIncludesEnabledStateAndFogChangesInvalidateRevision" methodname="FogPlanIncludesEnabledStateAndFogChangesInvalidateRevision" classname="UnityArtist.Tests.LookDevApprovalTests" runstate="Runnable" seed="1540310600" result="Passed" start-time="2026-10-25 19:14:28Z" end-time="2026-10-25 19:14:28Z" duration="0.064192" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1046" name="LightPlanUsesObservedValueAndExactOwnedScenePath" fullname="UnityArtist.Tests.LookDevApprovalTests.LightPlanUsesObservedValueAndExactOwnedScenePath" methodname="LightPlanUsesObservedValueAndExactOwnedScenePath" classname="UnityArtist.Tests.LookDevApprovalTests" runstate="Runnable" seed="2718693" result="Passed" start-time="2026-10-25 19:14:28Z" end-time="2026-10-25 19:14:28Z" duration="0.061859" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-suite type="ParameterizedMethod" id="1045" name="ReplacementTargetInvalidatesReviewedRevision" fullname="UnityArtist.Tests.LookDevApprovalTests.ReplacementTargetInvalidatesReviewedRevision" classname="UnityArtist.Tests.LookDevApprovalTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-25 19:14:28Z" end-time="2026-10-25 19:14:28Z" duration="0.131465" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1043" name="ReplacementTargetInvalidatesReviewedRevision(True)" fullname="UnityArtist.Tests.LookDevApprovalTests.ReplacementTargetInvalidatesReviewedRevision(True)" methodname="ReplacementTargetInvalidatesReviewedRevision" classname="UnityArtist.Tests.LookDevApprovalTests" runstate="Runnable" seed="805147909" result="Passed" start-time="2026-10-25 19:14:28Z" end-time="2026-10-25 19:14:28Z" duration="0.067333" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1044" name="ReplacementTargetInvalidatesReviewedRevision(False)" fullname="UnityArtist.Tests.LookDevApprovalTests.ReplacementTargetInvalidatesReviewedRevision(False)" methodname="ReplacementTargetInvalidatesReviewedRevision" classname="UnityArtist.Tests.LookDevApprovalTests" runstate="Runnable" seed="990016350" result="Passed" start-time="2026-10-25 19:14:28Z" end-time="2026-10-25 19:14:28Z" duration="0.060529" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+          </test-suite>
+          <test-suite type="TestFixture" id="1048" name="LookDevVerificationFailureTests" fullname="UnityArtist.Tests.LookDevVerificationFailureTests" classname="UnityArtist.Tests.LookDevVerificationFailureTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-10-25 19:14:28Z" end-time="2026-10-25 19:14:28Z" duration="0.001385" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1049" name="NormalCompilationDoesNotExposeVerificationFaultHook" fullname="UnityArtist.Tests.LookDevVerificationFailureTests.NormalCompilationDoesNotExposeVerificationFaultHook" methodname="NormalCompilationDoesNotExposeVerificationFaultHook" classname="UnityArtist.Tests.LookDevVerificationFailureTests" runstate="Runnable" seed="1607475943" result="Passed" start-time="2026-10-25 19:14:28Z" end-time="2026-10-25 19:14:28Z" duration="0.000236" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[Saving results to: D:\Unity_project\MyURPLaboratory\.m3\results.xml
+]]></output>
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

@@ -11,7 +11,7 @@ from tests.runtime.test_catalog_import_gate import _hub_v2_snapshot, _plan
 
 class ProductionExecutionContractTests(unittest.TestCase):
     def catalog(self):
-        value = yaml.safe_load((Path(__file__).resolve().parents[2] / "tests/runtime/fixtures/artist-consumer-v1.yaml").read_text(encoding="utf-8"))
+        value = yaml.safe_load((Path(__file__).resolve().parents[2] / "tests/runtime/fixtures/unity-cli-artist-consumer-v1.yaml").read_text(encoding="utf-8"))
         value["schema_version"] = "3.0"
         for profile in value["profiles"].values():
             profile["execution"] = {"kind": "provider_backed"}
@@ -26,7 +26,7 @@ class ProductionExecutionContractTests(unittest.TestCase):
         value = self.catalog()
         parsed = SubAgentProfileCatalog.from_mapping(value)
         self.assertEqual(parsed.to_mapping(), value)
-        self.assertEqual(parsed.get("artist_subagent").provider_id, "unity_artist_cli")
+        self.assertEqual(parsed.get("artist_subagent").provider_id, "unity_cli")
         self.assertIsNone(parsed.get("planner_subagent").provider_id)
         self.assertEqual(parsed.get("artist_subagent").default_scope, CATALOG.get("artist_subagent").default_scope)
 

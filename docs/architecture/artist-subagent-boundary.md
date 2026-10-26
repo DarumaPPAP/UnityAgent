@@ -6,7 +6,7 @@
 
 ## 正式な識別子
 
-`ArtistSubAgent` はUnityのVisual Art・Cinematicを担当する任意の専門Agentです。正本IDは `artist_subagent` です。`unity_artist_cli` は限定されたArtist操作へ接続するBackend Providerの互換IDであり、SubAgentの名前ではありません。
+`ArtistSubAgent` はUnityのVisual Art・Cinematicを担当する任意の専門Agentです。正本IDは `artist_subagent`、実行Backendは `unity_cli` です。Artist UPMの限定コマンドを公式Unity CLI／Pipelineから実行します。
 
 <a id="ownership"></a>
 
@@ -25,7 +25,7 @@ ArtistSubAgentの適格性確認と計画
     ↓
 Backend Provider Resolver
     ↓
-unity_artist_cli
+unity_cli → Unity Pipeline → Artist UPM
     ↓
 ProviderResult → Evidence
 ```
@@ -53,7 +53,7 @@ Doctorは観測操作であり、製品をInstallしません。要求の `produ
 | Control Plane `status: blocked` | 解決またはProvider操作を完了できなかった |
 | CLI終了コード | `0` はControl Plane操作の完了、非0は失敗・阻害。個々の製品の利用可否を表す値ではない |
 
-Setup WindowはControl Planeの構造化応答に従い、製品ごとの状態と解決・Providerの失敗理由を表示します。`UnityAgent: Ready` と `Artist CLI (backend): Unavailable` が同時に出ても、ArtistSubAgentが利用可能とは判断しません。利用可否のAuthorityはCapability解決です。
+Setup WindowはControl Planeの構造化応答に従い、製品ごとの状態と解決・Providerの失敗理由を表示します。UnityAgent本体がReadyでも、任意のArtist Packageが未導入・未BindならArtistSubAgentが利用可能とは判断しません。Setup製品IDは `artist_subagent` で、独立Hostの導入を要求しません。利用可否のAuthorityはCapability解決です。
 
 Doctor Evidenceは診断操作の状態を記録します。正規ハッシュには製品状態と利用不可理由を含むProvider結果が含まれます。Evidence化によって `unavailable` を `verified` に書き換えません。
 
@@ -63,9 +63,9 @@ Plan生成はInstallではありません。Applyには一致する承認済みP
 
 ## 配布元とRevision
 
-現在の同居定義は [Registry](../../subagent/registry.yaml) と参照先Manifestが入口です。Artist Backend PackageとHost Toolも `subagent/artist_subagent/tools/` に同居します。現行mainの [Release Workflow](../../.github/workflows/release-tag.yml) は同じUnityAgent checkoutから成果物を生成し、旧Hubを取得しません。
+現在の同居定義は [Registry](../../subagent/registry.yaml) と参照先Manifestが入口です。Artist UPMは `subagent/artist_subagent/tools/editor/` が正本です。[Release Workflow](../../.github/workflows/release-tag.yml) は同じUnityAgent checkoutから成果物を生成し、独立Artist Hostを配布しません。
 
-公開済み `v0.0.8-beta` は旧Hubの固定CommitからBackendを生成した過去の配布です。過去TagのWorkflowとProvenanceを、現在のmainの生成手順と混同しません。旧Hub Source LockとOffline Importは明示的な互換検証として維持します。
+公開済み `v0.0.8-beta` は旧Hubの固定CommitからBackendを生成した過去の配布です。過去TagのWorkflowとProvenanceを、現在のWorking Treeの生成手順と混同しません。旧Hub Source Lockの履歴FixtureとOffline Importは明示的な互換検証として維持し、Productionの取得・Build・Install依存にはしません。
 
 UnityAgentが公開ReleaseとMarketplaceの入口を所有し、ArtistSubAgentや旧Hubを独立した実行Authorityにしません。
 
@@ -75,11 +75,17 @@ UnityAgentが公開ReleaseとMarketplaceの入口を所有し、ArtistSubAgent�
 
 公開Pluginの入口は `unity-agent` です。ArtistSubAgentは独立PluginとしてOrchestrationを迂回しません。Skillは委譲方法を説明しますが、Capability契約やAuthorityを別に定義しません。
 
+既存の `uagent artist` EntryはInspect／Plan／Preview／Apply／Capture／Evaluate／Refine／History／Cinematicの全9コマンドを扱います。Control PlaneがContextを構築し、Policy、Tool Broker、結果の正規化、Evidenceの永続化を通します。ProviderやEditor Pipelineへの直接呼出しでこの境界を代用しません。
+
+MutationはEditorのPlanが返すExact Diff、Revision、実変更先 `mutationPaths` を承認Scopeと照合し、Project／Run／Contextへ束縛した明示承認を必要とします。Editorは実行直前に同じ承認Storeを認証付きで照合し、期限切れ・取消・不一致・再利用を拒否します。Capture ReviewもCaptureとdecisionを計画へ束縛し、明示承認後にだけ記録します。CaptureはHuman Visual Acceptanceを意味しません。
+
+Plan登録、承認、Editor変更、永続Evidence、全9コマンドE2Eは別の検証状態です。未実行のGateを `BLOCKED_NOT_RUN`、未観測を `not_observed` として保持し、過去のRelease記録だけで現在の統合完了を判断しません。
+
 <a id="compatibility"></a>
 
 ## 互換名
 
-`unity_artist_cli`、実行ファイル `unity-artist`、既存Package名はBackend互換名として維持します。新しい説明で専門Agentの正本IDの代わりに使用しません。
+`unity_artist_cli` は過去のSnapshot／InstallReceiptを読むための履歴識別子です。新規Provider登録、Setup要求、実行選出には使いません。独立実行ファイル `unity-artist` は不要です。Editorの製品識別子 `UnityArtistCLI` と既存UPM Package IDは結果Schema互換のため保持します。
 
 <a id="offline-catalog-import-gate"></a>
 

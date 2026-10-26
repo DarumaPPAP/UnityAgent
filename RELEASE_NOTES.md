@@ -12,7 +12,7 @@ UnityAgent 0.0.8-beta promotes the current typed Control Plane and Specialist ar
 
 Consumer Catalog v3 currently exposes:
 
-- ArtistSubAgent — provider-backed through `unity_artist_cli`
+- ArtistSubAgent — `unity_cli` を通じて任意導入のArtist UPMで実行
 - GraphicsSubAgent — providerless reasoning / read-only analysis
 - WorldCreatorSubAgent — providerless reasoning / planning-only
 - PerformanceSubAgent — providerless reasoning / read-only analysis
@@ -24,8 +24,8 @@ Reasoning specialists execute through UnityAgent's CodexRunner contract and do n
 - Hub Snapshot v3 / Manifest v5 are accepted through the Offline Import Gate.
 - Hub registration is not treated as runtime installation, compatibility, project binding, eligibility or readiness.
 - UnitySubAgentHub and individual SubAgents do not publish independent releases.
-- SubAgent definitions, Artist CLI and optional UPM are built from the same UnityAgent checkout. Release provenance records `unity_agent_commit`; the old Hub pin is historical compatibility data only.
-- Artist backend host/package bytes and the consumer-neutral Hub Snapshot are built from that exact commit and published as UnityAgent release assets.
+- SubAgent定義、Control Plane wheel、UnityAgent UPM、Artist UPMは同じUnityAgent checkoutから生成します。 Release provenance records `unity_agent_commit`; the old Hub pin is historical compatibility data only.
+- Artist UPMとconsumer-neutral Hub Snapshotの生成元Commitを記録します。独立Artist Hostのビルド・インストール・配布は不要です。
 
 ## Fixed Full E2E capability
 

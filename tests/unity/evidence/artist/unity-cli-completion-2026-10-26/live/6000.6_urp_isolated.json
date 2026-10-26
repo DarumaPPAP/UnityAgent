@@ -1,0 +1,77 @@
+{
+  "project_root": "D:\\UA227\\artifacts\\latest-urp\\.artist-e2e~",
+  "run_id": "artist-live-b316793bfc4b",
+  "gates": {
+    "all_nine_commands": "PASS",
+    "single_use_replay": "PASS",
+    "old_host_absent": "PASS",
+    "source_state_stable": "PASS"
+  },
+  "commands": {
+    "inspect": {
+      "status": "completed",
+      "durable": true,
+      "evidence_refs": [
+        "artist-inspect-80e8e4065bc4-evidence"
+      ]
+    },
+    "plan": {
+      "status": "completed",
+      "durable": true,
+      "evidence_refs": [
+        "artist-plan-5088614fff71-evidence"
+      ]
+    },
+    "preview": {
+      "status": "completed",
+      "durable": true,
+      "evidence_refs": [
+        "artist-preview-ff7e636e414b-evidence"
+      ]
+    },
+    "apply": {
+      "status": "completed",
+      "durable": true,
+      "evidence_refs": [
+        "artist-apply-e5332938a2db-evidence"
+      ]
+    },
+    "capture": {
+      "status": "completed",
+      "durable": true,
+      "evidence_refs": [
+        "artist-capture-99d5c4f9a9ee-evidence"
+      ]
+    },
+    "evaluate": {
+      "status": "completed",
+      "durable": true,
+      "evidence_refs": [
+        "artist-evaluate-c8f5e0d909f4-evidence"
+      ]
+    },
+    "refine": {
+      "status": "completed",
+      "durable": true,
+      "evidence_refs": [
+        "artist-refine-c3eee85d4313-evidence"
+      ]
+    },
+    "history": {
+      "status": "completed",
+      "durable": true,
+      "evidence_refs": [
+        "artist-history-ca11decb289f-evidence"
+      ]
+    },
+    "cinematic-cinematic": {
+      "status": "completed",
+      "durable": true,
+      "evidence_refs": [
+        "artist-cinematic-eebe3863a92e-evidence"
+      ]
+    }
+  },
+  "human_visual_acceptance": "not_observed",
+  "cinematic_mutation": "BLOCKED_NOT_RUN"
+}

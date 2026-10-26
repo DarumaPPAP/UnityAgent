@@ -1,0 +1,11 @@
+.................................s....................................usage: uagent [-h]
+              {artist,hot-reload,rock,rock-import,e2e,run,doctor,setup} ...
+uagent: error: unrecognized arguments: --context-json {}
+usage: uagent [-h]
+              {artist,hot-reload,rock,rock-import,e2e,run,doctor,setup} ...
+uagent: error: unrecognized arguments: --approval-token forged
+....................................
+----------------------------------------------------------------------
+Ran 106 tests in 13.865s
+
+OK (skipped=1)

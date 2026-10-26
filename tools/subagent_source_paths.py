@@ -12,6 +12,9 @@ ROOT = Path(__file__).resolve().parents[1]
 def resolve_source_paths(lock: dict) -> dict[str, str]:
     hub = lock['hub']
     artist = lock['specialist_sources']['artist_subagent']
+    expected_artist = {'source_mode': 'same_checkout', 'repository': 'DarumaPPAP/UnityAgent', 'manifest': 'subagent/artist_subagent/manifest.yaml', 'backend_package': 'subagent/artist_subagent/tools/editor', 'backend_provider': 'unity_cli'}
+    if artist != expected_artist:
+        raise ValueError('Artist execution sources must belong to the same UnityAgent checkout and Unity CLI')
     if hub.get('repository') != 'DarumaPPAP/UnitySubAgentHub' or re.fullmatch(r'[0-9a-f]{40}', hub.get('commit', '')) is None:
         raise ValueError('Hub source must have the canonical repository and immutable full SHA')
     layouts = {
@@ -22,13 +25,9 @@ def resolve_source_paths(lock: dict) -> dict[str, str]:
     if exporter not in layouts:
         raise ValueError('Unknown snapshot exporter')
     registry, manifest, validator, tests = layouts[exporter]
-    if hub.get('registry') != registry or artist.get('manifest') != manifest or artist.get('backend_package') != 'Packages/com.darumappap.artist-subagent':
+    if hub.get('registry') != registry:
         raise ValueError('Source Lock catalog layout or package identity is inconsistent')
-    cli = artist.get('backend_cli_project')
-    if cli not in ('src/UnityArtist.Cli/UnityArtist.Cli.csproj', 'cli/artist/UnityArtist.Cli.csproj'):
-        raise ValueError('Unknown Artist CLI project')
-    moved_cli = cli == 'cli/artist/UnityArtist.Cli.csproj'
-    return {'repository': hub['repository'], 'commit': hub['commit'], 'hub_exporter': exporter, 'hub_registry': registry, 'hub_validator': validator, 'hub_tests': tests, 'artist_cli_project': cli, 'artist_contract_verifier': 'ci/verify/verify_artist_backend_contract.py' if moved_cli else 'Tests/Backend/verify_artist_backend_contract.py', 'unity_api_verifier': 'ci/verify/verify-unity-api-compatibility.py' if moved_cli else 'Tests/Compatibility/verify-unity-api-compatibility.py'}
+    return {'repository': artist['repository'], 'source_mode': artist['source_mode'], 'artist_manifest': artist['manifest'], 'artist_package': artist['backend_package'], 'artist_provider': artist['backend_provider'], 'historical_hub_repository': hub['repository'], 'historical_hub_commit': hub['commit'], 'hub_exporter': exporter, 'hub_registry': registry, 'hub_validator': validator, 'hub_tests': tests}
 
 
 def main() -> int:

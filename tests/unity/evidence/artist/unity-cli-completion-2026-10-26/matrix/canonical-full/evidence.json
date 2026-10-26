@@ -1,0 +1,421 @@
+{
+  "status": "PASS",
+  "observation": "observed",
+  "fixture": "canonical-full",
+  "project": "tests/unity/projects/artist-e2e",
+  "pipeline": "builtin",
+  "requested_editor": "6000.6.0f1",
+  "packages": {
+    "com.darumappap.artist-subagent": "file:../../../../../subagent/artist_subagent/tools/editor",
+    "com.unity.cinemachine": "6.6.0",
+    "com.unity.pipeline": "0.8.0-exp.1",
+    "com.unity.test-framework": "1.8.0",
+    "com.unity.timeline": "6.6.0"
+  },
+  "srp_package": null,
+  "package_policy": "official-editor-bundled-stable-17-exact-editor-stream",
+  "host_platform": "Windows",
+  "editor_test_process_started": true,
+  "run_id": "local",
+  "run_attempt": "1",
+  "reason": "Nonempty EditMode tests passed",
+  "input_hashes": {
+    "algorithm": "sha256",
+    "digest": "9aeed25af2b8415c2db23bba80e3bec12b405f921a7d87d08a1ca49baecdcc34",
+    "files": {
+      "subagent/artist_subagent/tools/editor/Documentation~.meta": "0052ec4633b78bc8188184ce0a9664627cecec5474aeb569953008858b95238c",
+      "subagent/artist_subagent/tools/editor/Documentation~/README.md": "f35ca5c53f86c9dbf61cb92c851241815de5f76cdf950789a0ae9a383368d207",
+      "subagent/artist_subagent/tools/editor/Documentation~/README.md.meta": "d2428a1b369a0489612985394dadd78d29ac59eabf5de9de42d5a7c3b3962b5f",
+      "subagent/artist_subagent/tools/editor/Editor.meta": "ad422808902dc920bc88d4a3f3d9927606ee759b5b7cdf2cb6af3bb66982d3d1",
+      "subagent/artist_subagent/tools/editor/Editor/AssemblyInfo.cs": "f8615a707a4b559f9386e7a83eaa2de494e846714606568ed89b61d6ccc6a348",
+      "subagent/artist_subagent/tools/editor/Editor/AssemblyInfo.cs.meta": "5b2d70fc25a4d051680696dfb0e78d88084e7bc1469a714eadc17eec40efecd2",
+      "subagent/artist_subagent/tools/editor/Editor/Batch.meta": "350fb8659fb182c0d244e23d0056ec84944742e8276f1a9f28d3c795210be86f",
+      "subagent/artist_subagent/tools/editor/Editor/Batch/UnityArtistBatchCommands.cs": "fbaffd33ad1c41885f7814fa2a8bbdf618ff19add738f488d852288cc2c444d7",
+      "subagent/artist_subagent/tools/editor/Editor/Batch/UnityArtistBatchCommands.cs.meta": "72e920551701cb3ae6f140798ccb5cacae558083cf98085c4b9e99b647795462",
+      "subagent/artist_subagent/tools/editor/Editor/Capture.meta": "7b3c68b952f91ebc9f03d8d92f65e9bea3b68593b3f908bcf8647b2d8bc8fc09",
+      "subagent/artist_subagent/tools/editor/Editor/Cinematic.meta": "ce9a51c4e634d7b63b86a45f71b5a7a2175264fc9b95269756711d830fb6c68a",
+      "subagent/artist_subagent/tools/editor/Editor/Commands.meta": "c62b06ff3de9d2ee1128091bbe248d20bfa6bddb7aaa9090cf7266b441217423",
+      "subagent/artist_subagent/tools/editor/Editor/Commands/ArtistPipelineCommands.cs": "db9daeaa53020a7146b1b89d13694347a9d20758858b8b71d6d323b654457fb8",
+      "subagent/artist_subagent/tools/editor/Editor/Commands/ArtistPipelineCommands.cs.meta": "4570d8e95b0839718218d3c6ba83ceb05b7249b1e50c9d0373a4c789ca645a41",
+      "subagent/artist_subagent/tools/editor/Editor/Commands/AuthorityClient.cs": "c060991feaabd650e1f2734bdc46c8194addc5647ae53f9bae83d367e3701cd8",
+      "subagent/artist_subagent/tools/editor/Editor/Commands/AuthorityClient.cs.meta": "ade56289bf81793bdf01857792ec18e12b4a12d804ee3e4945ebacdf6cf376fb",
+      "subagent/artist_subagent/tools/editor/Editor/Compatibility.meta": "6e95e0831cf917ea4bb72a5a4283a47c3864925d4d67c5cbf0718cacce19aac6",
+      "subagent/artist_subagent/tools/editor/Editor/Compatibility/ArtistCompatibility.cs": "3c873a7ce67aaf3d7a6573c3d7670c88d93d948cc28e237f8b999904c6afc63d",
+      "subagent/artist_subagent/tools/editor/Editor/Compatibility/ArtistCompatibility.cs.meta": "9277d9ad0801afa456512f3078e59204edb02b52c24180da9575fe096fd208fa",
+      "subagent/artist_subagent/tools/editor/Editor/Environment.meta": "705d4f8927e142b4a1391a6ccc37a7f7dc9effa21e6fc67ab2e4a1d1a443d50c",
+      "subagent/artist_subagent/tools/editor/Editor/Lighting.meta": "ac2b6984259cf0be531e6a502ee19c2acf3340d97b2a08c0010b610c70caecf6",
+      "subagent/artist_subagent/tools/editor/Editor/LookDev.meta": "a077ec6a0c3e99f761dfb88cddd2be6ca5d60d6e7574af2eb209b547c326ea68",
+      "subagent/artist_subagent/tools/editor/Editor/Pipeline.meta": "656745fb5727d4db13dd6503b0137d97a135bd5c801ace8b770643c061de192a",
+      "subagent/artist_subagent/tools/editor/Editor/Pipeline/ArtistPipelineCommandRegistration.cs": "92cb2aae3075541902e624f91dd26785307c47b8d196d4069029eb9088fc6e13",
+      "subagent/artist_subagent/tools/editor/Editor/Pipeline/ArtistPipelineCommandRegistration.cs.meta": "6d514d93937e25dc66df9c2a3a5b91edc089780fe149f48c6b9f8c1bc5eb2741",
+      "subagent/artist_subagent/tools/editor/Editor/Pipeline/UnityArtist.Pipeline.Editor.asmdef": "9961812b5eb1b9db7af35cfb8cbfb8f7e1a70f2d12eceb8935d2f6a02f358b28",
+      "subagent/artist_subagent/tools/editor/Editor/Pipeline/UnityArtist.Pipeline.Editor.asmdef.meta": "cddae2c3681195ee1ae75897eacfdb4b65bec427db14c14f67ca08d65d9a0ddf",
+      "subagent/artist_subagent/tools/editor/Editor/Reference.meta": "cc46f2acafaade73d0cea843332b1db6dba0fa0e68032298413c23a65ed9c903",
+      "subagent/artist_subagent/tools/editor/Editor/Reference/CameraFovWorkflowAdapter.cs": "ef23e6738df378b7de2e7b2a3770ef2c1d59650e692647d31409573e4ca1632c",
+      "subagent/artist_subagent/tools/editor/Editor/Reference/CameraFovWorkflowAdapter.cs.meta": "bc55473e4805e2de60bc56ce9744a81ba0c62da7cf230fd031459e3290664218",
+      "subagent/artist_subagent/tools/editor/Editor/Timeline.meta": "9806d2d569b46c3869d7b5ceca16bcee0f283d54f16b99acf9f0bbec327358dc",
+      "subagent/artist_subagent/tools/editor/Editor/UnityArtist.Editor.asmdef": "30b31b32825bef619ee4a9412f24146fe47618017f7762f350915a86307c9f1f",
+      "subagent/artist_subagent/tools/editor/Editor/UnityArtist.Editor.asmdef.meta": "0d413ca8606de4a1d91f375634ebb04a793b5d8e4b45bb3231859c06aaa359d2",
+      "subagent/artist_subagent/tools/editor/LICENSE.md": "895fdcb1ad6b58b316de4ea530dfd8a468bad70056ebe3862802dab06871d13a",
+      "subagent/artist_subagent/tools/editor/LICENSE.md.meta": "e74e9b7064843c418173189f8a99554c04a76337c93aac6b4d0491814c2167fe",
+      "subagent/artist_subagent/tools/editor/package.json": "24870fd614ce0a5f040f4360b8862ad16486a596d62044c55bd73060547388da",
+      "subagent/artist_subagent/tools/editor/package.json.meta": "c657447c0ebc05421e10a1a3d1e367b4bb192ccb9706ca1946f00f7e281980dd",
+      "tests/unity/matrix.yaml": "0f37b0cb1d3f6152cb317b7a8aeea4566d6bf10e6c8ca920af3c4fb69d0b29b0",
+      "tests/unity/projects/artist-e2e/Assets/.keep": "b370e66df387e2f863a488ca3c648476ff1573fb7bd010ba9b74970949d30142",
+      "tests/unity/projects/artist-e2e/Assets/Editor.meta": "9cf511a5cee17ddc80ff411799151ccf5ca24af35b304bbb617ff8c24e945258",
+      "tests/unity/projects/artist-e2e/Assets/Editor/CinematicFixtureBootstrap.cs": "cb306342ea1d57786d53c77890f605a588a76e91520e42e42fe7844c3baf944b",
+      "tests/unity/projects/artist-e2e/Assets/Editor/CinematicFixtureBootstrap.cs.meta": "d4f49f70d433fe871afaa6584cd9ca8f5b0fd57b0c17e56827d2dc4d09547164",
+      "tests/unity/projects/artist-e2e/Assets/Editor/UnityArtistReferenceFixtureBootstrap.cs": "163a67af59a7c6710dfe593908c613b034d40892a3e03127f06fb229906d696d",
+      "tests/unity/projects/artist-e2e/Assets/Editor/UnityArtistReferenceFixtureBootstrap.cs.meta": "2dc2617192df91f80be00661832ce5b0ff15db1252bbdd8678520d1ac105467e",
+      "tests/unity/projects/artist-e2e/Assets/ReferenceCameraFovGolden.unity": "cf78d2d4d10df6c2a90a821b7d9bcb38bee48ac76a2fc64c83f85e3dd221d9b6",
+      "tests/unity/projects/artist-e2e/Assets/ReferenceCameraFovGolden.unity.meta": "1bad6287122a68e22bafacebbe13836196f829b63906f5d0eba91cc76d71fc2c",
+      "tests/unity/projects/artist-e2e/Packages/manifest.json": "dc49912cef6b0dbede08c8ac63a5bf809c69601765a1633743e34c757a241278",
+      "tests/unity/projects/artist-e2e/Packages/packages-lock.json": "e97618cac971bbdacc139b4a5f4b5fda6705d2b75e6a18b96d220041eb5a2bca",
+      "tests/unity/projects/artist-e2e/ProjectSettings/ProjectVersion.txt": "39584c3e6c1e571d53a79ef2dd6ea91c0568ac086792cc435e86401a0ba824ed"
+    }
+  },
+  "source_identity": {
+    "commit": "85bcfb4cd41e89efaf63c8345fe36ae7162bda08",
+    "source": "git-rev-parse"
+  },
+  "editor_path": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.6.0f1\\Editor\\Unity.exe",
+  "observed_editor": "6000.6.0f1",
+  "local_package_versions": {
+    "com.darumappap.artist-subagent": "0.0.2-beta"
+  },
+  "staged_package_tests": [
+    {
+      "source": "tests\\unity\\editor\\artist\\ApplyAuthorityTests.cs",
+      "sha256": "8c55dc12a5e3744ee23e2539ba0faeee9eab8557cf0357e8e64329ed6efeba2f"
+    },
+    {
+      "source": "tests\\unity\\editor\\artist\\ApplyAuthorityTests.cs.meta",
+      "sha256": "9f12900fd1b4b4d7f45eae0d075fc52554695c158d5f8af5109abc4755a51206"
+    },
+    {
+      "source": "tests\\unity\\editor\\artist\\ArtistCompatibilityTests.cs",
+      "sha256": "e889d4c2c7d92f0aee88c34349ab956f75905b4d63c30aef92b7cb4249eda1e0"
+    },
+    {
+      "source": "tests\\unity\\editor\\artist\\ArtistCompatibilityTests.cs.meta",
+      "sha256": "168a1f325bc2e62dff181a4e16c3ab588b16ad6ebb9b6f2c63cc39c53b7d85ff"
+    },
+    {
+      "source": "tests\\unity\\editor\\artist\\CameraBindingTests.cs",
+      "sha256": "6a5e68870d4c8c46a7fe6b71a9b1bbc6e6ae5db414ef8b67627aa33cc98af51e"
+    },
+    {
+      "source": "tests\\unity\\editor\\artist\\CameraBindingTests.cs.meta",
+      "sha256": "b24d5e2f48e4ef09eb289bf5b81b852aecac24fb551ff413180486b141d6332f"
+    },
+    {
+      "source": "tests\\unity\\editor\\artist\\CaptureReviewRevisionTests.cs",
+      "sha256": "f3ed6ca8ac8e81d0f7ef69bfd36fab71ad295ad2f360e95b73ba5766f1ad18c3"
+    },
+    {
+      "source": "tests\\unity\\editor\\artist\\CaptureReviewRevisionTests.cs.meta",
+      "sha256": "81d3bc89d8e7b0e2e8778f0a522710c50882d6ac62c4d12bf08c156a78de900c"
+    },
+    {
+      "source": "tests\\unity\\editor\\artist\\CinematicApprovalTests.cs",
+      "sha256": "5f68b96e6744a65d9abf255547586dc44d7f8662de1eb9a19bb8f39f095c4805"
+    },
+    {
+      "source": "tests\\unity\\editor\\artist\\CinematicApprovalTests.cs.meta",
+      "sha256": "dbaa61f483749a1a5266a87d12b30f46ab7820a30bd920bdd3ff470a3eb0f9f1"
+    },
+    {
+      "source": "tests\\unity\\editor\\artist\\ContextReceiptTests.cs",
+      "sha256": "87e378820480b5c3d2b1fd1a9638f46e71ed1d7df17c82339e04d96710333e9a"
+    },
+    {
+      "source": "tests\\unity\\editor\\artist\\ContextReceiptTests.cs.meta",
+      "sha256": "0372e7edd5c70fbb250c04694a027c3bfd202d0a9ced6ccdc859a2f0b7db3bee"
+    },
+    {
+      "source": "tests\\unity\\editor\\artist\\Fixtures\\Empty.unity",
+      "sha256": "2dab5017419a2ee28505c5594da8f22a492895f3ae30dd8afc70a6a0c52ddc1a"
+    },
+    {
+      "source": "tests\\unity\\editor\\artist\\Fixtures\\Empty.unity.meta",
+      "sha256": "8d5c72d480f4ba82cfb6f8371300d3cf0db67dc3a02728bfa90a61aa1a001425"
+    },
+    {
+      "source": "tests\\unity\\editor\\artist\\Fixtures.meta",
+      "sha256": "3511872a73702866897600da9be354cd5ecac0c9e0b5369abf63fb4f2871e2ce"
+    },
+    {
+      "source": "tests\\unity\\editor\\artist\\LookDevApprovalTests.cs",
+      "sha256": "0cc7bd8efb60609140f6f7aeb2c457e0fc980d0e0bf8179fc5d43fec8edd3656"
+    },
+    {
+      "source": "tests\\unity\\editor\\artist\\LookDevApprovalTests.cs.meta",
+      "sha256": "c80a34d67f25ccc5064adc3fc40bce8157da9c64a53b20184957fea0b2bb7fd0"
+    },
+    {
+      "source": "tests\\unity\\editor\\artist\\LookDevVerificationFailureTests.cs",
+      "sha256": "751edd53cd7b958ec2552f9a97a454a2aa835c262ae053a783287c8407fb97d0"
+    },
+    {
+      "source": "tests\\unity\\editor\\artist\\LookDevVerificationFailureTests.cs.meta",
+      "sha256": "a850b8aa750e622e475902d61de0ae146306584a04eff3ce855b5c3e25afd291"
+    },
+    {
+      "source": "tests\\unity\\editor\\artist\\SceneFixture.cs",
+      "sha256": "a670cd92b810295de2e8304ef590ce1687c258e330863402927a0343cbd1dd77"
+    },
+    {
+      "source": "tests\\unity\\editor\\artist\\SceneFixture.cs.meta",
+      "sha256": "3033d0ce797b7a46f19183e198870450ac9f487463465372ffbe995ceb2d78ae"
+    }
+  ],
+  "editor_exit_code": 0,
+  "tests_passed": 35,
+  "resolved_packages": {
+    "com.darumappap.artist-subagent": {
+      "version": "file:D:/UA227/subagent/artist_subagent/tools/editor",
+      "depth": 0,
+      "source": "local",
+      "dependencies": {}
+    },
+    "com.unity.cinemachine": {
+      "version": "6.6.0",
+      "depth": 0,
+      "source": "builtin",
+      "dependencies": {
+        "com.unity.splines": "2.8.4",
+        "com.unity.modules.imgui": "1.0.0"
+      }
+    },
+    "com.unity.ext.nunit": {
+      "version": "2.1.0",
+      "depth": 1,
+      "source": "builtin",
+      "dependencies": {}
+    },
+    "com.unity.mathematics": {
+      "version": "1.4.0",
+      "depth": 2,
+      "source": "builtin",
+      "dependencies": {}
+    },
+    "com.unity.nuget.mono-cecil": {
+      "version": "1.11.6",
+      "depth": 1,
+      "source": "registry",
+      "dependencies": {},
+      "url": "https://packages.unity.com"
+    },
+    "com.unity.nuget.newtonsoft-json": {
+      "version": "3.2.2",
+      "depth": 1,
+      "source": "registry",
+      "dependencies": {},
+      "url": "https://packages.unity.com"
+    },
+    "com.unity.pipeline": {
+      "version": "0.8.0-exp.1",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {
+        "com.unity.test-framework": "1.1.33",
+        "com.unity.nuget.mono-cecil": "1.11.6",
+        "com.unity.modules.uielements": "1.0.0",
+        "com.unity.modules.jsonserialize": "1.0.0",
+        "com.unity.modules.screencapture": "1.0.0",
+        "com.unity.nuget.newtonsoft-json": "3.0.2"
+      },
+      "url": "https://packages.unity.com"
+    },
+    "com.unity.settings-manager": {
+      "version": "2.1.1",
+      "depth": 2,
+      "source": "registry",
+      "dependencies": {},
+      "url": "https://packages.unity.com"
+    },
+    "com.unity.splines": {
+      "version": "2.9.0",
+      "depth": 1,
+      "source": "registry",
+      "dependencies": {
+        "com.unity.mathematics": "1.2.1",
+        "com.unity.modules.imgui": "1.0.0",
+        "com.unity.settings-manager": "1.0.3"
+      },
+      "url": "https://packages.unity.com"
+    },
+    "com.unity.test-framework": {
+      "version": "1.8.0",
+      "depth": 0,
+      "source": "builtin",
+      "dependencies": {
+        "com.unity.ext.nunit": "2.1.0",
+        "com.unity.modules.imgui": "1.0.0",
+        "com.unity.modules.jsonserialize": "1.0.0"
+      }
+    },
+    "com.unity.timeline": {
+      "version": "6.6.0",
+      "depth": 0,
+      "source": "builtin",
+      "dependencies": {
+        "com.unity.modules.director": "1.0.0",
+        "com.unity.modules.animation": "1.0.0",
+        "com.unity.modules.audio": "1.0.0",
+        "com.unity.modules.particlesystem": "1.0.0"
+      }
+    },
+    "com.unity.modules.animation": {
+      "version": "1.0.0",
+      "depth": 1,
+      "source": "builtin",
+      "dependencies": {}
+    },
+    "com.unity.modules.audio": {
+      "version": "1.0.0",
+      "depth": 1,
+      "source": "builtin",
+      "dependencies": {}
+    },
+    "com.unity.modules.director": {
+      "version": "1.0.0",
+      "depth": 1,
+      "source": "builtin",
+      "dependencies": {
+        "com.unity.modules.audio": "1.0.0",
+        "com.unity.modules.animation": "1.0.0"
+      }
+    },
+    "com.unity.modules.hierarchycore": {
+      "version": "1.0.0",
+      "depth": 2,
+      "source": "builtin",
+      "dependencies": {}
+    },
+    "com.unity.modules.imageconversion": {
+      "version": "1.0.0",
+      "depth": 2,
+      "source": "builtin",
+      "dependencies": {}
+    },
+    "com.unity.modules.imgui": {
+      "version": "1.0.0",
+      "depth": 1,
+      "source": "builtin",
+      "dependencies": {}
+    },
+    "com.unity.modules.jsonserialize": {
+      "version": "1.0.0",
+      "depth": 1,
+      "source": "builtin",
+      "dependencies": {}
+    },
+    "com.unity.modules.particlesystem": {
+      "version": "1.0.0",
+      "depth": 1,
+      "source": "builtin",
+      "dependencies": {}
+    },
+    "com.unity.modules.physics": {
+      "version": "1.0.0",
+      "depth": 2,
+      "source": "builtin",
+      "dependencies": {}
+    },
+    "com.unity.modules.screencapture": {
+      "version": "1.0.0",
+      "depth": 1,
+      "source": "builtin",
+      "dependencies": {
+        "com.unity.modules.imageconversion": "1.0.0"
+      }
+    },
+    "com.unity.modules.ui": {
+      "version": "1.0.0",
+      "depth": 2,
+      "source": "builtin",
+      "dependencies": {}
+    },
+    "com.unity.modules.uielements": {
+      "version": "1.0.0",
+      "depth": 1,
+      "source": "builtin",
+      "dependencies": {
+        "com.unity.modules.ui": "1.0.0",
+        "com.unity.modules.imgui": "1.0.0",
+        "com.unity.modules.jsonserialize": "1.0.0",
+        "com.unity.modules.hierarchycore": "1.0.0",
+        "com.unity.modules.physics": "1.0.0",
+        "com.unity.modules.animation": "1.0.0"
+      }
+    }
+  },
+  "input_hashes_after": {
+    "algorithm": "sha256",
+    "digest": "9aeed25af2b8415c2db23bba80e3bec12b405f921a7d87d08a1ca49baecdcc34",
+    "files": {
+      "subagent/artist_subagent/tools/editor/Documentation~.meta": "0052ec4633b78bc8188184ce0a9664627cecec5474aeb569953008858b95238c",
+      "subagent/artist_subagent/tools/editor/Documentation~/README.md": "f35ca5c53f86c9dbf61cb92c851241815de5f76cdf950789a0ae9a383368d207",
+      "subagent/artist_subagent/tools/editor/Documentation~/README.md.meta": "d2428a1b369a0489612985394dadd78d29ac59eabf5de9de42d5a7c3b3962b5f",
+      "subagent/artist_subagent/tools/editor/Editor.meta": "ad422808902dc920bc88d4a3f3d9927606ee759b5b7cdf2cb6af3bb66982d3d1",
+      "subagent/artist_subagent/tools/editor/Editor/AssemblyInfo.cs": "f8615a707a4b559f9386e7a83eaa2de494e846714606568ed89b61d6ccc6a348",
+      "subagent/artist_subagent/tools/editor/Editor/AssemblyInfo.cs.meta": "5b2d70fc25a4d051680696dfb0e78d88084e7bc1469a714eadc17eec40efecd2",
+      "subagent/artist_subagent/tools/editor/Editor/Batch.meta": "350fb8659fb182c0d244e23d0056ec84944742e8276f1a9f28d3c795210be86f",
+      "subagent/artist_subagent/tools/editor/Editor/Batch/UnityArtistBatchCommands.cs": "fbaffd33ad1c41885f7814fa2a8bbdf618ff19add738f488d852288cc2c444d7",
+      "subagent/artist_subagent/tools/editor/Editor/Batch/UnityArtistBatchCommands.cs.meta": "72e920551701cb3ae6f140798ccb5cacae558083cf98085c4b9e99b647795462",
+      "subagent/artist_subagent/tools/editor/Editor/Capture.meta": "7b3c68b952f91ebc9f03d8d92f65e9bea3b68593b3f908bcf8647b2d8bc8fc09",
+      "subagent/artist_subagent/tools/editor/Editor/Cinematic.meta": "ce9a51c4e634d7b63b86a45f71b5a7a2175264fc9b95269756711d830fb6c68a",
+      "subagent/artist_subagent/tools/editor/Editor/Commands.meta": "c62b06ff3de9d2ee1128091bbe248d20bfa6bddb7aaa9090cf7266b441217423",
+      "subagent/artist_subagent/tools/editor/Editor/Commands/ArtistPipelineCommands.cs": "db9daeaa53020a7146b1b89d13694347a9d20758858b8b71d6d323b654457fb8",
+      "subagent/artist_subagent/tools/editor/Editor/Commands/ArtistPipelineCommands.cs.meta": "4570d8e95b0839718218d3c6ba83ceb05b7249b1e50c9d0373a4c789ca645a41",
+      "subagent/artist_subagent/tools/editor/Editor/Commands/AuthorityClient.cs": "c060991feaabd650e1f2734bdc46c8194addc5647ae53f9bae83d367e3701cd8",
+      "subagent/artist_subagent/tools/editor/Editor/Commands/AuthorityClient.cs.meta": "ade56289bf81793bdf01857792ec18e12b4a12d804ee3e4945ebacdf6cf376fb",
+      "subagent/artist_subagent/tools/editor/Editor/Compatibility.meta": "6e95e0831cf917ea4bb72a5a4283a47c3864925d4d67c5cbf0718cacce19aac6",
+      "subagent/artist_subagent/tools/editor/Editor/Compatibility/ArtistCompatibility.cs": "3c873a7ce67aaf3d7a6573c3d7670c88d93d948cc28e237f8b999904c6afc63d",
+      "subagent/artist_subagent/tools/editor/Editor/Compatibility/ArtistCompatibility.cs.meta": "9277d9ad0801afa456512f3078e59204edb02b52c24180da9575fe096fd208fa",
+      "subagent/artist_subagent/tools/editor/Editor/Environment.meta": "705d4f8927e142b4a1391a6ccc37a7f7dc9effa21e6fc67ab2e4a1d1a443d50c",
+      "subagent/artist_subagent/tools/editor/Editor/Lighting.meta": "ac2b6984259cf0be531e6a502ee19c2acf3340d97b2a08c0010b610c70caecf6",
+      "subagent/artist_subagent/tools/editor/Editor/LookDev.meta": "a077ec6a0c3e99f761dfb88cddd2be6ca5d60d6e7574af2eb209b547c326ea68",
+      "subagent/artist_subagent/tools/editor/Editor/Pipeline.meta": "656745fb5727d4db13dd6503b0137d97a135bd5c801ace8b770643c061de192a",
+      "subagent/artist_subagent/tools/editor/Editor/Pipeline/ArtistPipelineCommandRegistration.cs": "92cb2aae3075541902e624f91dd26785307c47b8d196d4069029eb9088fc6e13",
+      "subagent/artist_subagent/tools/editor/Editor/Pipeline/ArtistPipelineCommandRegistration.cs.meta": "6d514d93937e25dc66df9c2a3a5b91edc089780fe149f48c6b9f8c1bc5eb2741",
+      "subagent/artist_subagent/tools/editor/Editor/Pipeline/UnityArtist.Pipeline.Editor.asmdef": "9961812b5eb1b9db7af35cfb8cbfb8f7e1a70f2d12eceb8935d2f6a02f358b28",
+      "subagent/artist_subagent/tools/editor/Editor/Pipeline/UnityArtist.Pipeline.Editor.asmdef.meta": "cddae2c3681195ee1ae75897eacfdb4b65bec427db14c14f67ca08d65d9a0ddf",
+      "subagent/artist_subagent/tools/editor/Editor/Reference.meta": "cc46f2acafaade73d0cea843332b1db6dba0fa0e68032298413c23a65ed9c903",
+      "subagent/artist_subagent/tools/editor/Editor/Reference/CameraFovWorkflowAdapter.cs": "ef23e6738df378b7de2e7b2a3770ef2c1d59650e692647d31409573e4ca1632c",
+      "subagent/artist_subagent/tools/editor/Editor/Reference/CameraFovWorkflowAdapter.cs.meta": "bc55473e4805e2de60bc56ce9744a81ba0c62da7cf230fd031459e3290664218",
+      "subagent/artist_subagent/tools/editor/Editor/Timeline.meta": "9806d2d569b46c3869d7b5ceca16bcee0f283d54f16b99acf9f0bbec327358dc",
+      "subagent/artist_subagent/tools/editor/Editor/UnityArtist.Editor.asmdef": "30b31b32825bef619ee4a9412f24146fe47618017f7762f350915a86307c9f1f",
+      "subagent/artist_subagent/tools/editor/Editor/UnityArtist.Editor.asmdef.meta": "0d413ca8606de4a1d91f375634ebb04a793b5d8e4b45bb3231859c06aaa359d2",
+      "subagent/artist_subagent/tools/editor/LICENSE.md": "895fdcb1ad6b58b316de4ea530dfd8a468bad70056ebe3862802dab06871d13a",
+      "subagent/artist_subagent/tools/editor/LICENSE.md.meta": "e74e9b7064843c418173189f8a99554c04a76337c93aac6b4d0491814c2167fe",
+      "subagent/artist_subagent/tools/editor/package.json": "24870fd614ce0a5f040f4360b8862ad16486a596d62044c55bd73060547388da",
+      "subagent/artist_subagent/tools/editor/package.json.meta": "c657447c0ebc05421e10a1a3d1e367b4bb192ccb9706ca1946f00f7e281980dd",
+      "tests/unity/matrix.yaml": "0f37b0cb1d3f6152cb317b7a8aeea4566d6bf10e6c8ca920af3c4fb69d0b29b0",
+      "tests/unity/projects/artist-e2e/Assets/.keep": "b370e66df387e2f863a488ca3c648476ff1573fb7bd010ba9b74970949d30142",
+      "tests/unity/projects/artist-e2e/Assets/Editor.meta": "9cf511a5cee17ddc80ff411799151ccf5ca24af35b304bbb617ff8c24e945258",
+      "tests/unity/projects/artist-e2e/Assets/Editor/CinematicFixtureBootstrap.cs": "cb306342ea1d57786d53c77890f605a588a76e91520e42e42fe7844c3baf944b",
+      "tests/unity/projects/artist-e2e/Assets/Editor/CinematicFixtureBootstrap.cs.meta": "d4f49f70d433fe871afaa6584cd9ca8f5b0fd57b0c17e56827d2dc4d09547164",
+      "tests/unity/projects/artist-e2e/Assets/Editor/UnityArtistReferenceFixtureBootstrap.cs": "163a67af59a7c6710dfe593908c613b034d40892a3e03127f06fb229906d696d",
+      "tests/unity/projects/artist-e2e/Assets/Editor/UnityArtistReferenceFixtureBootstrap.cs.meta": "2dc2617192df91f80be00661832ce5b0ff15db1252bbdd8678520d1ac105467e",
+      "tests/unity/projects/artist-e2e/Assets/ReferenceCameraFovGolden.unity": "cf78d2d4d10df6c2a90a821b7d9bcb38bee48ac76a2fc64c83f85e3dd221d9b6",
+      "tests/unity/projects/artist-e2e/Assets/ReferenceCameraFovGolden.unity.meta": "1bad6287122a68e22bafacebbe13836196f829b63906f5d0eba91cc76d71fc2c",
+      "tests/unity/projects/artist-e2e/Packages/manifest.json": "dc49912cef6b0dbede08c8ac63a5bf809c69601765a1633743e34c757a241278",
+      "tests/unity/projects/artist-e2e/Packages/packages-lock.json": "e97618cac971bbdacc139b4a5f4b5fda6705d2b75e6a18b96d220041eb5a2bca",
+      "tests/unity/projects/artist-e2e/ProjectSettings/ProjectVersion.txt": "39584c3e6c1e571d53a79ef2dd6ea91c0568ac086792cc435e86401a0ba824ed"
+    }
+  },
+  "source_changed_during_execution": false,
+  "cleanup_retries": 0,
+  "artifact_hashes": {
+    "editor-version.txt": "d39259cccc2c83132a5bae4e1608bc93dcc93e1fbdbe828d24b9de0a619c7a56",
+    "editor.log": "d76eb477e55f2f92c166dd4e7c96bf6123ce5e8f5d2648347db5fef7898435b8",
+    "editor.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "editor.stdout.log": "4416c34952f07167aff97d2a79ee31bcc9e0b4f7dbc88c884a55f7a610351923",
+    "manifest.json": "4c05d85b717fbb91906af96262440f24104121374754927f5e0aabf58253516e",
+    "packages-lock.json": "51c2d8d593053395496cae237bb53301e3d8759d8b5c42e44381e4842b918eaa",
+    "requested-manifest.json": "cdb82fa6488f7f2e1383c3db820c4928de453b4e25f93b1ed5510ef9a54528ef",
+    "results.xml": "3584ed941e094d2901757d9c7c795d41e51e59edc4744b16ebd64d238775d382"
+  }
+}

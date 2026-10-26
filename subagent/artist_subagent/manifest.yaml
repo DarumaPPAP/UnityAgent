@@ -13,11 +13,11 @@ installation:
   auto_install: false
 activation:
   required_before_resolution:
-  - unity_artist_cli.available
-  - unity_artist_cli.compatible
-  - unity_artist_cli.project_bound
-  - unity_artist_cli.package_installed
-  - unity_artist_cli.pipeline_reachable
+  - artist.available
+  - artist.compatible
+  - artist.project_bound
+  - artist.package_installed
+  - artist.pipeline_reachable
   false_behavior: exclude_from_resolution
   unknown_behavior: exclude_from_resolution
 capabilities:
@@ -38,20 +38,20 @@ compatibility:
   - unity_version: Unity 6.x+
     render_pipeline: hdrp
 dependencies:
-- id: unity_artist_cli
+- id: unity_cli
   kind: backend
   required: true
-  eligibility_gate: unity_artist_cli.available
+  eligibility_gate: artist.available
 - id: com.darumappap.artist-subagent
   kind: unity_package
   required: true
-  eligibility_gate: unity_artist_cli.package_installed
+  eligibility_gate: artist.package_installed
 - id: com.unity.pipeline
   kind: unity_package
   required: true
-  eligibility_gate: unity_artist_cli.pipeline_reachable
+  eligibility_gate: artist.pipeline_reachable
 backends:
-- id: unity_artist_cli
+- id: unity_cli
   kind: cli
   contract_ref: subagent/artist_subagent/contracts/backend-surface-contract.yaml
 evidence:

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from contextlib import contextmanager
 from datetime import datetime, timezone
 import math
 import threading
@@ -307,6 +308,23 @@ class ApprovalDecisionResolver:
         self._decisions: dict[str, ApprovalDecision] = {}
         self._revocation_epochs: dict[str, int] = {}
         self._lock = threading.RLock()
+
+    @contextmanager
+    def execution_guard(self):
+        """承認消費もregister/revokeと同じResolver→Storeのlock順序に揃える。"""
+        with self._lock:
+            yield
+
+    def resolve_artist_plan(self, approval_ref, *, project_root, run_id, plan_id):
+        from unityagent.runtime.contracts.artist_plan import validate_artist_decision
+        if self.store is None:
+            raise ContractValidationError("Artist Plan approval requires the canonical durable store")
+        with self._lock:
+            try:
+                record = self.store.get(approval_ref)
+            except (PersistenceError, OSError) as exc:
+                raise ContractValidationError("Artist Plan approval could not be resolved") from exc
+            return validate_artist_decision(record, project_root=project_root, run_id=run_id, plan_id=plan_id)
 
     def register(self, decision: ApprovalDecision) -> None:
         with self._lock:

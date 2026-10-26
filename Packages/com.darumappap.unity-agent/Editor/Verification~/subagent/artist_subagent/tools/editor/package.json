@@ -2,7 +2,7 @@
   "name": "com.darumappap.artist-subagent",
   "version": "0.0.2-beta",
   "displayName": "ArtistSubAgent Backend",
-  "description": "Unity Editor backend package for ArtistSubAgent visual-art workflows, including LookDev, Lighting, Environment, Camera, Cinematic, Timeline, Capture, Evaluation and Refine.",
+  "description": "Unity Editor backend package for ArtistSubAgent visual-art workflows, including LookDev, Lighting, Environment, Camera, Cinematic, Timeline, Capture, Evaluation and Refine. Unity CLI コマンド登録には任意導入の com.unity.pipeline 0.8.0-exp.1 以降が必要です。",
   "dependencies": {},
   "author": {
     "name": "DarumaPPAP"

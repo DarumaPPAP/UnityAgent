@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Artist manifest / CLI / UPM version, GUID and identity contract."""
+"""Artist manifest / UPM version, GUID and identity contract."""
 from __future__ import annotations
 import json
 from pathlib import Path
@@ -23,13 +23,6 @@ def validate() -> list[str]:
     package = json.loads((package_root / "package.json").read_text(encoding="utf-8"))
     if package.get("name") != "com.darumappap.artist-subagent" or package.get("version") != version or package.get("unity") != "6000.0":
         errors.append("Artist UPM identity/version/unity mismatch")
-    csproj = (ROOT / "subagent/artist_subagent/tools/host/UnityArtist.Tools.csproj").read_text(encoding="utf-8")
-    if f"<Version>{version}</Version>" not in csproj or "<AssemblyName>unity-artist</AssemblyName>" not in csproj:
-        errors.append("Artist CLI csproj identity/version mismatch")
-    program = (ROOT / "subagent/artist_subagent/tools/host/Program.cs").read_text(encoding="utf-8")
-    constants = re.findall(r'private const string (?:Version|SemanticVersion) = "([^"]+)";', program)
-    if constants != [version, version]:
-        errors.append("Artist Program.Version and SemanticVersion must match the manifest")
     for child in package_root.rglob("*"):
         if child.suffix not in {".cs", ".asmdef", ".json"} or child.name.endswith(".meta"):
             continue

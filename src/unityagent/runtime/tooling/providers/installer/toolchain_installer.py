@@ -38,7 +38,7 @@ def install_toolchain_plan(
         if not isinstance(action, Mapping):
             raise ReleaseInstallError("approved setup plan contains a malformed action")
         product = str(action.get("product") or "")
-        if product in {"official_unity_cli", "unity_artist_cli"}:
+        if product in {"official_unity_cli", "artist_subagent"}:
             release_actions.append(action)
         elif product in {"codex_cli", "unity_agent_codex_plugin"}:
             codex_actions.append(action)

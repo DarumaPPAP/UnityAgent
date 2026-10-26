@@ -1,0 +1,52 @@
+{
+  "classification": "historical_development_observation",
+  "date": "2026-10-25",
+  "complete_integration_dod": "BLOCKED_NOT_RUN",
+  "gates": {
+    "all_nine_builtin": "PASS",
+    "cinematic_mutation_builtin": "PASS",
+    "editor_tests_builtin": "PASS",
+    "retired_production_backend": "PASS",
+    "development_distribution": "PASS",
+    "runtime_regression": "FAIL_BASELINE_REPRODUCED",
+    "urp_matrix": "PASS",
+    "hdrp_matrix": "PASS",
+    "human_visual_acceptance": "not_observed",
+    "independent_final_review": "PASS",
+    "installed_wheel_editor": "PASS",
+    "canonical_editor_matrix": "BLOCKED_NOT_RUN",
+    "mutation_validation_exception_injection": "not_observed",
+    "restart_replay": "PASS"
+  },
+  "files": {
+    "all-nine-builtin.json": "a5152d0c9f20fc6222c1eaca9f82534eb9d825c19c3461ef28493511ca068f4f",
+    "all-nine-hdrp.json": "4d93a83f8b223ef9e1b9e4098ac89ac9455d50fe6778a5e24f43b3943b8f0d47",
+    "all-nine-source-hashes.json": "ae9908c49c11651cf72e2d0c7d26a34dc809e7854b316a67c2856f6979131e92",
+    "all-nine-urp.json": "4454eaa2f73c58933677bb944f65bd37ff355c4b51f5d9e555b039f1084b0a09",
+    "artist-python-frozen.log": "89d77cb6c438c19d79856ca5866f6b7db5a654c992b9f0c3d4bfa8c9f63beac6",
+    "authority-csharp-frozen.log": "00721c644ec94d06747c6a7ea1d8eb8f5eaccced86701f2e839b3b4e2727a015",
+    "authority-interop-frozen.log": "20c141f843dcd08786ad397d8505c921dce477a549e3a487c04f5176fffc6a2a",
+    "cinematic-mutation-builtin.json": "a37f759356fe3122002324b7e39dc7a485c3de3abf29c19edb0f1d32e67d9394",
+    "development-distribution.json": "94ee06bcc099dd1ab44028dbd09ca2370a90fa42e2f1feda98190e1e5df3105d",
+    "editor-tests-builtin.xml": "9323cdcc7a2c0fc92f5dbe88fd573886511024e45cf66f9cefe772a7d175cedb",
+    "environment-observation.json": "30e521e249707f43c104a65f7599dc84bd65c977e000da6d1c8ed1ccb3823ad4",
+    "fog-mutation-hdrp.json": "9d8c736a6ca756353360550e4866f3cae6a75be08e3356aa1e3f064c8798b0da",
+    "installed-wheel-inspect-hdrp.json": "e1de167d5074f376d2fcb61103159766388f91bdf95cc7452fed67a6d35fcc8d",
+    "object-identity-before-fix.xml": "be34b3c52c2f8e28305ca65e02c5eb6b809e1f47f22934a3f31898585f3f7e64",
+    "python-regression-state.json": "f414e7009326a159d49487f2d3dc7723ca505eaf2e560c524420733dc1f94db6",
+    "restart-replay.json": "413a0631e00beb183ed5d9e997a02c745e5f18e29ad9a86d176bfd9943cf3d22",
+    "runtime-comparison.json": "1fe3543cecd452e6aea9f14a8afe20e2ebcb7de3ce131e939d8bb2ffe050a29d",
+    "volume-mutation-urp.json": "339b3a9a5dc4a0fbf070d01f97e06911edb8833d3d3b59765233856e0ae52895"
+  },
+  "revalidation_reason": "Post-review Camera/Light instance identity, rollback and scoped dirty fixes verified on all three local pipelines. Canonical Editor matrix remains unrun.",
+  "source_tree": "584a7def1c64df58c4b79a397cbe913ec1e9ce2d",
+  "remaining": {
+    "canonical_editor_matrix": "6000.3.12f1 and 6000.6.0f1 are not installed; local 6000.3.2f1 success is separate",
+    "runtime_regression": "FAIL_BASELINE_REPRODUCED; 27 shared problems, current-only zero",
+    "mutation_validation_exception_injection": "not_observed",
+    "human_visual_acceptance": "not_observed",
+    "merge_release_tag": "not_performed_by_user_instruction"
+  },
+  "superseded_by": "../unity-cli-pr-checkpoint/index.json",
+  "historical_task_capture_cache_available": false
+}

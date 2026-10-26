@@ -55,6 +55,6 @@ PlanをRuntimeへ直接Applyする経路はありません。変更が必要な�
 
 ## Runtime / Resume / Evidence
 
-反映後も `unity_artist_cli.compatible` を含む必須Environment Factは、現在のProjectに対するUnityAgent Environment discoveryの三値観測で判定されます。false / unknown / unavailableは候補から除外されます。
+反映後も `artist.compatible` を含む必須Environment Factは、現在のProjectに対するUnityAgent Environment discoveryの三値観測で判定されます。false / unknown / unavailableは候補から除外されます。
 
 CatalogとProvider Registryの変更は既存DefinitionFingerprintの `runtime_profile_revision` に含まれます。Resumeの既存Runtime Profile変更ルール、Reference Evidenceのprofile binding digestを緩和・追加拡張しません。

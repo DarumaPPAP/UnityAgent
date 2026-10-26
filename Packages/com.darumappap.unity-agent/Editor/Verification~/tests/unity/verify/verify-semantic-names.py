@@ -5,7 +5,7 @@ import re
 import sys
 
 ROOT = Path(__file__).resolve().parents[3]
-SCAN_ROOTS = [ROOT / "subagent/artist_subagent/tools/editor/Editor", ROOT / "subagent/artist_subagent/tools/host"]
+SCAN_ROOTS = [ROOT / "subagent/artist_subagent/tools/editor/Editor"]
 FORBIDDEN = re.compile(r"McpForUnityTool|com\.coplaydev\.unity-mcp|AutoRegister|UnityGraphicsMcp", re.IGNORECASE)
 violations = []
 

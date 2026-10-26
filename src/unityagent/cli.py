@@ -25,7 +25,7 @@ from unityagent.runtime.tooling.providers.file.file_provider import FileProvider
 
 PRODUCTS = (
     "official_unity_cli",
-    "unity_artist_cli",
+    "artist_subagent",
     "codex_cli",
     "unity_agent_codex_plugin",
     "blender_mcp",
@@ -68,6 +68,27 @@ def _default_state_root() -> Path:
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="uagent", description="UnityAgent Control Plane host", allow_abbrev=False)
     subparsers = parser.add_subparsers(dest="command", required=True)
+    artist = subparsers.add_parser("artist", help="Artistの型付き操作・Plan明示承認を既存Control Planeへ渡す")
+    artist.add_argument("artist_command", choices=("inspect", "plan", "preview", "apply", "capture", "evaluate", "refine", "history", "cinematic", "approve"))
+    _add_project_arguments(artist)
+    artist.add_argument("--state-root", type=Path, default=_default_state_root())
+    artist.add_argument("--run-id", required=True)
+    artist.add_argument("--domain", choices=("visual_art", "cinematic"))
+    artist_input = artist.add_mutually_exclusive_group()
+    artist_input.add_argument("--request-json")
+    artist_input.add_argument("--request-file", type=Path)
+    artist.add_argument("--plan-id")
+    artist.add_argument("--expected-revision")
+    artist.add_argument("--capture-id")
+    artist.add_argument("--decision", choices=("accepted", "rejected", "needs_refine"))
+    artist.add_argument("--notes")
+    artist.add_argument("--evaluation-id")
+    artist.add_argument("--operation", dest="cinematic_operation", choices=("inspect", "plan", "preview", "apply"))
+    artist.add_argument("--approval-ref")
+    artist.add_argument("--expires-at")
+    artist.add_argument("--allowed-path", action="append", dest="allowed_paths")
+    artist.add_argument("--prohibited-path", action="append", dest="prohibited_paths")
+    artist.add_argument("--timeout-seconds", type=float, default=120.0)
     hot = subparsers.add_parser("hot-reload", help="Optional CLI Loop V3; 通常Compile/QAは別Gate")
     hot.add_argument("operation", choices=("plan", "approve", "apply"))
     _add_project_arguments(hot)
@@ -160,6 +181,26 @@ def _require_plan_project(args: argparse.Namespace) -> None:
 
 def main() -> int:
     args = _parse_args()
+    if args.command == "artist":
+        from unityagent.control_plane.artist_execution import execute_artist, approve_artist_execution
+        from unityagent.runtime.tooling.providers.unity_cli.artist_command_adapter import ArtistCommand
+        try:
+            plane = UnityAgentControlPlane(args.state_root)
+            if args.artist_command == "approve":
+                if not args.plan_id:
+                    raise ValueError("Artist approve requires --plan-id")
+                result = {"status": "approved", **approve_artist_execution(plane, args.project_path, args.run_id, args.plan_id, expires_at=args.expires_at)}
+            else:
+                if args.expires_at:
+                    raise ValueError("--expires-at is only valid for explicit Artist approve")
+                payload = args.request_file.read_text(encoding="utf-8") if args.request_file is not None else args.request_json
+                command = ArtistCommand(args.artist_command, request_json=payload, plan_id=args.plan_id, expected_revision=args.expected_revision, capture_id=args.capture_id, decision=args.decision, notes=args.notes, evaluation_id=args.evaluation_id, operation=args.cinematic_operation)
+                scope = {"allowed_paths": args.allowed_paths or ["Assets"], "prohibited_paths": args.prohibited_paths if args.prohibited_paths is not None else ["Packages", "ProjectSettings"]} if args.allowed_paths is not None or args.prohibited_paths is not None else None
+                result = execute_artist(plane, args.project_path, args.run_id, command, definition_fingerprint=_fingerprint(), scope=scope, approval_ref=args.approval_ref, timeout_seconds=args.timeout_seconds, domain=args.domain)
+        except (ValueError, OSError, PersistenceError) as exc:
+            result = {"status": "blocked", "reason": str(exc), "gate": "BLOCKED_NOT_RUN"}
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0 if result.get("status") in {"completed", "planned", "approved"} else 1
     if args.command == "hot-reload":
         from unityagent.control_plane.hot_reload import plan_hot_reload, approve_hot_reload, apply_hot_reload
         try:
@@ -261,7 +302,7 @@ def main() -> int:
     if args.channel != CHANNEL:
         raise SystemExit(f"only the {CHANNEL} setup channel is supported")
     project_root = Path(args.project_path).expanduser().resolve(strict=False)
-    products = args.products or ["official_unity_cli", "unity_artist_cli"]
+    products = args.products or ["official_unity_cli"]
     request = {
         "schema_version": "1.0",
         "request_id": f"{args.command}-{os.getpid()}",

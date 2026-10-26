@@ -17,7 +17,7 @@ namespace DarumaPPAP.UnityAgent.Editor
         private static readonly string[] ALL_PRODUCTS =
         {
             "official_unity_cli",
-            "unity_artist_cli",
+            "artist_subagent",
             "codex_cli",
             "unity_agent_codex_plugin",
         };
@@ -1442,7 +1442,7 @@ namespace DarumaPPAP.UnityAgent.Editor
             switch (product ?? string.Empty)
             {
                 case "official_unity_cli": return "Official Unity CLI";
-                case "unity_artist_cli": return "Artist CLI (backend)";
+                case "artist_subagent": return "ArtistSubAgent UPM パッケージ（任意）";
                 case "codex_cli": return "Codex CLI";
                 case "unity_agent_codex_plugin": return "UnityAgent Codex Plugin";
                 default: return string.IsNullOrWhiteSpace(product) ? "Unknown product" : product;

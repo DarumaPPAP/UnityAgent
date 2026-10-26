@@ -286,13 +286,18 @@ class UnityCliProviderTests(unittest.TestCase):
         self.assertEqual(discovery.failure_class, "permission_denied")
 
     def test_editor_status_is_observed_from_structured_output(self) -> None:
+        fake = FakeUnityCliDispatch()
         discovery = discover_unity_cli_surface(
             self.project,
             self.snapshot(),
-            dispatch_fn=FakeUnityCliDispatch(),
+            dispatch_fn=fake,
         )
         self.assertIsInstance(discovery.editor_status, list)
         self.assertEqual(discovery.editor_status[0]["state"], "ready")
+        statuses = [command for command in fake.calls if command[1] == "status"]
+        self.assertEqual(len(statuses), 1)
+        self.assertIn("--project-path", statuses[0])
+        self.assertEqual(statuses[0][statuses[0].index("--project-path") + 1], str(self.project.resolve()))
 
     def test_current_cli_uses_structured_version_and_command_manifest(self) -> None:
         supported = {"projects", "run", "test", "build", "status", "pipeline", "command", "shell", "version", "commands"}
@@ -315,6 +320,64 @@ class UnityCliProviderTests(unittest.TestCase):
         self.assertTrue({"projects", "run", "test", "build", "pipeline", "commands", "version"}.issubset(discovery.supported_commands))
         self.assertTrue(any(command[1] == "version" for command in fake.calls))
         self.assertTrue(any(command[1] == "commands" for command in fake.calls))
+
+    def test_target_catalog_does_not_depend_on_global_pipeline_enumeration(self):
+        fake = FakeUnityCliDispatch()
+        calls = []
+
+        def observe(request, **kwargs):
+            calls.append(list(request.command))
+            if list(request.command)[1:3] == ["pipeline", "list"]:
+                return {"status": "failed", "failure_class": "runtime_timeout", "result": SimpleNamespace(returncode=124, stdout="", stderr="")}
+            return fake(request, **kwargs)
+
+        discovered = discover_unity_cli_surface(self.project, self.snapshot(), dispatch_fn=observe)
+        self.assertIs(discovered.pipeline_reachable, True)
+        self.assertTrue(discovered.command_catalog)
+        self.assertFalse(any(command[1:3] == ["pipeline", "list"] for command in calls))
+        catalog = next(command for command in fake.calls if command[1:3] == ["command", "--detail"])
+        self.assertEqual(catalog[catalog.index("--project-path") + 1], str(self.project.resolve()))
+
+    def test_observed_editor_status_command_avoids_incompatible_cli_status(self):
+        fake = FakeUnityCliDispatch()
+        calls = []
+
+        def observe(request, **kwargs):
+            command = list(request.command)
+            calls.append(command)
+            if command[1] == "status":
+                raise AssertionError("Global CLI status sends an incompatible editor status command")
+            if command[1:3] == ["command", "--detail"]:
+                return fake._outcome(0, envelope("command", [{"name": "editor_status", "runtimeOnly": False}]))
+            if command[1:3] == ["command", "editor_status"]:
+                return fake._outcome(0, envelope("command editor_status", {"target": {"projectPath": str(self.project)}, "result": {"status": "ready", "compiling": False, "domainReloadInProgress": False, "projectPath": str(self.project), "unityVersion": "6000.3.12f1"}}))
+            return fake(request, **kwargs)
+
+        discovered = discover_unity_cli_surface(self.project, self.snapshot(), dispatch_fn=observe)
+        self.assertEqual(discovered.editor_status["instances"], [{"projectPath": str(self.project), "version": "6000.3.12f1", "state": "ready"}])
+        observed = next(command for command in calls if command[1:3] == ["command", "editor_status"])
+        self.assertEqual(observed[observed.index("--project-path") + 1], str(self.project.resolve()))
+
+    def test_target_catalog_failure_preserves_classification_and_never_retries(self):
+        cases = (("runtime_timeout", 124, "", "timeout"), (None, 0, "{broken", "not_observed"), (None, 0, envelope("command", []), "not_observed"), (None, 1, envelope("command", success=False), "unavailable"))
+        for failure, code, stdout, expected in cases:
+            with self.subTest(expected=expected, stdout=stdout):
+                fake = FakeUnityCliDispatch()
+                catalogs = []
+
+                def observe(request, **kwargs):
+                    if list(request.command)[1:3] == ["command", "--detail"]:
+                        catalogs.append(request)
+                        return {"status": "failed" if code else "passed", "failure_class": failure, "result": SimpleNamespace(returncode=code, stdout=stdout, stderr="")}
+                    return fake(request, **kwargs)
+
+                discovered = discover_unity_cli_surface(self.project, self.snapshot(), dispatch_fn=observe)
+                self.assertIs(discovered.pipeline_reachable, False)
+                self.assertEqual(discovered.command_catalog, ())
+                self.assertEqual(discovered.failure_class, expected)
+                self.assertIn("Catalog", discovered.reason)
+                self.assertEqual(len(catalogs), 1)
+                self.assertEqual(discovered.status, "available")
 
     def test_cli_surface_builders_use_machine_readable_commands(self) -> None:
         version = build_version_command(self.cli)

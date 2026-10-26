@@ -346,9 +346,12 @@ def normalize_provider_result(
     if capability not in provider.capabilities:
         raise ValueError(f"{provider_ref} does not declare capability {capability}")
     requirement = runtime_registry.registry.capability_requirements[capability]
-    if provider.safety_strength < requirement.minimum_safety_strength:
+    offer = provider.capabilities[capability]
+    safety_strength = provider.safety_strength if offer.safety_strength is None else offer.safety_strength
+    evidence_strength = provider.evidence_strength if offer.evidence_strength is None else offer.evidence_strength
+    if safety_strength < requirement.minimum_safety_strength:
         raise ValueError("provider safety strength is below capability requirement")
-    if provider.evidence_strength < requirement.minimum_evidence_strength:
+    if evidence_strength < requirement.minimum_evidence_strength:
         raise ValueError("provider evidence strength is below capability requirement")
 
     provider_status = str(provider_result.get("status") or "")
@@ -461,8 +464,8 @@ def normalize_provider_result(
         "project_root": str(request["project_root"]),
         "environment": _environment_projection(environment_snapshot),
         "target": projected_target,
-        "safety_strength": provider.safety_strength,
-        "evidence_strength": provider.evidence_strength,
+        "safety_strength": safety_strength,
+        "evidence_strength": evidence_strength,
         "completion": completion,
         "observation_state": observation_state,
         "failure_class": failure_class,

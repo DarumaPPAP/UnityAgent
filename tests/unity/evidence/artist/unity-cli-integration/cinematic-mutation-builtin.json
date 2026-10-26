@@ -1,0 +1,26 @@
+{
+  "status": "PASS",
+  "run_id": "cinematic-live-bc5c69057fba",
+  "project_root": "D:\\Unity_project\\MyURPLaboratory\\.artist-e2e~",
+  "steps": {
+    "inspect": [
+      "artist-cinematic-ac6f343ef4c7-evidence"
+    ],
+    "plan": [
+      "artist-cinematic-f9bcfa82fb22-evidence"
+    ],
+    "preview": [
+      "artist-cinematic-b4889472307f-evidence"
+    ],
+    "apply": [
+      "artist-cinematic-902130991d3b-evidence"
+    ]
+  },
+  "replay_rejected": true,
+  "save_performed": false,
+  "disk_hashes": {
+    "D:\\Unity_project\\MyURPLaboratory\\.artist-e2e~\\Assets\\ArtistAuthorityFixture.unity": "69f4cd09592577d4e477287de14c131a0e6d16be94a5dc2a3f43aba836ce09ad",
+    "D:\\Unity_project\\MyURPLaboratory\\.artist-e2e~\\Assets\\ArtistTimelineFixture.playable": "ae1d155561e393efb5ecd2a3aa77e1b19e891feed35c509d6a37ece802740b85"
+  },
+  "source_hashes_sha256": "90a0501576645f647129050f25b4cd7494f28787ef7cefaaa352e0c0f83c7f4b"
+}
