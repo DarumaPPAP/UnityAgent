@@ -10,8 +10,8 @@
     },
     {
       "path": "subagent/artist_subagent/tools/editor/Documentation~/README.md",
-      "sha1": "ee6af1f0976e4d5fa07ca25d61b071000c4e5423",
-      "size": 2951
+      "sha1": "9533e609ea41e48a6e7f3a7c91e44ef70d701cd8",
+      "size": 2337
     },
     {
       "path": "subagent/artist_subagent/tools/editor/Documentation~/README.md.meta",
@@ -39,16 +39,6 @@
       "size": 169
     },
     {
-      "path": "subagent/artist_subagent/tools/editor/Editor/Batch/UnityArtistBatchCommands.cs",
-      "sha1": "4398f6c448addd1829e69187f688fb30c4ce250d",
-      "size": 6536
-    },
-    {
-      "path": "subagent/artist_subagent/tools/editor/Editor/Batch/UnityArtistBatchCommands.cs.meta",
-      "sha1": "c2878e656c8531b26ff356408bb447a8f1e5ef26",
-      "size": 240
-    },
-    {
       "path": "subagent/artist_subagent/tools/editor/Editor/Capture.meta",
       "sha1": "74e81e9dd4439886cbdf1f589aae30a7862ec1f7",
       "size": 172
@@ -65,8 +55,8 @@
     },
     {
       "path": "subagent/artist_subagent/tools/editor/Editor/Commands/ArtistPipelineCommands.cs",
-      "sha1": "6012b6a9690a83ec6130ebc0ddfa8407d5904384",
-      "size": 90961
+      "sha1": "24332622a149ad4d05871cf36d29348a9d04aee4",
+      "size": 87298
     },
     {
       "path": "subagent/artist_subagent/tools/editor/Editor/Commands/ArtistPipelineCommands.cs.meta",
@@ -262,61 +252,6 @@
       "path": "tests/unity/projects/artist-e2e/README.md.meta",
       "sha1": "d91e2df17616fdfd81ef509036fd1cbfa684fee2",
       "size": 155
-    },
-    {
-      "path": "tests/unity/projects/historical/2022.3/Assets/.keep",
-      "sha1": "8b137891791fe96927ad78e64b0aad7bded08bdc",
-      "size": 1
-    },
-    {
-      "path": "tests/unity/projects/historical/2022.3/Assets/Editor.meta",
-      "sha1": "545cefe414802d783151f94aac117f99101b5205",
-      "size": 169
-    },
-    {
-      "path": "tests/unity/projects/historical/2022.3/Assets/Editor/UnityArtist2022FixtureBootstrap.cs",
-      "sha1": "ced389b5110e4aadaa2c4bf2447d62d642ceddb1",
-      "size": 1961
-    },
-    {
-      "path": "tests/unity/projects/historical/2022.3/Assets/Editor/UnityArtist2022FixtureBootstrap.cs.meta",
-      "sha1": "317aa015ed1fa26cedc22e2e7e100499a9c2b6b4",
-      "size": 240
-    },
-    {
-      "path": "tests/unity/projects/historical/2022.3/Assets/Scenes.meta",
-      "sha1": "89de199d4dd1a36a7f2ee8ecf04ffe8e61cd31d3",
-      "size": 169
-    },
-    {
-      "path": "tests/unity/projects/historical/2022.3/Assets/Scenes/.keep",
-      "sha1": "8b137891791fe96927ad78e64b0aad7bded08bdc",
-      "size": 1
-    },
-    {
-      "path": "tests/unity/projects/historical/2022.3/Assets/Scenes/ArtistVerification.unity",
-      "sha1": "6186c1754183eec2c556f50ba42615b95899e2b2",
-      "size": 16554
-    },
-    {
-      "path": "tests/unity/projects/historical/2022.3/Assets/Scenes/ArtistVerification.unity.meta",
-      "sha1": "ce4e63236be7b74fb83601e9ca2b23c21d3b2a8b",
-      "size": 152
-    },
-    {
-      "path": "tests/unity/projects/historical/2022.3/Packages/manifest.json",
-      "sha1": "032f5027afc146c09a963f7b38a26798ee570570",
-      "size": 171
-    },
-    {
-      "path": "tests/unity/projects/historical/2022.3/ProjectSettings/ProjectVersion.txt",
-      "sha1": "c47c8be787b35d1511128561060d0bfff81572fc",
-      "size": 85
-    },
-    {
-      "path": "tests/unity/projects/historical/2022.3/README.md",
-      "sha1": "1b35351bf1f1dca662e8a6fc3c9e937f95fa3dd6",
-      "size": 728
     },
     {
       "path": "tests/unity/projects/pipelines/builtin/Assets/Editor.meta",
@@ -525,8 +460,8 @@
     },
     {
       "path": "tests/unity/projects/README.md",
-      "sha1": "913f04487b147e743f00b04d81065de55f1ec8b5",
-      "size": 1081
+      "sha1": "180b2cdf66f3f598c73ab5130f3f061bf960ab3b",
+      "size": 638
     },
     {
       "path": "tests/unity/projects/versions/6000.3/Assets/Editor.meta",
@@ -614,11 +549,6 @@
       "size": 3551
     },
     {
-      "path": "tests/unity/verify/historical_evidence.py",
-      "sha1": "43e0536c877602fdea30f81ec8d147889031f6a7",
-      "size": 3780
-    },
-    {
       "path": "tests/unity/verify/test_unity_ci_platform.py",
       "sha1": "bf028be641cd134b1bd356943c07e5a6b57f6abf",
       "size": 11456
@@ -640,48 +570,13 @@
     },
     {
       "path": "tests/unity/verify/verify_artist_backend_contract.py",
-      "sha1": "b55496264586a017c593466948ab0b546bc2977b",
-      "size": 15996
+      "sha1": "9bac052770e240650be3a0d752fcad637a77eba3",
+      "size": 12445
     },
     {
       "path": "tests/unity/verify/verify_portable_paths.py",
       "sha1": "a10288b2aa27fcd45b035792f9f2a7efca888ad1",
       "size": 1394
-    },
-    {
-      "path": "tests/unity/verify/verify-2022-3-bounded-fallback-evidence.py",
-      "sha1": "50a89188b41af96c7a51e7646378af38ade71774",
-      "size": 4002
-    },
-    {
-      "path": "tests/unity/verify/verify-cinematic-evidence.py",
-      "sha1": "acab8a2f9799afebf3e4dbbc6f1270767448d6d5",
-      "size": 3987
-    },
-    {
-      "path": "tests/unity/verify/verify-cli-pipeline-gate-evidence.py",
-      "sha1": "5e26cee7ee3f952d407215a1df84d36c7ea98523",
-      "size": 3429
-    },
-    {
-      "path": "tests/unity/verify/verify-hdrp-cinematic-evidence.py",
-      "sha1": "49453702606588a795eb8e1736fbaf82ed81f268",
-      "size": 4015
-    },
-    {
-      "path": "tests/unity/verify/verify-hdrp-primary-evidence.py",
-      "sha1": "4ddb906334efaf1b000604288bfe95b963b7d179",
-      "size": 5714
-    },
-    {
-      "path": "tests/unity/verify/verify-historical-evidence.py",
-      "sha1": "c6995be2f5be29d6f63c99f63ef273ac23687ebb",
-      "size": 409
-    },
-    {
-      "path": "tests/unity/verify/verify-primary-urp-evidence.py",
-      "sha1": "9a0f8af7580ef5030a77e9ab88eb6fa663f10ea2",
-      "size": 4801
     },
     {
       "path": "tests/unity/verify/verify-semantic-names.py",

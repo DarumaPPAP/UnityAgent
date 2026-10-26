@@ -142,20 +142,6 @@ namespace UnityArtist
 		public ArtistResult preview;
 	}
 
-	[Serializable]
-	internal sealed class StoredCapture
-	{
-		public string captureId;
-		public ArtistResult result;
-	}
-
-	[Serializable]
-	internal sealed class PersistentState
-	{
-		public List<StoredPlan> plans = new List<StoredPlan>();
-		public List<StoredCapture> captures = new List<StoredCapture>();
-		public List<string> history = new List<string>();
-	}
 
 	internal static class ArtistSession
 	{
@@ -167,25 +153,11 @@ namespace UnityArtist
 		private static readonly Dictionary<string, StoredPlan> plans = new Dictionary<string, StoredPlan>();
 		private static readonly Dictionary<string, ArtistResult> captures = new Dictionary<string, ArtistResult>();
 		private static readonly List<string> history = new List<string>();
-		private static bool persistentBatchSession;
-		private static bool persistentStateLoaded;
-		private static string transportOverride;
-		private static int captureWidthOverride;
-		private static int captureHeightOverride;
 
-		public static void ConfigureBatchSession(string transport)
-		{
-			persistentBatchSession = true;
-			persistentStateLoaded = false;
-			transportOverride = transport;
-			captureWidthOverride = 1920;
-			captureHeightOverride = 1080;
-			EnsurePersistentStateLoaded();
-		}
 
 		public static ArtistResult Inspect()
 		{
-			EnsurePersistentStateLoaded();
+
 			ArtistSupport support = Support();
 			ArtistResult result = Base("artist.inspect", support);
 			if (!support.supported) return Error(result, support.errorCode, support.reason);
@@ -242,7 +214,7 @@ namespace UnityArtist
 
 		public static ArtistResult Plan(string requestJson, string expectedRevision)
 		{
-			EnsurePersistentStateLoaded();
+
 			ArtistSupport support = Support();
 			ArtistResult result = Base("artist.plan", support);
 			if (!support.supported)
@@ -281,13 +253,13 @@ namespace UnityArtist
 			result.evidence.Add("expected_revision");
 			plans[planId] = new StoredPlan { planId = planId, baseRevision = currentRevision, intent = intent, preview = result };
 			history.Add(planId);
-			PersistState();
+
 			return result;
 		}
 
 		public static ArtistResult Preview(string planId, string expectedRevision)
 		{
-			EnsurePersistentStateLoaded();
+
 			if (!plans.TryGetValue(planId ?? string.Empty, out StoredPlan plan))
 			{
 				return Error(Base("artist.preview", Support()), "PLAN_NOT_FOUND", "The plan is not present in this Editor session.");
@@ -302,7 +274,7 @@ namespace UnityArtist
 
 		public static ArtistResult Apply(string planId, string expectedRevision, string approvalToken)
 		{
-			EnsurePersistentStateLoaded();
+
 			ArtistResult result = Base("artist.apply", Support());
 			if (string.IsNullOrWhiteSpace(approvalToken)) return Error(result, "APPROVAL_REQUIRED", "Apply requires an opaque approval token from UnityAgent.");
 			if (!plans.TryGetValue(planId ?? string.Empty, out StoredPlan plan)) return Error(result, "PLAN_NOT_FOUND", "The plan is not present in this Editor session.");
@@ -383,13 +355,13 @@ namespace UnityArtist
 			result.evidence.Add("save_not_performed");
 			plans.Remove(planId);
 			history.Add("applied:" + planId);
-			PersistState();
+
 			return result;
 		}
 
 		public static ArtistResult Capture(string requestJson)
 		{
-			EnsurePersistentStateLoaded();
+
 			ArtistResult result = Base("artist.capture", Support());
 			if (!result.support.supported) return Error(result, result.support.errorCode, result.support.reason);
 			ArtistIntent intent;
@@ -444,15 +416,15 @@ namespace UnityArtist
 			result.evidence.Add("object_id_channel:not_configured");
 			captures[captureId] = result;
 			history.Add(captureId);
-			PersistState();
+
 			return result;
 		}
 
 		private static bool CaptureCameraFrame(Camera camera, string path, out string error)
 		{
 			error = string.Empty;
-			int width = Mathf.Max(1, captureWidthOverride > 0 ? captureWidthOverride : camera.pixelWidth);
-			int height = Mathf.Max(1, captureHeightOverride > 0 ? captureHeightOverride : camera.pixelHeight);
+			int width = Mathf.Max(1, camera.pixelWidth);
+			int height = Mathf.Max(1, camera.pixelHeight);
 			RenderTexture previousTarget = camera.targetTexture;
 			RenderTexture previousActive = RenderTexture.active;
 			RenderTexture capture = null;
@@ -494,7 +466,7 @@ namespace UnityArtist
 
 		public static ArtistResult Evaluate(string captureId, string decision, string notes)
 		{
-			EnsurePersistentStateLoaded();
+
 			if (!captures.ContainsKey(captureId ?? string.Empty)) return Error(Base("artist.evaluate", Support()), "CAPTURE_NOT_FOUND", "Capture Evidence was not found in this Editor session.");
 			string normalized = (decision ?? string.Empty).Trim().ToLowerInvariant();
 			if (normalized != "accepted" && normalized != "rejected" && normalized != "needs_refine") return Error(Base("artist.evaluate", Support()), "INVALID_REVIEW_DECISION", "decision must be accepted, rejected, or needs_refine.");
@@ -509,13 +481,13 @@ namespace UnityArtist
 			result.evidence.Add("review_decision:" + normalized);
 			if (!string.IsNullOrWhiteSpace(notes)) result.evidence.Add("review_notes_present");
 			history.Add(result.evaluationId);
-			PersistState();
+
 			return result;
 		}
 
 		internal static ArtistResult EvaluateAuthenticated(string captureId, string decision, string notes, string approvalToken, ContextReceipt context)
 		{
-			EnsurePersistentStateLoaded();
+
 			ArtistResult authorization = Base("artist.evaluate", Support());
 			if (!captures.TryGetValue(captureId ?? string.Empty, out ArtistResult captured))
 			{
@@ -541,7 +513,7 @@ namespace UnityArtist
 				{
 					// 互換 Evaluate の履歴とは区別し、同一 run/context の Refine だけへ人間の認証を引き継ぐ。
 					history.Add(AuthenticatedEvaluationLabel(result.evaluationId, context));
-					PersistState();
+
 				}
 			}
 			return result;
@@ -549,7 +521,7 @@ namespace UnityArtist
 
 		internal static ArtistResult RefineAuthenticated(string evaluationId, string requestJson, ContextReceipt context)
 		{
-			EnsurePersistentStateLoaded();
+
 			if (!history.Contains(AuthenticatedEvaluationLabel(evaluationId, context)))
 			{
 				// 任意の ID や別 run の人間レビューで新しい Production Plan を正当化しない。
@@ -564,20 +536,20 @@ namespace UnityArtist
 		}
 		public static ArtistResult Refine(string evaluationId, string requestJson)
 		{
-			EnsurePersistentStateLoaded();
+
 			if (string.IsNullOrWhiteSpace(evaluationId)) return Error(Base("artist.refine", Support()), "EVALUATION_REQUIRED", "refine requires an evaluation id.");
 			ArtistResult result = Plan(requestJson, string.Empty);
 			result.command = "artist.refine";
 			result.evaluationId = evaluationId;
 			result.evidence.Add("refinement_plan");
 			result.evidence.Add("evaluation_reference");
-			PersistState();
+
 			return result;
 		}
 
 		public static ArtistResult Cinematic(string operation, string requestJson, string planId, string expectedRevision, string approvalToken)
 		{
-			EnsurePersistentStateLoaded();
+
 			ArtistResult result = Base("artist.cinematic", Support());
 			if (!result.support.supported) return Error(result, result.support.errorCode, result.support.reason);
 			string normalized = (operation ?? "inspect").Trim().ToLowerInvariant();
@@ -626,7 +598,7 @@ namespace UnityArtist
 				result.evidence.Add("expected_revision");
 				plans[newPlanId] = new StoredPlan { planId = newPlanId, baseRevision = currentRevision, cinematic = request, preview = result };
 				history.Add(newPlanId);
-				PersistState();
+
 				return result;
 			}
 
@@ -712,13 +684,13 @@ namespace UnityArtist
 			result.evidence.Add("timeline_evidence");
 			plans.Remove(planId);
 			history.Add("applied:" + planId);
-			PersistState();
+
 			return result;
 		}
 
 		public static ArtistResult History()
 		{
-			EnsurePersistentStateLoaded();
+
 			ArtistResult result = Base("artist.history", Support());
 			if (!result.support.supported) return Error(result, result.support.errorCode, result.support.reason);
 			result.evidence.AddRange(history);
@@ -1747,9 +1719,8 @@ namespace UnityArtist
 
 		private static ArtistResult Base(string command, ArtistSupport support)
 		{
-			EnsurePersistentStateLoaded();
+
 			ArtistResult result = new ArtistResult { command = command, status = "passed", support = support, revision = CurrentRevision(), baseRevision = CurrentRevision(), savePerformed = false, undoAvailable = true };
-			if (persistentBatchSession) result.evidence.Add("bounded_non_mcp_batch_fallback");
 			return result;
 		}
 
@@ -1775,7 +1746,7 @@ namespace UnityArtist
 				compatibilityBackend = supported ? ArtistCompatibility.Backend(pipeline) : "none",
 				approvalProtocol = "control_plane_authority_v1",
 				contextProtocol = "artist_context_v1",
-				transport = string.IsNullOrWhiteSpace(transportOverride) ? (persistentBatchSession ? "official_unity_cli_bounded_batch_fallback" : "official_unity_cli_pipeline") : transportOverride,
+				transport = "official_unity_cli_pipeline",
 				errorCode = supported ? string.Empty : (version.StartsWith("2022.3.", StringComparison.Ordinal) ? "UNSUPPORTED_RENDER_PIPELINE_VERSION" : "UNSUPPORTED_UNITY_VERSION"),
 				reason = supported ? string.Empty : "This Unity version and render pipeline are outside the formal UnityArtistCLI release matrix."
 			};
@@ -1902,56 +1873,7 @@ namespace UnityArtist
 
 		private static string Serialize(ArtistResult result) => JsonUtility.ToJson(result, true);
 
-		private static string PersistentStatePath()
-		{
-			string projectRoot = Directory.GetParent(Application.dataPath).FullName;
-			return Path.Combine(projectRoot, "Library", "UnityArtist", "BatchSession.json");
-		}
 
-		private static void EnsurePersistentStateLoaded()
-		{
-			if (!persistentBatchSession || persistentStateLoaded) return;
-			persistentStateLoaded = true;
-			try
-			{
-				string path = PersistentStatePath();
-				if (!File.Exists(path)) return;
-				PersistentState state = JsonUtility.FromJson<PersistentState>(File.ReadAllText(path));
-				if (state == null) return;
-				plans.Clear();
-				foreach (StoredPlan plan in state.plans ?? new List<StoredPlan>())
-					if (plan != null && !string.IsNullOrWhiteSpace(plan.planId)) plans[plan.planId] = plan;
-				captures.Clear();
-				foreach (StoredCapture capture in state.captures ?? new List<StoredCapture>())
-					if (capture != null && !string.IsNullOrWhiteSpace(capture.captureId) && capture.result != null) captures[capture.captureId] = capture.result;
-				history.Clear();
-				if (state.history != null) history.AddRange(state.history);
-			}
-			catch (Exception exception)
-			{
-				Debug.LogWarning("UnityArtistCLI batch session state was not loaded: " + exception.Message);
-			}
-		}
-
-		private static void PersistState()
-		{
-			if (!persistentBatchSession) return;
-			try
-			{
-				string path = PersistentStatePath();
-				Directory.CreateDirectory(Path.GetDirectoryName(path));
-				PersistentState state = new PersistentState();
-				state.plans.AddRange(plans.Values);
-				foreach (KeyValuePair<string, ArtistResult> capture in captures)
-					state.captures.Add(new StoredCapture { captureId = capture.Key, result = capture.Value });
-				state.history.AddRange(history);
-				File.WriteAllText(path, JsonUtility.ToJson(state, true));
-			}
-			catch (Exception exception)
-			{
-				Debug.LogWarning("UnityArtistCLI batch session state was not persisted: " + exception.Message);
-			}
-		}
 	}
 
 }

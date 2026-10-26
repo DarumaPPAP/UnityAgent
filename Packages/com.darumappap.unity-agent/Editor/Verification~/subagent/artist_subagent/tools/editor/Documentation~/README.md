@@ -1,6 +1,6 @@
 # ArtistSubAgent Backend Unity Package
 
-`subagent/artist_subagent/tools/editor/`は、ArtistSubAgentのためにUnity Editor内で提供するBackend Packageです。Package IDは`com.darumappap.artist-subagent`、Manifest上の専門Agent IDは`artist_subagent`、Backend IDは`unity_artist_cli`です。Package、Specialist、Backendは別の識別子です。
+`subagent/artist_subagent/tools/editor/`は、ArtistSubAgentのためにUnity Editor内で提供するBackend Packageです。Package IDは`com.darumappap.artist-subagent`、Manifest上の専門Agent IDは`artist_subagent`、Backend IDは`unity_cli`です。Package、Specialist、Backendは別の識別子です。
 
 ## Backend command registrations
 
@@ -28,13 +28,6 @@ Unity 6 URPでは、Intentに`setVolumeLookDev: true`、`volumePostExposure`、`
 
 このbounded operationは汎用Component / Property Editorではありません。Built-in / HDRPはそれぞれの対応Adapterを使い、URP専用IntentをMutation前に拒否します。Saveは暗黙に行わず、Evidenceを確認してから別の承認済み`save_all`操作を使います。
 
-## Host CLI
+## UnityAgentからの実行
 
-Repository RootからHost CLIを利用できます。UnityAgent連携の導入はUnityAgent Control Planeの`doctor → setup plan → approval → setup apply → doctor`を入口とします。以下はBackend固有のCLIであり、UnityAgentの承認済みSetup Planの代替ではありません。
-
-```text
-unity artist doctor --project-path <project> --format json --non-interactive
-unity artist install --project-path <project> --format json --non-interactive
-```
-
-CLIの`unity-artist`実行ファイルと`unity_artist_cli`Backend IDは別の名称です。Backendを導入する操作はUser Setupとして明示され、Capability Resolution時の自動Installではありません。対応Version / Pipelineは[ArtistSubAgent Manifest](../../../manifest.yaml)と[Compatibility Matrix](../../../../../ci/compatibility/support-matrix.yaml)を参照してください。
+現行の入口はUnityAgent Control Planeの`uagent artist`です。Artist UPMは任意導入であり、`unity_cli`とUnity PipelineからEditorに接続します。独立した`unity-artist`実行ファイルや旧Host Installerは使用しません。
