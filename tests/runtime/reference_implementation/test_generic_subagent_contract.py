@@ -177,13 +177,13 @@ class GenericSubAgentContractTests(unittest.TestCase):
         profile = default_profile()
         self.assertEqual(profile.profile_id, "artist_subagent")
         self.assertEqual(profile.display_name, "ArtistSubAgent")
-        self.assertEqual(profile.provider_id, "unity_artist_cli")
+        self.assertEqual(profile.provider_id, "unity_cli")
         self.assertFalse(profile.activation["auto_install"])
 
     def test_uninstalled_artist_subagent_is_excluded(self) -> None:
         profile = default_profile()
         unavailable = {
-            "unity_artist_cli": {
+            "artist": {
                 "available": False,
                 "project_bound": False,
                 "package_installed": False,
@@ -195,7 +195,7 @@ class GenericSubAgentContractTests(unittest.TestCase):
             profile.require_eligible(unavailable)
 
         available = {
-            "unity_artist_cli": {
+            "artist": {
                 "available": True,
                 "compatible": True,
                 "project_bound": True,
@@ -211,7 +211,7 @@ class GenericSubAgentContractTests(unittest.TestCase):
         for compatible, expected_status in ((False, "unavailable"), ("unknown", "unknown")):
             with self.subTest(compatible=compatible):
                 snapshot = {
-                    "unity_artist_cli": {
+                    "artist": {
                         "available": True,
                         "compatible": compatible,
                         "project_bound": True,
