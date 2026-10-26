@@ -538,8 +538,18 @@ class UnityCliProvider:
         discovery, failure = self._require_discovery("command")
         if failure:
             return failure
-        if discovery is None or discovery.pipeline_reachable is not True or not isinstance(discovery.project_info, dict):
-            return artist_failure("unavailable", "Artist Pipeline discovery is unavailable")
+        if discovery is None:
+            return artist_failure("not_observed", "Artist Pipeline discovery returned no surface")
+        if discovery.pipeline_reachable is not True:
+            return artist_failure(
+                "unavailable" if discovery.pipeline_reachable is False else "not_observed",
+                "Artist Pipeline discovery is unavailable: "
+                f"pipeline_reachable={discovery.pipeline_reachable}, "
+                f"catalog_status={discovery.status}, "
+                f"project_info_observed={isinstance(discovery.project_info, dict)}",
+            )
+        if not isinstance(discovery.project_info, dict):
+            return artist_failure("not_observed", "Artist Pipeline discovery did not observe current Project info")
         root = next((discovery.project_info.get(key) for key in ("path", "projectPath", "project_path", "root") if discovery.project_info.get(key)), None)
         status = discovery.editor_status
         instances = status.get("instances") if isinstance(status, dict) else status
