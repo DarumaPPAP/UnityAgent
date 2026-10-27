@@ -22,14 +22,14 @@ branch運用の正本は `.github/branch-policy.json`、説明は `docs/developm
 3. `src/unityagent/context/assembly/materialize_context.py` でcurrent-call Contextを構築する。Context / Retrieval Budgetと圧縮時の必須制約保持は `src/unityagent/context/budget/context-budget.yaml` に従う。
 4. bounded TaskはFast Pathを使う。Graph、Local Loop、SubAgentは分解・修復・独立並列作業が必要な場合にだけ利用する。
 5. Orchestrationは必要Capabilityを要求する。専門作業はSubAgent Definitionから適格なSubAgentを解決する。Provider-backed CapabilityはRuntime Tool Brokerが実行Backendを解決・実行し、Providerless reasoningはCanonical Runtime HandoffからCodexRunnerが実行する。SubAgent / Providerの直接呼出しでApproval / Scopeを迂回しない。
-6. 開発中は変更範囲と影響する安全性契約に限定したテストを先に実行する。Python unittest は `-q -b` で成功ログを抑え、AI Contextに成功ログ全文を取り込まない。必要な失敗箇所だけを読む。Canonical Full ValidationはPRの必須CIで実行し、変更・失敗・リスクがなければ同じPASSを反復しない。Skip・未観測をPASS扱いしない。
+6. 開発中は変更範囲と影響する安全性契約に限定したテストを先に実行する。Python unittest は `-q -b` で成功ログを抑え、AI Contextに成功ログ全文を取り込まない。必要な失敗箇所だけを読む。現在の必須CIはSmokeに限定され、Full Regression/Unity実機の代替とはならない。変更・失敗・リスクがなければ同じPASSを反復しない。Skip・未観測をPASS扱いしない。
 7. 承認済み依頼に複数段階が含まれるなら全体のGoalまで継続する。依頼外の次Taskには進まない。LoopはGoal / Failureを基準とし、既存Retry Budgetを守る。
 
 ## Test lifecycle
 - テストは機能の責務・Failureごとに適度な大きさのTest Moduleへまとめ、異なる責務や実Unity E2Eを巨大な1ファイルに押し込まない。テスト数やファイル数を削減目的だけで変更しない。
 - 調査や修復のための一時TestはTask専用Worktree／TemporaryDirectory等で実行し、Task終了時に不要な作業ファイルを清掃する。セッション終了イベントだけにCleanupを依存させない。
 - 恒久的なRegression Testは、既存Testとの差分・保護Invariant・Failureリスク・実行/保守コストを通常PRに記載して審査する。Eval起点なら既存ChangeProposalに紐付け、新しい承認機構を追加しない。
-- 既存テストの置換はB案。移行対象だけを `tests/delete/` に原本のまま凍結し、最小スイートへの置換と重要な負例の検出を検証してから削除する。凍結TestをCanonicalのPASSとして扱わず、未置換の旧テストは通常Gateで維持する。詳細は `tests/delete/README.md`。
+- ユーザー指示により旧テスト資産を一括撤去し、`tests/smoke/`（27件＋手動Live Smoke）を現行の唯一の`tests/`正本とする。旧Regressionの検出能力が継承されたとは主張しない。旧資産はGit履歴の固定SHA `77483d6ecc656b8842954cd509de5d9ce7224c2f` で復元可能。
 - テスト追加・変更・統合・採用・セッション限定ProbeのCleanupには `.agents/skills/test-lifecycle/SKILL.md` を適用する。Stage A/B/Cはリスク条件付き審査であり、Skillは独立した承認権限を持たない。Task終了／最終報告前にRun所有Temporaryの残存を確認する。
 
 Skillが確認要求・停止・ユーザー要求との競合を生む場合、Skill path、該当instruction、effect、判断理由を明示する。

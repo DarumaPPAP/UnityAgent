@@ -1,33 +1,14 @@
-# UnityAgent 起動・接続・取得 Smoke（新正本）
+# Tests — bootstrap, connection and read-only observations
 
-目的は **UnityAgentが起動し、対象Unity Projectを識別し、接続用Capabilityを解決し、取得したFactとEvidenceを誤報しない** こと。現行実装で利用できるPython標準 `unittest` と既存Runtime APIを直接使い、独自Test Framework／新Fixture DBは作らない。
+このフォルダで継続して実行するのは `smoke/` の27件と、実Unity環境で明示実行する `smoke/live_connection.py` のみ。
 
-```bash
-python tools/validate_all.py --profile smoke
-# または直接
-python -m unittest discover -s tests/smoke -p 'test_*.py' -q -b
-```
+## 削除の範囲と検証レベル
 
-| Source | Purpose | Reuse / why existing Test is not simply retained | Boundary | Retirement |
-|---|---|---|---|---|
-| `test_bootstrap.py`（8ケース） | 公開CLIの起動口・Project解決・Unity Versionの観測 | 既存CLIとproject_identityを使用。従来の12件超のProject CLI各コマンド検証は接続Smokeには過剰で、必要な公開契約のみ再評価 | Unity Editor起動を含まないPython入口 | 実CLIの同等な契約Smokeに完全移譲できれば統合 |
-| `test_connection.py`（11ケース） | Registry、Doctor、Unity CLIコマンド生成、構造化結果・未観測拒否 | RuntimeProviderRegistry、Unity CLI Command Builder、Result Mapperを直接使用。旧大型Provider FixtureへのTestCase依存を作らない | 接続境界。Mock Successを実Editor E2Eに読み替えない | 実接続Evidenceが自動で再現可能かつ同等拒否系を守れれば統合 |
-| `test_read.py`（8ケース） | 実File read、Project設定取得、Policy/Project境界、秘匿Evidence | FileProviderと既存observation_payloadを使用。ファイルシステムをPython一時領域で構築するため外部Fixtureは不要 | Readだけ。Mutation/Approvalの正当性をこのSuiteで主張しない | 実Editor / Target DeviceのRead Smokeが同じFailureを検出できる場合に再評価 |
+- 旧 `tests/` 配下309ファイル（Runtime, Approval, Mutation, SubAgent, Eval, Unity Fixture/C#/Scene/metaを含む）は、ユーザーの明示依頼で撤去した。復元元は `77483d6ecc656b8842954cd509de5d9ce7224c2f`。テストファイルだけではなく、Unity用FixtureとAssemblyも削除対象である。
+- 旧テストが担っていた安全性、Approval、Mutation Scope、Lease、E2E等の回帰保証は**失われた**。CIのPASSを製品全体の品質保証と解釈しない。
+- `python tools/validate_all.py --profile smoke`: Hostの起動・接続・情報取得の27ケースを実行。
+- `python tests/smoke/live_connection.py --project <UnityProject>`: 実Unity CLI/Editor経由の手動確認。実環境がない場合は `BLOCKED_NOT_RUN`。
+- 旧`--profile full`は廃止した。Fullを要求した場合は失敗する（偽のPASSを防ぐ）。
+- `.github/ProductionSmoke/`、`tools/`、`eval/`にある正本ツール・Host検証、`Packages/`内の配布物はこの削除の対象外。ただしそれらの一部は旧`tests/`に依存する可能性があるので、必要なEnvironmentで個別に検証する。
 
-Pythonの観測レベルは **static / host-Python / real-Editor** を明確に分ける。上記27件はHostのAPI境界を確認するが、Unity本体への実接続やコンパイルのPASSではない。既存Unity 6.3 Editor Fixture・実Production Smokeが実行可能な環境で成功したときだけreal-EditorのEvidenceとみなす。
-
-### 実Unity CLIへ接続したLive Smoke（手動）
-
-```bash
-python tests/smoke/live_connection.py --project /path/to/UnityProject --cli unity
-```
-
-`unity version`、`projects info`、`status`、`get_scene_hierarchy`相当の**実CLI応答**から、対象Project一致・単一Ready Editor・Read-only Hierarchy取得を検証する。実行可能なUnity Editorがない環境では `BLOCKED_NOT_RUN`（終了コード2）、構造化応答が誤った場合は `failed`（1）、4観測が成立した場合だけ `passed`（0）。実ProjectのファイルやSceneを変更しない。CI上の27件Host SmokeをLive実行と混同しない。
-
-`live_connection.py`は既存のcommand_builder / result_mapperを使用し、**Host CIへの追加登録はしない**（未観測のSkipをPASSへ含めない）。### 段階的移行と安全性
-
-- `tools/validate_all.py --profile smoke` は27件だけを実行するFast Path。旧スイートを消したこと・全製品機能を保証したことにはならない。
-- `tools/validate_all.py --profile full` または従来の引数なし実行は **旧14 Suite + 32 Validator** を維持。PR CIの必須Safety Regressionは本変更では削除しない。
-- `tests/delete/` は旧Testの原本退避だけに使用。新Smokeの検出能力の同等性が未確認な旧Testは凍結・削除しない。
-- 次の削減は旧Testの保護するInvariantのうち、`startup / connection / read`に関係しないものを「製品保証対象外」にするか別Gateへ維持するかで判断する。Approval/Scope/Mutation/Evidenceの危険な拒否条件は、正式なRisk Decisionと回帰移管まで残す。
-- 実Unity Editor、PlayMode、Player、Target Deviceは未実行をPASSにせず、環境がない場合は `BLOCKED_NOT_RUN` と記録する。
+今後の一時テストはTask終了時に削除し、長期採用は `.agents/skills/test-lifecycle/SKILL.md` の審査を経る。
