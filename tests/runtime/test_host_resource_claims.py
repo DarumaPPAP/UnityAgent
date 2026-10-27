@@ -44,7 +44,7 @@ class HostResourceClaimsTests(unittest.TestCase):
 
 
 class HostClaimControlPlaneTests(unittest.TestCase):
-    from tests.runtime.test_task_dag_execution import TaskDagTests
+    from tests.orchestration.test_task_execution import TaskDagTests
     setUp = TaskDagTests.setUp
 
     def test_host_conflict_releases_project_run_lock_before_returning_blocked(self):

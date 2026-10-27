@@ -22,13 +22,6 @@ Baseline: `ae68c17ff9db19370067a7aa45f9492a724e63c4`（旧スイートがCanonic
 | `tests/runtime/test_persistence_measurement.py` | 2 | 同上 |
 | `tests/runtime/test_model_usage.py` | 4 | 同上 |
 
-旧ファイルは `tests/delete/runtime/` に**元の内容・Blob SHAで（ファイル名だけ`frozen_test_*.py`へ変更して通常のunittest/pytest自動発見を防ぐ）**移動しています。新正本は、Metric失敗時の非再実行、Exception原型・秘密情報の非漏洩、型付きToken計測、Immutable Snapshot、失敗Telemetry時の書込保持、Read計測、Token集計、不正Token値の拒否を8ケースで検証します。
+旧3ファイルは、元のBlobと固定Revisionを照合し、明示的に旧10件・新8件を実行して成功を確認した後、凍結先から撤去しました。新正本は、Metric失敗時の非再実行、Exception原型・秘密情報の非漏洩、型付きToken計測、Immutable Snapshot、Telemetry失敗時の書込保持、Read計測、Token集計、不正Token値の拒否を8ケースで検証します。
 
-比較実行例（開発時だけ。凍結Testは通常のCIスイートに含めない）:
-
-```bash
-python -m unittest discover -s tests/delete/runtime -p 'frozen_test_*.py' -q -b
-python -m unittest tests.runtime.test_observability_contracts -q -b
-```
-
-削除する際は、この置換記録と固定RevisionのGit履歴から旧テストを参照できます。新しい正本のPASSを実Unity Editorや実機検証に読み替えません。
+比較と採否は `docs/migration/test-foundation-inventory.json` の `detection_comparison.observability_reuse` に記録しています。元の3ファイルは上記Baseline、凍結時の配置は `ab8a4ffcbf6d92d598a3bf38c8b8626c43e588e5` のGit履歴から復元できます。現在のCanonicalには新正本だけを登録し、凍結テストの成功を合算しません。Unity Editor / Player / 実機の検証状態は別に扱います。

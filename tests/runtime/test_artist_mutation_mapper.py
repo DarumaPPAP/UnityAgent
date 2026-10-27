@@ -6,7 +6,7 @@ import unittest
 
 from unityagent.runtime.tooling.providers.unity_cli.artist_command_adapter import ArtistCommand, build_artist_pipeline_command
 from unityagent.runtime.tooling.providers.unity_cli.artist_result_mapper import normalize_artist_pipeline_result
-from tests.runtime import test_artist_command_adapter as fixture
+from tests.subagent.artist import test_artist_execution as fixture
 
 
 class ArtistMutationMapperTests(unittest.TestCase):

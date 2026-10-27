@@ -4,7 +4,7 @@ import copy
 import json
 import threading
 import unittest
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -16,8 +16,8 @@ from unityagent.runtime.tooling.providers.unity_cli.unity_cli_provider import Un
 from tests.runtime import test_unity_cli_provider as cli_fixture
 
 
-ROOT = Path(__file__).resolve().parents[2]
-BASELINE = json.loads((Path(__file__).parent / "fixtures/artist-cutover-baseline.json").read_text(encoding="utf-8"))
+ROOT = Path(__file__).resolve().parents[3]
+BASELINE = json.loads((ROOT / "tests/runtime/fixtures/artist-cutover-baseline.json").read_text(encoding="utf-8"))
 
 
 def typed(case):
@@ -297,6 +297,85 @@ class ArtistProviderBoundaryTests(unittest.TestCase):
             self.discovery = discovery
             self.assertEqual(self.run_command()["status"], "failed")
         self.assertEqual(self.calls, [])
+
+from unityagent.runtime.tooling.providers.unity_cli.command_builder import build_pipeline_catalog_command
+
+class ArtistCaptureProviderTests(unittest.TestCase):
+    def setUp(self):
+        self.boundary = ArtistProviderBoundaryTests()
+        self.boundary.setUp()
+        self.addCleanup(self.boundary.doCleanups)
+        self.command = ArtistCommand("capture", request_json='{"captureCameraName":"Main Camera"}')
+        self.boundary.request.update(capability="visual.capture", required_evidence=["visual_capture", "camera_binding", "capture_manifest"], qualifiers={"domain": "visual_art", "workflow": "capture"})
+        self.boundary.discovery = replace(self.boundary.discovery, command_catalog=({"name": "artist.capture", "runtime_only": False},))
+        self.editor = copy.deepcopy(next(item["editor_result"] for item in BASELINE["commands"] if item["command"] == "capture"))
+        self.editor.update(captureId="capture-provider-test", revision="revision-before", baseRevision="revision-before")
+        self.image = self.boundary.root / "Library/UnityArtist/Captures/capture-provider-test/color.png"
+        self.image.parent.mkdir(parents=True)
+        self.image.write_bytes(b"capture-file")
+        self.editor["evidence"] = ["visual_capture", "camera_binding:Main Camera", "capture_manifest", "color_path:" + str(self.image)]
+
+    def run_capture(self):
+        result = {"status": "passed", "result": SimpleNamespace(returncode=0, stdout=output(self.editor, self.boundary.root))}
+        with patch.object(self.boundary.provider, "dispatch_fn", return_value=result) as dispatch:
+            mapped = self.boundary.run_command(self.command)
+        return mapped, dispatch
+
+    def test_read_capture_uses_unity_cli_without_a_host_and_observes_real_artifact(self):
+        result, dispatch = self.run_capture()
+        self.assertEqual(result["status"], "passed", result)
+        self.assertEqual(result["provider_ref"], "unity_cli")
+        self.assertEqual(result["host_file_observation"]["bytes"], 12)
+        self.assertIn("artist.capture", dispatch.call_args.args[0].command)
+        self.assertNotIn("unity_artist_cli", self.boundary.snapshot)
+
+    def test_capture_is_not_accepted_under_scene_inspection_or_without_explicit_camera(self):
+        self.boundary.request.update(capability="scene.inspect", required_evidence=["editor_observation"])
+        result, dispatch = self.run_capture()
+        self.assertEqual(result["status"], "failed")
+        dispatch.assert_not_called()
+        self.boundary.request.update(capability="visual.capture", required_evidence=["visual_capture"])
+        self.command = ArtistCommand("capture")
+        result, dispatch = self.run_capture()
+        self.assertEqual(result["status"], "failed")
+        dispatch.assert_not_called()
+
+class ArtistProcessBindingTests(unittest.TestCase):
+    def setUp(self):
+        self.boundary = ArtistProviderBoundaryTests()
+        self.boundary.setUp()
+        self.addCleanup(self.boundary.doCleanups)
+        self.boundary.discovery = replace(self.boundary.discovery, editor_status={"instances": []})
+
+    def test_headless_editor_uses_measured_process_binding_and_artist_project_proof(self):
+        result = self.boundary.run_command()
+        self.assertEqual(result["status"], "passed", result)
+
+    def test_missing_ambiguous_and_wrong_version_process_binding_never_dispatch(self):
+        editor = self.boundary.snapshot["unity_editor"]
+        for key, value in (("binding_status", "ambiguous_binding"), ("bound_instance_id", None), ("version", None), ("version", "2022.3.22f1")):
+            previous = editor[key]
+            editor[key] = value
+            with self.subTest(key=key, value=value):
+                self.assertEqual(self.boundary.run_command()["status"], "failed")
+            editor[key] = previous
+        self.assertEqual(self.boundary.calls, [])
+
+    def test_explicit_foreign_editor_listing_cannot_be_overridden_by_process_binding(self):
+        self.boundary.discovery = replace(self.boundary.discovery, editor_status={"instances": [{"projectPath": str(self.boundary.root / "other"), "state": "ready", "version": "6000.3.12f1"}]})
+        self.assertEqual(self.boundary.run_command()["status"], "failed")
+        self.assertEqual(self.boundary.calls, [])
+
+    def test_broker_executor_preserves_cancel_event_and_timeout_type(self):
+        event = object()
+        with patch.object(self.boundary.provider, "run_artist", return_value={"status": "failed"}) as execute:
+            self.boundary.provider.execute(self.boundary.request, arguments={"artist_command": ArtistCommand("inspect"), "cancel_event": event, "timeout_seconds": True})
+        self.assertIs(execute.call_args.kwargs["cancel_event"], event)
+        self.assertIs(execute.call_args.kwargs["timeout_seconds"], True)
+
+    def test_catalog_explicitly_requests_commands_instead_of_beta14_default_tags(self):
+        argv = build_pipeline_catalog_command("unity", self.boundary.root).argv
+        self.assertEqual(argv[argv.index("--detail") + 1], "full")
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ from jsonschema import Draft202012Validator
 from unityagent.persistence.store.atomic_store import sha256_json, write_immutable_json, atomic_write_json, relative_ref
 from unityagent.persistence.store.layout import PersistenceLayout
 from unityagent.persistence.evidence.evidence_store import EvidenceStore
-from tests.runtime.test_control_plane import fingerprint
+from tests.control_plane.test_execution import fingerprint
 from tools.adaptive_baseline import build_adaptive_baseline
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -269,7 +269,7 @@ class AdaptiveBaselineTests(unittest.TestCase):
 
 class StrategyApplicationBaselineTests(unittest.TestCase):
     def setUp(self):
-        from tests.runtime.test_task_dag_execution import TaskDagTests
+        from tests.orchestration.test_task_execution import TaskDagTests
         self.fixture = TaskDagTests()
         self.fixture.setUp()
         self.addCleanup(self.fixture.doCleanups)
@@ -293,7 +293,7 @@ class StrategyApplicationBaselineTests(unittest.TestCase):
         self.assertTrue(applications['records'][1]['applied'])
         self.assertFalse(applications['records'][1]['completed'])
         self.assertTrue(applications['records'][-1]['completed'])
-        from tests.runtime.test_task_dag_execution import TaskDagTests
+        from tests.orchestration.test_task_execution import TaskDagTests
         disabled = TaskDagTests()
         disabled.setUp()
         self.addCleanup(disabled.doCleanups)

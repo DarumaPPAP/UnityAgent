@@ -1,7 +1,6 @@
-"""Observability regressions: failure isolation, privacy, persistence, and measured usage.
+"""観測失敗の隔離、秘匿性、永続化、実測Usageの既存正本。
 
-One cohesive boundary; tests/delete/runtime preserves the original baseline tests
-until regression equivalence has been reviewed.
+旧10件との不変条件比較を完了し、元BlobはGit履歴で保持する。
 """
 from __future__ import annotations
 

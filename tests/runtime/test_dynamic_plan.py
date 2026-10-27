@@ -115,7 +115,7 @@ class PlanDurabilityTests(PlanTests):
 
 
 class DynamicExecutionTests(unittest.TestCase):
-    from tests.runtime.test_task_dag_execution import TaskDagTests as _fixture
+    from tests.orchestration.test_task_execution import TaskDagTests as _fixture
     setUp = _fixture.setUp
     def task(self, name, deps=(), gates=None):
         return {**self._fixture.task(self, name, deps, gates), 'read_set': ['.']}

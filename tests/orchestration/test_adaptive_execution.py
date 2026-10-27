@@ -100,8 +100,6 @@ class AdaptiveExecutionTests(unittest.TestCase):
                 plan_task_batches(tasks)
 
 
-if __name__ == "__main__":
-    unittest.main()
 
 
 class StrategyObservationTests(unittest.TestCase):
@@ -268,3 +266,7 @@ class DagInputTests(unittest.TestCase):
             {'decision':'exit'},attempt=0,same_revision=True,proof_ref='proof',manifest_ref='manifest')
         self.assertNotIn('scope_known',facts['values'])
         self.assertIn('scope_known',facts['requires_revalidation'])
+
+
+if __name__ == "__main__":
+    unittest.main()
