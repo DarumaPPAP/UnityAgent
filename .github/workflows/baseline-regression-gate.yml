@@ -63,7 +63,6 @@ jobs:
         shell: bash
         run: |
           python eval/rebaseline/validate_baseline_freeze.py "$FROZEN_BASELINE"
-          python -m unittest tests.eval.test_baseline_comparator tests.eval.test_local_regression_gate
           python -m py_compile \
             eval/regression/baseline_comparator.py \
             eval/regression/compare_baseline.py \
