@@ -21,6 +21,12 @@ jobs:
     name: Human-gated unified beta release
     runs-on: ubuntu-latest
     steps:
+      - name: Block release while product regression is not configured
+        shell: bash
+        run: |
+          echo "::error::BLOCKED_NOT_RUN: tests/ Regression was reset. Release is prohibited until new Approval, Mutation, Evidence, Recovery and Unity E2E gates are verified."
+          exit 1
+
       - name: Checkout UnityAgent
         uses: actions/checkout@v7
         with:
@@ -99,7 +105,6 @@ jobs:
           python3 tools/validate_all.py
           python3 tools/production_tool_runtime/validate_production_tool_runtime.py
           python3 eval/rebaseline/validate_baseline_freeze.py eval/rebaseline/baselines/phase9-baseline-20260830-09.yaml
-          python3 -m unittest tests.eval.test_baseline_comparator tests.eval.test_local_regression_gate
           python3 -m py_compile \
             eval/regression/baseline_comparator.py \
             eval/regression/compare_baseline.py \
@@ -110,9 +115,7 @@ jobs:
           set -euo pipefail
           python3 tools/validate_local_subagent_catalog.py
           python3 subagent/tools/validate_registry.py
-          python3 -m unittest discover -s tests/subagent -p 'test_*.py' -v
           python3 tools/validate_artist_product_identity.py
-          python3 tests/unity/verify/validate_unity_fixtures.py
 
       - name: Build co-located SubAgent distribution
         run: |

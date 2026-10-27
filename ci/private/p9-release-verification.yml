@@ -43,7 +43,7 @@ jobs:
         run: |
           # テストのsource_identityはPrivate側RepoのGITHUB_SHAではなく、検証したUnityAgent SHA。
           $env:GITHUB_SHA = "${{ vars.UNITYAGENT_APPROVED_SHA }}"
-          python unityagent-source/tests/unity/verify/unity_ci.py --fixture p9-lts-urp --output "$env:RUNNER_TEMP/p9-lts-urp" --editor "$env:UNITY_EDITOR"
+          python unityagent-source/Packages/com.darumappap.unity-agent/Editor/Verification~/tests/unity/verify/unity_ci.py --fixture p9-lts-urp --output "$env:RUNNER_TEMP/p9-lts-urp" --editor "$env:UNITY_EDITOR"
           if ($LASTEXITCODE -ne 0) { throw "P9 failed or blocked (exit=$LASTEXITCODE)" }
       - name: 個人情報・ゲームAssetを含まないP9検証証跡のみを保存
         if: always()

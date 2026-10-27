@@ -36,11 +36,11 @@ def fail(message: str) -> None:
 
 def main() -> int:
     root = Path(sys.argv[1] if len(sys.argv) > 1 else ".").resolve()
-    suite_root = root / "tests" / "skill_evals"
+    suite_root = root / "eval" / "skill_evals"
     paths = sorted(suite_root.glob("*.yaml")) if suite_root.is_dir() else []
 
     if not paths:
-        fail("No tests/skill_evals/*.yaml suites were found.")
+        fail("No eval/skill_evals/*.yaml suites were found.")
         return 1
 
     errors = 0

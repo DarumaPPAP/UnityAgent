@@ -38,36 +38,16 @@ jobs:
         if: github.event_name == 'pull_request'
         run: python tools/pr_quality/validate_pr.py --event "$GITHUB_EVENT_PATH"
 
-      - name: Smoke startup, connection and read-only observations
-        run: |
-          python tools/validate_all.py --profile smoke
-          python -m py_compile tests/smoke/live_connection.py
+      - name: Validate static repository contracts (Regression NOT_CONFIGURED)
+        run: python tools/validate_all.py --profile static
 
-      - name: Validate canonical repository contracts
-        run: python tools/validate_all.py --profile full
+      - name: Declare unavailable regression coverage
+        run: echo "::warning::REGRESSION_NOT_CONFIGURED - Approval, Mutation, Persistence, Project Lease, Unity Editor/Player/Device and E2E regression were removed; this check only validates static contracts and packaging."
 
       - name: Build and verify installed Python wheel
         run: |
           python -m build
           python tools/verify_installed_wheel.py --wheel "$(find dist -maxdepth 1 -name '*.whl' -print -quit)"
-
-      - name: Set up .NET for Artist authority verification
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "8.0.x"
-
-      - name: Verify Artist Editor authority and Control Plane interop
-        run: |
-          python -m unittest discover -s tests/subagent/artist/authority -p "test_*.py" -q -b
-          dotnet run --project tests/subagent/artist/authority/AuthorityClientTests.csproj
-          PYTHONPATH=.:src python tests/subagent/artist/authority/verify_authority_interop.py
-
-      - name: Validate migrated Unity P9 fixtures and host runner
-        run: |
-          python tests/unity/verify/validate_unity_fixtures.py
-          python -m unittest discover -s tests/unity/verify -p "test_unity_ci*.py" -q -b
-          python -m unittest discover -s tests/packaging -p "test_p9_release_evidence.py" -q -b
-          python -m unittest discover -s tests/packaging -p "test_unity63_video_encoder_compile_contract.py" -q -b
 
       - name: Validate Unity Editor PackageInfo qualification
         run: |
@@ -223,7 +203,6 @@ jobs:
       - name: Validate Production Smoke integration contract
         run: |
           python -m unittest discover -s .github/ProductionSmoke -p "test_*.py"
-          python -m unittest tests.eval.test_rebaseline
           python -m py_compile \
             .github/ProductionSmoke/run_one_repo_smoke.py \
             eval/behavior/grade_production_smoke.py \
@@ -251,17 +230,3 @@ jobs:
           test -f .github/ProductionSmoke/run_one_repo_smoke.py
           test ! -e tools/production_smoke/run_one_repo_smoke.py
           test ! -e tests/operations/test_one_repo_production_smoke.py
-
-  project-lease-windows:
-    name: Windows Project Lease
-    runs-on: windows-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-      - name: Install Control Plane
-        run: python -m pip install --disable-pip-version-check -e .
-      - name: Verify OS lease and environment-independent namespace
-        run: python -m unittest tests.runtime.test_project_lease -v

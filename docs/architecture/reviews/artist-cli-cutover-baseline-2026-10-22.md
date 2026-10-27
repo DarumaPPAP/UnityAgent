@@ -36,7 +36,7 @@
 | `artist.history` | 明示Project | 制限された履歴 |
 | `artist.cinematic` | `inspect / plan / preview / apply`と操作別引数 | Timeline対象、Plan、Diff、変更時承認 |
 
-[比較Fixture](../../../tests/runtime/fixtures/artist-cutover-baseline.json) はSourceから作成した合成例であり、9コマンドとCinematicの4操作を含む。実Editorから採取したGoldenや、有効な承認Token、Capture画像ではない。`current_evidence`は旧Mapperの挙動の比較値であり、移行後の成功要件ではない。既知の過剰申告を新Mapperへ移植してはならない。
+[比較Fixture](https://github.com/DarumaPPAP/UnityAgent/blob/77483d6ecc656b8842954cd509de5d9ce7224c2f/tests/runtime/fixtures/artist-cutover-baseline.json) はSourceから作成した合成例であり、9コマンドとCinematicの4操作を含む。実Editorから採取したGoldenや、有効な承認Token、Capture画像ではない。`current_evidence`は旧Mapperの挙動の比較値であり、移行後の成功要件ではない。既知の過剰申告を新Mapperへ移植してはならない。
 
 ## 既存経路の責務と再利用先
 

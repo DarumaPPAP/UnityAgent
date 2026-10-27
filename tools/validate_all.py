@@ -66,23 +66,6 @@ CHECK_COMMANDS = (
     ),
 )
 
-TEST_SUITES = (
-    Path("tests/packaging"),
-    Path("tests/contracts"),
-    Path("tests/control_plane"),
-    Path("tests/context"),
-    Path("tests/runtime"),
-    Path("tests/runtime/reference_implementation"),
-    Path("tests/orchestration"),
-    Path("tests/persistence"),
-    Path("tests/eval"),
-    Path("tests/operations"),
-    Path("tests/context_explorer"),
-    Path("tests/architecture"),
-    Path("tests/subagent"),
-    Path("tests/content_pilot"),
-)
-
 
 def validate_yaml() -> list[str]:
     errors: list[str] = []
@@ -107,15 +90,11 @@ def run_command(label: str, command: list[str]) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Validate UnityAgent source contracts")
-    parser.add_argument("--profile", choices=("smoke", "full"), default="full")
+    parser.add_argument("--profile", choices=("static",), default="static", help="Static repository validators only; not Regression or Unity E2E")
     args = parser.parse_args()
-    if args.profile == "smoke":
-        return run_command(
-            "smoke:startup-connection-read",
-            [sys.executable, "-m", "unittest", "discover", "-s", "tests/smoke", "-p", "test_*.py", "-q", "-b"],
-        )
+    print("REGRESSION_NOT_CONFIGURED: running static repository validators only; Unity Editor/E2E not observed.")
 
-    # Tests exercise the current authored definitions through the wheel resource API.
+    # Validate authored source definitions through the wheel resource API.
     if run_command("package-resource-refresh", [sys.executable, str(ROOT / "setup.py"), "build_resources"]) != 0:
         return 1
     yaml_errors = validate_yaml()
@@ -142,23 +121,13 @@ def main() -> int:
         if run_command(label, command) != 0:
             failed.append(label)
 
-    for suite in TEST_SUITES:
-        full_path = ROOT / suite
-        if not full_path.is_dir():
-            failed.append(f"missing:{suite}")
-            continue
-        label = f"unittest:{suite}"
-        command = [sys.executable, "-m", "unittest", "discover", "-s", str(suite), "-p", "test_*.py", "-q", "-b"]
-        if run_command(label, command) != 0:
-            failed.append(label)
-
     if failed:
         print("\nUnityAgent local validation failed:")
         for item in failed:
             print(f"- {item}")
         return 1
 
-    print("\nUnityAgent canonical local validation passed.")
+    print("\nUnityAgent static repository validation passed (Regression NOT_CONFIGURED).")
     return 0
 
 
