@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from jsonschema import ValidationError
 
-from tests.runtime import test_task_dag_execution as dag
+from tests.orchestration import test_task_execution as dag
 from unityagent.control_plane.unity_agent_control_plane import validate_entry_request
 from unityagent.control_plane.task_execution import project_revision
 from unityagent.orchestration.routing.route_selector import task_fingerprint_from_intent, select_route, load_routes
@@ -76,7 +76,10 @@ public static class Calculator {
             validate_csharp_patch(source, 'return 1;', 'return 3;')
 
 
-class CSharpBackendTests(CSharpEntryTests):
+class CSharpBackendTests(unittest.TestCase):
+    setUp = CSharpEntryTests.setUp
+    entry = CSharpEntryTests.entry
+
     def test_alias_targets_never_mutate_scope_outside_the_approved_file(self):
         import os
         from unityagent.runtime.guardrails.csharp_patch import patch_revisions
@@ -176,7 +179,10 @@ class CSharpUnityGateTests(unittest.TestCase):
         self.assertEqual(result['failure_class'], 'observed_test_failure')
 
 
-class CSharpProductTests(CSharpEntryTests):
+class CSharpProductTests(unittest.TestCase):
+    setUp = CSharpEntryTests.setUp
+    entry = CSharpEntryTests.entry
+
     def execute(self, entry, **kwargs):
         from unityagent.runtime.tooling.capability_resolver import ResolutionContext
         with patch('unityagent.runtime.guardrails.project_lease._default_lock_root', return_value=self.root / 'locks'):

@@ -86,7 +86,7 @@ class InstallerProviderTests(unittest.TestCase):
                         "version": "0.0.8-beta",
                         "installed": True,
                         "enabled": True,
-                        "installedPath": "C:/Users/test/.codex/plugins/unity-agent",
+                        "installedPath": "C:/CodexFixture/plugins/unity-agent",
                     }
                 ]),
                 "",
@@ -121,7 +121,7 @@ class InstallerProviderTests(unittest.TestCase):
                             "version": "0.0.8-beta",
                             "installed": True,
                             "enabled": True,
-                            "installedPath": "C:/Users/test/.codex/plugins/unity-agent",
+                            "installedPath": "C:/CodexFixture/plugins/unity-agent",
                         }
                     ]),
                     "",
@@ -251,7 +251,7 @@ class InstallerProviderTests(unittest.TestCase):
                         "version": "0.0.8-beta",
                         "installed": True,
                         "enabled": True,
-                        "installedPath": "C:/Users/test/.codex/plugins/unity-agent",
+                        "installedPath": "C:/CodexFixture/plugins/unity-agent",
                     }]),
                     "",
                 )

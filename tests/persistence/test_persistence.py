@@ -1,3 +1,4 @@
+import ast
 import json
 import tempfile
 import unittest
@@ -324,12 +325,29 @@ class Phase5PersistenceTests(unittest.TestCase):
 
     def test_persistence_implementation_does_not_import_runtime_or_orchestration(self):
         root = Path(__file__).resolve().parents[2] / "src/unityagent/persistence"
-        implementation = []
-        for folder in ("Store", "State", "Evidence", "Memory", "Session", "Checkpoint", "Resume", "Migrations"):
-            implementation.extend((root / folder).glob("*.py"))
-        text = "\n".join(path.read_text(encoding="utf-8") for path in implementation)
-        self.assertNotRegex(text, r"(?m)^\s*(?:from|import)\s+src/unityagent/runtime\b")
-        self.assertNotRegex(text, r"(?m)^\s*(?:from|import)\s+src/unityagent/orchestration\b")
+        implementation = sorted(root.rglob("*.py"))
+        self.assertTrue(implementation, "Persistence source must be observed before checking its imports")
+        for path in implementation:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                modules = []
+                if isinstance(node, ast.Import):
+                    modules = [alias.name for alias in node.names]
+                elif isinstance(node, ast.ImportFrom):
+                    imported = node.module or ""
+                    if node.level:
+                        package = ["unityagent", "persistence", *path.relative_to(root).parts[:-1]]
+                        parent = package[:len(package) - node.level + 1]
+                        imported = ".".join([*parent, *imported.split(".")]) if imported else ".".join(parent)
+                    modules = [imported]
+                    if imported == "unityagent":
+                        modules.extend(f"unityagent.{alias.name}" for alias in node.names)
+                for module in modules:
+                    with self.subTest(path=path.relative_to(root), module=module):
+                        self.assertFalse(any(
+                            module == forbidden or module.startswith(forbidden + ".")
+                            for forbidden in ("unityagent.runtime", "unityagent.orchestration")
+                        ), f"Persistence must not import {module}")
 
 
 if __name__ == "__main__":

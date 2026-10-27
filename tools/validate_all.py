@@ -67,7 +67,8 @@ CHECK_COMMANDS = (
 
 TEST_SUITES = (
     Path("tests/packaging"),
-    Path("tests/policy"),
+    Path("tests/contracts"),
+    Path("tests/control_plane"),
     Path("tests/context"),
     Path("tests/runtime"),
     Path("tests/runtime/reference_implementation"),

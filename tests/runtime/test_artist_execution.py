@@ -10,8 +10,8 @@ from unittest.mock import patch
 
 from unityagent.control_plane.unity_agent_control_plane import UnityAgentControlPlane
 from unityagent.runtime.tooling.providers.unity_cli.artist_command_adapter import ArtistCommand
-from tests.runtime import test_artist_command_adapter as boundary_fixture
-from tests.runtime.test_control_plane import fingerprint
+from tests.subagent.artist import test_artist_execution as boundary_fixture
+from tests.control_plane.test_execution import fingerprint
 
 
 class ArtistExecutionTests(unittest.TestCase):

@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from tests.runtime import test_task_dag_execution as dag
+from tests.orchestration import test_task_execution as dag
 
 
 class StrategyApplicationTests(unittest.TestCase):
