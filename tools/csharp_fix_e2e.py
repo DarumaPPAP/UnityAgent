@@ -24,7 +24,7 @@ from unityagent.runtime.tooling.providers.file.file_provider import FileProvider
 from unityagent.runtime.tooling.providers.native_unity_editor.native_unity_editor_provider import NativeUnityEditorProvider
 
 ROOT = Path(__file__).resolve().parents[1]
-FIXTURE = ROOT / 'tests/unity/projects/csharp-local-fix'
+FIXTURE = ROOT / 'Packages/com.darumappap.unity-agent/Editor/Verification~/tests/unity/projects/csharp-local-fix'
 TARGET = 'Assets/Calculator.cs'
 TEST = 'UnityAgent.AdaptiveFixture.Tests.CalculatorTests.AddReturnsSum'
 

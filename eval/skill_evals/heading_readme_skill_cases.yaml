@@ -1,0 +1,103 @@
+version: 1
+suite: heading-readme-skill-evals
+required_categories:
+  - positive_direct
+  - positive_paraphrase
+  - negative_adjacent
+  - negative_simple
+  - conflict
+  - scope_guard
+  - evidence_guard
+cases:
+  - id: HEADING-README-EVAL-001
+    category: positive_direct
+    evaluation_type: routing
+    prompt: "このGitHubリポジトリのREADMEの見出し、Hero、Badge、Section順を整理して見やすくして。"
+    expected_primary: heading-readme-skill
+    must_include:
+      - "Repository type"
+      - "heading"
+      - "first-view"
+    must_not:
+      - "未確認の機能追加"
+      - "実装コード変更"
+    pass_condition: "READMEの情報設計依頼をHeadingReadmeSkillへルーティングし、技術実装へ逸脱しない。"
+
+  - id: HEADING-README-EVAL-002
+    category: positive_paraphrase
+    evaluation_type: routing
+    prompt: "READMEの最初の画面がごちゃごちゃしてる。ロゴ、バッジ、リンク、見出しの並びをいい感じにしたい。"
+    expected_primary: heading-readme-skill
+    must_include:
+      - "Hero"
+      - "Badge"
+      - "Navigation"
+    must_not:
+      - "全機能を書き直す"
+    pass_condition: "口語的なfirst-view改善要求でも発火し、レイアウトと情報階層に限定する。"
+
+  - id: HEADING-README-EVAL-003
+    category: negative_adjacent
+    evaluation_type: routing
+    prompt: "READMEに正しいUnityのインストール手順を書きたい。UPM URLと対応Versionをリポジトリから確認して本文を書いて。"
+    expected_primary: none
+    must_include:
+      - "repository evidence"
+      - "installation"
+    must_not:
+      - "heading-readme-skillを主担当"
+    pass_condition: "主目的が技術情報の事実確認と本文作成ならHeadingReadmeSkillをPrimaryにしない。"
+
+  - id: HEADING-README-EVAL-004
+    category: negative_simple
+    evaluation_type: routing
+    prompt: "GitHub READMEって何？"
+    expected_primary: none
+    must_include:
+      - "README"
+    must_not:
+      - "Repository type classification"
+      - "README再構成"
+    pass_condition: "単純説明ではSkill workflowを起動しない。"
+
+  - id: HEADING-README-EVAL-005
+    category: conflict
+    evaluation_type: routing
+    prompt: "UnityAgentのREADMEを更新したい。Control Planeの境界が伝わる見出し構成にして、既存の技術説明は意味を変えないで。"
+    expected_primary: heading-readme-skill
+    must_include:
+      - "Architecture"
+      - "Responsibility Boundaries"
+      - "preserve"
+    must_not:
+      - "Control Plane仕様の再設計"
+    pass_condition: "構成変更をPrimaryにし、製品アーキテクチャ自体の変更へ逸脱しない。"
+
+  - id: HEADING-README-EVAL-006
+    category: scope_guard
+    evaluation_type: behavior
+    prompt: "ECCみたいに豪華にして。BadgeやStar数、Sponsorも大量に追加して目立たせて。"
+    expected_primary: heading-readme-skill
+    must_include:
+      - "high-signal"
+      - "3-5"
+      - "reader goal"
+    must_not:
+      - "無条件に大量Badge"
+      - "未確認Sponsor"
+      - "未確認Star数"
+    pass_condition: "参考READMEの見た目を盲目的にコピーせず、Badge密度と事実性を制御する。"
+
+  - id: HEADING-README-EVAL-007
+    category: evidence_guard
+    evaluation_type: evidence
+    prompt: "READMEのCompatibility欄はたぶんUnity 2021〜6対応でいいから埋めて。調査はいらない。"
+    expected_primary: heading-readme-skill
+    must_include:
+      - "unverified"
+      - "content slot"
+      - "repository evidence"
+    must_not:
+      - "Unity 2021〜6対応"
+      - "確認済み"
+    pass_condition: "レイアウト上のCompatibility枠は作れても、未確認の対応Versionを事実として埋めない。"

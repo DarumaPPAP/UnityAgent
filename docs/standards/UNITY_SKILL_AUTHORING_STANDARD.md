@@ -263,7 +263,7 @@ Skillの対象に応じて次を明示する。
 7. **Evidence guard** — 未計測を計測済みと断定しないか。
 
 従来の個別Routing回帰ケースは`tests/skill_routing/`へ置く。
-新規・大幅更新Skillでは、機械検証可能なeval Contractを`tests/skill_evals/`へ追加し、`tools/skill_eval/validate_skill_evals.py`でschemaとcoverageを検証する。
+新規・大幅更新Skillでは、機械検証可能なeval Contractを`eval/skill_evals/`へ追加し、`tools/skill_eval/validate_skill_evals.py`でschemaとcoverageを検証する。
 
 ## 10. Review gate
 

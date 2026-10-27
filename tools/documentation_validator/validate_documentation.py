@@ -30,8 +30,7 @@ ACTIVE_DOC_PATHS = (
     Path("docs/architecture/specifications"),
     Path("docs/standards"),
     Path("tools/context_explorer"),
-    Path("tests/skill_routing/README.md"),
-    Path("tests/context_explorer/README.md"),
+    Path("tests/smoke/README.md"),
 )
 
 README_GLOB = "README.md"

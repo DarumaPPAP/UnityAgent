@@ -27,7 +27,7 @@ def _tool(name):
 
 def _project(workspace, name):
     project = workspace / name
-    shutil.copytree(ROOT / 'tests/unity/projects/parallel-csharp-fix', project)
+    shutil.copytree(ROOT / 'Packages/com.darumappap.unity-agent/Editor/Verification~/tests/unity/projects/parallel-csharp-fix', project)
     subprocess.run(['git', 'init', '--quiet', str(project)], check=True, capture_output=True, timeout=10)
     return project
 

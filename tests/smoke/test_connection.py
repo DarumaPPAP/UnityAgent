@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -89,6 +91,33 @@ class ConnectionSmokeTests(unittest.TestCase):
     def test_secret_bearing_flag_is_rejected(self):
         with self.assertRaises(ValueError):
             validate_safe_argv(["unity", "--client-secret", "secret"])
+
+    def test_editor_project_lease_blocks_second_process(self):
+        """Project binding/Editor exclusivity: a competing process cannot connect as owner."""
+        from unityagent.runtime.guardrails.project_lease import acquire_project_lease
+
+        with tempfile.TemporaryDirectory(prefix="unityagent-lease-smoke-") as directory:
+            project = Path(directory) / "Project"
+            project.mkdir()
+            lock_root = Path(directory) / "locks"
+            child = (
+                "import sys\\n"
+                "from unityagent.runtime.guardrails.project_lease import acquire_project_lease, ProjectLeaseBusy\\n"
+                "try:\\n"
+                "  with acquire_project_lease(sys.argv[1], owner='child', lock_root=sys.argv[2]): print('acquired')\\n"
+                "except ProjectLeaseBusy: print('busy')\\n"
+            ).replace("\\\\n", "\\n")
+            command = [sys.executable, "-c", child, str(project), str(lock_root)]
+
+            def child_result():
+                completed = subprocess.run(
+                    command, capture_output=True, text=True, check=True, timeout=15,
+                )
+                return completed.stdout.strip()
+
+            with acquire_project_lease(project, owner="parent", lock_root=lock_root):
+                self.assertEqual(child_result(), "busy")
+            self.assertEqual(child_result(), "acquired")
 
 
 if __name__ == "__main__":

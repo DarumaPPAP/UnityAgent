@@ -23,7 +23,7 @@ from unityagent.runtime.tooling.providers.file.file_provider import FileProvider
 from unityagent.runtime.tooling.providers.native_unity_editor.native_unity_editor_provider import NativeUnityEditorProvider
 
 ROOT = Path(__file__).resolve().parents[1]
-FIXTURE = ROOT / 'tests/unity/projects/parallel-csharp-fix'
+FIXTURE = ROOT / 'Packages/com.darumappap.unity-agent/Editor/Verification~/tests/unity/projects/parallel-csharp-fix'
 GATES = {'static': ['static_review'], 'compile': ['compile_observation', 'current_compile_observation'],
          'editmode': ['test_execution', 'targeted_editmode_execution']}
 CASES = {'left': ('Assets/Calculator.cs', 'CalculatorTests.AddReturnsSum', 'return a - b;', 'return a + b;'),
