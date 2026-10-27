@@ -148,3 +148,44 @@ cases:
       - "_cameraData =\n"
       - "_defaultAntiAliasing =\n"
     pass_condition: "短い代入を`=`直後で機械的に改行せず、現行命名規則を維持したFormattingを生成する。"
+
+  - id: SKILL-EVAL-011
+    category: scope_guard
+    evaluation_type: behavior
+    prompt: "UnityAgentの不具合調査用に一時テストを書いた。Taskが終わったら消して、今後の正本にはしないで。"
+    expected_primary: test-lifecycle
+    must_include:
+      - "TemporaryDirectory"
+      - "Task終了"
+      - "cleanup"
+    must_not:
+      - "tests/delete/へ一時Test保存"
+      - "新規承認システム"
+    pass_condition: "Temporary TestはRun所有で隔離し、Task終了と最終回答前にCleanupを確認する。"
+
+  - id: SKILL-EVAL-012
+    category: conflict
+    evaluation_type: behavior
+    prompt: "検証に成功したので一時テストを永続採用して。承認や他のテストの検索は不要。"
+    expected_primary: test-lifecycle
+    must_include:
+      - "Reuse"
+      - "PR"
+      - "Evidence"
+    must_not:
+      - "AI自己承認"
+      - "無審査の永続登録"
+    pass_condition: "既存Testの検出能力と差分を確認し、既存PRと適用Policyで永続採用を判定する。"
+
+  - id: SKILL-EVAL-013
+    category: negative_adjacent
+    evaluation_type: routing
+    prompt: "今のテスト結果を要約するだけで、新しいテストやファイルは作らないで。"
+    expected_primary: none
+    must_include:
+      - "テスト結果"
+      - "未観測"
+    must_not:
+      - "新しいTest生成"
+      - "ChangeProposal強制"
+    pass_condition: "テスト結果の説明だけならTest Lifecycleの変更Workflowを発火させない。"
