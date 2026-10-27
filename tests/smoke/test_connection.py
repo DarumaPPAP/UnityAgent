@@ -37,7 +37,8 @@ class ConnectionSmokeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             request = build_project_info_command("unity", directory)
             self.assertIn(str(Path(directory)), request.argv)
-            self.assertIn("--project-path", request.argv)
+            self.assertEqual(request.argv[1:3], ("projects", "info"))
+            self.assertEqual(request.argv[3], str(Path(directory)))
 
     def test_editor_status_command_binds_project(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -87,7 +88,7 @@ class ConnectionSmokeTests(unittest.TestCase):
 
     def test_command_args_reject_shell_injection_capability(self):
         with self.assertRaises(ValueError):
-            validate_safe_argv(["unity", "--token", "secret"])
+            validate_safe_argv(["unity", "--client-secret", "secret"])
 
 
 if __name__ == "__main__":
