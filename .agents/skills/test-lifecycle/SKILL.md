@@ -20,7 +20,7 @@ UnityAgentの既存テストを最小限かつ検出力のある形に保つた�
 ## When to use
 
 - 新機能・修正に付随してTest、Fixture、診断Probeを追加・変更・削除するとき
-- 重複した旧Testを `tests/delete/` へ凍結して新スイートへ段階置換するとき
+- 重複した旧Testを 旧凍結フォルダ へ凍結して新スイートへ段階置換するとき
 - 一時テストを恒久Regressionへ採用するか判定するとき
 - Taskの終了時・セッション終了前に今回作成した一時Testを片付けるとき
 
@@ -32,7 +32,7 @@ UnityAgentの既存テストを最小限かつ検出力のある形に保つた�
 2. Test実行には既存のPython `unittest`、Unity Test Framework、`tools/validate_all.py`、必要時のEvalと `tools/run_regression_gate.py` を使う。テスト結果・Capture・Static Validator・実Editor/Player/実機Evidenceは別物。
 3. Evalから派生した改善提案は `eval/change_proposals/change_proposal.py` の `build_change_proposal` と既存Schemaを再利用する。戻り値 `status: proposed`、`applies_change: false`、`requires_human_review: true` を守る。通常のTest追加にEval実行やChangeProposalを強制しない。
 4. Testコードの責務は保護する振る舞い／Failureごと。同一責務は既存Fileへまとめる。実行環境・所有者・Fixture・失敗原因が独立する場合だけ分離。ファイル数や行数そのものを合格基準にしない。
-5. `tests/delete/` は**既存テストの移行時凍結専用**。セッション限りの新規Testを保存する場所にしない。凍結した既存Testを完全な回帰PASSとして数えない。
+5. 旧Regressionの現行Copyはユーザーの明示指示で撤去済み。復元・比較はGit SHAから行い、一時Testを旧凍結フォルダへ保存しない。
 
 ## Step 1 — Scope and reuse gate（毎回・短い）
 
@@ -46,7 +46,7 @@ UnityAgentの既存テストを最小限かつ検出力のある形に保つた�
 - 1回限りの検証コードとFixtureは**Run所有**の別作業領域を使う。Pythonなら `tempfile.TemporaryDirectory(prefix="unityagent-test-")` をコンテキスト管理し、途中失敗でも `finally` 相当の解放を行う。Unity Editorが必要なら専用の複製Projectや短命Worktreeを使い、共有Editor／ProjectのLease・排他・Mutation Scopeを維持する。
 - 既存のtracked testやFixtureを診断用Testで上書きしない。Rootに `temp_test_*.py` を放置しない。Probeを成功のために改変して本来の不具合を隠さない。
 - 例外・Cancel時にも cleanup を実行する構造でコードを書く。強制終了や環境喪失では完了保証がないため、その場合は `cleanup=not_verified` と報告し、次回の所有者確認なしで他者のTempやWorktreeを一括削除しない。
-- Task完了**および観測可能なセッション終了前**に、作成した一時テスト・Fixture・ログ・短命Worktreeの残存を確認する。削除は**このRunが新規作成したと証明できる対象だけ**。既存未コミット変更、`tests/delete/`、他Runのファイル、ユーザーAssetを削除しない。
+- Task完了**および観測可能なセッション終了前**に、作成した一時テスト・Fixture・ログ・短命Worktreeの残存を確認する。削除は**このRunが新規作成したと証明できる対象だけ**。既存未コミット変更、旧凍結フォルダ、他Runのファイル、ユーザーAssetを削除しない。
 - `git status --porcelain` と作業時の初期差分を比較する。既存差分を復元／stash／clean／resetしない。残存があればパスと理由を報告し、勝手に完了と宣言しない。
 
 ## Step 3 — Conditional multi-stage permanent-test review
@@ -68,7 +68,7 @@ UnityAgentの既存テストを最小限かつ検出力のある形に保つた�
 ## Step 4 — Promote / Freeze / Delete
 
 - 恒久採用時は既存の所有フォルダ・Test Moduleへ統合し、追加は検出能力の差分で説明する。もし複数Fileに分けるなら責務、Fixture、実行環境を根拠にする。
-- 旧テストの置換はB案。**置換可能性を検証した領域だけ**旧Fileを `tests/delete/` に原本Blobのまま凍結し、元SHA・移動元・新正本を既存 `tests/delete/README.md` 等へ記録。凍結と同時に必須Gateから消失したFailureがないか確認する。
+- 旧Testはユーザー指示により全面撤去済み。必要な比較は固定Git SHA `77483d6ecc656b8842954cd509de5d9ce7224c2f` を参照し、未確認のRegression同等性を主張しない。
 - 新スイートが元Baselineの重要な拒否／失敗系を守ったと分かるまで旧Testは実行対象に残す。凍結旧Testは新正本のPASSに混ぜない。比較が終わり不要と確定すれば旧Fileを後続の整理PRで削除する。
 - 凍結フォルダを恒久的な二重Test保管庫にしない。新規Testの採用によってFile数とRuntimeが増えた場合は、増分の独自検出価値を説明する。
 
@@ -100,10 +100,10 @@ UnityAgentの既存テストを最小限かつ検出力のある形に保つた�
 
 ## Common mistakes
 
-- 調査用の一時テストを`tests/delete/`へ恒久保存する。
+- 調査用の一時テストを旧凍結フォルダへ恒久保存する。
 - Cleanupを会話セッションが終了するイベント一つに依存し、途中例外で取り残す。
 - `git clean -fdx`、`git reset --hard`、広域の`rm -rf`で既存のユーザー変更を消す。
 - 全TestにAI→別AI→人間の承認を強制し、Fast Pathを遅くする。
 - Skill/CIの形式PASSをHuman Approvalと読み替える。
 - 成功EvidenceだけでApproval偽造・Mutation Scope逸脱の失敗系を削除する。
-- `tests/delete/`を完全なRegression Gateとして再利用する。
+- 旧凍結フォルダを完全なRegression Gateとして再利用する。

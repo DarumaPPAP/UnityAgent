@@ -100,13 +100,13 @@ class ConnectionSmokeTests(unittest.TestCase):
             project = Path(directory) / "Project"
             project.mkdir()
             lock_root = Path(directory) / "locks"
-            child = (
-                "import sys\\n"
-                "from unityagent.runtime.guardrails.project_lease import acquire_project_lease, ProjectLeaseBusy\\n"
-                "try:\\n"
-                "  with acquire_project_lease(sys.argv[1], owner='child', lock_root=sys.argv[2]): print('acquired')\\n"
-                "except ProjectLeaseBusy: print('busy')\\n"
-            ).replace("\\\\n", "\\n")
+            child = "\n".join([
+                "import sys",
+                "from unityagent.runtime.guardrails.project_lease import acquire_project_lease, ProjectLeaseBusy",
+                "try:",
+                "  with acquire_project_lease(sys.argv[1], owner='child', lock_root=sys.argv[2]): print('acquired')",
+                "except ProjectLeaseBusy: print('busy')",
+            ])
             command = [sys.executable, "-c", child, str(project), str(lock_root)]
 
             def child_result():

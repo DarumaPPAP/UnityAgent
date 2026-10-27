@@ -29,7 +29,7 @@ branch運用の正本は `.github/branch-policy.json`、説明は `docs/developm
 - テストは機能の責務・Failureごとに適度な大きさのTest Moduleへまとめ、異なる責務や実Unity E2Eを巨大な1ファイルに押し込まない。テスト数やファイル数を削減目的だけで変更しない。
 - 調査や修復のための一時TestはTask専用Worktree／TemporaryDirectory等で実行し、Task終了時に不要な作業ファイルを清掃する。セッション終了イベントだけにCleanupを依存させない。
 - 恒久的なRegression Testは、既存Testとの差分・保護Invariant・Failureリスク・実行/保守コストを通常PRに記載して審査する。Eval起点なら既存ChangeProposalに紐付け、新しい承認機構を追加しない。
-- 既存テストの置換はB案。移行対象だけを `tests/delete/` に原本のまま凍結し、最小スイートへの置換と重要な負例の検出を検証してから削除する。凍結TestをCanonicalのPASSとして扱わず、未置換の旧テストは通常Gateで維持する。詳細は `tests/delete/README.md`。
+- ユーザーによる旧Regression全面撤去の明示指示に基づき、Host正本は `tests/smoke/`（起動・接続・読取）だけに限定。Approval / Mutation / Orchestration / Persistence等の旧Regression検出能力を維持したと主張しない。旧テストはGit SHA `77483d6ecc656b8842954cd509de5d9ce7224c2f` で復元可能。実Unity検証Fixtureは既存UPM同梱 `Packages/com.darumappap.unity-agent/Editor/Verification~/tests/unity/` を利用する。
 - テスト追加・変更・統合・採用・セッション限定ProbeのCleanupには `.agents/skills/test-lifecycle/SKILL.md` を適用する。Stage A/B/Cはリスク条件付き審査であり、Skillは独立した承認権限を持たない。Task終了／最終報告前にRun所有Temporaryの残存を確認する。
 
 Skillが確認要求・停止・ユーザー要求との競合を生む場合、Skill path、該当instruction、effect、判断理由を明示する。

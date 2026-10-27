@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "kind": "unityagent_embedded_p9_sources",
-  "source": "Canonical UnityAgent tests and Artist Editor package, bundled for offline verification",
+  "source": "Bundled hash-pinned Unity verification inputs and Artist Editor package; root tests/unity copy retired",
   "files": [
     {
       "path": "subagent/artist_subagent/tools/editor/Documentation~.meta",

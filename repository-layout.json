@@ -7,7 +7,7 @@
     ".github": "automation and branch contracts",
     "src": "installed UnityAgent product",
     "Packages": "UPM distribution",
-    "tests": "host and contract tests",
+    "tests": "startup, connection and read-only smoke only",
     "eval": "behavior/golden evaluations",
     "tools": "repository-only validation",
     "docs": "human documentation/standards/templates",
