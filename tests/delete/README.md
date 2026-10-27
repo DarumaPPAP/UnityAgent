@@ -9,6 +9,7 @@
 - 新しい最小Testは現行仕様・安全性契約・過去の不具合から設計し、成功Evidenceだけでなく重要な拒否・失敗系も守る。
 - 置換した領域は**元のBaselineで旧TestがPASSしたこと**と、**新スイートが同じ重要なFailureを検出できること**を確認してから旧Testを削除する。単なるテスト件数削減、モックだけのPASS、未観測E2Eは根拠にしない。
 - 新たなテストは最初にTask専用の一時Worktree／`TemporaryDirectory`等で試す。Task終了時に不要な一時テストを清掃。恒久採用が必要なら、既存のChangeProposal（Eval改善時）または通常PRに「守るInvariant・既存Testとの差分・失敗リスク・維持コスト」を示してレビューする。新しいApproval Authorityは設けない。
+- 一時テストの採用判断・Cleanupの具体的手順は `.agents/skills/test-lifecycle/SKILL.md` が担当する。Run所有の一時Testは `tests/delete/` に入れず、正常終了／例外／Cancelの片付けをTask境界で実行する。セッション終了前に残存確認するが、強制終了ではCleanup未保証として報告する。
 - CIの既存必須Gateは新しい正本の整合が確認できるまで継続する。対象外の旧Testを一括移動してGateを空にしない。
 
 ## 初回置換：Observability

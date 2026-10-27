@@ -30,6 +30,7 @@ branch運用の正本は `.github/branch-policy.json`、説明は `docs/developm
 - 調査や修復のための一時TestはTask専用Worktree／TemporaryDirectory等で実行し、Task終了時に不要な作業ファイルを清掃する。セッション終了イベントだけにCleanupを依存させない。
 - 恒久的なRegression Testは、既存Testとの差分・保護Invariant・Failureリスク・実行/保守コストを通常PRに記載して審査する。Eval起点なら既存ChangeProposalに紐付け、新しい承認機構を追加しない。
 - 既存テストの置換はB案。移行対象だけを `tests/delete/` に原本のまま凍結し、最小スイートへの置換と重要な負例の検出を検証してから削除する。凍結TestをCanonicalのPASSとして扱わず、未置換の旧テストは通常Gateで維持する。詳細は `tests/delete/README.md`。
+- テスト追加・変更・統合・採用・セッション限定ProbeのCleanupには `.agents/skills/test-lifecycle/SKILL.md` を適用する。Stage A/B/Cはリスク条件付き審査であり、Skillは独立した承認権限を持たない。Task終了／最終報告前にRun所有Temporaryの残存を確認する。
 
 Skillが確認要求・停止・ユーザー要求との競合を生む場合、Skill path、該当instruction、effect、判断理由を明示する。
 Policy追加の前にKnowledge / Retrieval / Tool / Harness / Eval / Architectureの原因を調べる。

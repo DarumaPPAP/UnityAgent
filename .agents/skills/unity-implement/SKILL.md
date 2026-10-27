@@ -53,6 +53,7 @@ Read-only監査には対応Audit Skillを使う。
 - Shader/HLSL修正: `shader-performance-refactor`
 - Keyword / Variant: `unity-shader-variant-governor`
 - 修正後Evidence: `unity-runtime-evidence`または`shader-runtime-evidence`
+- 一時テストの作成・後片付け、永続Regressionの採用判断: `test-lifecycle`（既存Approval Authorityの範囲内）
 - 受入レビュー: `unity-review`
 - コメント追加: `production-code-comments`または`learning-code-comments`
 
