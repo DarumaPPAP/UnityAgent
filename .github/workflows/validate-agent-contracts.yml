@@ -39,7 +39,9 @@ jobs:
         run: python tools/pr_quality/validate_pr.py --event "$GITHUB_EVENT_PATH"
 
       - name: Smoke startup, connection and read-only observations
-        run: python tools/validate_all.py --profile smoke
+        run: |
+          python tools/validate_all.py --profile smoke
+          python -m py_compile tests/smoke/live_connection.py
 
       - name: Validate canonical repository contracts
         run: python tools/validate_all.py --profile full
