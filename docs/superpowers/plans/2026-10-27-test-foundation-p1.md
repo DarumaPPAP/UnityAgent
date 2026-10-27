@@ -103,3 +103,7 @@ Pre-flight: Task 2はTask 1の新パスと測定結果を参照する。同じIn
 - `tests/delete/` へのコピーは増やさず、同等性確認済みの旧テストと未参照の旧Backend SnapshotはGit履歴へ退役した。
 
 - 最終独立レビューで未解決の指摘なし。相対ImportFromも拒否する追加強化後にPersistence 35件を再実行して成功、禁止依存5形態と空走査の6 Mutationを検出した。
+
+## 最新mainとの統合
+
+実行中にmainが `ab8a4ffcbf6d92d598a3bf38c8b8626c43e588e5` へ進んだため、Test Lifecycleと既存Observability 8件の正本を取り込んだ。独自の10件版を削除して既存正本を再利用し、凍結3 Blobの同一性、旧10件・新8件の成功、全不変条件の対応を確認して凍結ファイルを退役した。最終AST比較の対象はObservabilityを除く19ソース・166メソッド。テスト追跡資産は移行手順READMEを含め309件。Main由来のPolicy / Skill / Skill Evalは維持する。

@@ -56,13 +56,6 @@
       "cost": "既存Fixtureを移すのみ。",
       "retirement": "DAG契約が統合・撤去された場合。"
     },
-    "tests/runtime/test_observability.py": {
-      "purpose": "Telemetry失敗隔離、秘密情報非漏洩、Token/Bytes/未測定の意味。",
-      "reuse": "既存測定3ファイルの10件を同じAssertionで再利用。",
-      "separation": "観測の正しさと実行結果・永続化の成功は異なる。",
-      "cost": "10 unittest。新しいCollectorなし。",
-      "retirement": "観測実装の責務が別の正本へ移った場合。"
-    },
     "tests/subagent/artist/__init__.py": {
       "purpose": "ArtistのPython境界を既存SubAgent Suiteから再帰discoverする。",
       "reuse": "標準unittestを使用。",
@@ -219,7 +212,8 @@
         "passed": 35,
         "seconds": 0.462,
         "mutation_checks": 6
-      }
+      },
+      "source_state": "最新main統合前のローカル候補。統合後の結果はmain_integrationおよび対象HeadのGitHub CIを参照。"
     },
     "github_ci": {
       "state": "not_observed",
@@ -240,8 +234,8 @@
       "new_validators": 0,
       "new_evidence_collectors": 0,
       "baseline_test_assets": 327,
-      "current_test_assets": 308,
-      "asset_reduction": 19,
+      "current_test_assets": 309,
+      "asset_reduction": 18,
       "baseline_canonical_discovered_after_p1": 1126,
       "current_canonical_discovered": 1121,
       "removed_duplicate_discoveries": 4,
@@ -271,13 +265,13 @@
       "tests/runtime/test_dynamic_plan.py": "9156d43f7d8f6e8349bd9a97e880ea323089a574ce70d3ce4f623a923f31bb44",
       "tests/runtime/test_host_resource_claims.py": "7a72cf49fc5beca29ed54b8f5b73fba76f367e8f166822e652b7549ddedd7949",
       "tests/runtime/test_installer_provider.py": "8401dfc596163faaeccad72f3127f83932473e1f54a2bb1e1e7b75efb67080c1",
-      "tests/runtime/test_observability.py": "95345a6124291b63f314fbb0a673c0b5525de63e2bae2b2cd242f21cd6c18699",
       "tests/runtime/test_strategy_application.py": "12b3e7f1d71bce15b8627a3085a63259a66c6583a28666da13cf72503ad25389",
       "tests/subagent/artist/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "tests/subagent/artist/test_artist_execution.py": "2afeac95978e4662c4dffbe0a2664a1b5928cb9cf81434222726256308d8cfd2",
       "tests/subagent/test_specialist_contracts.py": "f313820c2feee21d7622aa46131d7a6bf8b9f6bfe2a114fe8c9a1ede376f0b11",
       "tools/reference_implementation_final_gate.py": "c1fbaec41300e8bb130a58bab2409246d31cab15e853494f7c1ce7d968b34027",
-      "tools/validate_all.py": "33b004f22396ee5f0dec1382a4bb798a4768e9f33357788912128391a297f6f4"
+      "tools/validate_all.py": "33b004f22396ee5f0dec1382a4bb798a4768e9f33357788912128391a297f6f4",
+      "tests/runtime/test_observability_contracts.py": "4df003ab4a281f92fb02d043fa8d046cb2d3ae68a8bb4fd35bc6611a2aa036ac"
     },
     "canonical_sandbox_attempt": {
       "state": "interrupted",
@@ -443,12 +437,29 @@
       "after": "InventoryをOSユーザーCacheの説明へ置換し、Fixtureを汎用Windows Pathへ変更。18 InstallerテストとPortable Path Gateが成功。"
     },
     "final_gate_state": {
-      "python_and_static": "passed",
+      "python_and_static": "統合前Fullと統合後Focusedは成功。統合後FullはGitHub CI確認待ち。",
       "github_ci": "not_observed",
       "csharp_compile": "unavailable",
       "unity_editor": "unavailable",
       "unity_playmode": "not_observed",
       "player_device": "not_observed"
+    },
+    "main_integration": {
+      "base_revision": "ab8a4ffcbf6d92d598a3bf38c8b8626c43e588e5",
+      "reason": "実行中にmainへ採用されたObservability正本とTest Lifecycleを取り込んだ。既存8件を再利用し、重複正本を追加しない。",
+      "current_test_assets": 309,
+      "local_validation": {
+        "state": "passed_focused",
+        "tests": 15,
+        "commands": [
+          "build_resources",
+          "validate_skills --strict",
+          "validate_skill_evals",
+          "verify_portable_paths",
+          "unittest observability/core contracts"
+        ],
+        "full_canonical": "GitHub CIで確認する。"
+      }
     }
   },
   "detection_comparison": {
@@ -511,24 +522,6 @@
     ],
     "freeze": "置換比較済みのためtests/deleteへ複製せずGit履歴を再利用する。",
     "migration_method_comparison": [
-      {
-        "source_path": "tests/runtime/test_execution_measurement.py",
-        "replacement_path": "tests/runtime/test_observability.py",
-        "preserved_test_methods": 4,
-        "method_ast_equivalent": true
-      },
-      {
-        "source_path": "tests/runtime/test_model_usage.py",
-        "replacement_path": "tests/runtime/test_observability.py",
-        "preserved_test_methods": 4,
-        "method_ast_equivalent": true
-      },
-      {
-        "source_path": "tests/runtime/test_persistence_measurement.py",
-        "replacement_path": "tests/runtime/test_observability.py",
-        "preserved_test_methods": 2,
-        "method_ast_equivalent": true
-      },
       {
         "source_path": "tests/runtime/test_control_plane.py",
         "replacement_path": "tests/control_plane/test_execution.py",
@@ -685,7 +678,77 @@
         "path": "tests/orchestration/test_adaptive_execution.py",
         "reason": "unittest.mainを全クラス定義の後へ移し、直接実行でもStrategyObservation/DagInputの検査を収集する。"
       }
-    ]
+    ],
+    "observability_reuse": {
+      "canonical_path": "tests/runtime/test_observability_contracts.py",
+      "baseline_revision": "ae68c17ff9db19370067a7aa45f9492a724e63c4",
+      "frozen_revision": "ab8a4ffcbf6d92d598a3bf38c8b8626c43e588e5",
+      "frozen_blob_match": 3,
+      "old_tests_passed": 10,
+      "new_tests_passed": 8,
+      "old_seconds": 0.156,
+      "new_seconds": 0.004,
+      "invariants": [
+        {
+          "old": [
+            "test_projection_failure_never_retries_or_changes_an_execution"
+          ],
+          "new": "test_metric_failure_does_not_replay_execution",
+          "invariant": "Telemetry障害でMutationを再実行しない。"
+        },
+        {
+          "old": [
+            "test_source_exception_is_preserved_without_logging_its_message"
+          ],
+          "new": "test_source_exception_is_preserved_and_private_message_is_not_logged",
+          "invariant": "元例外を保持し、秘密文を記録しない。"
+        },
+        {
+          "old": [
+            "test_unmeasured_usage_is_omitted_and_fixed_counters_are_numeric",
+            "test_usage_projection_keeps_nulls_and_rejects_free_text_keys"
+          ],
+          "new": "test_metrics_and_usage_projections_retain_only_structured_values",
+          "invariant": "Metricは未測定値を除き、UsageのNullは保持し、自由文は両方から排除する。"
+        },
+        {
+          "old": [
+            "test_only_new_snapshots_count_bytes_and_failed_telemetry_does_not_undo_writes"
+          ],
+          "new": "test_immutable_writes_survive_telemetry_failure_and_count_only_new_bytes",
+          "invariant": "Snapshotの新規書込だけを数え、観測障害でも書込を失わない。"
+        },
+        {
+          "old": [
+            "test_capture_is_local_and_reports_real_repeated_reads"
+          ],
+          "new": "test_observation_counts_real_reads_only_within_capture_scope",
+          "invariant": "Capture中の実行だけを計測し、繰り返しReadを正しく数える。"
+        },
+        {
+          "old": [
+            "test_missing_usage_is_null_and_does_not_copy_free_text"
+          ],
+          "new": "test_missing_observation_does_not_invent_usage_or_copy_source_text",
+          "invariant": "未知Usageを捏造せず、自由文をコピーしない。"
+        },
+        {
+          "old": [
+            "test_completed_turn_usage_sums_cache_as_subset_of_input"
+          ],
+          "new": "test_completed_turns_are_aggregated_without_double_counting_cached_tokens",
+          "invariant": "複数Turnを合算しCacheを二重加算しない。"
+        },
+        {
+          "old": [
+            "test_partial_malformed_or_boolean_usage_is_not_reported_as_complete",
+            "test_missing_cache_does_not_invent_zero_or_discard_other_usage"
+          ],
+          "new": "test_invalid_usage_fails_closed_but_missing_cache_remains_unknown",
+          "invariant": "Boolean・負数・不整合・不足を拒否し、未知CacheはNullのまま実測値を保持する。"
+        }
+      ]
+    }
   },
   "files": [
     {
@@ -4035,7 +4098,7 @@
     {
       "source_path": "tests/runtime/test_execution_measurement.py",
       "protected_invariant": "観測用Projection失敗で実行を再送・変更しない。元例外・Promptを記録せず、Token未観測はnull、Counterは許可した数値だけとする。",
-      "replacement_path": "tests/runtime/test_observability.py",
+      "replacement_path": "tests/runtime/test_observability_contracts.py",
       "evidence_sha": "ae68c17ff9db19370067a7aa45f9492a724e63c4",
       "source_sha256": "a17e4fed62be8e3060ea2226a1592e685fe45317e1f57e32180f039f62ac3125",
       "runtime_cost": {
@@ -4045,7 +4108,7 @@
       },
       "decision": "CONSOLIDATE",
       "audit_status": "reviewed",
-      "decision_reason": "同じ責務の正本へ既存の拒否条件・Assertionを移し、旧ファイルを撤去。移行比較とCanonical結果を参照。",
+      "decision_reason": "最新mainの既存8件の正本を再利用。旧10件の全不変条件と比較し、元Blob同一性と旧・新の明示実行成功を確認して凍結元を撤去した。",
       "retirement": "列挙した全unittest Caseと必要なFixture Importを置換先へ移管し、Test ID・件数と意味のある拒否能力を検証した後に旧Sourceを退役する。独自Frameworkは追加しない。",
       "responsibility": "control_plane/observability",
       "reason_for_separation": "Observabilityの1 Moduleへまとめても、Control Plane投影失敗・Privacy、完了Turn使用量、Persistence測定のFixtureと意味は独立したTestCaseで保持する。共通汎用Frameworkは導入しない。",
@@ -4422,7 +4485,7 @@
     {
       "source_path": "tests/runtime/test_model_usage.py",
       "protected_invariant": "構造化した完了Turnだけを数値使用量へ集計する。Cacheは入力の部分集合とし、不正・bool・部分使用量はnull、元自由文は出力しない。",
-      "replacement_path": "tests/runtime/test_observability.py",
+      "replacement_path": "tests/runtime/test_observability_contracts.py",
       "evidence_sha": "ae68c17ff9db19370067a7aa45f9492a724e63c4",
       "source_sha256": "1f703b86d6c338a1e124e62e94ad7336abeb01170814c59d0d41b3208aff345c",
       "runtime_cost": {
@@ -4432,7 +4495,7 @@
       },
       "decision": "CONSOLIDATE",
       "audit_status": "reviewed",
-      "decision_reason": "同じ責務の正本へ既存の拒否条件・Assertionを移し、旧ファイルを撤去。移行比較とCanonical結果を参照。",
+      "decision_reason": "最新mainの既存8件の正本を再利用。旧10件の全不変条件と比較し、元Blob同一性と旧・新の明示実行成功を確認して凍結元を撤去した。",
       "retirement": "列挙した全unittest Caseと必要なFixture Importを置換先へ移管し、Test ID・件数と意味のある拒否能力を検証した後に旧Sourceを退役する。独自Frameworkは追加しない。",
       "responsibility": "runtime/observability",
       "reason_for_separation": "Observabilityの1 Moduleへまとめても、Control Plane投影失敗・Privacy、完了Turn使用量、Persistence測定のFixtureと意味は独立したTestCaseで保持する。共通汎用Frameworkは導入しない。",
@@ -4638,7 +4701,7 @@
     {
       "source_path": "tests/runtime/test_persistence_measurement.py",
       "protected_invariant": "不変SnapshotのByte数は新規書込だけで数える。Telemetry失敗で永続書込を取り消さず、測定Captureは局所的にし、実際の反復Readを省略しない。",
-      "replacement_path": "tests/runtime/test_observability.py",
+      "replacement_path": "tests/runtime/test_observability_contracts.py",
       "evidence_sha": "ae68c17ff9db19370067a7aa45f9492a724e63c4",
       "source_sha256": "282db1a6358bb1027fbdfa5fbc5aeaa614319a5de0842b8e78db22d3a655db7a",
       "runtime_cost": {
@@ -4648,7 +4711,7 @@
       },
       "decision": "CONSOLIDATE",
       "audit_status": "reviewed",
-      "decision_reason": "同じ責務の正本へ既存の拒否条件・Assertionを移し、旧ファイルを撤去。移行比較とCanonical結果を参照。",
+      "decision_reason": "最新mainの既存8件の正本を再利用。旧10件の全不変条件と比較し、元Blob同一性と旧・新の明示実行成功を確認して凍結元を撤去した。",
       "retirement": "列挙した全unittest Caseと必要なFixture Importを置換先へ移管し、Test ID・件数と意味のある拒否能力を検証した後に旧Sourceを退役する。独自Frameworkは追加しない。",
       "responsibility": "persistence/observability",
       "reason_for_separation": "Observabilityの1 Moduleへまとめても、Control Plane投影失敗・Privacy、完了Turn使用量、Persistence測定のFixtureと意味は独立したTestCaseで保持する。共通汎用Frameworkは導入しない。",
