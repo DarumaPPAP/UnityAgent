@@ -86,7 +86,7 @@ class ConnectionSmokeTests(unittest.TestCase):
     def test_progress_log_alone_does_not_prove_connection(self):
         self.assertIsNone(terminal_envelope(parse_json_sequence('{"type":"progress","message":"ready"}')))
 
-    def test_command_args_reject_shell_injection_capability(self):
+    def test_secret_bearing_flag_is_rejected(self):
         with self.assertRaises(ValueError):
             validate_safe_argv(["unity", "--client-secret", "secret"])
 
