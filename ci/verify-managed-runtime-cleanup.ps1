@@ -3,7 +3,7 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version 2.0
 
-$repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+$repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $installers = @(
     (Join-Path $repositoryRoot 'scripts\install.ps1'),
     (Join-Path $repositoryRoot 'Packages\com.darumappap.unity-agent\Editor\Bootstrap~\install-control-plane.ps1')
