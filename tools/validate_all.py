@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import subprocess
 import sys
 from pathlib import Path
@@ -105,6 +106,15 @@ def run_command(label: str, command: list[str]) -> int:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description="Validate UnityAgent source contracts")
+    parser.add_argument("--profile", choices=("smoke", "full"), default="full")
+    args = parser.parse_args()
+    if args.profile == "smoke":
+        return run_command(
+            "smoke:startup-connection-read",
+            [sys.executable, "-m", "unittest", "discover", "-s", "tests/smoke", "-p", "test_*.py", "-q", "-b"],
+        )
+
     # Tests exercise the current authored definitions through the wheel resource API.
     if run_command("package-resource-refresh", [sys.executable, str(ROOT / "setup.py"), "build_resources"]) != 0:
         return 1

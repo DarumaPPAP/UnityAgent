@@ -38,8 +38,11 @@ jobs:
         if: github.event_name == 'pull_request'
         run: python tools/pr_quality/validate_pr.py --event "$GITHUB_EVENT_PATH"
 
+      - name: Smoke startup, connection and read-only observations
+        run: python tools/validate_all.py --profile smoke
+
       - name: Validate canonical repository contracts
-        run: python tools/validate_all.py
+        run: python tools/validate_all.py --profile full
 
       - name: Build and verify installed Python wheel
         run: |
