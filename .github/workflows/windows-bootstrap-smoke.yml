@@ -42,7 +42,8 @@ jobs:
 
       - name: Report retired cleanup regression
         shell: pwsh
-        run: Write-Warning "BLOCKED_NOT_RUN: tests/packaging cleanup regression is retired. Installer smoke below is not a replacement."
+        run: |
+          Write-Warning "BLOCKED_NOT_RUN: tests/packaging cleanup regression is retired. Installer smoke below is not a replacement."
 
       - name: Bootstrap published release through UPM installer
         shell: pwsh
