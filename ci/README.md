@@ -3,7 +3,7 @@
 標準P9はUnity 6.3 LTS (6000.3.12f1)、Unity 6.6は互換性テストに限定します。G1は同じUnity 6.3上でも別承認・別Gateです。
 Release前の実Editor Gateは [P9 Release Qualification](../docs/development/p9-release-qualification.md) を参照してください。
 
-統合済みの [Fixture一覧](../tests/unity/matrix.yaml) と `tests/unity/verify/unity_ci.py` を共通Runnerとして使用します。
+統合済みの [Fixture一覧](../Packages/com.darumappap.unity-agent/Editor/Verification~/tests/unity/matrix.yaml) と `Packages/com.darumappap.unity-agent/Editor/Verification~/tests/unity/verify/unity_ci.py` を共通Runnerとして使用します。
 Windows開発PCでもLinux CIでも同じEditModeテスト・証跡判定です。UnityAgentのRuntime機能ではなく、
 Repositoryの開発用CIです。UnityAgentのSource Lock、UPM、Fixture、Historical Evidenceは変更しません。
 

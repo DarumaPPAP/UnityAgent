@@ -35,7 +35,7 @@ Contributorは [Branch運用](development/branch-policy.md)、[PR記述規約](d
 
 - [ローカルUnityプロジェクトでの開発](local-project-development.md)
 - [Unity開発・検証環境仕様](development/unity-test.md)
-- [標準Unity Projectの手動検証](../tests/UnityAgentTest/README.md)
+- [UnityAgentの接続・取得Smoke](../tests/smoke/README.md)
 - [Unity環境への適応](unity-environment-adaptation.md)
 - [情報探索画面](context-explorer.md)
 - [Unity CLIの参照資料](references/unity-cli-reference.md)

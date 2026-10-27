@@ -5,7 +5,7 @@
 [support-matrix.yaml](support-matrix.yaml) がArtist BackendのUnity 6.x+ / Built-in・URP・HDRPの対応対象を宣言する正本です。これは製品の対象宣言であり、実Editorでの検証成功ではありません。Unity 2022.3は現行Production対象外です。
 
 
-[Archive Validator](../../tests/unity/verify/) は履歴の形式とハッシュを確認します。Unityを起動する検証ではありません。現在のEditor / Pipeline / Capture / Visualは `BLOCKED_NOT_RUN` です。新しい実測Evidenceを `tests/unity/evidence/artist/current/` に記録するには、ライセンス済みEditorでの正確なVersion、ログ、結果、成果物が必要です。
+[Archive Validator](../../Packages/com.darumappap.unity-agent/Editor/Verification~/tests/unity/verify/) は履歴の形式とハッシュを確認します。Unityを起動する検証ではありません。現在のEditor / Pipeline / Capture / Visualは `BLOCKED_NOT_RUN` です。新しい実測Evidenceを `tests/unity/evidence/artist/current/` に記録するには、ライセンス済みEditorでの正確なVersion、ログ、結果、成果物が必要です。
 
 
 ```powershell

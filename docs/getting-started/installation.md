@@ -66,6 +66,6 @@ Codex PluginもDevelopment版を使う場合は、既存Marketplaceの参照を�
 
 ## 更新・修復と実Editor検証
 
-Development側の詳細UIと確認項目は [既存Setupガイド](../development/unityagent-setup-unity-verification.md)、Revision整合と検証環境は [Unity開発・検証環境仕様](../development/unity-test.md#9-revision整合) にあります。高度なSetup UIや検証機能が公開Releaseに含まれるとは仮定しないでください。
+Development側の詳細UIと確認項目は [既存Setupガイド](../development/unityagent-setup-unity-verification.md)、Revision整合と検証環境は [Unity開発・検証環境仕様](../development/unity-test.md#現行正本) にあります。高度なSetup UIや検証機能が公開Releaseに含まれるとは仮定しないでください。
 
 利用可否とGate別の未検証範囲は [機能の状態表](../references/capability-status.md) を参照してください。

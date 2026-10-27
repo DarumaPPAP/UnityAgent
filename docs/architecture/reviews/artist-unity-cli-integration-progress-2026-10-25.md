@@ -36,7 +36,7 @@ Camera／Lightの名前指定は一意の場合だけ採用します。削除・
 
 ## 残るGate
 
-- [Repository固定マトリクス](../../../tests/unity/matrix.yaml)：`BLOCKED_NOT_RUN`。指定Version 6000.3.12f1／6000.6.0f1は未導入です。6000.3.2f1での3 Pipeline成功を、この固定マトリクスの成功へ読み替えません。
+- [Repository固定マトリクス](../../../Packages/com.darumappap.unity-agent/Editor/Verification~/tests/unity/matrix.yaml)：`BLOCKED_NOT_RUN`。指定Version 6000.3.12f1／6000.6.0f1は未導入です。6000.3.2f1での3 Pipeline成功を、この固定マトリクスの成功へ読み替えません。
 - LookDev適用後の検証処理への例外注入：`not_observed`。catchで失敗へ戻しUndoへ進むことは独立コードレビューで確認しましたが、例外注入を伴う実Editor検証は未実行です。
 - Cinematic全kindはEditor回帰で検証し、Control Planeからの最終Mutation E2EはActivation Trackを使用しました。全kindそれぞれのControl Plane E2Eを実行したとは扱いません。
 - 全Runtimeスイート：上記の既存失敗があるためPASSとは扱いません。比較対象は開始SHA `6288cd106614913e0466a71ed539fe11ea5c0411` です。
