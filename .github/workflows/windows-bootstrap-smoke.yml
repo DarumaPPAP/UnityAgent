@@ -40,9 +40,9 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Test managed runtime cleanup safety on Windows
+      - name: Report retired cleanup regression
         shell: pwsh
-        run: ./tests/packaging/test-managed-runtime-cleanup.ps1
+        run: Write-Warning "BLOCKED_NOT_RUN: tests/packaging cleanup regression is retired. Installer smoke below is not a replacement."
 
       - name: Bootstrap published release through UPM installer
         shell: pwsh

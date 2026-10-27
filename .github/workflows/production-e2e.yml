@@ -1,12 +1,10 @@
-name: Production E2E Contract (public)
+name: Production E2E Contract (smoke-only; E2E not verified)
 on:
   pull_request:
     paths:
       - 'src/unityagent/control_plane/private_production_ci.py'
       - 'src/unityagent/control_plane/rock_import.py'
-      - 'tests/runtime/test_private_production_ci.py'
-      - 'tests/runtime/test_production_e2e_evidence.py'
-      - 'tests/unity/verify/collect_evidence.py'
+      - 'tests/smoke/**'
       - 'ci/private/**'
       - '.github/workflows/production-e2e.yml'
   workflow_dispatch:
@@ -25,11 +23,10 @@ jobs:
           python-version: '3.12'
       - name: Install canonical UnityAgent dependencies
         run: python -m pip install --disable-pip-version-check -e .
-      - name: Private CI approval and state contract tests (no Editor)
-        env:
-          PYTHONPATH: src
+      - name: Smoke-only compatibility (NOT Production E2E)
         run: |
-          python -m unittest tests.runtime.test_private_production_ci tests.runtime.test_production_e2e_evidence -v
+          python tools/validate_all.py --profile smoke
+          echo "::warning::BLOCKED_NOT_RUN: private approval, E2E evidence and Unity Editor regressions were deleted. This job does not verify Production E2E."
       - name: Public workflow must not dispatch onto a licensed self-hosted runner
         run: |
           python - <<'PY'

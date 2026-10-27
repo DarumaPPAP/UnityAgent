@@ -93,6 +93,11 @@ jobs:
       - name: Install UnityAgent validation and build dependencies
         run: python3 -m pip install --disable-pip-version-check -e . build "setuptools>=68" wheel
 
+      - name: Prevent release without required regression equivalence
+        run: |
+          echo "::error::BLOCKED_NOT_RUN: previous Approval, Mutation, Persistence, Unity Editor and E2E regression tests were removed. Release cannot be validated by Smoke-only CI."
+          exit 1
+
       - name: Validate UnityAgent repository and regression contracts
         run: |
           set -euo pipefail
