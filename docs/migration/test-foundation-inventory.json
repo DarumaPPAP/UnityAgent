@@ -112,6 +112,13 @@
       "separation": "全ファイル監査Inventoryとは異なる現行Smoke Runbook。",
       "cost": "1短文書。",
       "retirement": "適用Runbookへ移管できたら削除。"
+    },
+    "tests/smoke/live_connection.py": {
+      "purpose": "実Unity CLI・実Editorに対して起動状態／Project Binding／Read-only Hierarchy取得を順に検証。",
+      "reuse": "既存project_identity、Unity CLI Command Builder、Result Mapperを直接使用。新しいTransportは実装しない。",
+      "separation": "Host 27件とは観測環境が異なり、Unity EditorなしをPASSにできないため明示実行。",
+      "cost": "1手動Pythonスクリプト、CLI最大5回、各60秒Timeout。Editor未導入時はBLOCKED_NOT_RUN。",
+      "retirement": "既存ProductionSmokeが同等の実接続とReadを独立に確認できるなら削除。"
     }
   },
   "measurement": {

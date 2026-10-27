@@ -16,7 +16,15 @@ python -m unittest discover -s tests/smoke -p 'test_*.py' -q -b
 
 Pythonの観測レベルは **static / host-Python / real-Editor** を明確に分ける。上記27件はHostのAPI境界を確認するが、Unity本体への実接続やコンパイルのPASSではない。既存Unity 6.3 Editor Fixture・実Production Smokeが実行可能な環境で成功したときだけreal-EditorのEvidenceとみなす。
 
-### 段階的移行と安全性
+### 実Unity CLIへ接続したLive Smoke（手動）
+
+```bash
+python tests/smoke/live_connection.py --project /path/to/UnityProject --cli unity
+```
+
+`unity version`、`projects info`、`status`、`get_scene_hierarchy`相当の**実CLI応答**から、対象Project一致・単一Ready Editor・Read-only Hierarchy取得を検証する。実行可能なUnity Editorがない環境では `BLOCKED_NOT_RUN`（終了コード2）、構造化応答が誤った場合は `failed`（1）、4観測が成立した場合だけ `passed`（0）。実ProjectのファイルやSceneを変更しない。CI上の27件Host SmokeをLive実行と混同しない。
+
+`live_connection.py`は既存のcommand_builder / result_mapperを使用し、**Host CIへの追加登録はしない**（未観測のSkipをPASSへ含めない）。### 段階的移行と安全性
 
 - `tools/validate_all.py --profile smoke` は27件だけを実行するFast Path。旧スイートを消したこと・全製品機能を保証したことにはならない。
 - `tools/validate_all.py --profile full` または従来の引数なし実行は **旧14 Suite + 32 Validator** を維持。PR CIの必須Safety Regressionは本変更では削除しない。
