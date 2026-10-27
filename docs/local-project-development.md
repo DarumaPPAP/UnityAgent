@@ -16,7 +16,7 @@
 
 標準CLIは `uagent` です。Project内で `uagent doctor` / `uagent setup plan` を実行すると、CWDから最寄りの親Projectを検出します。
 別Projectは `--project-p <path>` で指定します。旧 `unity-agent` / `--project-path` / `setup --operation` も互換利用できます。
-Repositoryの標準テストProjectは [接続・取得Smoke](../tests/smoke/README.md) です。
+Repositoryルートが開発用Unity Projectです。通常の起動・接続・取得検証は [Smoke手順](../tests/smoke/README.md) を使用し、独立した標準テストProjectは持ちません。
 
 ## 1. 最初に覚える5ルール
 

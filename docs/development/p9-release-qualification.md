@@ -38,7 +38,7 @@ Release Workflowの `p9_evidence_run_id` に該当Run IDを指定し、`confirm_
 
 ## Projectでの検証
 
-対象は機密ゲームProjectではなく `tests/unity/projects/production-e2e` のDisposableコピー。P9のみなら `UNITYAGENT_PRODUCTION_FBX` / `rock apply` は**不要**であり、`RockProductionTests` は起動しない。
+対象は機密ゲームProjectではなく `Packages/com.darumappap.unity-agent/Editor/Verification~/tests/unity/projects/production-e2e` のDisposableコピー。P9のみなら `UNITYAGENT_PRODUCTION_FBX` / `rock apply` は**不要**であり、`RockProductionTests` は起動しない。
 
 ローカルWindowsでの実行例：
 
