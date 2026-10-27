@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "kind": "unityagent_embedded_p9_sources",
-  "source": "Bundled hash-pinned Unity verification inputs and Artist Editor package; root tests/unity copy retired",
+  "source": "Bundled Unity verification fixtures and Artist Editor UPM, hash-pinned; canonical root tests/unity duplicate retired",
   "files": [
     {
       "path": "subagent/artist_subagent/tools/editor/Documentation~.meta",
@@ -445,8 +445,8 @@
     },
     {
       "path": "tests/unity/projects/production-e2e/Packages/manifest.json",
-      "sha1": "5595433c8e515359b6a07b996891042a36a26323",
-      "size": 215
+      "sha1": "70489ed501d49c6e991c1b6018df7f2223d8346a",
+      "size": 185
     },
     {
       "path": "tests/unity/projects/production-e2e/ProjectSettings/ProjectVersion.txt",
