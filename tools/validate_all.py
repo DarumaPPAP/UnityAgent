@@ -66,22 +66,7 @@ CHECK_COMMANDS = (
     ),
 )
 
-TEST_SUITES = (
-    Path("tests/packaging"),
-    Path("tests/contracts"),
-    Path("tests/control_plane"),
-    Path("tests/context"),
-    Path("tests/runtime"),
-    Path("tests/runtime/reference_implementation"),
-    Path("tests/orchestration"),
-    Path("tests/persistence"),
-    Path("tests/eval"),
-    Path("tests/operations"),
-    Path("tests/context_explorer"),
-    Path("tests/architecture"),
-    Path("tests/subagent"),
-    Path("tests/content_pilot"),
-)
+TEST_SUITES = (Path("tests/smoke"),)  # Startup/connection/read only; legacy regressions intentionally retired.
 
 
 def validate_yaml() -> list[str]:

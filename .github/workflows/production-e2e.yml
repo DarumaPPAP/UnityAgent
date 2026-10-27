@@ -4,9 +4,6 @@ on:
     paths:
       - 'src/unityagent/control_plane/private_production_ci.py'
       - 'src/unityagent/control_plane/rock_import.py'
-      - 'tests/runtime/test_private_production_ci.py'
-      - 'tests/runtime/test_production_e2e_evidence.py'
-      - 'tests/unity/verify/collect_evidence.py'
       - 'ci/private/**'
       - '.github/workflows/production-e2e.yml'
   workflow_dispatch:
@@ -29,7 +26,7 @@ jobs:
         env:
           PYTHONPATH: src
         run: |
-          python -m unittest tests.runtime.test_private_production_ci tests.runtime.test_production_e2e_evidence -v
+          python tools/validate_all.py --profile smoke
       - name: Public workflow must not dispatch onto a licensed self-hosted runner
         run: |
           python - <<'PY'

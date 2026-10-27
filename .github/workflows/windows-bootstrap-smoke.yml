@@ -42,7 +42,7 @@ jobs:
 
       - name: Test managed runtime cleanup safety on Windows
         shell: pwsh
-        run: ./tests/packaging/test-managed-runtime-cleanup.ps1
+        run: ./ci/verify-managed-runtime-cleanup.ps1
 
       - name: Bootstrap published release through UPM installer
         shell: pwsh
