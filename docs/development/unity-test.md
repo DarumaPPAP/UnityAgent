@@ -1,5 +1,7 @@
 # UnityAgent 開発・検証環境 仕様書
 
+> **2026-10-27 テスト基盤リセット**：現役の `tests/` は `tests/UnityAgentTest/` のみ。以下に登場する旧 `tests/unity/` Fixture と旧Regressionは削除済みの移行前記述であり、現在の検証手順として実行しない。必要な旧内容はGit Revision `77483d6ecc656b8842954cd509de5d9ce7224c2f` を参照する。製品のRegressionは `NOT_CONFIGURED`、Releaseは禁止。UPMに内包した別個の検証ソースの存在をUnity実行Evidenceと取り違えない。
+
 **文書名:** `unity-test.md`
 **対象:** `DarumaPPAP/UnityAgent`
 **状態:** Design確定・実装待ち
