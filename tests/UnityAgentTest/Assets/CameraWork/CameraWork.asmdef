@@ -1,0 +1,9 @@
+{
+  "name": "CameraWorks.Demo",
+  "rootNamespace": "CameraWorks",
+  "references": [],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "autoReferenced": true
+}
