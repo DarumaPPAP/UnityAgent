@@ -189,3 +189,18 @@ cases:
       - "新しいTest生成"
       - "ChangeProposal強制"
     pass_condition: "テスト結果の説明だけならTest Lifecycleの変更Workflowを発火させない。"
+
+  - id: SKILL-EVAL-014
+    category: scope_guard
+    evaluation_type: behavior
+    prompt: "UnityでPlayerの現在HPと最大HPを管理し、HP比率を計算する小さなMonoBehaviourを新規作成して。Class、Function、Variable、C#ファイル名もUnityAgentの命名規約に従って出力して。"
+    expected_primary: unity-architecture-design
+    must_include:
+      - "PlayerHealth"
+      - "_maxHealth"
+      - "PlayerHealth.cs"
+    must_not:
+      - "PlayerHealthValueManagementController"
+      - "CalculateCurrentPlayerHealthPercentage"
+      - "_currentPlayerHealthValue"
+    pass_condition: "責務を明確に保ちながらClass / Function / Variableとファイル名のContext重複を取り除き、独自略語を使わず必要十分な名前で生成する。"
