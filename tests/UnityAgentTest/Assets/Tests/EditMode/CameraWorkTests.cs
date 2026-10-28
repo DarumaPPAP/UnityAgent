@@ -97,6 +97,58 @@ namespace DarumaPPAP.UnityAgent.Tests
         }
 
         [Test]
+        public void PanAndTiltRotateWithoutTranslation()
+        {
+            _work.Begin(new S_CAMERA_PHASE(E_CAMERA_MOVE.PanRight));
+            _work.Sample(1f);
+            Assert.That(_cameraObject.transform.forward.x, Is.GreaterThan(0.1f));
+            Assert.That(_cameraObject.transform.position, Is.EqualTo(Vector3.zero));
+
+            _cameraObject.transform.rotation = Quaternion.identity;
+            _work.Begin(new S_CAMERA_PHASE(E_CAMERA_MOVE.TiltUp));
+            _work.Sample(1f);
+            Assert.That(_cameraObject.transform.forward.y, Is.GreaterThan(0.1f));
+            Assert.That(_cameraObject.transform.position, Is.EqualTo(Vector3.zero));
+        }
+
+        [Test]
+        public void ZoomOutAndDollyOutAffectDifferentProperties()
+        {
+            _work.Begin(new S_CAMERA_PHASE(E_CAMERA_MOVE.ZoomOut));
+            _work.Sample(1f);
+            Assert.That(_camera.fieldOfView, Is.GreaterThan(60f));
+            Assert.That(_cameraObject.transform.position, Is.EqualTo(Vector3.zero));
+
+            _camera.fieldOfView = 60f;
+            _work.Begin(new S_CAMERA_PHASE(E_CAMERA_MOVE.DollyOut));
+            _work.Sample(1f);
+            Assert.That(_cameraObject.transform.position.z, Is.LessThan(-1f));
+            Assert.That(_camera.fieldOfView, Is.EqualTo(60f).Within(0.0001f));
+        }
+
+        [Test]
+        public void FixShakeIsStrongerThanFix()
+        {
+            _work.Begin(new S_CAMERA_PHASE(E_CAMERA_MOVE.Fix));
+            _work.Sample(0.37f);
+            float mild = _cameraObject.transform.position.magnitude;
+
+            _cameraObject.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+            _work.Begin(new S_CAMERA_PHASE(E_CAMERA_MOVE.FixShake));
+            _work.Sample(0.37f);
+            Assert.That(_cameraObject.transform.position.magnitude, Is.GreaterThan(mild * 3f));
+        }
+
+        [Test]
+        public void RollRotatesAroundViewDirection()
+        {
+            _work.Begin(new S_CAMERA_PHASE(E_CAMERA_MOVE.RollRight));
+            _work.Sample(0.25f);
+            Assert.That(Quaternion.Angle(Quaternion.identity, _cameraObject.transform.rotation), Is.EqualTo(90f).Within(0.5f));
+            Assert.That(_cameraObject.transform.position, Is.EqualTo(Vector3.zero));
+        }
+
+        [Test]
         public void CirclePreservesRadiusAndLooksAtTarget()
         {
             var target = new GameObject("Target");
