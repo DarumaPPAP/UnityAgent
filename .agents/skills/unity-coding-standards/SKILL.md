@@ -17,7 +17,7 @@ Resolve environment and call frequency first. Preserve public APIs and serialize
 
 小規模機能はMinimum Cohesive Solution Firstとし、新規C#ファイルごとにSplit Reasonを要求する。Pattern適合、hypothetical reuse、Mock可能性、行数だけを理由にController、Service、Interface、Profile、ScriptableObjectや補助ファイルを増やさない。
 
-Semantic Type NamingではReadabilityを短さより優先し、Type NecessityをNamingより先に確認する。Context / Namespace重複、invented abbreviation、Role suffix stacking、Property-level Type proliferationを避ける。LengthはReview TriggerでありHard Limitではない。
+命名は`docs/standards/CODING_STANDARDS.md`の **Class / Function / Variable** 3区分で確認する。設計で責務を確定した後、宣言・利用Contextから理解できる **Minimum Sufficient Name** を採用し、明確さのためと称してContextを重複させない。ClassはType / File名、FunctionはMethod / Local Function、VariableはField / Property / Parameter / Local / Constを対象とする。TypeではType NecessityをNamingより先に確認し、invented abbreviation、Role suffix stacking、Property-level Type proliferationを避ける。LengthはReview TriggerでありHard Limitではない。
 
 新規Method / Local Functionは`PascalCase`とし、名前に`_`を含めない。両限界値を含む境界は`min/max`、両端を含む要素範囲は`first/last`、始点包含・終点排他の半開区間は`begin/end`を使用する。既存API、Unity Callback、外部Interface・Serialized契約を命名改善だけで変更しない。詳細と例は`docs/standards/CODING_STANDARDS.md`を正本とする。
 
@@ -45,6 +45,7 @@ For Shader/HLSL work, delegate to `unity-rendering` and the Shader Performance s
 - [ ] Unity Lifecycle and existing owners were considered before adding abstractions
 - [ ] New Types/files have a concrete responsibility and split reason
 - [ ] IL2CPP / Burst / Jobs / allocation constraints are checked when relevant
+- [ ] 新規 / Rename対象のClass・Function・Variable・C# File名で、Namespace・Class・Directory等の不要な重複語を削除し、利用側で意味が明確な必要十分の名前になっている
 - [ ] 新規Method / Local Function名に`_`がなく、`min/max`・`first/last`・`begin/end`の包含・排他条件がコードと一致している
 - [ ] Formatting changes do not alter existing naming conventions or semantics
 - [ ] Shader/HLSL work is delegated instead of receiving C#-only rules

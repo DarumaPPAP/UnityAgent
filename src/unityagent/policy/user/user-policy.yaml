@@ -75,7 +75,7 @@ core_user_policies:
     canonical_reference: docs/standards/CODING_STANDARDS.md
     protected: true
   semantic_type_naming:
-    rule: Type / Responsibility / File Structureを設計判断で確定した後に命名する。短さより可読性と意味の明確さを優先し、Context重複、曖昧な略語、Role suffix stacking、Property単位Type増殖を避ける。長さだけを理由に意味を損なう短縮を行わず、既存PublicまたはSerialized名をNaming改善だけで変更しない
+    rule: Type / Responsibility / File Structureを設計判断で確定した後、Class / Function / Variableの3区分で命名する。宣言・利用Contextにおける必要十分な名前を優先し、Namespace・Class・Directoryの重複、説明語の過剰連結、曖昧な略語、Role suffix stacking、Property単位Type増殖を避ける。短さだけで意味を失う省略や新規略語を作らず、File名もTypeの責務と対応させる。既存PublicまたはSerialized名をNaming改善だけで変更しない
   evidence_scoped_claims:
     rule: Static、Compile、Editor、Player、実機、Performance、Visualの検証状態を分離して報告する
   performance_requires_measurement:

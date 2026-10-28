@@ -43,16 +43,16 @@ Type Naming Contract
 ## 3. Naming Priority
 
 ```text
-1. Readability
-2. Semantic Clarity
-3. Responsibility Accuracy
-4. Contextual Redundancy Removal
-5. Conciseness
+1. Responsibility and Semantic Clarity
+2. Context-Aware Minimum Sufficient Name
+3. Readability at Declaration and Call Sites
+4. Removal of Redundant Qualifiers
+5. Conciseness without Information Loss
 ```
 
-> Readability over brevity.
+> Readable and sufficient, not maximally descriptive.
 
-短くするために意味を壊さない。長さだけを理由に新しい略語を発明しない。
+Type名は、そのNamespace、責務、利用Contextで一意に理解できる必要十分な名前とする。冗長な説明を「明確さ」と誤認しない。不要なSubject / Role / Contextの繰り返しは削るが、区別に必要な単語を削ったり、長さだけを理由に新しい略語を発明したりしない。Class / Function / Variable全体の命名区分は`docs/standards/CODING_STANDARDS.md`を正本とする。
 
 ## 4. Type Necessity Before Naming
 
@@ -94,7 +94,9 @@ AudioSourcePool
 MaterialPropertyBinder
 ```
 
-Qualifierは識別に必要な場合だけ付ける。
+Qualifierは識別に必要な場合だけ付ける。利用側で対象や責務が不明になる場合を除き、`Runtime`、`Current`、`Value`、`Data`、`Management`等の説明語を積み増さない。
+
+例: `PlayerHealthValueManagementController`ではなく、PlayerのHealth状態を所有するTypeなら`PlayerHealth`。分析が責務なら`ShaderVariantCollectionAnalysisManager`ではなく`ShaderVariantAnalyzer`。既存APIのRenameは別途Compatibility Analysisが必要。
 
 ## 6. Readability Over Brevity
 
@@ -340,7 +342,8 @@ Warning単独ではGoldenをFailさせない。
 - [ ] Existing Ownerで解決できない理由がある。
 - [ ] Property-level Type proliferationではない。
 - [ ] 名前が責務を説明している。
-- [ ] Readabilityを短さより優先している。
+- [ ] Namespace / Type / FileのContextを踏まえ、必要十分な名前を選択した。
+- [ ] 短縮後も宣言・利用箇所で対象を誤解せず、意味を壊していない。
 - [ ] Context / Namespace重複を除去した。
 - [ ] 新しい略語を発明していない。
 - [ ] Role suffixを積み重ねていない。

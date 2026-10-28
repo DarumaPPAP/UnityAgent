@@ -10,11 +10,34 @@ Local Behaviorでは、System級のArchitecture分析へ進む前にUnity Lifecy
 
 ## Naming
 
-命名はType / Responsibility / File Structureが確定した後に適用する。新規TypeやLayerの必要性をNaming都合から逆算しない。
+Namingは **Class / Function / Variable** の3区分で適用する。いずれも **Minimum Sufficient Name**（宣言位置と利用側のContextで責務を識別できる、必要十分に簡潔な名前）を既定とする。短さだけで意味を欠落させず、冗長さを明確さと混同しない。
 
-Semantic Type NamingのCanonical Sourceは`docs/standards/TYPE_NAMING_STANDARDS.md`とする。新規Type、Architecture Proposal上のPlanned Type、明示的RenameではこのContractを適用する。既存Typeを触るだけのLocal FixへNaming Reviewを無条件に発火させない。
+- Namespace、所属Class、引数型、Directory等から明らかな情報は、識別に必要な場合を除き名前に繰り返さない。
+- 名前の長さや単語数だけで機械的に切り詰めない。曖昧な略語を発明せず、必要な区別は残す。
+- 新規命名・明示的Renameに適用する。既存Public API、Serialized field、Prefab / Scene / Save Data、Reflection / string binding、Unity Callback、外部Interface・Libraryの契約は命名改善だけで変更しない。
+- Formatting改善を理由に既存のenum / struct / field / constのcase conventionを変更しない。
 
-### Namespace resolution
+### Class
+
+Class、Struct、Interface、Enum、Unity Component、Editor拡張等の**Type名**と、そのTypeを所有する**C#ファイル名**を扱う。新規TypeやLayerの必要性を命名都合から逆算しない。
+
+- Class / Interface / 通常のType名は`PascalCase`。enum typeは`E_UPPER_SNAKE_CASE`、struct typeは`S_UPPER_SNAKE_CASE`を維持する。custom structは意味に合う場合`readonly struct`を優先する。
+- Type / Responsibility / File Structureを先に確定する。既存Ownerで実現できる場合、新規Typeを増やさない。
+- Subjectと主要Roleを必要な範囲で表し、`Manager` / `Controller` / `Service` / `System`等のSuffixを積み重ねない。実際に所有する責務がなければRoleを付けない。
+- Namespace、既存のFeature名、Directory名のContextを無条件に繰り返さない。一方、Typeの利用箇所で区別が必要なSubjectは残す。
+- 新規C#ファイルには実在するSplit Reasonを要求する。UnityのPrimary Typeを持つファイルは原則そのType名と一致する`<TypeName>.cs`とし、File名に別の説明語を付加しない。複数補助Typeを含むファイルはPrimary Type / 実際の責務で命名する。
+- 長さ（33文字以上等）はReview Triggerであり、短縮・Failを文字数だけで決めない。冗長な修飾語はまず削除を検討する。
+
+| 冗長な例 | 必要十分な候補 | 条件 |
+| --- | --- | --- |
+| `PlayerHealthValueManagementController` | `PlayerHealth` | PlayerのHealth状態を所有するType |
+| `ShaderVariantCollectionAnalysisManager` | `ShaderVariantAnalyzer` | Shader Variantの分析が責務 |
+| `CameraDebuggingCameraStateTracker` | `CameraStateTracker` | `CameraDebugging` namespace内 |
+| `PlayerHealthValueManagementController.cs` | `PlayerHealth.cs` | Primary Typeを`PlayerHealth`へ新規設計する場合 |
+
+Semantic Type Namingの詳細正本は`docs/standards/TYPE_NAMING_STANDARDS.md`。新規Type、Architecture ProposalのPlanned Type、明示的Renameに適用する。既存Typeを触るだけのLocal Fixには無条件にNaming Reviewを発火させない。
+
+#### Namespace resolution
 
 Namespaceは実装前に、次の優先順位で確定する。
 
@@ -39,27 +62,51 @@ Namespaceは実装前に、次の優先順位で確定する。
 
 Root Namespaceが未設定または不明な場合、プレースホルダーを実名として補完しない。既存プロジェクト規約を確認するか、Root Namespaceなしの運用が明示されている場合はFeature名だけを使用する。
 
-### Other names
+#### Semantic type review
 
-現行UnityAgentの命名規則を維持する。
+新規Typeまたは明示Renameでは次を確認する。
 
-- private field: `_camelCase`
-- method / local function（public / private / protected / internal）: `PascalCase`。`_`を先頭・末尾・単語区切りなど、名前のどの位置にも使用しない。
-- public API/type/member: `PascalCase`
-- enum type: `E_UPPER_SNAKE_CASE`
-- struct type: `S_UPPER_SNAKE_CASE`
-- const: `SCREAMING_SNAKE_CASE`
-- custom struct: prefer `readonly struct` when semantics allow
+- Type NecessityがArchitectureで先に確認されている。
+- 名前が責務を正確に表し、所属Contextで識別できる必要十分な長さである。
+- Namespace / Directory / Contextの不要な重複、invented abbreviation、Role suffix stackingがない。
+- Property単位Type proliferationではない。
+- `Manager` / `Controller` / `Service` / `System`に実在責務がある。
+- 文字数だけをHard Fail、または意味を壊す短縮理由にしていない。
+- Existing Public / Serialized APIをNaming改善だけで変更していない。
 
-Formatting改善またはSemantic Naming導入を理由にこれらのcase conventionを変更しない。
+### Function
 
-### Boundary and range names
+Method / Local Function（public、private、protected、internal）を扱う。
 
-境界・範囲を表す識別子は、対象値を含むかどうかと走査・比較の意味に応じて使い分ける。対象は新規・明示的Rename対象のparameter、local、field、property等とし、既存Public API、Serialized名、Unity Callback、外部Interface・Libraryとの契約を命名改善だけで変更しない。
+- `PascalCase`とし、関数名のどの位置にも`_`を使用しない（`_UpdateTarget`、`Update_Target`、`UpdateTarget_`は禁止）。
+- **動詞＋必要な対象**を基本とする。Boolを返す判定は`Is...` / `Has...` / `Can...`等、結果と動作を正確に表す名前を優先する。
+- 所属Classの責務から分かるSubjectや`Current`、`Value`、`Data`、`Processing`等の説明語は、区別に必要でなければ追加しない。
+- private MethodはClassのContextを活用する。public Methodは呼び出し側から読んでも誤解しない必要な対象を残す。
+- `Get`、`Calculate`、`Restore`、`Save`等は実際の処理に合わせる。短縮によって取得と計算、既定値への初期化と以前の値への復元等を混同しない。
 
-- `min` / `max`: **両方の限界値を含む**下限・上限に使用する。例: `minValue <= value && value <= maxValue`。
-- `first` / `last`: **先頭・末尾の要素をともに含む**範囲に使用する。例: `firstIndex`から`lastIndex`までのInclusiveなIndex範囲。
-- `begin` / `end`: **始点を含み、終点を含まない**半開区間 `[begin, end)` に使用する。例: `beginIndex <= index && index < endIndex`。空範囲は`beginIndex == endIndex`で表せる。
+| 所属Class | 冗長な例 | 必要十分な候補 |
+| --- | --- | --- |
+| `CameraAAOverride` | `RestorePreviouslySavedCameraAntiAliasingSettings()` | `RestoreOriginalSettings()` |
+| `ShaderVariantAnalyzer` | `GenerateShaderVariantAnalysisReport()` | `GenerateReport()` |
+| `PlayerHealth` | `CalculateCurrentPlayerHealthPercentage()` | `CalculateHealthRatio()` |
+
+`Awake`、`OnEnable`、Interface実装、Override等の契約上固定されたMethod名は維持する。名前を短くするために振る舞い・公開契約を変更しない。
+
+### Variable
+
+Field / Property / Parameter / Local Variable / Constを扱う。宣言位置と使用範囲を踏まえ、値の意味・単位・区別に必要な語だけ残す。
+
+- private field: `_camelCase`（`_health`、`_originalSettings`）。`_` prefixはField用でありFunction名に流用しない。
+- public property / public member: `PascalCase`。
+- parameter / local variable: `camelCase`（`camera`、`index`、`maxHealth`）。
+- const: `SCREAMING_SNAKE_CASE`。
+- 同じClass・Scopeに複数の候補があるときは`Original` / `Current` / `Target`、単位、用途等で必要な区別を残す。語句を省くために別の意味へ変えない。
+
+境界・範囲を表す名前は包含・排他条件と一致させる。
+
+- `min` / `max`: **両方の限界値を含む**下限・上限。例: `minValue <= value && value <= maxValue`。
+- `first` / `last`: **先頭・末尾の要素をともに含む**範囲。例: `firstIndex`から`lastIndex`まで。
+- `begin` / `end`: **始点を含み、終点を含まない**半開区間 `[begin, end)`。例: `beginIndex <= index && index < endIndex`。空範囲は`beginIndex == endIndex`で表せる。
 
 ```csharp
 private bool IsWithinLimits(int value, int minValue, int maxValue)
@@ -83,23 +130,6 @@ private void VisitHalfOpenRange(int beginIndex, int endIndex)
 	}
 }
 ```
-
-`_UpdateTarget`、`Update_Target`、`UpdateTarget_`のような新規関数名は禁止する。`_target`のようなprivate fieldは従来どおり許可する。既存メソッドや契約上固定された関数名は無断Renameしない。
-
-### Semantic type review
-
-新規Typeまたは明示Renameでは次を確認する。
-
-- Type NecessityがArchitectureで先に確認されている。
-- Readabilityを短さより優先している。
-- Type名が責務を正確に表す。
-- Namespace / Contextの重複を避けている。
-- UnityAgentが新しい略語を発明していない。
-- Role suffix stackingがない。
-- Property単位Type proliferationではない。
-- `Manager` / `Controller` / `Service` / `System`に実在責務がある。
-- 文字数だけをHard Failまたは意味を壊す短縮理由にしていない。
-- Existing Public / Serialized APIをNaming改善だけで変更していない。
 
 ## Formatting
 

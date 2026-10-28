@@ -126,6 +126,7 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - 先頭または末尾が`.`のnamespaceを生成しない。
 - コメントは`src/unityagent/policy/user/user-policy.yaml`のコメント体系に従い、日本語で意図、制約、所有権、寿命、危険箇所を必要な密度で書く。
 - Type / Responsibility / File Structureを確定してから命名を評価する。長いType名を短縮するためだけに追加Typeを作らない。
+- 新規のClass / Function / Variable / C# File名は`CODING_STANDARDS.md`の3区分を参照し、宣言位置と呼び出し側のContextから必要十分な名前にする。Namespace / Class / Directoryを重複させず、独自略語や曖昧な省略を避ける。
 
 新規Typeまたは明示Renameがある場合のみ `docs/standards/TYPE_NAMING_STANDARDS.md` のSemantic Type Naming Contractを適用する。既存Typeへの局所修正だけではNaming Reviewを発火させない。
 
@@ -152,6 +153,7 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - NamingがArchitecture判断を逆方向に支配していない
 - 新規/明示Rename TypeがSemantic Type Naming Contractを満たす
 - Context redundancy / invented abbreviation / role suffix stackingがない
+- 新規・明示RenameしたClass / Function / Variable / C# File名に冗長な説明語がなく、既存の命名Case・契約を保った必要十分な名前になっている
 - Existing APIをNaming理由だけで変更していない
 - コメントがProductionまたはLearning Profileに一致している
 
