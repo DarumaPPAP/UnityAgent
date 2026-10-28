@@ -232,7 +232,7 @@ public sealed class CameraAntiAliasingSwitcher : MonoBehaviour
 
 Formattingを理由にコメント密度を増やさない。コメントは`docs/standards/JAPANESE_CODE_COMMENT_STANDARDS.md`を正本とし、理由、制約、所有権、寿命、実行順、破綻条件を必要な場合だけ記述する。
 
-## 13. Formatting guard examples
+## 14. Formatting guard examples
 
 ### Preferred
 
@@ -270,7 +270,7 @@ private void Awake()
 }
 ```
 
-## 14. Review checklist
+## 15. Review checklist
 
 - [ ] 1行で自然に読める代入を不必要に折っていない
 - [ ] `=`の直後で機械的に改行していない
