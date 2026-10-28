@@ -2,8 +2,8 @@ version: 1
 suite: unity-agent-core-skill-evals
 # Evalのpromptには、実際の開発依頼に近い架空の課題を記述し、直前に実装した固有の型名を流用しない。
 # 検証したい規約や出力識別子を必要以上にpromptへ教えず、Agent自身の設計判断を観測する。
-# must_include / must_notは文字列による補助的な判定項目。意味・構造・妥当性はpass_conditionで扱う。
-# Skill EvalのYAML検証だけでは生成コードの正しさを証明しない。
+# must_include / must_notは生成コード・選出結果を確認する際の補助手掛かりであり、回答中の注意書きへの単純文字列照合で合否を決めない。
+# pass_conditionは実際の出力や生成物に適用する判定基準。YAML構造Validatorは意味的な合否を採点しない。
 required_categories:
   - positive_direct
   - positive_paraphrase
@@ -12,6 +12,7 @@ required_categories:
   - conflict
   - scope_guard
   - evidence_guard
+  - coding_convention
 cases:
   - id: SKILL-EVAL-001
     category: positive_direct
@@ -126,28 +127,28 @@ cases:
   - id: SKILL-EVAL-009
     category: scope_guard
     evaluation_type: behavior
-    prompt: "動作確認用の照明オブジェクトにアタッチするComponentを作って。有効化されたら自身のLightの明るさを変更し、無効化されたら元に戻して。ほかの照明には影響させないで。"
-    expected_primary: unity-architecture-design
+    prompt: "動作確認用の照明オブジェクトに付けるMonoBehaviourを作って。有効な間は同じGameObjectのLightのintensityを元の半分にし、無効になったら元の値に戻して。Lightがない場合もエラーにしないで。"
+    expected_primary: unity-implement
     must_include:
       - "OnEnable"
       - "OnDisable"
+      - "Light"
     must_not:
       - "FindObjectsOfType"
-      - "Update()"
-    pass_condition: "対象はComponentをアタッチしたGameObjectのLightのみ。既存のUnity Lifecycleで元の値を保存・復元し、常時監視、任意Target、追加Managerを導入しない。"
-
+      - "FindObjectsByType"
+      - "void Update()"
+    pass_condition: "合格: (1) 同じGameObjectのLightだけを取得し、OnEnable時の元のintensityを保持して半分にする。(2) OnDisable時にその元値へ戻し、再有効化しても値が累積して変化しない。(3) Light未設定でもNullReferenceExceptionを出さない。(4) 他Objectの探索・任意Target化・Updateによる監視・Manager等の追加Typeを行わない。API名の文字列を避けただけの別手段による過剰探索も不合格。"
   - id: SKILL-EVAL-010
-    category: scope_guard
+    category: coding_convention
     evaluation_type: behavior
     prompt: "書式確認用の小さな例です。既存のMonoBehaviourにはint型のprivate Field _initialCountと、CounterComponent型の参照_counterがあります。_counter.CurrentCount（int）を_initialCountに退避する代入を記述して。"
     expected_primary: unity-implement
     must_include:
       - "_initialCount = _counter.CurrentCount;"
     must_not:
-      - "_initialCount =\n"
+      - "_initialCount =\\n"
       - "_counter.CurrentCount = _initialCount;"
-    pass_condition: "指定された値の代入方向を維持し、短い代入を1行で記述する。不要な中間変数や改行を加えず、今回の書式検証に関係しない設計・命名を評価しない。"
-
+    pass_condition: "合格: 指定された代入の向きと識別子を保ち、_initialCount = _counter.CurrentCount; を1行で記述する。右辺や等号直後を機械的に改行したり中間変数を作ったりしない。コード断片の課題であり、新しいClassやFileの生成・命名は要求しない。"
   - id: SKILL-EVAL-011
     category: scope_guard
     evaluation_type: behavior
@@ -190,42 +191,41 @@ cases:
     pass_condition: "テスト結果の説明だけならTest Lifecycleの変更Workflowを発火させない。"
 
   - id: SKILL-EVAL-014
-    category: scope_guard
+    category: coding_convention
     evaluation_type: behavior
-    prompt: "架空の小さなゲームUIで使う、現在値と上限値を保持して割合（0〜1）を返すMonoBehaviourをC#で作って。1つのComponentで完結する機能です。"
-    expected_primary: unity-architecture-design
+    prompt: "小さなゲームUI用に、現在値と上限値を持ち、割合（0〜1）を返すMonoBehaviourをC#で作って。現在値が上限を超えても割合は1以下、上限が0以下なら0にして。1つのComponentで完結させ、保存するファイル名も教えて。"
+    expected_primary: unity-implement
     must_include:
       - "MonoBehaviour"
       - "float"
     must_not:
       - "ManagerController"
-      - "_Update"
-    pass_condition: "Class・Method・Fieldの名前は役割を必要十分な長さで表し、型名の反復、冗長なRole suffix、曖昧な略語がない。Primary TypeとC#ファイル名を対応させ、責務に不要なTypeやstatic状態を追加しない。クラス名は特定のサンプル名に固定しない。"
-
+      - "void _Update"
+    pass_condition: "合格: (1) Primary Type名が責務を表すPascalCaseで、提示したC#ファイル名のstemと一致する。(2) MethodはPascalCase、private Fieldは_camelCaseで、型名・Role suffixの無意味な反復や独自の曖昧な略語がない。(3) 例として現在値50/上限100で0.5、150/100で1、上限0以下で0を返す。(4) 不要なController・Manager・static状態・補助Typeを増やさない。特定の例示Class名への一致は求めない。"
   - id: SKILL-EVAL-015
-    category: scope_guard
+    category: coding_convention
     evaluation_type: behavior
-    prompt: "架空のショップで使う商品データを作って。Inspectorで識別番号・表示名・価格・在庫数を編集でき、販売状態はEnumで選択できるようにして。処理を実行するComponentではなく、保存するData型が必要です。"
-    expected_primary: unity-architecture-design
+    prompt: "架空の道具屋の商品データをC#で作って。商品番号、表示名、円単位の価格、在庫数をInspectorで編集できるようにして。販売状態は「販売中・売り切れ・販売停止」のEnumから選べるようにして。ゲーム実行処理のComponentは不要。"
+    expected_primary: unity-implement
     must_include:
+      - "Serializable"
       - "class "
       - "enum "
-      - "SerializeField"
     must_not:
       - "readonly struct"
       - "static class"
-    pass_condition: "通常のData型をClassとして設計し、Field・Propertyそれぞれに識別番号・表示名・価格の単位・在庫数などが何を意味するかを説明する日本語コメントがある。Enumは1要素1行とし、不要なstaticや補助Typeを追加しない。出力する識別子名そのものは指定しない。"
-
+    pass_condition: "合格: (1) 保存用Dataは[Serializable]な通常のClassを基本とし、Inspectorで編集できるインスタンスFieldを持つ。MonoBehaviourやstaticのState Holderにしない。(2) 商品番号・表示名・価格（円）・在庫数・販売状態の各Field、および存在する場合は各Propertyについて、用途・単位等の意味を示す日本語コメントがある。(3) Enumは指定した3状態を表し、Type名はE_UPPER_SNAKE_CASE、要素は1要素につき1行とする。(4) 不要な補助Typeを追加せず、独自の型名は役割に沿って命名する。特定のサンプル識別子名は強制しない。"
   - id: SKILL-EVAL-016
     category: conflict
     evaluation_type: behavior
-    prompt: "Unity EditorのToolsメニューから空のGameObjectを1つ作り、生成したObjectを選択状態にする小さなEditor拡張を書いて。実行時の常時監視は不要です。"
+    prompt: "Unity EditorのToolsメニューから空のGameObjectを1つ作り、そのObjectを選択状態にする小さなEditor拡張をC#で書いて。生成操作をUndoで戻せるようにして。実行時の常時監視は不要です。"
     expected_primary: unity-implement
     must_include:
-      - "[MenuItem("
+      - "MenuItem("
       - "static "
       - "GameObject"
+      - "Undo.RegisterCreatedObjectUndo"
     must_not:
       - "MonoBehaviour"
-      - "Update()"
-    pass_condition: "MenuItemのMethodはUnity API要件に従ってstaticにする一方、Editor用のTypeやその他の処理に無根拠なstaticを広げず、可変static状態を新設しない。MenuItemの架空のパス名ではなく必要なAPI契約と役割分離を評価する。"
+      - "void Update()"
+    pass_condition: "合格: (1) Editor専用コードとしてTools/配下のMenuItemを定義し、そのUnity APIが要求するMethodのみstaticとする。(2) 新しい空のGameObjectを1つ生成し、Undo.RegisterCreatedObjectUndoでUndo登録し、Selection.activeObjectまたはSelection.activeGameObjectに設定する。(3) Unity Editor以外の実行時に不要なMonoBehaviour・Update・可変static状態・static classを作らない。メニュー項目名やClass名の固定一致は不要。"
