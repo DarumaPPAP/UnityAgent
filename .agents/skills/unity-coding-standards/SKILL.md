@@ -19,6 +19,8 @@ Resolve environment and call frequency first. Preserve public APIs and serialize
 
 Semantic Type NamingではReadabilityを短さより優先し、Type NecessityをNamingより先に確認する。Context / Namespace重複、invented abbreviation、Role suffix stacking、Property-level Type proliferationを避ける。LengthはReview TriggerでありHard Limitではない。
 
+新規Method / Local Functionは`PascalCase`とし、名前に`_`を含めない。両限界値を含む境界は`min/max`、両端を含む要素範囲は`first/last`、始点包含・終点排他の半開区間は`begin/end`を使用する。既存API、Unity Callback、外部Interface・Serialized契約を命名改善だけで変更しない。詳細と例は`docs/standards/CODING_STANDARDS.md`を正本とする。
+
 ユーザーが具体的なGameObject、Component、Assetを指定している場合、再利用性だけを理由に任意Targetへ一般化しない。Unityまたは既存DomainがSource of Truthを持つ状態を、理由なくprivate fieldへ複製しない。
 
 C# Formattingでは1行で自然に読める代入、関数宣言・呼び出し、条件式、三項演算子、Method Chain、LINQ式を1行で記述する。行長や引数数だけを理由に折り返さず、`=`、`&&`、`||`、`?`、`:`を機械的な改行境界にしない。複雑な条件を分離する場合は短絡評価、評価順序、副作用、実行コストを維持する。Formatting変更またはSemantic Naming導入を理由に現行enum / struct / field / const規則を変更しない。
@@ -43,6 +45,7 @@ For Shader/HLSL work, delegate to `unity-rendering` and the Shader Performance s
 - [ ] Unity Lifecycle and existing owners were considered before adding abstractions
 - [ ] New Types/files have a concrete responsibility and split reason
 - [ ] IL2CPP / Burst / Jobs / allocation constraints are checked when relevant
+- [ ] 新規Method / Local Function名に`_`がなく、`min/max`・`first/last`・`begin/end`の包含・排他条件がコードと一致している
 - [ ] Formatting changes do not alter existing naming conventions or semantics
 - [ ] Shader/HLSL work is delegated instead of receiving C#-only rules
 - [ ] Validation status distinguishes static, compile, Editor, Player, and target-device evidence

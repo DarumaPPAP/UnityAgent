@@ -44,6 +44,7 @@ Root Namespaceが未設定または不明な場合、プレースホルダーを
 現行UnityAgentの命名規則を維持する。
 
 - private field: `_camelCase`
+- method / local function（public / private / protected / internal）: `PascalCase`。`_`を先頭・末尾・単語区切りなど、名前のどの位置にも使用しない。
 - public API/type/member: `PascalCase`
 - enum type: `E_UPPER_SNAKE_CASE`
 - struct type: `S_UPPER_SNAKE_CASE`
@@ -51,6 +52,39 @@ Root Namespaceが未設定または不明な場合、プレースホルダーを
 - custom struct: prefer `readonly struct` when semantics allow
 
 Formatting改善またはSemantic Naming導入を理由にこれらのcase conventionを変更しない。
+
+### Boundary and range names
+
+境界・範囲を表す識別子は、対象値を含むかどうかと走査・比較の意味に応じて使い分ける。対象は新規・明示的Rename対象のparameter、local、field、property等とし、既存Public API、Serialized名、Unity Callback、外部Interface・Libraryとの契約を命名改善だけで変更しない。
+
+- `min` / `max`: **両方の限界値を含む**下限・上限に使用する。例: `minValue <= value && value <= maxValue`。
+- `first` / `last`: **先頭・末尾の要素をともに含む**範囲に使用する。例: `firstIndex`から`lastIndex`までのInclusiveなIndex範囲。
+- `begin` / `end`: **始点を含み、終点を含まない**半開区間 `[begin, end)` に使用する。例: `beginIndex <= index && index < endIndex`。空範囲は`beginIndex == endIndex`で表せる。
+
+```csharp
+private bool IsWithinLimits(int value, int minValue, int maxValue)
+{
+	return value >= minValue && value <= maxValue;
+}
+
+private void VisitInclusiveRange(int firstIndex, int lastIndex)
+{
+	for (int index = firstIndex; index <= lastIndex; index++)
+	{
+		Visit(index);
+	}
+}
+
+private void VisitHalfOpenRange(int beginIndex, int endIndex)
+{
+	for (int index = beginIndex; index < endIndex; index++)
+	{
+		Visit(index);
+	}
+}
+```
+
+`_UpdateTarget`、`Update_Target`、`UpdateTarget_`のような新規関数名は禁止する。`_target`のようなprivate fieldは従来どおり許可する。既存メソッドや契約上固定された関数名は無断Renameしない。
 
 ### Semantic type review
 

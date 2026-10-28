@@ -70,6 +70,10 @@ core_user_policies:
     rule: 依頼外の命名変更、ファイル移動、巨大Refactor、公開・Serialized契約変更を行わない
   preserve_current_naming_convention:
     rule: 現行UnityAgentの命名規則を維持し、Formatting改善を理由にenum、struct、field、const等の命名規則を変更しない
+  method_and_range_identifier_naming:
+    rule: 新規Method・Local Function名では_を禁止しPascalCaseとする。両限界値を含む境界はmin/max、両端包含の要素範囲はfirst/last、始点包含・終点排他の半開区間はbegin/endを使う。既存API、Unity Callback、外部契約の互換性を命名改善だけで壊さない
+    canonical_reference: docs/standards/CODING_STANDARDS.md
+    protected: true
   semantic_type_naming:
     rule: Type / Responsibility / File Structureを設計判断で確定した後に命名する。短さより可読性と意味の明確さを優先し、Context重複、曖昧な略語、Role suffix stacking、Property単位Type増殖を避ける。長さだけを理由に意味を損なう短縮を行わず、既存PublicまたはSerialized名をNaming改善だけで変更しない
   evidence_scoped_claims:
