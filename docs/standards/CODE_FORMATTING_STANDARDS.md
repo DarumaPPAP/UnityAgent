@@ -138,7 +138,28 @@ LoadType = _editLoadTypeField == null
 	: _editLoadTypeField.value;
 ```
 
-## 6. Braces
+## 6. Enum members
+
+enumの要素宣言は、要素が少ない場合も**1要素につき1行**とし、カンマで複数要素を1行に詰め込まない。この規則は式・関数引数などを1行で簡潔に書く原則とは別の宣言リスト用ルールとする。明示値・Attribute・コメントを持つ要素も同様に1行ずつ記述する。
+
+```csharp
+public enum E_CAMERA_MOVE
+{
+	Fix,
+	FixPerfect,
+	FixShake,
+	PanLeft,
+	PanRight,
+	TiltUp,
+	TiltDown,
+	ZoomIn,
+	ZoomOut
+}
+```
+
+既存のenumを明示的に整形する場合も、各要素の識別子・数値・順序・公開契約を維持する。1要素1行への整形を理由にEnum値や参照先を変更しない。
+
+## 7. Braces
 
 C#の波括弧はAllman Styleを基本とする。
 
@@ -151,13 +172,13 @@ if (condition)
 
 Class、Method、Property body、Loop、Conditionも同様とする。
 
-## 7. Indentation
+## 8. Indentation
 
 - インデントはTabを基本とする。
 - 継続行もProject規約がない限りTabで揃える。
 - 空白だけを使った擬似的な縦位置合わせは行わない。
 
-## 8. Blank lines
+## 9. Blank lines
 
 空行は責務ブロックの区切りに使用する。
 
@@ -168,7 +189,7 @@ Class、Method、Property body、Loop、Conditionも同様とする。
 
 単一代入や連続する関連処理の間へ機械的に空行を入れない。
 
-## 9. Member order
+## 10. Member order
 
 MonoBehaviourの既定順は次とする。既存Projectに順序規約がある場合はそちらを優先する。
 
@@ -185,7 +206,7 @@ MonoBehaviourの既定順は次とする。既存Projectに順序規約がある
 
 存在しない区分のために空の領域やregionを作らない。
 
-## 10. var
+## 11. var
 
 型名が短く、Unity Object型やAPI Contractとして型を明示した方が読みやすい場合は明示型を優先する。
 
@@ -197,7 +218,7 @@ Camera camera = GetComponent<Camera>();
 
 `var`または明示型を機械的に全箇所へ強制しない。
 
-## 11. Attributes
+## 12. Attributes
 
 UnityのAttributeは原則1行1Attributeでtypeまたはfieldの直上へ置く。
 
@@ -209,11 +230,11 @@ public sealed class CameraAntiAliasingSwitcher : MonoBehaviour
 
 短いAttributeを横一列へ詰め込まない。
 
-## 12. Comments
+## 13. Comments
 
 Formattingを理由にコメント密度を増やさない。コメントは`docs/standards/JAPANESE_CODE_COMMENT_STANDARDS.md`を正本とし、理由、制約、所有権、寿命、実行順、破綻条件を必要な場合だけ記述する。
 
-## 13. Formatting guard examples
+## 14. Formatting guard examples
 
 ### Preferred
 
@@ -251,7 +272,7 @@ private void Awake()
 }
 ```
 
-## 14. Review checklist
+## 15. Review checklist
 
 - [ ] 1行で自然に読める代入を不必要に折っていない
 - [ ] `=`の直後で機械的に改行していない

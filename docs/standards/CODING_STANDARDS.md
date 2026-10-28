@@ -21,7 +21,7 @@ Namingは **Class / Function / Variable** の3区分で適用する。いずれ�
 
 Class、Struct、Interface、Enum、Unity Component、Editor拡張等の**Type名**と、そのTypeを所有する**C#ファイル名**を扱う。新規TypeやLayerの必要性を命名都合から逆算しない。
 
-- Class / Interface / 通常のType名は`PascalCase`。enum typeは`E_UPPER_SNAKE_CASE`、struct typeは`S_UPPER_SNAKE_CASE`を維持する。custom structは意味に合う場合`readonly struct`を優先する。
+- Class / Interface / 通常のType名は`PascalCase`。enum typeは`E_UPPER_SNAKE_CASE`、struct typeは`S_UPPER_SNAKE_CASE`を維持する。**新規の独自TypeはClassを既定**とし、Struct / readonly structは後述の採用条件を満たす場合に限る。採用が決まったStructについて、値の不変性が必要なら`readonly struct`を検討する。
 - Type / Responsibility / File Structureを先に確定する。既存Ownerで実現できる場合、新規Typeを増やさない。
 - Subjectと主要Roleを必要な範囲で表し、`Manager` / `Controller` / `Service` / `System`等のSuffixを積み重ねない。実際に所有する責務がなければRoleを付けない。
 - Namespace、既存のFeature名、Directory名のContextを無条件に繰り返さない。一方、Typeの利用箇所で区別が必要なSubjectは残す。
@@ -101,6 +101,7 @@ Field / Property / Parameter / Local Variable / Constを扱う。宣言位置と
 - parameter / local variable: `camelCase`（`camera`、`index`、`maxHealth`）。
 - const: `SCREAMING_SNAKE_CASE`。
 - 同じClass・Scopeに複数の候補があるときは`Original` / `Current` / `Target`、単位、用途等で必要な区別を残す。語句を省くために別の意味へ変えない。
+- Data Class / ScriptableObject等では、`No` / `Count` / `Value`など用途が分からない名前を避け、`Number` / `CutCount`等の対象と意味を識別できる語を使う。既存のPublic / Serialized APIの改名は互換性レビューなしで行わない。
 
 境界・範囲を表す名前は包含・排他条件と一致させる。
 
@@ -130,6 +131,38 @@ private void VisitHalfOpenRange(int beginIndex, int endIndex)
 	}
 }
 ```
+
+#### Data member documentation
+
+新規または明示的に修正するData Class、Serializableな設定型、ScriptableObject、DTO等の**データ保持を主目的とするType**では、各Field・Property（Serialized / Public / Privateを含む）に、値が**何を指すか**分かる日本語のコメントを付ける。名前の機械的な言い換えではなく、対象・意味・単位・値域・null許容・対応する外部データの列など、必要な情報を簡潔に記載する。Constructor ParameterはField / Propertyとの対応が曖昧な場合に`<param>`等で補足する。
+
+Inspector公開値には必要に応じて`[Tooltip]`を併用する。XML `summary`は公開APIの意味説明に使い、コメントを変更するためだけにSerialized Memberや既存Propertyを改名しない。
+
+```csharp
+[Serializable]
+public sealed class CameraCut
+{
+	/// <summary>カメラワーク一覧における識別番号。</summary>
+	[SerializeField] private int _number;
+
+	/// <summary>撮影動作の組み合わせを記した説明文。</summary>
+	[SerializeField] private string _description;
+
+	/// <summary>元データで、この構成が使用されたカット数。</summary>
+	[SerializeField] private int _cutCount;
+
+	/// <summary>順番に再生する各カメラワーク段階。</summary>
+	[SerializeField] private CameraPhase[] _phases;
+
+	/// <summary>カメラワーク一覧における識別番号。</summary>
+	public int Number => _number;
+
+	/// <summary>元データで、この構成が使用されたカット数。</summary>
+	public int CutCount => _cutCount;
+}
+```
+
+Data型以外のすべてのLocal Variableや通常処理にまで説明コメントを拡大しない。詳細なコメントの書き分けは`docs/standards/JAPANESE_CODE_COMMENT_STANDARDS.md`を参照する。
 
 ## Formatting
 
@@ -178,6 +211,19 @@ _defaultAntiAliasing = _cameraData.antialiasing;
 - Do not change public API, serialized names/types, enum values, save formats or file names without compatibility analysis.
 - 詳細なArchitecture判断では`ARCHITECTURE_DECISION_POLICY.md`を使用する。
 
+### Class-first / Static and Struct restrictions
+
+**独自のClass / static / Structについての新規設計規則**とし、Unity / .NETの既存値型（`Vector3`、`Color`等）や既存の契約を変更対象としない。
+
+- **Class first**: 新規の通常Dataモデル、状態・責務を持つ型は`class`を原則とする。コード行数、allocationへの根拠のない恐れ、"軽そう"という印象だけで`struct`にしない。
+- **Struct / readonly struct**: 値としての同一性・コピー・サイズ・不変性・boxing・default値・性能等に関する実在要件がある場合だけ採用する。ECS / Jobs / Burstなど、unmanaged value typeが必要な実行基盤は例外となる。採用理由を実装またはPRで説明する。`readonly struct`をClass代わりの定型Data Containerとして生成しない。
+- **static class / static Method**: 所有者・Lifetimeを持つInstance設計を優先する。Unity / .NET API契約上staticが必須の場合、またはInstance状態を一切持たない純粋な演算・共有定数などstaticを採用する具体的な理由がある場合のみ許可する。Methodをstaticにすれば性能が良いという推測は採用理由にならない。
+- **static mutable state / Event**: 原則追加しない。必要性が確定した場合はOwner、初期化・破棄・Reset、Domain Reload無効時の振る舞い、テスト隔離を明示する。Singleton / Service Locatorの安易な導入は禁止する。
+- **例外の最小化**: 既存のUnity Callback / `[MenuItem]` / Extension Method / Generic制約 / 他ライブラリの契約等は壊さない。単にClassにすると無意味なInstanceが増えるだけの純粋関数は、責務を明示した上で例外判断する。
+- この規則は既存ソースの一律変換やPerformance最適化を指示しない。明示的なRefactorの依頼がない場合、互換性を優先する。
+
+根拠: [Microsoft Class / Struct選択](https://learn.microsoft.com/en-us/dotnet/standard/design-guidelines/choosing-between-class-and-struct)、[Microsoft static class](https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/classes-and-structs/static-classes-and-static-class-members)、[Unity Domain Reload](https://docs.unity3d.com/ja/current/Manual/domain-reloading.html)、[Unity MenuItem](https://docs.unity3d.com/ja/6000.0/ScriptReference/MenuItem.html)。
+
 ## Local Behavior fast path
 
 一つのGameObjectまたはComponent内で完結する処理は、まず次の順で確認する。
@@ -211,7 +257,7 @@ _defaultAntiAliasing = _cameraData.antialiasing;
 
 - Do not declare a pattern slow without frequency and evidence.
 - In hot paths, review LINQ, closures, arrays, collections, strings, boxing, `params object[]`, logging, repeated enumeration and `Renderer.material`.
-- Do not state that structs are generally bad. Evaluate identity, copy semantics, size, immutability, default validity, boxing and defensive copies.
+- New custom structs are opt-in rather than the default. If a value type is justified, evaluate identity, copy semantics, size, immutability, default validity, boxing and defensive copies; do not claim that structs are universally slow.
 - For Burst/Jobs, require unmanaged/blittable data and explicit NativeContainer ownership/dependency completion.
 - Editor success is not Player/IL2CPP proof.
 

@@ -15,6 +15,12 @@ Unity、C#、ShaderLab、HLSL、Compute Shader向け日本語コメントの正�
 9. `TODO`、`FIXME`、`NOTE`、`WORKAROUND`には理由と解除条件または確認条件を書く。
 10. 同じ説明をクラス、メソッド、行コメントで重複させない。
 
+## Data型のメンバー（User Policy例外）
+
+Data Class / Serializableな設定型 / ScriptableObject / DTO等、データ保持を主目的とするTypeの**各Field・Property**には、意味を説明する日本語コメントを必ず付ける。`Number`は何の番号か、`Count`は何を数えるのか、`Length`はどの単位かを明示する。単純な名前の言い換えや無意味な重複ではなく、データの契約に必要な情報を短く書く。Inspectorでは必要に応じて`[Tooltip]`も付ける。
+
+この限定ルールを、通常処理のLocal Variableや自明なgetter / setterへの一律コメント義務として解釈しない。型の識別子・Serialized名をコメント追加だけのために変更しない。書式例は`docs/standards/CODING_STANDARDS.md#data-member-documentation`を正本とする。
+
 ## CRF for Code
 
 局所的な設計判断、制約、バグ回避、最適化意図には必要に応じて次を使う。

@@ -4,6 +4,8 @@
 
 UnityAgentが新規Type、明示的Rename、Architecture Proposal上のPlanned Typeを命名するときに使用するSemantic Type NamingのCanonical Sourceである。
 
+命名とType種別選択は独立して判断する。新規の独自TypeはClassを既定とし、`readonly struct`を慣習的なData Containerとして生成しない。詳細と例外は`CODING_STANDARDS.md#class-first--static-and-struct-restrictions`を正本とする。
+
 NamingはArchitectureの入口ではない。`ENGINEERING_DESIGN_PRINCIPLES.md`でTypeの必要性、責務、粒度、File Structureを確定した後に適用する。
 
 ```text
@@ -26,7 +28,7 @@ Type Naming Contract
 
 対象:
 
-- class / struct / interface / enum
+- class / struct / interface / enum（新規の独自型は原則class。structは値型としての必要性・実利がある場合のみ選択）
 - MonoBehaviour / ScriptableObject / EditorWindow / CustomEditor
 - RendererFeature / ECS System / Component等
 - 新規生成Type

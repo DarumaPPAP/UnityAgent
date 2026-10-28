@@ -155,6 +155,9 @@ Shader変更はRule ID、Confirmed Finding、または明示されたユーザ�
 - Context redundancy / invented abbreviation / role suffix stackingがない
 - 新規・明示RenameしたClass / Function / Variable / C# File名に冗長な説明語がなく、既存の命名Case・契約を保った必要十分な名前になっている
 - Existing APIをNaming理由だけで変更していない
+- Enumは1要素1行で記載されている
+- Data Class / ScriptableObject等の各Field・Propertyに、何の値か（対象・単位・制約）が分かる日本語コメントがある
+- 新規の独自TypeはClass優先であり、struct / readonly struct / staticの例外に明示的な理由がある。可変static状態は原則追加していない
 - コメントがProductionまたはLearning Profileに一致している
 
 ### Step 6 — Validate according to risk and required gates
