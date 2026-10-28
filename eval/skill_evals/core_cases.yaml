@@ -147,7 +147,7 @@ cases:
     must_include:
       - "_initialCount = _counter.CurrentCount;"
     must_not:
-      - "_initialCount =\\n"
+      - "_initialCount =\n"
       - "_counter.CurrentCount = _initialCount;"
     pass_condition: "合格: 指定された代入の向きと識別子を保ち、_initialCount = _counter.CurrentCount; を1行で記述する。右辺や等号直後を機械的に改行したり中間変数を作ったりしない。コード断片の課題であり、新しいClassやFileの生成・命名は要求しない。"
 
