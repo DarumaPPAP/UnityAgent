@@ -76,6 +76,18 @@ core_user_policies:
     protected: true
   semantic_type_naming:
     rule: Type / Responsibility / File Structureを設計判断で確定した後、Class / Function / Variableの3区分で命名する。宣言・利用Contextにおける必要十分な名前を優先し、Namespace・Class・Directoryの重複、説明語の過剰連結、曖昧な略語、Role suffix stacking、Property単位Type増殖を避ける。短さだけで意味を失う省略や新規略語を作らず、File名もTypeの責務と対応させる。既存PublicまたはSerialized名をNaming改善だけで変更しない
+  enum_member_formatting:
+    rule: 新規または明示的Formatting対象のC# enumは1要素1行とする。複数要素を1行に並べない。既存enumの値・順序・公開契約は変更しない
+    canonical_reference: docs/standards/CODE_FORMATTING_STANDARDS.md
+    protected: true
+  data_member_documentation:
+    rule: 新規・明示的修正対象のData Class、Serializableな設定型、ScriptableObject、DTO等の各FieldとPropertyに、何の値か、対象、意味、単位、値域など必要な情報を示す日本語コメントを付ける。自明なコードの復唱ではなくデータ契約を記述し、既存Serialized名・Public APIはコメント改善だけで変更しない
+    canonical_reference: docs/standards/CODING_STANDARDS.md
+    protected: true
+  class_first_and_static_restrictions:
+    rule: 新規の独自Typeは原則Class。struct・readonly struct・static class・static Methodは原則採用せず、値型必須のJob/Burst/ECSやUnity API契約、Instanceを必要としない純粋な処理などの具体的理由がある場合のみ例外とする。readonly structを標準Data Holderにしない。可変static状態・Eventは原則新設せず、必要な場合Owner・初期化・Reset・Domain Reload・テスト隔離を明示する。既存コードの無断一括変換は禁止
+    canonical_reference: docs/standards/CODING_STANDARDS.md
+    protected: true
   evidence_scoped_claims:
     rule: Static、Compile、Editor、Player、実機、Performance、Visualの検証状態を分離して報告する
   performance_requires_measurement:
