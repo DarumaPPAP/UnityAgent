@@ -138,6 +138,7 @@ cases:
       - "FindObjectsByType"
       - "void Update()"
     pass_condition: "合格: (1) 同じGameObjectのLightだけを取得し、OnEnable時の元のintensityを保持して半分にする。(2) OnDisable時にその元値へ戻し、再有効化しても値が累積して変化しない。(3) Light未設定でもNullReferenceExceptionを出さない。(4) 他Objectの探索・任意Target化・Updateによる監視・Manager等の追加Typeを行わない。API名の文字列を避けただけの別手段による過剰探索も不合格。"
+
   - id: SKILL-EVAL-010
     category: coding_convention
     evaluation_type: behavior
@@ -149,6 +150,7 @@ cases:
       - "_initialCount =\\n"
       - "_counter.CurrentCount = _initialCount;"
     pass_condition: "合格: 指定された代入の向きと識別子を保ち、_initialCount = _counter.CurrentCount; を1行で記述する。右辺や等号直後を機械的に改行したり中間変数を作ったりしない。コード断片の課題であり、新しいClassやFileの生成・命名は要求しない。"
+
   - id: SKILL-EVAL-011
     category: scope_guard
     evaluation_type: behavior
@@ -202,6 +204,7 @@ cases:
       - "ManagerController"
       - "void _Update"
     pass_condition: "合格: (1) Primary Type名が責務を表すPascalCaseで、提示したC#ファイル名のstemと一致する。(2) MethodはPascalCase、private Fieldは_camelCaseで、型名・Role suffixの無意味な反復や独自の曖昧な略語がない。(3) 例として現在値50/上限100で0.5、150/100で1、上限0以下で0を返す。(4) 不要なController・Manager・static状態・補助Typeを増やさない。特定の例示Class名への一致は求めない。"
+
   - id: SKILL-EVAL-015
     category: coding_convention
     evaluation_type: behavior
@@ -215,6 +218,7 @@ cases:
       - "readonly struct"
       - "static class"
     pass_condition: "合格: (1) 保存用Dataは[Serializable]な通常のClassを基本とし、Inspectorで編集できるインスタンスFieldを持つ。MonoBehaviourやstaticのState Holderにしない。(2) 商品番号・表示名・価格（円）・在庫数・販売状態の各Field、および存在する場合は各Propertyについて、用途・単位等の意味を示す日本語コメントがある。(3) Enumは指定した3状態を表し、Type名はE_UPPER_SNAKE_CASE、要素は1要素につき1行とする。(4) 不要な補助Typeを追加せず、独自の型名は役割に沿って命名する。特定のサンプル識別子名は強制しない。"
+
   - id: SKILL-EVAL-016
     category: conflict
     evaluation_type: behavior
