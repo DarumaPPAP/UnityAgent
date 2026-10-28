@@ -1,7 +1,9 @@
 {
   "name": "DarumaPPAP.UnityAgent.Tests.PlayMode",
   "rootNamespace": "DarumaPPAP.UnityAgent.Tests",
-  "references": [],
+  "references": [
+    "CameraWorks.Demo"
+  ],
   "includePlatforms": [],
   "optionalUnityReferences": [
     "TestAssemblies"
