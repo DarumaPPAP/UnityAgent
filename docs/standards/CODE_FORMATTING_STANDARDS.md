@@ -142,18 +142,14 @@ LoadType = _editLoadTypeField == null
 
 enumの要素宣言は、要素が少ない場合も**1要素につき1行**とし、カンマで複数要素を1行に詰め込まない。この規則は式・関数引数などを1行で簡潔に書く原則とは別の宣言リスト用ルールとする。明示値・Attribute・コメントを持つ要素も同様に1行ずつ記述する。
 
+次は書式説明のためだけの架空のEnum例である。
+
 ```csharp
-public enum E_CAMERA_MOVE
+public enum E_SAMPLE_STATE
 {
-	Fix,
-	FixPerfect,
-	FixShake,
-	PanLeft,
-	PanRight,
-	TiltUp,
-	TiltDown,
-	ZoomIn,
-	ZoomOut
+	Pending,
+	Running,
+	Complete
 }
 ```
 
