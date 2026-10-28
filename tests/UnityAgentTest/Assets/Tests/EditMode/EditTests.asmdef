@@ -2,7 +2,8 @@
   "name": "DarumaPPAP.UnityAgent.Tests.EditMode",
   "rootNamespace": "DarumaPPAP.UnityAgent.Tests",
   "references": [
-    "DarumaPPAP.UnityAgent.Editor"
+    "DarumaPPAP.UnityAgent.Editor",
+    "CameraWorks.Demo"
   ],
   "includePlatforms": [
     "Editor"
