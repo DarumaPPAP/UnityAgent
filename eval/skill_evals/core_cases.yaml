@@ -1,5 +1,8 @@
 version: 1
 suite: unity-agent-core-skill-evals
+# Evalは再利用可能な能力・失敗条件を評価する。
+# 一時的なサンプルの固有名詞、ファイル名、メニューパス、出力識別子を正解として固定しない。
+# Unity APIやSkill IDなど実行契約上必要な識別子は例外とする。
 required_categories:
   - positive_direct
   - positive_paraphrase
@@ -122,32 +125,30 @@ cases:
   - id: SKILL-EVAL-009
     category: scope_guard
     evaluation_type: behavior
-    prompt: "MainCameraにだけ付けるComponentを作って。MainCameraがActiveになったらCameraのAAとURP AssetのMSAAを変更して、InactiveになったらDefaultに戻して。"
+    prompt: "既存の特定のGameObjectだけに付ける小さなComponentを作って。有効化時に既存設定を変更し、無効化時に元の値へ戻して。対象の汎用化や常時監視は不要。"
     expected_primary: unity-architecture-design
     must_include:
       - "OnEnable"
       - "OnDisable"
-      - "MainCamera"
     must_not:
-      - "Target Object"
-      - "_targetObject"
       - "Update()"
       - "Watcher"
-      - "Trigger Component"
-      - "Manager"
-    pass_condition: "具体的なMainCamera指定をRequirement Surfaceとして保持し、Unity Lifecycleだけで成立するLocal Behaviorへ不要なTarget、Polling、追加Componentを導入しない。"
+      - "任意のTargetに汎用化"
+      - "新規Manager"
+    pass_condition: "指定されたGameObjectを対象として保持し、既存のUnity Lifecycleで変更・復元を完結させ、追加TargetやPolling、不要なTypeを増やさない。"
 
   - id: SKILL-EVAL-010
     category: scope_guard
     evaluation_type: behavior
-    prompt: "MainCamera用のC#コードをUnityAgentの規約で出力して。短い代入式は普通に読みやすくして。"
+    prompt: "Unity C#で、Componentから取得した値をprivate Fieldへ代入する短いコードを書いて。UnityAgentの既存Formatting規約に従い、名前と短い式の読みやすさを保って。"
     expected_primary: unity-architecture-design
     must_include:
-      - "_cameraData = camera.GetUniversalAdditionalCameraData();"
+      - " = "
+      - ";"
     must_not:
-      - "_cameraData =\n"
-      - "_defaultAntiAliasing =\n"
-    pass_condition: "短い代入を`=`直後で機械的に改行せず、現行命名規則を維持したFormattingを生成する。"
+      - "=\n"
+      - " =\n"
+    pass_condition: "自然に1行で読める短い代入を等号直後で機械的に改行せず、Contextに応じた命名と既存のFormattingを維持する。特定のCameraやField名を期待値に固定しない。"
 
   - id: SKILL-EVAL-011
     category: scope_guard
@@ -193,45 +194,42 @@ cases:
   - id: SKILL-EVAL-014
     category: scope_guard
     evaluation_type: behavior
-    prompt: "UnityでPlayerの現在HPと最大HPを管理し、HP比率を計算する小さなMonoBehaviourを新規作成して。Class、Function、Variable、C#ファイル名もUnityAgentの命名規約に従って出力して。"
+    prompt: "Unityで現在値と上限値を保持し、その割合を計算する小さなMonoBehaviourを新規作成して。Class、Function、Variable、C#ファイル名もUnityAgentの命名規約に従って出力して。"
     expected_primary: unity-architecture-design
     must_include:
-      - "PlayerHealth"
-      - "_maxHealth"
-      - "PlayerHealth.cs"
+      - "class "
+      - "MonoBehaviour"
+      - "float"
     must_not:
-      - "PlayerHealthValueManagementController"
-      - "CalculateCurrentPlayerHealthPercentage"
-      - "_currentPlayerHealthValue"
-    pass_condition: "責務を明確に保ちながらClass / Function / Variableとファイル名のContext重複を取り除き、独自略語を使わず必要十分な名前で生成する。"
+      - "readonly struct"
+      - "ManagerController"
+      - "_Update"
+    pass_condition: "Class名・Function名・Variable名・C#ファイル名が責務に対して必要十分であり、所属Contextの重複、説明語の過剰連結、独自の略語、不要なType増殖がない。Primary Type名とC#ファイル名を一致させ、型名を特定のサンプルに固定しない。"
 
   - id: SKILL-EVAL-015
     category: scope_guard
     evaluation_type: behavior
-    prompt: "UnityでCameraCutというカメラワークData型（一覧番号、説明文、実際のカット数、Phase配列）とE_CAMERA_MOVE enumを新規生成してください。UnityAgentの命名・コメント・Type選択規約を守ってください。"
+    prompt: "Unityで、識別番号、説明、件数、複数の処理段階を保持するシリアライズ可能なData型と、処理の種類を表すEnumを新規実装して。UnityAgentの命名・コメント・Type選択・Enum整形規約を守って。"
     expected_primary: unity-architecture-design
     must_include:
-      - "class CameraCut"
-      - "CutCount"
+      - "[Serializable]"
+      - "class "
+      - "enum "
       - "/// <summary>"
-      - "Fix,"
-      - "PanLeft,"
     must_not:
-      - "readonly struct S_CAMERA_CUT"
-      - "Fix, FixPerfect, FixShake"
-      - "static class CameraCut"
-    pass_condition: "通常DataはClassを使いField / Propertyが何を指すか日本語で説明し、enum要素を1行1要素で出力する。"
+      - "readonly struct"
+      - "static class"
+    pass_condition: "通常のDataモデルはClassを既定とし、各Field / Propertyに値が何を指すかを示す日本語コメントを書く。識別番号と件数などの意味を名前でも区別し、Enumは1要素1行で記述する。特定の業務・サンプル由来のType名や要素名を期待値にしない。"
 
   - id: SKILL-EVAL-016
     category: conflict
     evaluation_type: behavior
-    prompt: "Unity EditorにTools/MyTools/Camera Worksというメニューを追加して、押したらSceneを生成する処理を作って。新規コードはClass優先とstatic制限を守って。"
+    prompt: "Unity Editorのメニュー項目から単純なEditor処理を実行する拡張コードを作って。新規コードはClass優先とstatic制限を守って。"
     expected_primary: unity-implement
     must_include:
       - "[MenuItem("
-      - "static"
-      - "Scene"
+      - "static void"
     must_not:
-      - "MonoBehaviourのUpdateでMenu生成"
-      - "staticにしてはならないためMenuItemを実装できない"
-    pass_condition: "Class-first / static原則禁止を理由にUnityのMenuItem APIが要求するstatic Methodを拒否せず、API要件に限って例外採用する。"
+      - "staticは禁止なので実装できない"
+      - "Update()"
+    pass_condition: "static制限を一律禁止と誤解せず、Unity MenuItem APIが要求するMethodだけにstaticを採用する。無関係なstatic状態や余計なMonoBehaviourを生成せず、特定メニューパスやドメイン固有の処理名に依存しない。"
