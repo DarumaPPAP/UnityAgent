@@ -157,6 +157,8 @@ public enum E_CAMERA_MOVE
 }
 ```
 
+既存のenumを明示的に整形する場合も、各要素の識別子・数値・順序・公開契約を維持する。1要素1行への整形を理由にEnum値や参照先を変更しない。
+
 ## 7. Braces
 
 C#の波括弧はAllman Styleを基本とする。
