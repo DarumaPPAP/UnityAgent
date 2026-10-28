@@ -8,7 +8,12 @@ public static class CameraWorkDemoMenu
     [MenuItem("Tools/MyTools/Camera Works/Create Demo Scene")]
     private static void CreateDemoScene()
     {
-        // 既存Sceneは保存せず、テスト専用の未保存Sceneへ切り替える。
+        // 未保存Sceneがあれば先にユーザーの保存判断を求める。
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+        {
+            return;
+        }
+
         var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
         var target = GameObject.CreatePrimitive(PrimitiveType.Sphere);
