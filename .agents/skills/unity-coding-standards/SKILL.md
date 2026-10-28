@@ -19,6 +19,10 @@ Resolve environment and call frequency first. Preserve public APIs and serialize
 
 命名は`docs/standards/CODING_STANDARDS.md`の **Class / Function / Variable** 3区分で確認する。設計で責務を確定した後、宣言・利用Contextから理解できる **Minimum Sufficient Name** を採用し、明確さのためと称してContextを重複させない。ClassはType / File名、FunctionはMethod / Local Function、VariableはField / Property / Parameter / Local / Constを対象とする。TypeではType NecessityをNamingより先に確認し、invented abbreviation、Role suffix stacking、Property-level Type proliferationを避ける。LengthはReview TriggerでありHard Limitではない。
 
+Enum Memberは`CODE_FORMATTING_STANDARDS.md`に従い**1要素1行**で列挙する。Data Class / ScriptableObject等の各Field・Propertyには値の対象・意味・単位などを示す日本語コメントを必須とする（単なる復唱は禁止）。
+
+新規の独自Typeは原則Class。struct / readonly struct、static class / static Methodは具体的な技術理由を要し、`readonly struct`を汎用Data Holderとして乱用しない。ECS / Jobs / Burst、Unity `MenuItem`、純粋関数などの根拠ある例外は維持する。可変static状態は原則追加せず、例外時はLifecycle / Reset / Domain Reloadの扱いを確認する。
+
 新規Method / Local Functionは`PascalCase`とし、名前に`_`を含めない。両限界値を含む境界は`min/max`、両端を含む要素範囲は`first/last`、始点包含・終点排他の半開区間は`begin/end`を使用する。既存API、Unity Callback、外部Interface・Serialized契約を命名改善だけで変更しない。詳細と例は`docs/standards/CODING_STANDARDS.md`を正本とする。
 
 ユーザーが具体的なGameObject、Component、Assetを指定している場合、再利用性だけを理由に任意Targetへ一般化しない。Unityまたは既存DomainがSource of Truthを持つ状態を、理由なくprivate fieldへ複製しない。
@@ -47,6 +51,8 @@ For Shader/HLSL work, delegate to `unity-rendering` and the Shader Performance s
 - [ ] IL2CPP / Burst / Jobs / allocation constraints are checked when relevant
 - [ ] 新規 / Rename対象のClass・Function・Variable・C# File名で、Namespace・Class・Directory等の不要な重複語を削除し、利用側で意味が明確な必要十分の名前になっている
 - [ ] 新規Method / Local Function名に`_`がなく、`min/max`・`first/last`・`begin/end`の包含・排他条件がコードと一致している
+- [ ] Enum要素は1行1要素であり、Data型のField / Propertyに意味を説明する日本語コメントがある
+- [ ] 新規TypeはClass優先。struct / readonly struct / static採用には具体的根拠があり、可変static状態のOwner / Resetが検証されている
 - [ ] Formatting changes do not alter existing naming conventions or semantics
 - [ ] Shader/HLSL work is delegated instead of receiving C#-only rules
 - [ ] Validation status distinguishes static, compile, Editor, Player, and target-device evidence
