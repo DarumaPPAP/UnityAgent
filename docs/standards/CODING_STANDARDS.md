@@ -138,27 +138,29 @@ private void VisitHalfOpenRange(int beginIndex, int endIndex)
 
 Inspector公開値には必要に応じて`[Tooltip]`を併用する。XML `summary`は公開APIの意味説明に使い、コメントを変更するためだけにSerialized Memberや既存Propertyを改名しない。
 
+以下は、特定のゲーム・過去に実装した型とは無関係な**説明専用の架空のSample**である。
+
 ```csharp
 [Serializable]
-public sealed class CameraCut
+public sealed class SampleRecord
 {
-	/// <summary>カメラワーク一覧における識別番号。</summary>
-	[SerializeField] private int _number;
+	/// <summary>一覧内でこのレコードを識別する番号。</summary>
+	[SerializeField] private int _recordNumber;
 
-	/// <summary>撮影動作の組み合わせを記した説明文。</summary>
+	/// <summary>レコードの内容を説明する表示用文字列。</summary>
 	[SerializeField] private string _description;
 
-	/// <summary>元データで、この構成が使用されたカット数。</summary>
-	[SerializeField] private int _cutCount;
+	/// <summary>このレコードが使用された回数。</summary>
+	[SerializeField] private int _usageCount;
 
-	/// <summary>順番に再生する各カメラワーク段階。</summary>
-	[SerializeField] private CameraPhase[] _phases;
+	/// <summary>レコードの分類に使うタグの一覧。</summary>
+	[SerializeField] private string[] _tags;
 
-	/// <summary>カメラワーク一覧における識別番号。</summary>
-	public int Number => _number;
+	/// <summary>一覧内でこのレコードを識別する番号。</summary>
+	public int RecordNumber => _recordNumber;
 
-	/// <summary>元データで、この構成が使用されたカット数。</summary>
-	public int CutCount => _cutCount;
+	/// <summary>このレコードが使用された回数。</summary>
+	public int UsageCount => _usageCount;
 }
 ```
 
