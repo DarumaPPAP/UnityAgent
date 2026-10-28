@@ -55,9 +55,7 @@ namespace CameraWorks
 				}
 
 				string[] cells = lines[row].Split('\t');
-				if (cells.Length != 3 || !int.TryParse(cells[0], NumberStyles.None, CultureInfo.InvariantCulture, out int no)
-					|| !int.TryParse(cells[2], NumberStyles.None, CultureInfo.InvariantCulture, out int count)
-					|| no != cuts.Count + 1 || count < 1)
+				if (cells.Length != 3 || !int.TryParse(cells[0], NumberStyles.None, CultureInfo.InvariantCulture, out int no) || !int.TryParse(cells[2], NumberStyles.None, CultureInfo.InvariantCulture, out int count) || no != cuts.Count + 1 || count < 1)
 				{
 					throw new FormatException($"Invalid catalog row {row + 1}.");
 				}
@@ -98,8 +96,7 @@ namespace CameraWorks
 					bool matched = false;
 					foreach (var token in Tokens)
 					{
-						if (index + token.Text.Length > phrase.Length
-							|| string.CompareOrdinal(phrase, index, token.Text, 0, token.Text.Length) != 0)
+						if (index + token.Text.Length > phrase.Length || string.CompareOrdinal(phrase, index, token.Text, 0, token.Text.Length) != 0)
 						{
 							continue;
 						}
