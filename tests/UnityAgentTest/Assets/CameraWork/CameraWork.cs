@@ -49,7 +49,7 @@ namespace CameraWorks
         [SerializeField, Min(0f)] private float _dollyDistance = 2f;
         [SerializeField, Min(0f)] private float _trackDistance = 2f;
         [SerializeField, Min(0f)] private float _circleAngle = 40f;
-        [SerializeField, Min(0f)] private float _rollAngle = 35f;
+        [SerializeField, Min(0f)] private float _rollAngle = 360f;
 
         private Camera _camera;
         private S_CAMERA_CUT _cut;
