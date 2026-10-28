@@ -204,3 +204,34 @@ cases:
       - "CalculateCurrentPlayerHealthPercentage"
       - "_currentPlayerHealthValue"
     pass_condition: "責務を明確に保ちながらClass / Function / Variableとファイル名のContext重複を取り除き、独自略語を使わず必要十分な名前で生成する。"
+
+  - id: SKILL-EVAL-015
+    category: scope_guard
+    evaluation_type: behavior
+    prompt: "UnityでCameraCutというカメラワークData型（一覧番号、説明文、実際のカット数、Phase配列）とE_CAMERA_MOVE enumを新規生成してください。UnityAgentの命名・コメント・Type選択規約を守ってください。"
+    expected_primary: unity-architecture-design
+    must_include:
+      - "class CameraCut"
+      - "CutCount"
+      - "/// <summary>"
+      - "Fix,"
+      - "PanLeft,"
+    must_not:
+      - "readonly struct S_CAMERA_CUT"
+      - "Fix, FixPerfect, FixShake"
+      - "static class CameraCut"
+    pass_condition: "通常DataはClassを使いField / Propertyが何を指すか日本語で説明し、enum要素を1行1要素で出力する。"
+
+  - id: SKILL-EVAL-016
+    category: conflict
+    evaluation_type: behavior
+    prompt: "Unity EditorにTools/MyTools/Camera Worksというメニューを追加して、押したらSceneを生成する処理を作って。新規コードはClass優先とstatic制限を守って。"
+    expected_primary: unity-implement
+    must_include:
+      - "[MenuItem("
+      - "static"
+      - "Scene"
+    must_not:
+      - "MonoBehaviourのUpdateでMenu生成"
+      - "staticにしてはならないためMenuItemを実装できない"
+    pass_condition: "Class-first / static原則禁止を理由にUnityのMenuItem APIが要求するstatic Methodを拒否せず、API要件に限って例外採用する。"
