@@ -20,6 +20,17 @@ Unity **6000.3.12f1** / URP **17.3.0** / Test Framework **1.6.0**。
 ルートの開発Projectは同じUnity Versionを使用し、`Packages/com.darumappap.unity-agent` をEmbedded Packageとして読み込みます。
 SceneやURP Pipeline Assetはまだ生成していません。描画設定が必要ならEditorでURP Pipeline Assetを生成し、Graphics / Qualityへ設定してください。
 
+## Camera Work実装テスト
+
+映画撮影の基本12技法（フィクス3種、パン、ティルト、ズームイン/アウト、ドリーイン/アウト、トラック、サークル、ロール）と、参考資料の196種類・1,166カットの構成を再生するデモを`Assets/CameraWork/`に追加しています。
+
+- `Tools > MyTools > Camera Works > Create Demo Scene`で未保存のテストSceneを作成し、Playで再生します。
+- EditMode: `CameraWorkTests`。全カタログ解析、動作の独立性、位置・回転・画角の差異を確認します。
+- PlayMode: `CameraWorkPlayTests`。複合カットの時間進行と終了を確認します。
+- 実行条件、撮影技法の対応、元データの取扱いは[Camera Work Demo](Assets/CameraWork/README.md)を参照してください。
+
+UnityのCompile・EditMode・PlayMode・画面のVisual Evidenceは、ローカルUnity Editorで実行するまで未観測です。
+
 ## CLIとFull E2E
 
 Repositoryルートで本番CLIをインストールします。
