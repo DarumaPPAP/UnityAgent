@@ -1,0 +1,4 @@
+interface:
+  display_name: "テスト品質"
+  short_description: "PythonとUnity C#の拒否系テスト、Assertion・Mock・Fixtureを設計・レビュー"
+  default_prompt: "$test-quality を使って、保護する契約と観測範囲を明確にし、テストのAssertion・Mock・Fixtureを設計またはレビューしてください。"
