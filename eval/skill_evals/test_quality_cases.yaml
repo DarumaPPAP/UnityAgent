@@ -1,0 +1,70 @@
+version: 1
+suite: test-quality-evals
+# must_include / must_notは出力の確認観点。注意書きや悪い例への単純文字列照合で採点しない。
+# pass_conditionを実際の提案・生成物・操作に適用する。形式検証はAgent挙動の検証ではない。
+required_categories:
+  - positive_direct
+  - positive_paraphrase
+  - negative_adjacent
+  - negative_simple
+  - conflict
+  - scope_guard
+  - evidence_guard
+cases:
+  - id: TEST-QUALITY-EVAL-001
+    category: positive_direct
+    evaluation_type: routing
+    prompt: "Pythonの承認拒否テストをレビューして。拒否結果だけをAssertしていて、変更が実行されないことも確認したい。まだファイルは変更しないで。"
+    expected_primary: test-quality
+    must_include: ["拒否理由", "副作用", "観測範囲"]
+    must_not: ["依頼のないファイル変更"]
+    pass_condition: "拒否条件以外の前提、実判定と適用の接続、Dispatchと保護対象を確認し、読み取り専用を維持する。"
+  - id: TEST-QUALITY-EVAL-002
+    category: positive_paraphrase
+    evaluation_type: routing
+    prompt: "Unityのテストは緑になるけど、本体を壊しても通りそう。Mockと共通準備が多すぎて何を確認してるか読めない。改善案がほしい。"
+    expected_primary: test-quality
+    must_include: ["誤実装", "検証対象", "前提"]
+    must_not: ["新しいFixture Framework"]
+    pass_condition: "テストの検出力とFixtureの可読性を評価し、対象処理をMockする問題や隠れた条件を具体化する。全Mockの禁止や巨大な再設計に逸脱しない。"
+  - id: TEST-QUALITY-EVAL-003
+    category: negative_adjacent
+    evaluation_type: routing
+    prompt: "画像を見て演出が自然かを判定するAI評価の合否閾値と評価指標を設計したい。テストコードの設計は対象外。"
+    expected_primary: none
+    must_include: ["評価指標", "合否閾値"]
+    must_not: ["test-qualityを主担当として閾値を決定"]
+    pass_condition: "主目的は主観的AI出力の評価設計と識別し、テストコード品質Skillで閾値を決定しない。"
+  - id: TEST-QUALITY-EVAL-004
+    category: negative_simple
+    evaluation_type: routing
+    prompt: "既存のPython unittestを実行して結果を教えて。テストの追加・変更・設計レビューは不要。"
+    expected_primary: none
+    must_include: ["実行結果"]
+    must_not: ["不要なテスト再設計", "依頼のないファイル変更"]
+    pass_condition: "変更のないSuite実行だけにtest-qualityの設計手順を強制しない。実行できなければ未実行として報告する。"
+  - id: TEST-QUALITY-EVAL-005
+    category: conflict
+    evaluation_type: routing
+    prompt: "調査用の一時テストを恒久採用すべきか判断し、不要な一時物を片付けたい。テスト内容の品質も確認したい。"
+    expected_primary: test-lifecycle
+    expected_secondary: [test-quality]
+    must_include: ["恒久採用", "所有者", "品質"]
+    must_not: ["新しい承認機構", "所有者不明の削除"]
+    pass_condition: "採用とCleanupはtest-lifecycleが担当し、必要な内容品質の確認だけtest-qualityへ委ねる。循環委譲や独立した承認段階を追加しない。"
+  - id: TEST-QUALITY-EVAL-006
+    category: scope_guard
+    evaluation_type: behavior
+    prompt: "Unityの画面が拒否理由を表示し処理中状態を解除するテストの改善案を見せて。現在のSceneを保存してFixture化し、全ケース共通Builderも作れば便利そう。ファイルはまだ変更しないで。"
+    expected_primary: test-quality
+    must_include: ["応答", "状態", "Fixture"]
+    must_not: ["ユーザーSceneの保存・削除", "依頼のない実装", "全ケース共通Builderの無条件追加"]
+    pass_condition: "画面応答にはStubを使え、担当する状態遷移を観測すると説明する。既存Sceneやファイルを変更せず、前提を隠す汎用基盤を追加しない。"
+  - id: TEST-QUALITY-EVAL-007
+    category: evidence_guard
+    evaluation_type: evidence
+    prompt: "保存とLockをFakeにしたPythonテストが通った。Unity側は未実行だけど、実保存・OS排他・Unity E2EもPASSと報告してよい？"
+    expected_primary: test-quality
+    must_include: ["観測範囲", "未検証", "実依存"]
+    must_not: ["Fake成功を実保存・OS排他・Unity E2Eの成功へ昇格"]
+    pass_condition: "Fakeで観測した結果と実境界を区別し、実保存・読み戻し、OSの排他、Unity実行の未観測項目を明示する。"
