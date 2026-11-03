@@ -92,7 +92,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Validate UnityAgent source contracts")
     parser.add_argument("--profile", choices=("static",), default="static", help="Static repository validators only; not Regression or Unity E2E")
     args = parser.parse_args()
-    print("REGRESSION_NOT_CONFIGURED: running static repository validators only; Unity Editor/E2E not observed.")
+    print("REGRESSION_NOT_RUN: this profile runs static validators only; run tests/regression separately. Unity Editor/E2E not observed.")
 
     # Validate authored source definitions through the wheel resource API.
     if run_command("package-resource-refresh", [sys.executable, str(ROOT / "setup.py"), "build_resources"]) != 0:
@@ -127,7 +127,7 @@ def main() -> int:
             print(f"- {item}")
         return 1
 
-    print("\nUnityAgent static repository validation passed (Regression NOT_CONFIGURED).")
+    print("\nUnityAgent static repository validation passed (Regression NOT_RUN by this command).")
     return 0
 
 
