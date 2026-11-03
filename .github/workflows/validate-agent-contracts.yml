@@ -42,7 +42,18 @@ jobs:
         run: python tools/validate_all.py --profile static
 
       - name: Run Phase 1 Approval, Mutation and Persistence regression
-        run: python -m unittest discover -s tests/regression -p "test_*.py" -q -b
+        shell: bash
+        run: |
+          python - <<'PY'
+          import sys
+          import unittest
+
+          suite = unittest.defaultTestLoader.discover("tests/regression", pattern="test_*.py")
+          result = unittest.TextTestRunner(verbosity=0, buffer=True).run(suite)
+          if result.skipped:
+              print(f"REGRESSION_BLOCKED_NOT_RUN: {len(result.skipped)} test(s) skipped")
+          sys.exit(0 if result.wasSuccessful() and not result.skipped else 1)
+          PY
 
       - name: Declare remaining regression coverage gaps
         run: echo "::warning::REGRESSION_PARTIAL - Phase 1 store/scope boundary cases run above. Approval authority E2E, actual mutation dispatch, Recovery, Project Lease, Unity Editor/Player/Device and E2E are NOT_RUN."
