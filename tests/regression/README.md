@@ -10,7 +10,7 @@ python -m unittest discover -s tests/regression -p "test_*.py" -q -b
 python tools/validate_all.py --profile static
 ```
 
-PRの必須CIは限定RegressionとStatic/Packagingを**別ステップ**で実行する。単一テストを実行する場合は `python -m unittest discover -s tests/regression -p "test_approval_boundary.py" -q -b` のように指定する。
+PRの必須CIは限定RegressionとStatic/Packagingを**別ステップ**で実行する。CIは標準`unittest`の実行結果を確認し、Skipが1件でもあれば`REGRESSION_BLOCKED_NOT_RUN`として失敗する。単一テストを実行する場合は `python -m unittest discover -s tests/regression -p "test_approval_boundary.py" -q -b` のように指定する。
 
 ## 採用ケースと責務
 
