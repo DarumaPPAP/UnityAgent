@@ -16,7 +16,7 @@ PRの必須CIは限定RegressionとStatic/Packagingを**別ステップ**で実�
 
 | Module | Invariant / Failure prevented | 通す実境界 | 未検証 |
 | --- | --- | --- | --- |
-| `test_approval_boundary.py` | 取消epochの再登録による巻戻し、別Plan束縛、Plan差替、失敗した検証後の誤消費、単回承認の再利用 | `ApprovalDecisionStore` と実FS・OS Lock。検証関数はStore外部契約としてStub/Spy | Approvalの署名・期限・Project/Run照合、Control Planeから実Tool DispatchまでのE2E |
+| `test_approval_boundary.py` | 取消epochの巻戻し、Plan差替、失敗検証後の誤消費、単回承認の再利用、C#承認の取消・Scope不一致・期限切れ・Revision変更によるDispatch前停止 | `ApprovalDecisionStore`、`csharp_fix.before_capability` の実判定、実FS・OS Lock。Storeの外部検証CallbackのみStub/Spy | Human承認発行の真正性、汎用/Artist認可、実ToolBroker DispatchからEditorまでのE2E |
 | `test_mutation_boundary.py` | 許可範囲のPrefix衝突、禁止Scope侵入、非変更Taskの変更、Traversal、C# preimageへのコメント混入、Assets外・Alias対象への適用 | 実 `evaluate_mutation_scope`、`source_target`、`validate_csharp_patch`、`patch_revisions` とテスト所有Project FS | 実Tool適用後のSnapshot比較、Provider境界、Editor上のMutation |
 | `test_persistence_integrity.py` | Immutable Recordの上書き、破損JSON、Root脱出、別Run State、Evidence Record・Event Chain改竄、別Run Evidenceの誤利用、未確認Observation再利用 | `StateStore`、`EvidenceStore`、`atomic_store` の実保存・再読み込み | Crash途中復旧、Checkpoint/Resume、同時書込/Windows Lock、実Unity E2E |
 
@@ -31,7 +31,7 @@ PRの必須CIは限定RegressionとStatic/Packagingを**別ステップ**で実�
 
 次段階は以下の順に既存Moduleを拡張する。
 
-1. Approvalの実VerifierとControl Planeの実Dispatch抑止を接続する回帰（偽造、期限切れ、Project/Run/Scope不一致、取消）。
+1. Approval発行からToolBroker実Dispatchまでの統合回帰（偽造、別Run/Project、取消、適用後監査）。C#のDispatch直前Verifierだけは本スライスで部分観測済み。
 2. File Provider等の実変更境界で拒否時の無変更・許可時の変更・監査の保存を確認する回帰。
 3. PersistenceのCheckpoint、Recovery、Resume、Evidence改竄を現行Contractで再検証する回帰。
 4. Windows OS LockとUnity `tests/UnityAgentTest` の手動実Editor Evidenceを別Gateとして記録する。
