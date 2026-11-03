@@ -32,7 +32,7 @@ UnityAgentの既存テストを最小限かつ検出力のある形に保つた�
 2. Test実行には既存のPython `unittest`、Unity Test Framework、`tools/validate_all.py`、必要時のEvalと `tools/run_regression_gate.py` を使う。テスト結果・Capture・Static Validator・実Editor/Player/実機Evidenceは別物。
 3. Evalから派生した改善提案は `eval/change_proposals/change_proposal.py` の `build_change_proposal` と既存Schemaを再利用する。戻り値 `status: proposed`、`applies_change: false`、`requires_human_review: true` を守る。通常のTest追加にEval実行やChangeProposalを強制しない。
 4. Testコードの責務は保護する振る舞い／Failureごと。同一責務は既存Fileへまとめる。実行環境・所有者・Fixture・失敗原因が独立する場合だけ分離。ファイル数や行数そのものを合格基準にしない。
-5. 旧Regressionは固定Git Revisionから参照できるが、現行の`tests/UnityAgentTest/`だけでは製品回帰は検証されない。CIの静的Validator PASSをRegression PASSと解釈しない。
+5. 旧Regressionは固定Git Revisionから参照できる。現行の`tests/regression/`は限定的なPython回帰であり、`tests/UnityAgentTest/`はUnity Smoke。両者のPASSを製品全体や実Unity E2EのPASSへ拡張せず、静的Validatorの結果とも区別する。
 
 ## Step 1 — Scope and reuse gate（毎回・短い）
 
