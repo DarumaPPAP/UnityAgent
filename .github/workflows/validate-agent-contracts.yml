@@ -38,11 +38,14 @@ jobs:
         if: github.event_name == 'pull_request'
         run: python tools/pr_quality/validate_pr.py --event "$GITHUB_EVENT_PATH"
 
-      - name: Validate static repository contracts (Regression NOT_CONFIGURED)
+      - name: Validate static repository contracts (Regression NOT_RUN in this step)
         run: python tools/validate_all.py --profile static
 
-      - name: Declare unavailable regression coverage
-        run: echo "::warning::REGRESSION_NOT_CONFIGURED - Approval, Mutation, Persistence, Project Lease, Unity Editor/Player/Device and E2E regression were removed; this check only validates static contracts and packaging."
+      - name: Run Phase 1 Approval, Mutation and Persistence regression
+        run: python -m unittest discover -s tests/regression -p "test_*.py" -q -b
+
+      - name: Declare remaining regression coverage gaps
+        run: echo "::warning::REGRESSION_PARTIAL - Phase 1 store/scope boundary cases run above. Approval authority E2E, actual mutation dispatch, Recovery, Project Lease, Unity Editor/Player/Device and E2E are NOT_RUN."
 
       - name: Build and verify installed Python wheel
         run: |
