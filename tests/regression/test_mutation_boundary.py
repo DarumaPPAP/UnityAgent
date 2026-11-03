@@ -1,4 +1,5 @@
 """Mutation Scopeと限定C#差分の実際のGuard境界を検証する。"""
+import hashlib
 import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -6,6 +7,7 @@ import unittest
 
 from unityagent.runtime.guardrails.csharp_patch import (
     patch_revisions,
+    project_revision,
     source_target,
     validate_csharp_patch,
 )
@@ -69,20 +71,33 @@ class MutationBoundaryTests(unittest.TestCase):
 
     def test_patch_revision_is_computed_without_changing_source(self):
         with TemporaryDirectory(prefix="unityagent-mutation-") as temporary:
-            project = Path(temporary)
-            for name in ("Assets", "Packages", "ProjectSettings"):
-                (project / name).mkdir()
-            source = "public class Sample { public int Get() { return 1; } }\n"
-            target = project / "Assets" / "Sample.cs"
-            target.write_text(source, encoding="utf-8")
+            project = Path(temporary) / "original"
+            expected_project = Path(temporary) / "expected"
+            source = b"public class Sample { public int Get() { return 1; } }\n"
+            updated = b"public class Sample { public int Get() { return 2; } }\n"
+            files = {
+                "Assets/Sample.cs": source,
+                "Assets/Unchanged.cs": b"class Unchanged {}\n",
+                "Packages/manifest.json": b'{"dependencies":{}}\n',
+                "ProjectSettings/ProjectVersion.txt": b"m_EditorVersion: 6000.3.0f1\n",
+            }
+            for root in (project, expected_project):
+                for relative, contents in files.items():
+                    target = root / relative
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_bytes(contents)
+            expected_input_revision = project_revision(expected_project)
+            # 期待状態はPatch処理を使わず別Projectへ直接構成し、元Projectを保護する。
+            (expected_project / "Assets/Sample.cs").write_bytes(updated)
+            expected_result_revision = project_revision(expected_project)
 
-            revision = patch_revisions(
-                project, "Assets/Sample.cs", "return 1;", "return 2;"
-            )
+            revision = patch_revisions(project, "Assets/Sample.cs", "return 1;", "return 2;")
 
-            self.assertNotEqual(revision["expected_revision"], revision["result_revision"])
-            self.assertNotEqual(revision["source_sha256"], revision["result_source_sha256"])
-            self.assertEqual(target.read_text(encoding="utf-8"), source)
+            self.assertEqual(revision["expected_revision"], expected_input_revision)
+            self.assertEqual(revision["result_revision"], expected_result_revision)
+            self.assertEqual(revision["source_sha256"], hashlib.sha256(source).hexdigest())
+            self.assertEqual(revision["result_source_sha256"], hashlib.sha256(updated).hexdigest())
+            self.assertEqual({path.relative_to(project).as_posix(): path.read_bytes() for path in project.rglob("*") if path.is_file()}, files)
 
     def test_patch_target_outside_assets_is_rejected_without_write(self):
         with TemporaryDirectory(prefix="unityagent-mutation-") as temporary:

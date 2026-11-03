@@ -1,7 +1,11 @@
 """Persistenceの実保存・不変レコード・Evidence改竄検出を検証する。"""
+import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
+
+from jsonschema import Draft202012Validator, RefResolver
+import yaml
 
 from unityagent.persistence.contracts.definition_fingerprint import DEFINITION_FIELDS
 from unityagent.persistence.evidence.evidence_store import EvidenceStore
@@ -9,8 +13,10 @@ from unityagent.persistence.state.state_store import StateStore
 from unityagent.persistence.store.atomic_store import (
     PersistenceError,
     atomic_write_json,
+    canonical_json,
     read_json,
     resolve_ref,
+    sha256_json,
     write_immutable_json,
 )
 
@@ -28,7 +34,7 @@ def evidence_record(*, evidence_id: str, run_id: str) -> dict:
         "hash": "sha256:sample-payload",
         "producer": "unittest",
         "verification_status": "passed",
-        "provenance": {"test_source": "regression"},
+        "provenance": ["test_source:regression"],
         "definition_fingerprint": {
             "schema_version": "1.0",
             **{field: "fixture-v1" for field in DEFINITION_FIELDS},
@@ -41,6 +47,17 @@ class PersistenceIntegrityTests(unittest.TestCase):
         self.temporary = TemporaryDirectory(prefix="unityagent-persistence-")
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
+
+    def test_evidence_fixture_conforms_to_canonical_schema(self):
+        contracts = Path(__file__).resolve().parents[2] / "src/unityagent/persistence/contracts"
+        schema = yaml.safe_load((contracts / "evidence-record.schema.yaml").read_text(encoding="utf-8"))
+        fingerprint = yaml.safe_load((contracts / "definition-fingerprint.schema.yaml").read_text(encoding="utf-8"))
+        resolver = RefResolver.from_schema(schema, store={fingerprint["$id"]: fingerprint})
+        record = evidence_record(evidence_id="evidence-A", run_id="run-A")
+
+        errors = list(Draft202012Validator(schema, resolver=resolver).iter_errors(record))
+
+        self.assertEqual([(list(error.path), error.message) for error in errors], [])
 
     def test_immutable_record_rejects_conflicting_replacement(self):
         path = self.root / "snapshots" / "snapshot.json"
@@ -105,13 +122,33 @@ class PersistenceIntegrityTests(unittest.TestCase):
 
         self.assertEqual(captured.exception.code, "evidence_tampered")
 
-    def test_event_chain_corruption_is_detected(self):
+    def test_event_chain_rejects_broken_link_with_valid_event_hash(self):
         store = EvidenceStore(self.root)
         store.append(evidence_record(evidence_id="evidence-A", run_id="run-A"))
-        events = store.layout.evidence_events("run-A")
-        contents = events.read_text(encoding="utf-8")
-        events.write_text(contents.replace('"previous_event_hash":null', '"previous_event_hash":"sha256:wrong"'), encoding="utf-8")
-        self.assertNotEqual(events.read_text(encoding="utf-8"), contents)
+        store.append(evidence_record(evidence_id="evidence-B", run_id="run-A"))
+        self.assertEqual(len(EvidenceStore(self.root).verify_event_chain(expected_run_id="run-A")), 2)
+        path = store.layout.evidence_events("run-A")
+        events = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+        events[1]["previous_event_hash"] = sha256_json({"unrelated_event": True})
+        # 自身のハッシュは整合させ、前イベントとの連結検査だけで拒否させる。
+        events[1]["event_hash"] = sha256_json({key: value for key, value in events[1].items() if key != "event_hash"})
+        path.write_text("".join(canonical_json(event) + "\n" for event in events), encoding="utf-8")
+
+        with self.assertRaises(PersistenceError) as captured:
+            store.verify_event_chain(expected_run_id="run-A")
+
+        self.assertEqual(captured.exception.code, "evidence_event_tampered")
+
+    def test_event_chain_rejects_invalid_event_hash_with_valid_link(self):
+        store = EvidenceStore(self.root)
+        store.append(evidence_record(evidence_id="evidence-A", run_id="run-A"))
+        store.append(evidence_record(evidence_id="evidence-B", run_id="run-A"))
+        self.assertEqual(len(EvidenceStore(self.root).verify_event_chain(expected_run_id="run-A")), 2)
+        path = store.layout.evidence_events("run-A")
+        events = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+        # 前イベントへの参照を保ち、内容と自身のハッシュの不一致だけを作る。
+        events[1]["record_hash"] = sha256_json({"other_record": True})
+        path.write_text("".join(canonical_json(event) + "\n" for event in events), encoding="utf-8")
 
         with self.assertRaises(PersistenceError) as captured:
             store.verify_event_chain(expected_run_id="run-A")

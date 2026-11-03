@@ -22,6 +22,9 @@ PRの必須CIは限定RegressionとStatic/Packagingを**別ステップ**で実�
 
 - 各ケースの境界入力・期待値はテスト内に残す。共通化はFS資源の所有管理と最小限の正当EvidenceRecord生成に限定。
 - 意図した失敗を検出するため、正しく受理すべきケースと拒否ケースを併置する。単なるMock戻り値のAssertionでは成功としない。
+- Evidence Fixtureは正本の `evidence-record.schema.yaml` と参照先のDefinitionFingerprint Schemaで検証する。`provenance` は文字列配列とし、不正Recordの受理を正常系に固定しない。
+- Event Chainは正常な2イベントを受理した後、連結だけの破損（自身のハッシュは再計算）と、自身のハッシュだけの不整合（連結は保持）を別ケースで拒否する。
+- C#差分Revisionは、期待する前後状態を別のテスト所有Projectに直接構成して照合する。入力・出力ソースの具体的なハッシュと元Project全ファイルの無変更も確認し、単なるRevisionの非同値で成功にしない。
 - TemporaryDirectoryとテスト所有のAssetだけを使用する。Symlink / Hardlink作成がOS権限上できなければケースは`skip`し、PASSと報告しない。
 - Python CIのPASSはUnity Compile / EditMode / PlayMode / Player / 実機 / VisualのEvidenceではない。
 
