@@ -49,6 +49,8 @@ jobs:
           import unittest
 
           suite = unittest.defaultTestLoader.discover("tests/regression", pattern="test_*.py")
+          if suite.countTestCases() == 0:
+              raise SystemExit("REGRESSION_NOT_CONFIGURED: no Python regression tests discovered")
           result = unittest.TextTestRunner(verbosity=0, buffer=True).run(suite)
           if result.skipped:
               print(f"REGRESSION_BLOCKED_NOT_RUN: {len(result.skipped)} test(s) skipped")
