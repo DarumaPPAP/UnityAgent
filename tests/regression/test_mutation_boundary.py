@@ -4,6 +4,11 @@ import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
+import json
+import sys
+import yaml
+from unityagent.runtime.tooling.providers.file.file_provider import FileProvider
+from unityagent.runtime.runner.codex.codex_runner import execute as run_codex
 
 from unityagent.runtime.guardrails.csharp_patch import (
     patch_revisions,
@@ -141,6 +146,120 @@ class MutationBoundaryTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "unaliased regular file"):
                 source_target(project, "Assets/Sample.cs")
             self.assertEqual(target.read_text(encoding="utf-8"), "class Sample {}")
+
+
+class FileMutationTests(unittest.TestCase):
+    """実FileProviderの書込みと、独立したFS差分でScopeを観測する。"""
+
+    def setUp(self):
+        temporary = TemporaryDirectory(prefix="ua-file-")
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.project = self.root / "project"
+        self.files = {"Assets/Allowed/Sample.cs": b"class Sample { int Value() { return 1; } }\r\n", "Assets/Other.cs": b"class Other {}\n", "Packages/manifest.json": b"{}\n"}
+        for relative, content in self.files.items():
+            target = self.project / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(content)
+        self.provider = FileProvider(self.project)
+        self.request = {"schema_version": "1.0", "capability": "source.patch", "project_root": str(self.project), "operation_kind": "source_mutation", "required_evidence": ["source_diff"], "mutation_scope": {"allowed_paths": ["Assets/Allowed"], "prohibited_paths": []}, "approval_ref": "approval-A", "preferred_surface": "host"}
+
+    def snapshot(self):
+        return {path.relative_to(self.project).as_posix(): path.read_bytes() for path in self.project.rglob("*") if path.is_file()}
+
+    def apply(self, relative="Assets/Allowed/Sample.cs", **overrides):
+        parameters = {"relative_path": relative, "expected_text": "return 1;", "replacement_text": "return 2;", "policy_allowed": True, "approval_required": True, "approval_complete": True, "preserve_newlines": True}
+        parameters.update(overrides)
+        return self.provider.patch_text(self.request, **parameters)
+
+    def test_applied_diff_is_exact_and_within_scope(self):
+        outcome = self.apply()
+        after = self.snapshot()
+        self.assertEqual(outcome["status"], "passed")
+        expected = {**self.files, "Assets/Allowed/Sample.cs": b"class Sample { int Value() { return 2; } }\r\n"}
+        self.assertEqual(after, expected)
+        changed = [path for path in set(self.files) | set(after) if self.files.get(path) != after.get(path)]
+        scope = evaluate_mutation_scope(work_kind="mutation", changed_paths=changed, **self.request["mutation_scope"])
+        self.assertEqual(scope["status"], "passed")
+        self.assertEqual(changed, ["Assets/Allowed/Sample.cs"])
+        self.assertEqual(outcome["before_sha256"], hashlib.sha256(self.files[changed[0]]).hexdigest())
+        self.assertEqual(outcome["after_sha256"], hashlib.sha256(expected[changed[0]]).hexdigest())
+
+    def test_invalid_targets_fail_closed_without_project_changes(self):
+        for relative in ("../outside.cs", "Assets/../Packages/manifest.json", "Assets/Other.cs", "Assets/AllowedExtra/Sample.cs", str(self.project / "Assets/Allowed/Sample.cs")):
+            with self.subTest(relative=relative):
+                outcome = self.apply(relative)
+                self.assertEqual(outcome["status"], "failed")
+                self.assertEqual(outcome["failure_class"], "scope_violation")
+                self.assertEqual(self.snapshot(), self.files)
+
+    def test_prohibition_overrides_allowed_scope_before_write(self):
+        self.request["mutation_scope"]["prohibited_paths"] = ["Assets/Allowed/Sample.cs"]
+        outcome = self.apply()
+        self.assertEqual(outcome["failure_class"], "scope_violation")
+        self.assertEqual(outcome["reason"], "prohibited_path_mutated")
+        self.assertEqual(self.snapshot(), self.files)
+
+    def test_wrong_project_is_rejected_before_write(self):
+        self.request["project_root"] = str(self.project / "other-project")
+        self.assertEqual(self.apply()["failure_class"], "scope_violation")
+        self.assertEqual(self.snapshot(), self.files)
+
+    def test_missing_approval_or_stale_preimage_preserves_source(self):
+        for parameters, failure in (({"approval_complete": False}, "blocked_by_approval"), ({"expected_sha256": "0" * 64}, "precondition_failed"), ({"expected_text": "return 9;"}, "precondition_failed")):
+            with self.subTest(parameters=parameters):
+                self.assertEqual(self.apply(**parameters)["failure_class"], failure)
+                self.assertEqual(self.snapshot(), self.files)
+
+    def test_post_apply_scope_check_detects_unexpected_additional_change(self):
+        self.assertEqual(self.apply()["status"], "passed")
+        # Provider外の故障を注入し、申告pathだけでなく実差分が拒否されることを確認する。
+        (self.project / "Assets/Other.cs").write_bytes(b"unexpected mutation")
+        after = self.snapshot()
+        changed = [path for path in set(self.files) | set(after) if self.files.get(path) != after.get(path)]
+        outcome = evaluate_mutation_scope(work_kind="mutation", changed_paths=changed, **self.request["mutation_scope"])
+        self.assertEqual(outcome["status"], "failed")
+        self.assertEqual(outcome["paths"], ["Assets/Other.cs"])
+
+    def run_provider_process(self, *, inject_escape):
+        # Agentの判断は代替CLIで固定し、実子Process・FileProvider・適用後Guardを通す。
+        driver = self.root / "provider_cli.py"
+        driver.write_text('''import json, sys
+from pathlib import Path
+from unityagent.runtime.tooling.providers.file.file_provider import FileProvider
+request = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+root = Path(request["project_root"])
+result = FileProvider(root).patch_text(request, relative_path="Assets/Allowed/Sample.cs", expected_text="return 1;", replacement_text="return 2;", policy_allowed=True, approval_required=True, approval_complete=True, preserve_newlines=True)
+if result["status"] != "passed":
+    raise RuntimeError(result)
+if sys.argv[2] == "escape":
+    (root / "Assets/Other.cs").write_bytes(b"unexpected mutation")
+''', encoding="utf-8")
+        provider_request = self.root / "provider-request.json"
+        provider_request.write_text(json.dumps(self.request), encoding="utf-8")
+        request = {"schema_version": "1.0", "run_id": "run-A", "step_id": "step-A", "action_id": "action-A", "workspace_root": str(self.project), "prompt": "test-owned deterministic FileProvider invocation", "definition_fingerprint": {}, "execution": {"profile": "personal_full_control", "work_kind": "mutation", "mutation_authorized": True, "human_approval_required": True, "human_approval_granted": True}, "tool_identity": {"model": "test-driver", "provider": "test"}, "mutation_scope": self.request["mutation_scope"]}
+        request_path = self.root / "runtime-request.json"
+        request_path.write_text(json.dumps(request), encoding="utf-8")
+        output = self.root / "output"
+        result = run_codex(request, output, command_prefix=[sys.executable, str(driver), str(provider_request), "escape" if inject_escape else "normal"], timeout_seconds=20, reasoning_effort="high")
+        evidence = yaml.safe_load((output / "mutation-evidence.yaml").read_text(encoding="utf-8"))
+        return result, evidence
+
+    def test_runtime_observes_actual_file_provider_mutation(self):
+        result, evidence = self.run_provider_process(inject_escape=False)
+        self.assertEqual(result["status"], "passed", result)
+        self.assertEqual(evidence["changed_paths"], {"observation_state": "observed", "paths": ["Assets/Allowed/Sample.cs"]})
+        self.assertEqual(evidence["scope_status"], "within_scope")
+        self.assertEqual(self.snapshot(), {**self.files, "Assets/Allowed/Sample.cs": b"class Sample { int Value() { return 2; } }\r\n"})
+
+    def test_runtime_fails_closed_on_actual_extra_change_after_provider(self):
+        result, evidence = self.run_provider_process(inject_escape=True)
+        self.assertEqual(result["exit_code"], 0)
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["runtime_failure"]["reason"], "mutation_escaped_allowed_scope")
+        self.assertEqual(evidence["changed_paths"]["paths"], ["Assets/Allowed/Sample.cs", "Assets/Other.cs"])
+        self.assertNotEqual(evidence["scope_status"], "within_scope")
+        self.assertEqual((self.project / "Packages/manifest.json").read_bytes(), self.files["Packages/manifest.json"])
 
 
 if __name__ == "__main__":

@@ -41,10 +41,11 @@ jobs:
       - name: Validate static repository contracts (Regression NOT_RUN in this step)
         run: python tools/validate_all.py --profile static
 
-      - name: Run Phase 1 Approval, Mutation and Persistence regression
+      - name: Run P0 Approval, Mutation and Persistence regression
         shell: bash
         run: |
-          python - <<'PY'
+          set -o pipefail
+          python - <<'PY' 2>&1 | tee p0-regression.log
           import sys
           import unittest
 
@@ -57,8 +58,16 @@ jobs:
           sys.exit(0 if result.wasSuccessful() and not result.skipped else 1)
           PY
 
+      - name: Upload P0 regression execution log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: p0-regression-${{ github.sha }}
+          path: p0-regression.log
+          if-no-files-found: warn
+
       - name: Declare remaining regression coverage gaps
-        run: echo "::warning::REGRESSION_PARTIAL - Phase 1 store/scope boundary cases run above. Approval authority E2E, actual mutation dispatch, Recovery, Project Lease, Unity Editor/Player/Device and E2E are NOT_RUN."
+        run: echo "::warning::REGRESSION_PARTIAL - P0 Python authority HTTP, Control Plane approval gate, File Provider/process scope and Checkpoint/Resume recovery run above. Real Editor context/discovery, Unity Apply, Project Lease, Unity Editor/Player/Device E2E remain BLOCKED_NOT_RUN."
 
       - name: Build and verify installed Python wheel
         run: |
