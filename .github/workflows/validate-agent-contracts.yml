@@ -58,12 +58,46 @@ jobs:
           sys.exit(0 if result.wasSuccessful() and not result.skipped else 1)
           PY
 
-      - name: Upload P0 regression execution log
+      - name: Verify P0 fault detection (expected assertion failures)
+        shell: bash
+        run: |
+          set -o pipefail
+          python - <<'PY' 2>&1 | tee p0-faults.log
+          import io
+          import sys
+          import unittest
+          from unittest.mock import patch
+
+          sys.path.insert(0, "tests/regression")
+          cases = [
+              ("signature", "test_approval_boundary.SignedAuthorityTests.test_invalid_signature_cannot_consume_or_block_later_valid_request", "unityagent.control_plane.artist_authority.hmac.compare_digest", lambda *a: True, 1),
+              ("provider-scope", "test_mutation_boundary.FileMutationTests.test_prohibition_overrides_allowed_scope_before_write", "unityagent.runtime.tooling.providers.file.file_provider.evaluate_mutation_scope", lambda **kw: {"status": "passed"}, 1),
+              ("checkpoint-evidence", "test_persistence_integrity.CheckpointRecoveryTests.test_tampered_evidence_prevents_checkpoint_creation", "unityagent.persistence.checkpoint.checkpoint_store.EvidenceStore.verify_record", lambda *a, **kw: None, 1),
+              ("restore", "test_persistence_integrity.CheckpointRecoveryTests.test_resume_and_restore_exact_state_preserves_later_evidence", "unityagent.persistence.checkpoint.checkpoint_store.CheckpointStore.restore", lambda *a: None, 1),
+              ("post-apply-scope", "test_mutation_boundary.FileMutationTests.test_runtime_fails_closed_on_actual_extra_change_after_provider", "unityagent.runtime.runner.codex.codex_runner.evaluate_mutation_scope", lambda **kw: {"status": "passed", "scope_status": "within_scope"}, 1),
+              ("provider-entry", "test_mutation_boundary.FileMutationTests.test_broker_applies_bounded_patch_through_real_provider_entry", "unityagent.runtime.tooling.providers.file.file_provider.FileProvider.execute", lambda *a, **kw: {"status": "passed", "provider_ref": "file", "evidence": ["source_diff"]}, 1),
+              ("broker-dispatch", "test_mutation_boundary.FileMutationTests.test_broker_applies_bounded_patch_through_real_provider_entry", "unityagent.runtime.tooling.tool_broker.ToolBroker.dispatch", lambda *a, **kw: {"status": "completed", "resolution": {"provider_ref": "file"}, "provider_result": {"status": "passed"}}, 1),
+              ("checkpoint-state", "test_persistence_integrity.CheckpointRecoveryTests.test_invalid_current_state_cannot_publish_checkpoint", "unityagent.persistence.state.state_store.StateStore.validate_state", lambda *a, **kw: None, 8),
+              ("resume-restore-state", "test_persistence_integrity.CheckpointRecoveryTests.test_schema_invalid_snapshot_blocks_resume_and_restore_without_changes", "unityagent.persistence.state.state_store.StateStore.validate_state", lambda *a, **kw: None, 8),
+          ]
+          for label, name, target, replacement, expected in cases:
+              log = io.StringIO()
+              with patch(target, replacement):
+                  result = unittest.TextTestRunner(stream=log, buffer=True).run(unittest.defaultTestLoader.loadTestsFromName(name))
+              print(f"EXPECTED_FAULT_DETECTED {label}: tests={result.testsRun} assertion_failures={len(result.failures)} errors={len(result.errors)} skipped={len(result.skipped)}")
+              if result.testsRun != 1 or len(result.failures) != expected or result.errors or result.skipped:
+                  print(log.getvalue())
+                  raise SystemExit(f"FAULT_NOT_DETECTED: {label}")
+          PY
+
+      - name: Upload P0 regression and fault detection logs
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: p0-regression-${{ github.sha }}
-          path: p0-regression.log
+          path: |
+            p0-regression.log
+            p0-faults.log
           if-no-files-found: warn
 
       - name: Declare remaining regression coverage gaps

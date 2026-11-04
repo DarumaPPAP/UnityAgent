@@ -263,6 +263,66 @@ class CheckpointRecoveryTests(unittest.TestCase):
                     self.resume()
                 self.assertEqual(captured.exception.code, code)
 
+    def invalid_states(self):
+        return [
+            ("execution-state", {key: value for key, value in self.execution.items() if key != "status"}, "contract_missing_field"),
+            ("workflow-state", {key: value for key, value in self.workflow.items() if key != "active_node_id"}, "contract_missing_field"),
+            ("loop-control-state", {key: value for key, value in self.loop.items() if key != "decision"}, "contract_missing_field"),
+            ("execution-state", {**self.execution, "status": "invalid"}, "invalid_execution_state"),
+            ("workflow-state", {**self.workflow, "active_node_id": 17}, "invalid_workflow_state"),
+            ("loop-control-state", {**self.loop, "decision": "invalid"}, "invalid_loop_control_state"),
+            ("loop-control-state", {**self.loop, "semantic_attempt": True}, "invalid_loop_control_state"),
+            ("loop-control-state", {**self.loop, "loop_id": "../escaped"}, "invalid_identifier"),
+        ]
+
+    def test_invalid_current_state_cannot_publish_checkpoint(self):
+        paths = {"execution-state": self.states.layout.execution_state("run-A"), "workflow-state": self.states.layout.workflow_state("run-A"), "loop-control-state": self.states.layout.loop_state("run-A", "loop-A")}
+        for index, (kind, invalid, code) in enumerate(self.invalid_states()):
+            with self.subTest(kind=kind, invalid=invalid):
+                path = paths[kind]
+                original = path.read_bytes()
+                try:
+                    atomic_write_json(path, invalid)
+                    before = {item: item.read_bytes() for item in self.states.layout.run_root("run-A").joinpath("current").rglob("*") if item.is_file()}
+                    with self.assertRaises(PersistenceError) as captured:
+                        self.checkpoint(checkpoint_id=f"invalid-{index}")
+                    self.assertEqual(captured.exception.code, code)
+                    self.assertFalse(self.states.layout.checkpoint("run-A", f"invalid-{index}").exists())
+                    self.assertEqual({item: item.read_bytes() for item in before}, before)
+                finally:
+                    path.write_bytes(original)
+
+    def test_schema_invalid_snapshot_blocks_resume_and_restore_without_changes(self):
+        checkpoint = self.checkpoint()
+        checkpoint_path = self.states.layout.checkpoint("run-A", "cp-A")
+        refs = {"execution-state": checkpoint["execution_state_ref"], "workflow-state": checkpoint["workflow_state_ref"], "loop-control-state": checkpoint["loop_control_state_refs"][0]}
+        self.states.save_execution_state({**self.execution, "status": "failed"})
+        self.states.save_loop_control_state({**self.loop, "loop_id": "later-loop"})
+        current = self.states.layout.run_root("run-A") / "current"
+        before = {item.relative_to(current).as_posix(): item.read_bytes() for item in current.rglob("*") if item.is_file()}
+        for kind, invalid, code in self.invalid_states():
+            with self.subTest(kind=kind, invalid=invalid):
+                path = self.root / refs[kind]
+                original = path.read_bytes()
+                try:
+                    candidate = deepcopy(checkpoint)
+                    atomic_write_json(path, invalid)
+                    if kind == "loop-control-state":
+                        candidate["state_snapshot_hashes"]["loop_control_states"] = {invalid.get("loop_id", "loop-A"): sha256_json(invalid)}
+                    else:
+                        candidate["state_snapshot_hashes"][kind.replace("-", "_")] = sha256_json(invalid)
+                    candidate["checkpoint_hash"] = sha256_json({key: value for key, value in candidate.items() if key != "checkpoint_hash"})
+                    atomic_write_json(checkpoint_path, candidate)
+                    # Hashは成立させ、State契約の拒否と全Current保護を独立して確認する。
+                    for operation in (self.resume, lambda: CheckpointStore(self.root).restore("run-A", "cp-A")):
+                        with self.assertRaises(PersistenceError) as captured:
+                            operation()
+                        self.assertEqual(captured.exception.code, code)
+                        self.assertEqual({item.relative_to(current).as_posix(): item.read_bytes() for item in current.rglob("*") if item.is_file()}, before)
+                finally:
+                    path.write_bytes(original)
+                    atomic_write_json(checkpoint_path, checkpoint)
+
     def test_explicit_child_run_evidence_union_survives_checkpoint_and_restore(self):
         self.evidence.append(evidence_record(evidence_id="ev-B", run_id="run-B"))
         # Task DAGの親Checkpointは、明示された子RunのEvidence unionを保持する契約。

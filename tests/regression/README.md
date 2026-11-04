@@ -13,19 +13,20 @@ python -m build
 python tools/verify_installed_wheel.py --wheel <今回生成したwheelのパス>
 ```
 
-Windowsでは書込み可能な専用一時領域をTEMP/TMPへ指定する。CIは空Suite・SkipをFail Closedとし、RegressionとStatic/Packagingを別Stepで実行する。実行ログは `p0-regression-<CI SHA>` Artifactへ保存する。個別Moduleはdiscoverの `-p` で指定できる。
+Windowsでは書込み可能な専用一時領域をTEMP/TMPへ指定する。CIは空Suite・SkipをFail Closedとし、RegressionとStatic/Packagingを別Stepで実行する。通常回帰のp0-regression.logと故障注入のp0-faults.logは `p0-regression-<CI SHA>` Artifactへ保存する。故障注入Stepは意図したAssertion失敗だけを合格とし、Error・Skipや故障の見逃しはCIを失敗させる。個別Moduleはdiscoverの `-p` で指定できる。
 
 ## 保護Invariantと対応表
 
 | 領域 / Module | 実行する実経路・観測 | 保護する失敗 | 代替依存・未達 |
 | --- | --- | --- | --- |
 | Approval / `test_approval_boundary.py` | 実register/approve、Resolver、ArtistAuthorityのloopback HTTP/HMACと応答署名、永続消費、Control Plane `execute_artist` の承認判定からDispatch境界。既存C# Gateも維持 | 不正署名、期限到達、別Project、セッション開始後取消、二重消費、Plan/Revision/Scope差替。拒否時は未消費・元Source無変更 | Editor Plan観測はテスト所有データ。Control PlaneケースのContext準備・Editor発見・Dispatch先は代替。実Editor ApplyとHuman承認の真正性はBLOCKED_NOT_RUN |
-| Mutation / `test_mutation_boundary.py` | 実FileProvider適用、全Projectの独立FS差分、Runtime execute → 実子Process → 実FileProvider → 適用後Snapshot/Scope → mutation-evidence.yaml | Traversal、Scope Prefix、禁止優先、別Project、古いpreimage、承認不足、正常終了後の余分なScope外変更 | Agent CLIの判断をテスト所有の決定的Processで代替。実Agent推論品質・Editor MutationはBLOCKED_NOT_RUN |
-| Persistence / `test_persistence_integrity.py` | 実State/Evidence → Checkpoint → evaluate_resume → restore、実子Processのatomic replace直前os._exit、実Control Plane Task DAGの中断後Resume拒否 | 破損JSON/Checkpoint Hash、別Run Snapshot、Evidence改竄、定義非互換、Action発行後Context変更、実行中外部副作用の不確定性、Currentの部分上書き | DAG子実行の中断はSystemExitで注入。電源断・Disk障害・全restore書込み間の強制終了の原子性は未保証。Unity Asset復元は対象外 |
+| Mutation / `test_mutation_boundary.py` | 実ToolBroker → 実Resolver/Guard/Lease → FileProvider.execute → bounded C#適用、全Projectの独立FS差分、Runtime execute → 実子Process → 実FileProvider → 適用後Snapshot/Scope → mutation-evidence.yaml | 実Broker/Provider入口の無処理化、Traversal、Scope Prefix、禁止優先、別Project、古いpreimage、承認不足、正常終了後の余分なScope外変更 | Agent CLIの判断をテスト所有の決定的Processで代替。実Agent推論品質・Editor MutationはBLOCKED_NOT_RUN |
+| Persistence / `test_persistence_integrity.py` | 実State/Evidence → Checkpoint → evaluate_resume → restore、実子Processのatomic replace直前os._exit、実Control Plane Task DAGの中断後Resume拒否 | 破損JSON/Checkpoint Hash、必須項目欠落・不正値/型・不正IDのState（有効Hashも含む）、別Run Snapshot、Evidence改竄、定義非互換、Action発行後Context変更、実行中外部副作用の不確定性、Currentの部分上書き | DAG子実行の中断はSystemExitで注入。電源断・Disk障害・全restore書込み間の強制終了の原子性は未保証。Unity Asset復元は対象外 |
 
 - 正常系を併置し、無条件拒否・何もしない実装を検出する。
 - Evidenceの期待値は正本Schemaにも照合し、Event自身のHashと前Eventへの連結を独立検証する。
 - **CheckpointのEvidence refsは、Task DAGが明示した子Run unionを許容する既存契約。** 各Record自身のRun/Event Chain整合性をverify_recordで確認する。任意の別Run Evidenceを親子関係で拒否する仕組みは現行Schemaにない。Checkpoint/SnapshotのRun identityと混同しない。
+- StateStoreの保存・読込・Checkpoint検証は同じ正本State Schemaを使用する。Checkpoint作成前、およびResume/restoreの変更開始前に全Stateを検証し、不正データ拒否時はCurrent全ファイルを保持する。
 - restoreはCurrent Stateだけを戻す。後から追加されたEvidenceを保持し、Checkpoint後に追加したLoopを残さない。
 - RuntimeのScope違反検出は失敗状態とEvidenceを返す。既に行われた悪意ある子Processの変更を自動Rollbackする契約ではない。拒否されたFileProvider要求については元ファイルの無変更を確認する。
 - TemporaryDirectoryだけでFixtureを所有し、ユーザーAssetや既存Projectを再利用しない。Symlink/Hardlinkを作成できなければSkipし、PASSへ換算しない。
@@ -41,6 +42,15 @@ Windowsでは書込み可能な専用一時領域をTEMP/TMPへ指定する。CI
 | `unityagent.persistence.checkpoint.checkpoint_store.EvidenceStore.verify_record` | `lambda *args, **kw: None` | `CheckpointRecoveryTests.test_tampered_evidence_prevents_checkpoint_creation` |
 | `unityagent.persistence.checkpoint.checkpoint_store.CheckpointStore.restore` | `lambda *args: None` | `CheckpointRecoveryTests.test_resume_and_restore_exact_state_preserves_later_evidence` |
 | `unityagent.runtime.runner.codex.codex_runner.evaluate_mutation_scope` | `lambda **kw: {"status": "passed", "scope_status": "within_scope"}` | `FileMutationTests.test_runtime_fails_closed_on_actual_extra_change_after_provider` |
+
+CIは上表5種に加え、以下4種も毎回実行する。無処理化は実際の書込み・実行回数のAssertionで検出し、実State契約の検証欠落は8種類の不正入力で検出する。
+
+| 故障対象 | 検出するテスト | 期待Assertion FAIL数 |
+| --- | --- | --- |
+| `FileProvider.execute` を無処理の成功応答へ置換 | `FileMutationTests.test_broker_applies_bounded_patch_through_real_provider_entry` | 1 |
+| `ToolBroker.dispatch` を無処理の成功応答へ置換 | 同上 | 1 |
+| `StateStore.validate_state` を無処理化 | `CheckpointRecoveryTests.test_invalid_current_state_cannot_publish_checkpoint` | 8 |
+| `StateStore.validate_state` を無処理化 | `CheckpointRecoveryTests.test_schema_invalid_snapshot_blocks_resume_and_restore_without_changes` | 8 |
 
 実行例（対象Moduleは `sys.path.insert(0, "tests/regression")` で読込む）：
 

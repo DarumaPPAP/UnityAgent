@@ -7,8 +7,14 @@ import unittest
 import json
 import sys
 import yaml
+from functools import partial
+from unittest.mock import Mock, patch
 from unityagent.runtime.tooling.providers.file.file_provider import FileProvider
 from unityagent.runtime.runner.codex.codex_runner import execute as run_codex
+from unityagent.runtime.tooling.tool_broker import ToolBroker
+from unityagent.runtime.tooling.capability_resolver import ResolutionContext
+from unityagent.runtime.tooling.environment.discovery import discover_environment
+from unityagent.runtime.execution_control.resource_lease import RuntimeProjectLease
 
 from unityagent.runtime.guardrails.csharp_patch import (
     patch_revisions,
@@ -157,6 +163,7 @@ class FileMutationTests(unittest.TestCase):
         self.root = Path(temporary.name)
         self.project = self.root / "project"
         self.files = {"Assets/Allowed/Sample.cs": b"class Sample { int Value() { return 1; } }\r\n", "Assets/Other.cs": b"class Other {}\n", "Packages/manifest.json": b"{}\n"}
+        self.files["ProjectSettings/ProjectVersion.txt"] = b"m_EditorVersion: 6000.3.0f1\n"
         for relative, content in self.files.items():
             target = self.project / relative
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -260,6 +267,51 @@ if sys.argv[2] == "escape":
         self.assertEqual(evidence["changed_paths"]["paths"], ["Assets/Allowed/Sample.cs", "Assets/Other.cs"])
         self.assertNotEqual(evidence["scope_status"], "within_scope")
         self.assertEqual((self.project / "Packages/manifest.json").read_bytes(), self.files["Packages/manifest.json"])
+
+    def bounded_dispatch(self, *, approval_complete=True, allowed_paths=None, arguments=None):
+        request = {**self.request, "preferred_surface": "project", "mutation_scope": {"allowed_paths": allowed_paths or ["Assets/Allowed"], "prohibited_paths": []}}
+        snapshot = discover_environment(str(self.project), mutation_allowed_paths=["Assets/Allowed"], editor_candidates=[], editor_processes=[], editor_candidates_observed=True, editor_processes_observed=True, which_fn=lambda name: None)
+        context = ResolutionContext(policy_allowed=True, approval_required=True, approval_complete=approval_complete)
+        revisions = patch_revisions(self.project, "Assets/Allowed/Sample.cs", "return 1;", "return 2;")
+        parameters = {"bounded_csharp_patch": True, "relative_path": "Assets/Allowed/Sample.cs", "expected_text": "return 1;", "replacement_text": "return 2;", **revisions, **(arguments or {})}
+        executor = Mock(wraps=self.provider.execute)
+        # Leaseの保存先だけを所有領域へ束縛し、実Lease・Guard・Resolver・Dispatcherを通す。
+        with patch("unityagent.runtime.dispatcher.tool_runtime_dispatcher.RuntimeProjectLease", partial(RuntimeProjectLease, lease_root=self.root / "leases")):
+            result = ToolBroker().dispatch(request, snapshot, context=context, executors={"file": executor}, provider_arguments={"file": parameters}, maximum_retry_attempts=0)
+        return result, executor, revisions
+
+    def test_broker_applies_bounded_patch_through_real_provider_entry(self):
+        before = project_revision(self.project)
+        result, executor, revisions = self.bounded_dispatch()
+        self.assertEqual(result["status"], "completed", result)
+        self.assertEqual(result["resolution"]["provider_ref"], "file")
+        executor.assert_called_once()
+        self.assertEqual(self.snapshot(), {**self.files, "Assets/Allowed/Sample.cs": b"class Sample { int Value() { return 2; } }\r\n"})
+        self.assertEqual(before, revisions["expected_revision"])
+        self.assertEqual(project_revision(self.project), revisions["result_revision"])
+        self.assertEqual(result["provider_result"]["before_sha256"], hashlib.sha256(self.files["Assets/Allowed/Sample.cs"]).hexdigest())
+        self.assertEqual(result["provider_result"]["after_sha256"], hashlib.sha256(b"class Sample { int Value() { return 2; } }\r\n").hexdigest())
+
+    def test_broker_incomplete_approval_never_invokes_provider(self):
+        result, executor, _ = self.bounded_dispatch(approval_complete=False)
+        self.assertEqual(result["status"], "blocked")
+        self.assertEqual(result["provider_result"]["failure_class"], "blocked_by_approval")
+        executor.assert_not_called()
+        self.assertEqual(self.snapshot(), self.files)
+
+    def test_broker_provider_scope_rejection_preserves_entire_project(self):
+        result, executor, _ = self.bounded_dispatch(allowed_paths=["Assets/Other.cs"])
+        self.assertEqual(result["status"], "blocked", result)
+        self.assertEqual(result["provider_result"]["failure_class"], "scope_violation")
+        executor.assert_called_once()
+        self.assertEqual(self.snapshot(), self.files)
+
+    def test_broker_provider_rechecks_patch_preimage_before_write(self):
+        result, executor, _ = self.bounded_dispatch(arguments={"source_sha256": "0" * 64})
+        self.assertEqual(result["status"], "blocked", result)
+        self.assertEqual(result["provider_result"]["failure_class"], "precondition_failed")
+        executor.assert_called_once()
+        self.assertEqual(self.snapshot(), self.files)
 
 
 if __name__ == "__main__":

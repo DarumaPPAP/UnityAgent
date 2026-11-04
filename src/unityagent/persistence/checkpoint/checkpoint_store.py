@@ -127,9 +127,11 @@ class CheckpointStore:
             raise PersistenceError("unsupported_checkpoint_schema", f"unsupported checkpoint schema: {record.get('schema_version')}")
 
         # ハッシュが一致しても、別Runの状態を復元先へ書き込む根拠にはしない。
-        references = [record["execution_state_ref"], record["workflow_state_ref"], *record.get("loop_control_state_refs", [])]
-        for ref in references:
+        references = [("execution-state", record["execution_state_ref"]), ("workflow-state", record["workflow_state_ref"])]
+        references.extend(("loop-control-state", ref) for ref in record.get("loop_control_state_refs", []))
+        for kind, ref in references:
             snapshot = read_json(resolve_ref(self.layout.root, ref))
+            self.states.validate_state(snapshot, kind)
             if snapshot.get("run_id") != record["run_id"]:
                 raise PersistenceError("state_identity_mismatch", "checkpoint snapshot belongs to another run")
 
