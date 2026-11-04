@@ -4,7 +4,20 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
+import hashlib
+import hmac
+import json
+import secrets
+from urllib.error import HTTPError
+from urllib.request import Request, urlopen
+
+from unityagent.control_plane.artist_approval import register_artist_plan, approve_artist_plan
+from unityagent.control_plane.artist_authority import ArtistAuthority
+from unityagent.control_plane.artist_execution import execute_artist
+from unityagent.control_plane.unity_agent_control_plane import UnityAgentControlPlane
+from unityagent.runtime.reference_implementation.contracts import ContractValidationError
+from unityagent.runtime.tooling.providers.unity_cli.artist_command_adapter import ArtistCommand
 
 from unityagent.persistence.approval.approval_store import ApprovalDecisionStore
 from unityagent.persistence.store.atomic_store import PersistenceError, read_json, sha256_json
@@ -288,6 +301,138 @@ class ApprovalDispatchTests(unittest.TestCase):
 
         self.assertFalse(self.application_path().exists())
         self.assertEqual(self.source.read_bytes(), changed)
+
+
+class SignedAuthorityTests(unittest.TestCase):
+    """Editorの代わりに実署名HTTPを送る。Editor内部のApplyはP1で検証する。"""
+
+    def setUp(self):
+        temporary = TemporaryDirectory(prefix="ua-auth-")
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.project = self.root / "project"
+        (self.project / "Assets").mkdir(parents=True)
+        self.source = self.project / "Assets/Sample.cs"
+        self.source.write_bytes(b"class Sample {}\n")
+        self.plane = UnityAgentControlPlane(self.root / "state")
+        self.scope = {"allowed_paths": ["Assets"], "prohibited_paths": ["Packages", "ProjectSettings"]}
+        observed_plan = {"schemaVersion": "2.0", "product": "UnityArtistCLI", "command": "artist.plan", "status": "passed", "errors": [], "approvalRequired": True, "savePerformed": False, "contextReceipt": {"receivedContextId": "ctx-A", "receivedContextFingerprint": "fingerprint-A"}, "baseRevision": "revision-A", "revision": "revision-A", "planId": "plan-A", "exactDiff": [{"target": "sample-target", "property": "value", "before": "1", "after": "2"}], "mutationPaths": ["Assets/Sample.cs"]}
+        self.plan = register_artist_plan(self.plane, str(self.project), "run-A", "artist.apply", observed_plan, "ctx-A", "fingerprint-A", self.scope)
+        self.decision = approve_artist_plan(self.plane, "plan-A")
+        self.store = self.plane.approval_resolver.store
+
+    def authority(self):
+        return ArtistAuthority.for_plan(resolver=self.plane.approval_resolver, store=self.store, binding=self.decision["binding"], decision=self.decision)
+
+    def send(self, authority, *, project=None, signature_valid=True):
+        descriptor = read_json(authority.descriptor_path)
+        request = {"sessionId": descriptor["sessionId"], "nonce": secrets.token_hex(16), "projectRoot": project or str(self.project), "command": "artist.apply", "planId": "plan-A", "expectedRevision": "revision-A", "approvalToken": authority.token, "exactDiff": self.plan["exact_diff"], "context": {"contextId": "ctx-A", "contextFingerprint": "fingerprint-A", "projectRoot": self.plan["project_root"], "runId": "run-A"}, "mutationPaths": ["Assets/Sample.cs"]}
+        body = json.dumps(request, separators=(",", ":")).encode()
+        secret = bytes.fromhex(descriptor["secret"])
+        signature = hmac.new(secret, b"request\n" + body, hashlib.sha256).hexdigest() if signature_valid else "0" * 64
+        transport = Request(descriptor["endpoint"], data=body, headers={"Content-Type": "application/json", "X-UnityAgent-Signature": signature})
+        with urlopen(transport, timeout=5) as response:
+            raw = response.read()
+            self.assertEqual(response.headers["X-UnityAgent-Signature"], hmac.new(secret, b"response\n" + raw, hashlib.sha256).hexdigest())
+            return json.loads(raw)
+
+    def assert_unconsumed_and_unchanged(self):
+        self.assertNotIn("artist_consumption", self.store.get(self.decision["approval_decision_id"]))
+        self.assertEqual(self.source.read_bytes(), b"class Sample {}\n")
+
+    def test_signed_request_consumes_once_and_response_is_authenticated(self):
+        authority = self.authority()
+        with authority:
+            first = self.send(authority)
+            self.assertTrue(first["allowed"])
+            self.assertTrue(first["reservationId"])
+            second = self.send(authority)
+            self.assertFalse(second["allowed"])
+            self.assertIn("already", second["reason"])
+        persisted = ApprovalDecisionStore(self.root / "state").get(self.decision["approval_decision_id"])
+        self.assertEqual(persisted["artist_consumption"]["reservation_id"], first["reservationId"])
+        self.assertFalse(authority.descriptor_path.exists())
+
+    def test_invalid_signature_cannot_consume_or_block_later_valid_request(self):
+        with self.authority() as authority:
+            with self.assertRaises(HTTPError) as captured:
+                self.send(authority, signature_valid=False)
+            self.assertEqual(captured.exception.code, 403)
+            captured.exception.close()
+            self.assert_unconsumed_and_unchanged()
+            self.assertTrue(self.send(authority)["allowed"])
+
+    def test_signed_other_project_is_rejected_without_consumption(self):
+        with self.authority() as authority:
+            response = self.send(authority, project=str(self.root / "other"))
+            self.assertFalse(response["allowed"])
+            self.assert_unconsumed_and_unchanged()
+            self.assertTrue(self.send(authority)["allowed"])
+
+    def test_revocation_after_session_open_stops_signed_request(self):
+        with self.authority() as authority:
+            self.store.revoke(self.decision["approval_decision_id"])
+            response = self.send(authority)
+            self.assertFalse(response["allowed"])
+            self.assertIn("revoked", response["reason"])
+            self.assert_unconsumed_and_unchanged()
+
+    def test_expiry_after_session_open_stops_signed_request(self):
+        with self.authority() as authority:
+            expiry = datetime.fromisoformat(self.decision["expires_at"])
+            # 時刻だけを進め、署名・Resolver・永続消費の実処理は維持する。
+            with patch("unityagent.runtime.contracts.artist_plan.datetime", wraps=datetime) as clock:
+                clock.now.return_value = expiry
+                response = self.send(authority)
+            self.assertFalse(response["allowed"])
+            self.assertIn("expired", response["reason"])
+            self.assert_unconsumed_and_unchanged()
+
+    def dispatch(self, broker, *, project=None):
+        # Context選択とEditor発見は対象外。承認判定から実Dispatch境界までは置換しない。
+        session = {"scope": self.scope, "domain": "visual_art", "manifest_ref": "test-context.json", "manifest": {"materialized_context": {"context_id": "ctx-A", "context_fingerprint": {"value": "fingerprint-A"}, "specialist_context": {"profile_id": "artist_subagent"}}}}
+        with patch("unityagent.control_plane.artist_execution.discover_environment", return_value={}), patch("unityagent.control_plane.artist_execution._context", return_value=session), patch.object(self.plane.broker, "dispatch", broker):
+            return execute_artist(self.plane, str(project or self.project), "run-A", ArtistCommand(name="apply", plan_id="plan-A"), definition_fingerprint={}, approval_ref=self.decision["approval_decision_id"])
+
+    def test_control_plane_valid_approval_reaches_dispatch_with_live_authority(self):
+        class DispatchObserved(Exception):
+            pass
+
+        def observe(request, snapshot, **parameters):
+            self.assertEqual(request["approval_ref"], self.decision["approval_decision_id"])
+            authority = parameters["provider_arguments"]["unity_cli"]["artist_authority"]
+            self.assertTrue(self.send(authority)["allowed"])
+            raise DispatchObserved()
+
+        broker = Mock(side_effect=observe)
+        with self.assertRaises(DispatchObserved):
+            self.dispatch(broker)
+        broker.assert_called_once()
+        self.assertEqual(self.source.read_bytes(), b"class Sample {}\n")
+
+    def test_control_plane_revoked_approval_stops_before_dispatch(self):
+        self.store.revoke(self.decision["approval_decision_id"])
+        broker = Mock()
+        with self.assertRaisesRegex(ContractValidationError, "revoked"):
+            self.dispatch(broker)
+        broker.assert_not_called()
+        self.assert_unconsumed_and_unchanged()
+
+    def test_control_plane_project_binding_stops_before_dispatch(self):
+        broker = Mock()
+        with self.assertRaisesRegex(ContractValidationError, "binding differs"):
+            self.dispatch(broker, project=self.root / "other-project")
+        broker.assert_not_called()
+        self.assert_unconsumed_and_unchanged()
+
+    def test_control_plane_expired_approval_stops_before_dispatch(self):
+        broker = Mock()
+        with patch("unityagent.runtime.contracts.artist_plan.datetime", wraps=datetime) as clock:
+            clock.now.return_value = datetime.fromisoformat(self.decision["expires_at"])
+            with self.assertRaisesRegex(ContractValidationError, "expired"):
+                self.dispatch(broker)
+        broker.assert_not_called()
+        self.assert_unconsumed_and_unchanged()
 
 
 if __name__ == "__main__":

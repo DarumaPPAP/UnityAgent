@@ -48,7 +48,8 @@ class CheckpointStore:
         # alone is not sufficient to make an Evidence reference historical truth.
         evidence_store = EvidenceStore(self.layout.root)
         for evidence_id in evidence_refs:
-            evidence_store.get(evidence_id)
+            # Task DAGの親Checkpointは子RunのEvidence unionを持つため、各Record自身のRun連結を検証する。
+            evidence_store.verify_record(evidence_id)
 
         refs, hashes = self.states.snapshot_run(run_id, loop_ids)
         record = {
@@ -95,7 +96,7 @@ class CheckpointStore:
         validate_definition_fingerprint(record.get("definition_fingerprint"))
         evidence_store = EvidenceStore(self.layout.root)
         for evidence_id in record.get("evidence_refs", []):
-            evidence_store.get(str(evidence_id))
+            evidence_store.verify_record(str(evidence_id))
 
         if record.get("schema_version") == "1.1":
             supplied = record.get("checkpoint_hash")
@@ -124,6 +125,15 @@ class CheckpointStore:
                 read_json(resolve_ref(self.layout.root, ref))
         else:
             raise PersistenceError("unsupported_checkpoint_schema", f"unsupported checkpoint schema: {record.get('schema_version')}")
+
+        # ハッシュが一致しても、別Runの状態を復元先へ書き込む根拠にはしない。
+        references = [("execution-state", record["execution_state_ref"]), ("workflow-state", record["workflow_state_ref"])]
+        references.extend(("loop-control-state", ref) for ref in record.get("loop_control_state_refs", []))
+        for kind, ref in references:
+            snapshot = read_json(resolve_ref(self.layout.root, ref))
+            self.states.validate_state(snapshot, kind)
+            if snapshot.get("run_id") != record["run_id"]:
+                raise PersistenceError("state_identity_mismatch", "checkpoint snapshot belongs to another run")
 
     def restore(self, run_id: str, checkpoint_id: str) -> None:
         """Restore only checkpointed current State; Memory and Evidence are never rolled back.
